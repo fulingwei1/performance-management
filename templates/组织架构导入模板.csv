@@ -1,0 +1,15 @@
+﻿部门编码,部门名称,上级部门编码,部门类型,排序
+CEO,总经办,,company,1
+HR,人力资源部,CEO,department,2
+TECH,工程技术中心,CEO,department,3
+TEST,测试部,TECH,subDepartment,1
+MECH,机械部,TECH,subDepartment,2
+PLC,电气部,TECH,subDepartment,3
+SOFTWARE,软件开发部,TECH,subDepartment,4
+HARDWARE,硬件开发部,TECH,subDepartment,5
+PRE_SALES,售前技术部,TECH,subDepartment,6
+SALES,销售部,CEO,department,4
+SALES_1,销售一部,SALES,subDepartment,1
+SALES_2,销售二部,SALES,subDepartment,2
+SERVICE,客服部,CEO,department,5
+PM,项目管理部,CEO,department,6

@@ -1,0 +1,29 @@
+
+> performance-backend@1.0.0 build
+> tsc
+
+src/models/assessmentCycle.model.ts(196,19): error TS2339: Property 'affectedRows' does not exist on type 'unknown[]'.
+src/models/assessmentCycle.model.ts(223,5): error TS2322: Type 'unknown[]' is not assignable to type 'Holiday[]'.
+  Type 'unknown' is not assignable to type 'Holiday'.
+src/models/assessmentCycle.model.ts(247,19): error TS2339: Property 'affectedRows' does not exist on type 'unknown[]'.
+src/models/employee.model.ts(70,5): error TS2322: Type 'unknown[]' is not assignable to type 'Employee[]'.
+  Type 'unknown' is not assignable to type 'Employee'.
+src/models/employee.model.ts(88,5): error TS2322: Type 'unknown[]' is not assignable to type 'Employee[]'.
+  Type 'unknown' is not assignable to type 'Employee'.
+src/models/employee.model.ts(106,5): error TS2322: Type 'unknown[]' is not assignable to type 'Employee[]'.
+  Type 'unknown' is not assignable to type 'Employee'.
+src/models/employee.model.ts(126,5): error TS2322: Type 'unknown[]' is not assignable to type 'Employee[]'.
+  Type 'unknown' is not assignable to type 'Employee'.
+src/models/metricLibrary.model.ts(218,19): error TS2339: Property 'affectedRows' does not exist on type 'unknown[]'.
+src/models/organization.model.ts(130,19): error TS2339: Property 'affectedRows' does not exist on type 'unknown[]'.
+src/models/organization.model.ts(254,19): error TS2339: Property 'affectedRows' does not exist on type 'unknown[]'.
+src/models/peerReview.model.ts(98,33): error TS2322: Type 'unknown' is not assignable to type 'PeerReview | null'.
+src/models/peerReview.model.ts(129,5): error TS2322: Type 'unknown[]' is not assignable to type 'PeerReview[]'.
+  Type 'unknown' is not assignable to type 'PeerReview'.
+src/models/peerReview.model.ts(170,5): error TS2322: Type 'unknown[]' is not assignable to type 'PeerReview[]'.
+  Type 'unknown' is not assignable to type 'PeerReview'.
+src/models/peerReview.model.ts(208,5): error TS2322: Type 'unknown[]' is not assignable to type 'PeerReview[]'.
+  Type 'unknown' is not assignable to type 'PeerReview'.
+src/models/peerReview.model.ts(325,5): error TS2322: Type 'unknown' is not assignable to type 'PeerReview'.
+src/models/performance.model.ts(398,19): error TS2339: Property 'affectedRows' does not exist on type 'unknown[]'.
+src/routes/peerReview.routes.ts(41,31): error TS2554: Expected 3 arguments, but got 1.

@@ -1,0 +1,26 @@
+
+> performance-backend@1.0.0 dev
+> ts-node src/index.ts
+
+[dotenv@17.2.3] injecting env (11) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:859
+    return new TSError(diagnosticText, diagnosticCodes, diagnostics);
+           ^
+TSError: ⨯ Unable to compile TypeScript:
+src/models/peerReview.model.ts(15,28): error TS2339: Property 'set' does not exist on type '{ findById: (id: string) => PeerReview | undefined; findByReviewerId: (reviewerId: string) => PeerReview[]; findByRevieweeId: (revieweeId: string) => PeerReview[]; findByRecordId: (recordId: string) => PeerReview[]; create: (review: PeerReview) => PeerReview; update: (id: string, updates: Partial<...>) => PeerReview...'.
+src/models/peerReview.model.ts(44,5): error TS2322: Type 'PeerReview | null' is not assignable to type 'PeerReview'.
+  Type 'null' is not assignable to type 'PeerReview'.
+
+    at createTSError (/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:859:12)
+    at reportTSError (/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:863:19)
+    at getOutput (/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:1077:36)
+    at Object.compile (/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:1433:41)
+    at Module.m._compile (/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:1617:30)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1934:10)
+    at Object.require.extensions.<computed> [as .ts] (/Users/flw/Kimi_Agent_绩效管理平台/backend/node_modules/ts-node/src/index.ts:1621:12)
+    at Module.load (node:internal/modules/cjs/loader:1524:32)
+    at Module._load (node:internal/modules/cjs/loader:1326:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14) {
+  diagnosticCodes: [ 2339, 2322 ]
+}

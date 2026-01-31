@@ -1,0 +1,208 @@
+
+> my-app@0.0.0 dev
+> vite
+
+
+  VITE v7.3.0  ready in 2936 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+10:16:09 PM [vite] (client) hmr update /src/pages/GM/Dashboard.tsx, /src/index.css
+10:16:31 PM [vite] (client) hmr update /src/pages/GM/Dashboard.tsx, /src/index.css
+10:21:46 PM [vite] (client) hmr update /src/pages/GM/Dashboard.tsx, /src/index.css
+10:48:40 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:48:50 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:48:50 PM [vite] Internal server error: /Users/flw/Kimi_Agent_绩效管理平台/app/src/pages/Manager/Scoring.tsx: Expected corresponding JSX closing tag for <DialogContent>. (799:8)
+
+  797 |             </Button>
+  798 |           </div>
+> 799 |         </DrawerContent>
+      |         ^
+  800 |       </Drawer>
+  801 |     </div>
+  802 |   );
+  Plugin: vite-plugin-inspect-dom-simple
+  File: /Users/flw/Kimi_Agent_绩效管理平台/app/src/pages/Manager/Scoring.tsx:799:8
+  797 |              </Button>
+  798 |            </div>
+  799 |          </DrawerContent>
+      |          ^
+  800 |        </Drawer>
+  801 |      </div>
+      at constructor (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:6599:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4727:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4749:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4759:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10821:21)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9765:39
+      at TypeScriptParserMixin.tryParse (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:6907:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9765:18)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10790:39
+      at TypeScriptParserMixin.allowInAnd (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12416:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10790:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12483:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11665:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11321:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4764:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10821:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9776:20)
+      at TypeScriptParserMixin.parseExpressionBase (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10774:23)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10770:39
+      at TypeScriptParserMixin.allowInAnd (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12411:16)
+      at TypeScriptParserMixin.parseExpression (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10770:17)
+      at TypeScriptParserMixin.parseReturnStatement (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13132:28)
+      at TypeScriptParserMixin.parseStatementContent (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12788:21)
+      at TypeScriptParserMixin.parseStatementContent (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9508:18)
+      at TypeScriptParserMixin.parseStatementLike (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12757:17)
+      at TypeScriptParserMixin.parseStatementListItem (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12737:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13306:61)
+      at TypeScriptParserMixin.parseBlockBody (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13299:10)
+      at TypeScriptParserMixin.parseBlock (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13287:10)
+      at TypeScriptParserMixin.parseFunctionBody (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12090:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12076:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9172:18)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13435:12
+10:48:53 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:48:53 PM [vite] Internal server error: /Users/flw/Kimi_Agent_绩效管理平台/app/src/pages/Manager/Scoring.tsx: Expected corresponding JSX closing tag for <DialogContent>. (799:8)
+
+  797 |             </Button>
+  798 |           </div>
+> 799 |         </DrawerContent>
+      |         ^
+  800 |       </Drawer>
+  801 |     </div>
+  802 |   );
+  Plugin: vite-plugin-inspect-dom-simple
+  File: /Users/flw/Kimi_Agent_绩效管理平台/app/src/pages/Manager/Scoring.tsx:799:8
+  797 |              </Button>
+  798 |            </div>
+  799 |          </DrawerContent>
+      |          ^
+  800 |        </Drawer>
+  801 |      </div>
+      at constructor (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:365:19)
+      at TypeScriptParserMixin.raise (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:6599:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4727:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElementAt (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4698:32)
+      at TypeScriptParserMixin.jsxParseElement (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4749:17)
+      at TypeScriptParserMixin.parseExprAtom (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4759:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10821:21)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9765:39
+      at TypeScriptParserMixin.tryParse (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:6907:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9765:18)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10790:39
+      at TypeScriptParserMixin.allowInAnd (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12416:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10790:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12483:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11665:28)
+      at TypeScriptParserMixin.parseExprAtom (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11321:23)
+      at TypeScriptParserMixin.parseExprAtom (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:4764:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11071:23)
+      at TypeScriptParserMixin.parseUpdate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11056:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:11036:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9827:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10889:61)
+      at TypeScriptParserMixin.parseExprOps (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10894:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10871:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10821:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9776:20)
+      at TypeScriptParserMixin.parseExpressionBase (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10774:23)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10770:39
+      at TypeScriptParserMixin.allowInAnd (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12411:16)
+      at TypeScriptParserMixin.parseExpression (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:10770:17)
+      at TypeScriptParserMixin.parseReturnStatement (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13132:28)
+      at TypeScriptParserMixin.parseStatementContent (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12788:21)
+      at TypeScriptParserMixin.parseStatementContent (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9508:18)
+      at TypeScriptParserMixin.parseStatementLike (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12757:17)
+      at TypeScriptParserMixin.parseStatementListItem (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12737:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13306:61)
+      at TypeScriptParserMixin.parseBlockBody (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13299:10)
+      at TypeScriptParserMixin.parseBlock (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13287:10)
+      at TypeScriptParserMixin.parseFunctionBody (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12090:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:12076:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:9172:18)
+      at /Users/flw/Kimi_Agent_绩效管理平台/app/node_modules/@babel/parser/lib/index.js:13435:12
+10:48:59 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:51:29 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:52:55 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:53:05 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:54:55 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+10:55:03 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+10:55:11 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+10:55:19 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+10:55:32 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+11:03:56 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:04:02 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:04:13 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:04:39 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:04:56 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:05:05 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:05:15 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:05:24 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:05:38 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:06:36 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:07:04 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:08:04 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:08:56 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:10:28 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:10:35 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:11:55 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:12:08 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:14:42 PM [vite] (client) hmr update /src/index.css, /src/components/dashboard/AdvancedDashboard.tsx
+11:24:00 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Employee/Dashboard.tsx, /src/pages/Login.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/PeerReview.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/Scoring.tsx, /src/pages/Manager/Analytics.tsx, /src/pages/Manager/PeerReviewManage.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/HR/Dashboard.tsx, /src/components/layout/Sidebar.tsx, /src/pages/Manager/EmployeePerformanceHistory.tsx, /src/pages/GM/Scoring.tsx, /src/pages/HR/DataManagement.tsx, /src/pages/HR/EmployeeManagement.tsx, /src/index.css
+11:25:50 PM [vite] (client) hmr update /src/pages/Manager/Analytics.tsx, /src/index.css
+11:29:11 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+11:29:15 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+11:29:39 PM [vite] (client) hmr update /src/index.css, /src/components/layout/Sidebar.tsx
+11:30:37 PM [vite] (client) hmr update /src/pages/Manager/Analytics.tsx, /src/index.css
+11:31:07 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:31:15 PM [vite] (client) hmr update /src/index.css, /src/components/layout/Sidebar.tsx
+11:31:46 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:31:50 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:31:53 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:00 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:04 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:13 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:17 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:22 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:35 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:39 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:43 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:48 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:32:52 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+11:33:00 PM [vite] (client) hmr update /src/index.css, /src/components/dashboard/AdvancedDashboard.tsx
+11:33:17 PM [vite] (client) hmr update /src/index.css, /src/components/dashboard/AdvancedDashboard.tsx
+11:33:31 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:33:35 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:33:39 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:33:44 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:33:51 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:33:58 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:34:05 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:34:13 PM [vite] (client) hmr update /src/pages/HR/Dashboard.tsx, /src/index.css
+11:34:21 PM [vite] (client) hmr update /src/pages/HR/DataManagement.tsx, /src/index.css
