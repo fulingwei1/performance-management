@@ -60,6 +60,7 @@ export const memoryStore: MemoryStore = {
   peerReviewTasks: new Map(),
   bonusConfig: new Map(),
   bonusResults: new Map(),
+  goalProgress: new Map(),
 };
 
 // 员工数据操作
@@ -351,6 +352,7 @@ export const initMemoryDB = (): void => {
   memoryStore.peerReviewTasks.clear();
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
+  memoryStore.goalProgress?.clear();
 
   // 初始化默认部门
   const defaultDepts: Department[] = [
@@ -406,6 +408,7 @@ export const clearMemoryDB = (): void => {
   memoryStore.peerReviewTasks.clear();
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
+  memoryStore.goalProgress?.clear();
 };
 
 // 获取统计信息

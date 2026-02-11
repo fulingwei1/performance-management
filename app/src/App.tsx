@@ -48,6 +48,11 @@ import { PeerReviewManagement } from '@/pages/HR/PeerReviewManagement';
 import { SystemSettings } from '@/pages/Admin/SystemSettings';
 import { UserManagement } from '@/pages/Admin/UserManagement';
 
+// Goal Management pages
+import { GoalSetting } from '@/pages/Goals/GoalSetting';
+import { GoalConfirmation } from '@/pages/Goals/GoalConfirmation';
+import { GoalProgressPage } from '@/pages/Goals/GoalProgress';
+
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
   manager: '/manager/dashboard',
@@ -135,6 +140,8 @@ function App() {
           <Route path="/employee/assignments" element={<MyAssignments />} />
           <Route path="/employee/related-okr" element={<RelatedOKR />} />
           <Route path="/employee/my-bonus" element={<MyBonus />} />
+          <Route path="/employee/goal-confirmation" element={<GoalConfirmation />} />
+          <Route path="/employee/goal-progress" element={<GoalProgressPage />} />
         </Route>
 
         {/* Manager routes */}
@@ -150,6 +157,8 @@ function App() {
           <Route path="/manager/team-objectives" element={<TeamObjectives />} />
           <Route path="/manager/review-reports" element={<ReviewReports />} />
           <Route path="/manager/interviews" element={<InterviewSchedule />} />
+          <Route path="/manager/goal-setting" element={<GoalSetting />} />
+          <Route path="/manager/goal-progress" element={<GoalProgressPage />} />
         </Route>
 
         {/* GM routes */}
@@ -161,6 +170,8 @@ function App() {
           <Route path="/gm/promotion-approvals" element={<GMPromotionApprovals />} />
           <Route path="/gm/strategic-overview" element={<StrategicOverview />} />
           <Route path="/gm/objectives" element={<ObjectiveTree />} />
+          <Route path="/gm/goal-setting" element={<GoalSetting />} />
+          <Route path="/gm/goal-progress" element={<GoalProgressPage />} />
         </Route>
 
         {/* HR routes */}
@@ -177,6 +188,8 @@ function App() {
           <Route path="/hr/bonus-management" element={<BonusManagement />} />
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
+          <Route path="/hr/goal-setting" element={<GoalSetting />} />
+          <Route path="/hr/goal-progress" element={<GoalProgressPage />} />
         </Route>
 
         {/* Admin routes */}
@@ -195,6 +208,8 @@ function App() {
           <Route path="/admin/scoring" element={<GMScoring />} />
           <Route path="/admin/data-export" element={<GMDataExport />} />
           <Route path="/admin/objectives" element={<ObjectiveTree />} />
+          <Route path="/admin/goal-setting" element={<GoalSetting />} />
+          <Route path="/admin/goal-progress" element={<GoalProgressPage />} />
         </Route>
 
         {/* Default redirects */}

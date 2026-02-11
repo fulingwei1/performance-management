@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { FileText, Send, X, AlertCircle, TrendingUp, Clock } from 'lucide-react';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -8,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor, resolveGroupType } from '@/lib/config';
+import { KeywordSelector } from '@/components/KeywordSelector';
+import keywordsData from '@/data/evaluation-keywords.json';
 
 interface ScoringDialogProps {
   open: boolean;
@@ -31,6 +34,55 @@ export function ScoringDialog({
   nextMonthWorkArrangement, setNextMonthWorkArrangement,
   totalScore, loading, onSubmit
 }: ScoringDialogProps) {
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  
+  // 获取员工级别映射
+  const getEmployeeLevel = (level?: string): 'basic' | 'senior' | 'manager' | 'executive' => {
+    if (!level) return 'basic';
+    if (level === 'senior' || level === 'intermediate') return 'senior';
+    if (level === 'manager') return 'manager';
+    if (level === 'executive' || level === 'gm') return 'executive';
+    return 'basic';
+  };
+
+  // 将选中的关键词转换为文本
+  const getKeywordText = (keywordIds: string[]) => {
+    const allKeywords = [...keywordsData.positive, ...keywordsData.negative];
+    const selected = allKeywords.filter((kw: any) => keywordIds.includes(kw.id));
+    const positive = selected.filter((kw: any) => kw.id.startsWith('p')).map((kw: any) => kw.text);
+    const negative = selected.filter((kw: any) => kw.id.startsWith('n')).map((kw: any) => kw.text);
+    
+    let text = '';
+    if (positive.length > 0) {
+      text += `优点：${positive.join('、')}`;
+    }
+    if (negative.length > 0) {
+      if (text) text += '；';
+      text += `待改进：${negative.join('、')}`;
+    }
+    return text;
+  };
+
+  // 当关键词变化时，自动更新评语
+  useEffect(() => {
+    if (selectedKeywords.length > 0) {
+      const keywordText = getKeywordText(selectedKeywords);
+      if (keywordText) {
+        // 如果评语为空，直接设置
+        if (!managerComment.trim()) {
+          setManagerComment(keywordText + '。\n\n');
+        } else {
+          // 如果评语不为空，检查是否已包含关键词标记
+          const hasKeywordMarker = managerComment.includes('优点：') || managerComment.includes('待改进：');
+          if (!hasKeywordMarker) {
+            // 在开头插入关键词
+            setManagerComment(keywordText + '。\n\n' + managerComment);
+          }
+        }
+      }
+    }
+  }, [selectedKeywords]);
+
   const getGroupBadge = (groupType: 'high' | 'low' | null, level?: any) => {
     const resolved = resolveGroupType(groupType, level);
     if (!resolved) return <Badge variant="outline" className="text-gray-400">未分组</Badge>;
@@ -196,10 +248,26 @@ export function ScoringDialog({
                   </div>
                 </TabsContent>
                 <TabsContent value="comment" className="mt-0 space-y-5">
+                  {/* 关键词选择器 */}
+                  <Card className="shadow-sm border-blue-200 bg-blue-50/30">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">快速评价标签</CardTitle>
+                      <p className="text-xs text-gray-500">快速选择评价关键词，自动生成评价模板</p>
+                    </CardHeader>
+                    <CardContent>
+                      <KeywordSelector
+                        value={selectedKeywords}
+                        onChange={setSelectedKeywords}
+                        employeeLevel={getEmployeeLevel(selectedRecord?.employeeLevel)}
+                        maxCount={7}
+                      />
+                    </CardContent>
+                  </Card>
+
                   <Card className="shadow-sm">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-medium">部门经理综合评价<span className="text-red-500 ml-1">*</span></CardTitle>
-                      <p className="text-xs text-gray-500">请对员工本月的整体工作表现进行评价</p>
+                      <p className="text-xs text-gray-500">请对员工本月的整体工作表现进行评价（关键词已自动插入）</p>
                     </CardHeader>
                     <CardContent>
                       <Textarea placeholder="请输入对员工本月工作的综合评价..." value={managerComment} onChange={(e) => setManagerComment(e.target.value)} className="min-h-[160px] resize-none" />

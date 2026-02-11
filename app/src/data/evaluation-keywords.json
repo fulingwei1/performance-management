@@ -1,0 +1,993 @@
+{
+  "version": "1.0.0",
+  "updatedAt": "2026-02-12",
+  "categories": [
+    {
+      "id": "ability",
+      "name": "工作能力",
+      "icon": "📊"
+    },
+    {
+      "id": "attitude",
+      "name": "工作态度",
+      "icon": "🎯"
+    },
+    {
+      "id": "teamwork",
+      "name": "团队协作",
+      "icon": "🤝"
+    },
+    {
+      "id": "management",
+      "name": "管理能力",
+      "icon": "💡"
+    },
+    {
+      "id": "quality",
+      "name": "个人素质",
+      "icon": "🌟"
+    },
+    {
+      "id": "performance",
+      "name": "工作表现",
+      "icon": "🚀"
+    },
+    {
+      "id": "others",
+      "name": "其他",
+      "icon": "🎨"
+    }
+  ],
+  "positive": [
+    {
+      "id": "p001",
+      "text": "专业精通",
+      "category": "ability",
+      "level": ["senior", "manager", "executive"],
+      "description": "业务能力强，专业知识扎实"
+    },
+    {
+      "id": "p002",
+      "text": "效率高",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "工作速度快，产出高"
+    },
+    {
+      "id": "p003",
+      "text": "质量优",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "工作质量好，少出错"
+    },
+    {
+      "id": "p004",
+      "text": "善分析",
+      "category": "ability",
+      "level": ["senior", "manager"],
+      "description": "分析问题能力强"
+    },
+    {
+      "id": "p005",
+      "text": "执行力强",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "任务完成度高"
+    },
+    {
+      "id": "p006",
+      "text": "学习快",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "上手快，适应能力强"
+    },
+    {
+      "id": "p007",
+      "text": "技术精",
+      "category": "ability",
+      "level": ["senior", "manager"],
+      "description": "技术能力突出"
+    },
+    {
+      "id": "p008",
+      "text": "善创新",
+      "category": "ability",
+      "level": ["senior", "manager"],
+      "description": "有创新思维和方法"
+    },
+    {
+      "id": "p009",
+      "text": "经验丰富",
+      "category": "ability",
+      "level": ["senior", "manager"],
+      "description": "行业经验足"
+    },
+    {
+      "id": "p010",
+      "text": "举一反三",
+      "category": "ability",
+      "level": ["senior"],
+      "description": "思维敏捷，能推演"
+    },
+    {
+      "id": "p011",
+      "text": "细致严谨",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "注重细节，工作认真"
+    },
+    {
+      "id": "p012",
+      "text": "独立性强",
+      "category": "ability",
+      "level": ["senior", "manager"],
+      "description": "能独当一面"
+    },
+    {
+      "id": "p013",
+      "text": "积极主动",
+      "category": "attitude",
+      "level": ["basic", "senior", "manager"],
+      "description": "不推不动，主动作为"
+    },
+    {
+      "id": "p014",
+      "text": "责任心强",
+      "category": "attitude",
+      "level": ["basic", "senior", "manager"],
+      "description": "敢担当，有责任感"
+    },
+    {
+      "id": "p015",
+      "text": "敬业投入",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "工作投入度高"
+    },
+    {
+      "id": "p016",
+      "text": "认真负责",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "对工作负责到底"
+    },
+    {
+      "id": "p017",
+      "text": "自律性强",
+      "category": "attitude",
+      "level": ["senior", "manager"],
+      "description": "自我管理能力好"
+    },
+    {
+      "id": "p018",
+      "text": "坚韧执着",
+      "category": "attitude",
+      "level": ["senior", "manager"],
+      "description": "遇到困难不放弃"
+    },
+    {
+      "id": "p019",
+      "text": "结果导向",
+      "category": "attitude",
+      "level": ["senior", "manager"],
+      "description": "注重结果和成果"
+    },
+    {
+      "id": "p020",
+      "text": "追求卓越",
+      "category": "attitude",
+      "level": ["senior", "manager"],
+      "description": "对自己要求高"
+    },
+    {
+      "id": "p021",
+      "text": "勤奋努力",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "工作勤奋刻苦"
+    },
+    {
+      "id": "p022",
+      "text": "守时守信",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "时间观念强，说到做到"
+    },
+    {
+      "id": "p023",
+      "text": "服从安排",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "听从指挥，配合度高"
+    },
+    {
+      "id": "p024",
+      "text": "抗压能力强",
+      "category": "attitude",
+      "level": ["senior", "manager"],
+      "description": "能承受工作压力"
+    },
+    {
+      "id": "p025",
+      "text": "团队意识强",
+      "category": "teamwork",
+      "level": ["basic", "senior", "manager"],
+      "description": "有大局观，顾全团队"
+    },
+    {
+      "id": "p026",
+      "text": "善于沟通",
+      "category": "teamwork",
+      "level": ["basic", "senior", "manager"],
+      "description": "沟通表达能力好"
+    },
+    {
+      "id": "p027",
+      "text": "乐于助人",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "愿意帮助同事"
+    },
+    {
+      "id": "p028",
+      "text": "配合度高",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "协作配合好"
+    },
+    {
+      "id": "p029",
+      "text": "包容性强",
+      "category": "teamwork",
+      "level": ["manager", "executive"],
+      "description": "能包容不同意见"
+    },
+    {
+      "id": "p030",
+      "text": "凝聚力强",
+      "category": "teamwork",
+      "level": ["manager", "executive"],
+      "description": "能团结团队"
+    },
+    {
+      "id": "p031",
+      "text": "善于协调",
+      "category": "teamwork",
+      "level": ["senior", "manager"],
+      "description": "协调能力强"
+    },
+    {
+      "id": "p032",
+      "text": "人缘好",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "人际关系融洽"
+    },
+    {
+      "id": "p033",
+      "text": "无私分享",
+      "category": "teamwork",
+      "level": ["senior", "manager"],
+      "description": "愿意分享经验知识"
+    },
+    {
+      "id": "p034",
+      "text": "善于倾听",
+      "category": "teamwork",
+      "level": ["manager", "executive"],
+      "description": "能听取他人意见"
+    },
+    {
+      "id": "p035",
+      "text": "领导力强",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "有领导魅力和能力"
+    },
+    {
+      "id": "p036",
+      "text": "善带团队",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "带团队能力强"
+    },
+    {
+      "id": "p037",
+      "text": "决策果断",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "决策速度快准确"
+    },
+    {
+      "id": "p038",
+      "text": "目标清晰",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "目标设定和执行好"
+    },
+    {
+      "id": "p039",
+      "text": "授权得当",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "能合理授权"
+    },
+    {
+      "id": "p040",
+      "text": "善于激励",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "能激励下属"
+    },
+    {
+      "id": "p041",
+      "text": "培养人才",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "重视人才培养"
+    },
+    {
+      "id": "p042",
+      "text": "前瞻思维",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "有战略眼光"
+    },
+    {
+      "id": "p043",
+      "text": "善于总结",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "复盘总结能力强"
+    },
+    {
+      "id": "p044",
+      "text": "诚实守信",
+      "category": "quality",
+      "level": ["basic", "senior", "manager"],
+      "description": "为人正直诚信"
+    },
+    {
+      "id": "p045",
+      "text": "谦虚好学",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "虚心学习进步"
+    },
+    {
+      "id": "p046",
+      "text": "情绪稳定",
+      "category": "quality",
+      "level": ["senior", "manager", "executive"],
+      "description": "情绪管理能力好"
+    },
+    {
+      "id": "p047",
+      "text": "阳光正面",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "心态积极向上"
+    },
+    {
+      "id": "p048",
+      "text": "成长性强",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "进步明显"
+    },
+    {
+      "id": "p049",
+      "text": "格局大",
+      "category": "quality",
+      "level": ["manager", "executive"],
+      "description": "视野开阔，格局高"
+    },
+    {
+      "id": "p050",
+      "text": "自信果敢",
+      "category": "quality",
+      "level": ["senior", "manager"],
+      "description": "自信有决断力"
+    },
+    {
+      "id": "p051",
+      "text": "稳重可靠",
+      "category": "quality",
+      "level": ["senior", "manager"],
+      "description": "做事稳妥可信赖"
+    },
+    {
+      "id": "p052",
+      "text": "灵活应变",
+      "category": "quality",
+      "level": ["senior", "manager"],
+      "description": "应变能力强"
+    },
+    {
+      "id": "p053",
+      "text": "客户导向",
+      "category": "quality",
+      "level": ["basic", "senior", "manager"],
+      "description": "以客户为中心"
+    },
+    {
+      "id": "p054",
+      "text": "业绩突出",
+      "category": "performance",
+      "level": ["basic", "senior", "manager"],
+      "description": "业绩完成好"
+    },
+    {
+      "id": "p055",
+      "text": "超额完成",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "超出预期"
+    },
+    {
+      "id": "p056",
+      "text": "零失误",
+      "category": "performance",
+      "level": ["senior"],
+      "description": "工作零差错"
+    },
+    {
+      "id": "p057",
+      "text": "主动加班",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "愿意加班付出"
+    },
+    {
+      "id": "p058",
+      "text": "进步明显",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "进步快速"
+    },
+    {
+      "id": "p059",
+      "text": "关键时刻顶上",
+      "category": "performance",
+      "level": ["senior", "manager"],
+      "description": "关键时刻能担当"
+    },
+    {
+      "id": "p060",
+      "text": "敢啃硬骨头",
+      "category": "performance",
+      "level": ["senior", "manager"],
+      "description": "敢接难任务"
+    },
+    {
+      "id": "p061",
+      "text": "持续稳定",
+      "category": "performance",
+      "level": ["senior", "manager"],
+      "description": "表现稳定"
+    },
+    {
+      "id": "p062",
+      "text": "思路清晰",
+      "category": "others",
+      "level": ["senior", "manager"],
+      "description": "思维逻辑强"
+    },
+    {
+      "id": "p063",
+      "text": "条理性强",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "做事有条理"
+    },
+    {
+      "id": "p064",
+      "text": "文档规范",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "文档撰写规范"
+    },
+    {
+      "id": "p065",
+      "text": "时间管理好",
+      "category": "others",
+      "level": ["senior", "manager"],
+      "description": "时间安排合理"
+    },
+    {
+      "id": "p066",
+      "text": "多面手",
+      "category": "others",
+      "level": ["senior"],
+      "description": "一专多能"
+    },
+    {
+      "id": "p067",
+      "text": "成本意识强",
+      "category": "others",
+      "level": ["manager", "executive"],
+      "description": "注重成本控制"
+    },
+    {
+      "id": "p068",
+      "text": "风险意识强",
+      "category": "others",
+      "level": ["manager", "executive"],
+      "description": "有风险防控意识"
+    },
+    {
+      "id": "p069",
+      "text": "数据敏感",
+      "category": "others",
+      "level": ["senior", "manager"],
+      "description": "对数据敏感"
+    },
+    {
+      "id": "p070",
+      "text": "客观理性",
+      "category": "others",
+      "level": ["manager", "executive"],
+      "description": "思考客观理性"
+    }
+  ],
+  "negative": [
+    {
+      "id": "n001",
+      "text": "能力欠缺",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "业务能力不足"
+    },
+    {
+      "id": "n002",
+      "text": "效率低",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "工作速度慢"
+    },
+    {
+      "id": "n003",
+      "text": "质量差",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "工作质量不达标"
+    },
+    {
+      "id": "n004",
+      "text": "粗心大意",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "经常出错"
+    },
+    {
+      "id": "n005",
+      "text": "学习慢",
+      "category": "ability",
+      "level": ["basic"],
+      "description": "上手慢，适应能力弱"
+    },
+    {
+      "id": "n006",
+      "text": "缺乏经验",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "经验不足"
+    },
+    {
+      "id": "n007",
+      "text": "思维僵化",
+      "category": "ability",
+      "level": ["senior", "manager"],
+      "description": "思维不够灵活"
+    },
+    {
+      "id": "n008",
+      "text": "执行力弱",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "任务完成度低"
+    },
+    {
+      "id": "n009",
+      "text": "抓不住重点",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "分不清轻重缓急"
+    },
+    {
+      "id": "n010",
+      "text": "技术薄弱",
+      "category": "ability",
+      "level": ["basic", "senior"],
+      "description": "技术能力不足"
+    },
+    {
+      "id": "n011",
+      "text": "被动消极",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "工作被动，等待安排"
+    },
+    {
+      "id": "n012",
+      "text": "责任心差",
+      "category": "attitude",
+      "level": ["basic", "senior", "manager"],
+      "description": "推卸责任"
+    },
+    {
+      "id": "n013",
+      "text": "敷衍了事",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "工作不认真"
+    },
+    {
+      "id": "n014",
+      "text": "拖延症",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "经常拖延任务"
+    },
+    {
+      "id": "n015",
+      "text": "缺乏主动性",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "不主动作为"
+    },
+    {
+      "id": "n016",
+      "text": "投入度低",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "工作不投入"
+    },
+    {
+      "id": "n017",
+      "text": "得过且过",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "没有追求"
+    },
+    {
+      "id": "n018",
+      "text": "抱怨多",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "经常抱怨"
+    },
+    {
+      "id": "n019",
+      "text": "情绪化",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "情绪波动大"
+    },
+    {
+      "id": "n020",
+      "text": "不守时",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "时间观念差"
+    },
+    {
+      "id": "n021",
+      "text": "不服从安排",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "执行力差"
+    },
+    {
+      "id": "n022",
+      "text": "抗压能力弱",
+      "category": "attitude",
+      "level": ["basic", "senior"],
+      "description": "遇到压力就退缩"
+    },
+    {
+      "id": "n023",
+      "text": "团队意识弱",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "只顾个人不顾团队"
+    },
+    {
+      "id": "n024",
+      "text": "沟通不畅",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "沟通表达能力差"
+    },
+    {
+      "id": "n025",
+      "text": "不配合",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "协作配合度差"
+    },
+    {
+      "id": "n026",
+      "text": "个人主义",
+      "category": "teamwork",
+      "level": ["senior", "manager"],
+      "description": "我行我素"
+    },
+    {
+      "id": "n027",
+      "text": "挑拨是非",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "制造团队矛盾"
+    },
+    {
+      "id": "n028",
+      "text": "孤立自己",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "不融入团队"
+    },
+    {
+      "id": "n029",
+      "text": "斤斤计较",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "计较个人得失"
+    },
+    {
+      "id": "n030",
+      "text": "推卸责任",
+      "category": "teamwork",
+      "level": ["basic", "senior"],
+      "description": "出了问题推给别人"
+    },
+    {
+      "id": "n031",
+      "text": "不善倾听",
+      "category": "teamwork",
+      "level": ["manager"],
+      "description": "听不进别人意见"
+    },
+    {
+      "id": "n032",
+      "text": "管理混乱",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "团队管理无章法"
+    },
+    {
+      "id": "n033",
+      "text": "优柔寡断",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "决策犹豫不决"
+    },
+    {
+      "id": "n034",
+      "text": "不会授权",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "大小事都要管"
+    },
+    {
+      "id": "n035",
+      "text": "不善激励",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "不会激励下属"
+    },
+    {
+      "id": "n036",
+      "text": "目标不清",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "目标模糊"
+    },
+    {
+      "id": "n037",
+      "text": "短视思维",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "缺乏战略眼光"
+    },
+    {
+      "id": "n038",
+      "text": "不培养人",
+      "category": "management",
+      "level": ["manager", "executive"],
+      "description": "不重视人才培养"
+    },
+    {
+      "id": "n039",
+      "text": "不诚信",
+      "category": "quality",
+      "level": ["basic", "senior", "manager"],
+      "description": "说话不算数"
+    },
+    {
+      "id": "n040",
+      "text": "固步自封",
+      "category": "quality",
+      "level": ["senior", "manager"],
+      "description": "不愿学习进步"
+    },
+    {
+      "id": "n041",
+      "text": "自负傲慢",
+      "category": "quality",
+      "level": ["senior", "manager"],
+      "description": "自以为是"
+    },
+    {
+      "id": "n042",
+      "text": "情绪化严重",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "情绪管理差"
+    },
+    {
+      "id": "n043",
+      "text": "格局小",
+      "category": "quality",
+      "level": ["manager", "executive"],
+      "description": "眼界窄，格局低"
+    },
+    {
+      "id": "n044",
+      "text": "患得患失",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "心态不稳定"
+    },
+    {
+      "id": "n045",
+      "text": "消极悲观",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "负面情绪多"
+    },
+    {
+      "id": "n046",
+      "text": "不稳重",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "做事毛躁"
+    },
+    {
+      "id": "n047",
+      "text": "以自我为中心",
+      "category": "quality",
+      "level": ["basic", "senior"],
+      "description": "缺乏客户意识"
+    },
+    {
+      "id": "n048",
+      "text": "业绩不达标",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "业绩完成差"
+    },
+    {
+      "id": "n049",
+      "text": "屡次失误",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "经常出错"
+    },
+    {
+      "id": "n050",
+      "text": "质量不稳定",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "表现起伏大"
+    },
+    {
+      "id": "n051",
+      "text": "关键时刻掉链子",
+      "category": "performance",
+      "level": ["senior", "manager"],
+      "description": "关键时刻靠不住"
+    },
+    {
+      "id": "n052",
+      "text": "避重就轻",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "不敢接难任务"
+    },
+    {
+      "id": "n053",
+      "text": "三天打鱼",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "工作不持续"
+    },
+    {
+      "id": "n054",
+      "text": "低于预期",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "表现不如预期"
+    },
+    {
+      "id": "n055",
+      "text": "退步明显",
+      "category": "performance",
+      "level": ["basic", "senior"],
+      "description": "表现下滑"
+    },
+    {
+      "id": "n056",
+      "text": "思路混乱",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "思维逻辑差"
+    },
+    {
+      "id": "n057",
+      "text": "无条理",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "做事没条理"
+    },
+    {
+      "id": "n058",
+      "text": "文档混乱",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "文档撰写差"
+    },
+    {
+      "id": "n059",
+      "text": "时间管理差",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "时间安排混乱"
+    },
+    {
+      "id": "n060",
+      "text": "只会一招",
+      "category": "others",
+      "level": ["basic", "senior"],
+      "description": "能力单一"
+    },
+    {
+      "id": "n061",
+      "text": "不注重成本",
+      "category": "others",
+      "level": ["manager"],
+      "description": "浪费成本"
+    },
+    {
+      "id": "n062",
+      "text": "无风险意识",
+      "category": "others",
+      "level": ["manager"],
+      "description": "不考虑风险"
+    },
+    {
+      "id": "n063",
+      "text": "主观臆断",
+      "category": "others",
+      "level": ["senior", "manager"],
+      "description": "思考不客观"
+    }
+  ],
+  "frequentCombinations": [
+    {
+      "level": "basic",
+      "positive": ["p013", "p006", "p028", "p016", "p005"],
+      "negative": ["n001", "n002", "n011", "n004"]
+    },
+    {
+      "level": "senior",
+      "positive": ["p001", "p012", "p014", "p008", "p054"],
+      "negative": ["n040", "n025", "n026"]
+    },
+    {
+      "level": "manager",
+      "positive": ["p035", "p036", "p037", "p041", "p038"],
+      "negative": ["n032", "n033", "n035", "n037"]
+    }
+  ]
+}
