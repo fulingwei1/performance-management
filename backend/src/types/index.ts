@@ -399,3 +399,119 @@ export interface MetricTemplate {
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }
+
+// ============ OKR/KPI 目标管理 ============
+
+export interface StrategicObjective {
+  id: string;
+  title: string;
+  description?: string;
+  year: number;
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  createdBy?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface Objective {
+  id: string;
+  title: string;
+  description?: string;
+  level: 'company' | 'department' | 'individual';
+  parentId?: string;
+  strategicObjectiveId?: string;
+  department?: string;
+  ownerId?: string;
+  year: number;
+  quarter?: string;
+  weight: number;
+  progress: number;
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  children?: Objective[];
+  keyResults?: KeyResult[];
+}
+
+export interface KeyResult {
+  id: string;
+  objectiveId: string;
+  title: string;
+  metricType: 'number' | 'percentage' | 'boolean' | 'currency';
+  targetValue?: number;
+  currentValue: number;
+  unit?: string;
+  weight: number;
+  progress: number;
+  status: 'not_started' | 'in_progress' | 'completed' | 'at_risk';
+  dueDate?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface KpiAssignment {
+  id: string;
+  employeeId: string;
+  objectiveId?: string;
+  keyResultId?: string;
+  kpiName: string;
+  targetValue?: number;
+  actualValue: number;
+  unit?: string;
+  weight: number;
+  score?: number;
+  year: number;
+  month?: string;
+  status: 'pending' | 'submitted' | 'approved';
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface PerformanceContract {
+  id: string;
+  employeeId: string;
+  managerId: string;
+  year: number;
+  objectivesSnapshot?: any;
+  kpiSnapshot?: any;
+  employeeSignedAt?: Date | string;
+  managerSignedAt?: Date | string;
+  status: 'draft' | 'pending_employee' | 'pending_manager' | 'signed' | 'revised';
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface MonthlyReport {
+  id: string;
+  employeeId: string;
+  year: number;
+  month: number;
+  summary?: string;
+  achievements?: string;
+  issues?: string;
+  nextMonthPlan?: string;
+  attachments?: any[];
+  managerComment?: string;
+  managerId?: string;
+  commentedAt?: Date | string;
+  status: 'draft' | 'submitted' | 'reviewed';
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface PerformanceInterview {
+  id: string;
+  employeeId: string;
+  interviewerId: string;
+  year: number;
+  interviewDate?: string;
+  performanceSummary?: string;
+  strengths?: string;
+  improvements?: string;
+  developmentPlan?: string;
+  employeeFeedback?: string;
+  agreedActions?: any[];
+  status: 'scheduled' | 'completed' | 'cancelled';
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}

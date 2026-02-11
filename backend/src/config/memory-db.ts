@@ -325,6 +325,13 @@ export const initMemoryDB = (): void => {
   memoryStore.holidays.clear();
   memoryStore.performanceMetrics.clear();
   memoryStore.metricTemplates.clear();
+  memoryStore.strategicObjectives.clear();
+  memoryStore.objectives.clear();
+  memoryStore.keyResults.clear();
+  memoryStore.kpiAssignments.clear();
+  memoryStore.performanceContracts.clear();
+  memoryStore.monthlyReports.clear();
+  memoryStore.performanceInterviews.clear();
   
   logger.info('✅ 内存数据库已初始化');
 };
@@ -342,6 +349,13 @@ export const clearMemoryDB = (): void => {
   memoryStore.holidays.clear();
   memoryStore.performanceMetrics.clear();
   memoryStore.metricTemplates.clear();
+  memoryStore.strategicObjectives.clear();
+  memoryStore.objectives.clear();
+  memoryStore.keyResults.clear();
+  memoryStore.kpiAssignments.clear();
+  memoryStore.performanceContracts.clear();
+  memoryStore.monthlyReports.clear();
+  memoryStore.performanceInterviews.clear();
 };
 
 // 获取统计信息
@@ -370,5 +384,12 @@ export const getMemoryDBStats = (): {
     holidays: memoryStore.holidays.size,
     performanceMetrics: memoryStore.performanceMetrics.size,
     metricTemplates: memoryStore.metricTemplates.size,
+    strategicObjectives: memoryStore.strategicObjectives.size,
+    objectives: memoryStore.objectives.size,
+    keyResults: memoryStore.keyResults.size,
+    kpiAssignments: memoryStore.kpiAssignments.size,
+    performanceContracts: memoryStore.performanceContracts.size,
+    monthlyReports: memoryStore.monthlyReports.size,
+    performanceInterviews: memoryStore.performanceInterviews.size,
   };
 };

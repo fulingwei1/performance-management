@@ -79,15 +79,35 @@ export const testConnection = async (): Promise<boolean> => {
 // Helper to convert MySQL ? placeholders to Postgres $n
 const convertSql = (sql: string): string => {
   let i = 1;
-  // Replace ? with $1, $2, etc.
-  let converted = sql.replace(/\?/g, () => `$${i++}`);
+  
+  // Replace ? with $1, $2, etc. (skip ?'s inside string literals)
+  let converted = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  for (let j = 0; j < sql.length; j++) {
+    const ch = sql[j];
+    const prev = j > 0 ? sql[j - 1] : '';
+    if (ch === "'" && prev !== '\\' && !inDoubleQuote) inSingleQuote = !inSingleQuote;
+    if (ch === '"' && prev !== '\\' && !inSingleQuote) inDoubleQuote = !inDoubleQuote;
+    if (ch === '?' && !inSingleQuote && !inDoubleQuote) {
+      converted += `$${i++}`;
+    } else {
+      converted += ch;
+    }
+  }
   
   // Remove backticks (MySQL identifiers)
   converted = converted.replace(/`/g, '');
   
-  // Replace YEAR(date) -> EXTRACT(YEAR FROM date)
-  // Need to handle different spacings
+  // Replace MySQL date functions with Postgres equivalents
   converted = converted.replace(/YEAR\s*\(([^)]+)\)/gi, 'EXTRACT(YEAR FROM $1)');
+  converted = converted.replace(/MONTH\s*\(([^)]+)\)/gi, 'EXTRACT(MONTH FROM $1)');
+  converted = converted.replace(/DAY\s*\(([^)]+)\)/gi, 'EXTRACT(DAY FROM $1)');
+  
+  // Replace IFNULL -> COALESCE
+  converted = converted.replace(/IFNULL\s*\(/gi, 'COALESCE(');
+  
+  // Replace LIMIT ?, ? -> LIMIT $n OFFSET $m (already handled by ? replacement)
   
   return converted;
 };
