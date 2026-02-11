@@ -5,6 +5,7 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
     '^.+\\.ts$': ['ts-jest', { diagnostics: false }],
+    '^.+\\.js$': ['ts-jest', { diagnostics: false }],
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   collectCoverageFrom: [
@@ -16,4 +17,7 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   testTimeout: 10000,
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid)/)'
+  ],
 };

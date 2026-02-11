@@ -48,3 +48,11 @@
 10:50:08 PM [vite] (client) hmr update /src/index.css, /src/components/layout/Sidebar.tsx
 10:50:14 PM [vite] (client) hmr update /src/index.css, /src/components/layout/Sidebar.tsx
 10:50:50 PM [vite] (client) hmr update /src/pages/Manager/Scoring.tsx, /src/index.css
+10:52:17 PM [vite] (client) hmr update /src/index.css, /src/pages/Manager/InterviewSchedule.tsx
+10:52:35 PM [vite] (client) hmr update /src/index.css, /src/pages/HR/StrategicObjectives.tsx
+10:52:39 PM [vite] (client) hmr update /src/index.css
+10:52:51 PM [vite] (client) hmr update /src/index.css, /src/pages/HR/ContractManagement.tsx
+10:53:11 PM [vite] (client) hmr update /src/index.css, /src/pages/HR/OKRDashboard.tsx
+10:53:27 PM [vite] (client) hmr update /src/index.css, /src/pages/GM/StrategicOverview.tsx
+10:54:04 PM [vite] (client) hmr update /src/index.css, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/GM/Scoring.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/HR/DataManagement.tsx, /src/pages/HR/Dashboard.tsx
+10:55:45 PM [vite] (client) hmr update /src/index.css
