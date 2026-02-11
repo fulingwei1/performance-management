@@ -41,6 +41,10 @@ import { OKRDashboard } from '@/pages/HR/OKRDashboard';
 import { StrategicOverview } from '@/pages/GM/StrategicOverview';
 import { MyAssignments } from '@/pages/OKR/MyAssignments';
 import { RelatedOKR } from '@/pages/OKR/RelatedOKR';
+import { MyBonus } from '@/pages/Employee/MyBonus';
+import { BonusManagement } from '@/pages/HR/BonusManagement';
+import { DepartmentTree } from '@/pages/HR/DepartmentTree';
+import { PeerReviewManagement } from '@/pages/HR/PeerReviewManagement';
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
@@ -127,6 +131,7 @@ function App() {
           <Route path="/employee/contract" element={<MyContract />} />
           <Route path="/employee/assignments" element={<MyAssignments />} />
           <Route path="/employee/related-okr" element={<RelatedOKR />} />
+          <Route path="/employee/my-bonus" element={<MyBonus />} />
         </Route>
 
         {/* Manager routes */}
@@ -166,6 +171,9 @@ function App() {
           <Route path="/hr/contract-management" element={<ContractManagement />} />
           <Route path="/hr/okr-dashboard" element={<OKRDashboard />} />
           <Route path="/hr/objectives" element={<ObjectiveTree />} />
+          <Route path="/hr/bonus-management" element={<BonusManagement />} />
+          <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
+          <Route path="/hr/department-tree" element={<DepartmentTree />} />
         </Route>
 
         {/* Default redirects */}

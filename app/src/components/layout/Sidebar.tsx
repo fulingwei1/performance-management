@@ -14,7 +14,9 @@ import {
   MessageSquare,
   Users,
   ClipboardList,
-  Link2
+  Link2,
+  DollarSign,
+  Building2
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -33,6 +35,7 @@ const employeeNavItems = [
   { path: '/employee/assignments', label: '待拆解任务', icon: ClipboardList },
   { path: '/employee/related-okr', label: '关联OKR', icon: Link2 },
   { path: '/employee/promotion', label: '晋升加薪', icon: TrendingUp },
+  { path: '/employee/my-bonus', label: '我的奖金', icon: DollarSign },
 ];
 
 const managerNavItems = [
@@ -61,6 +64,9 @@ const hrNavItems = [
   { path: '/hr/contract-management', label: '合约管理', icon: FileSignature },
   { path: '/hr/okr-dashboard', label: 'OKR总览', icon: Target },
   { path: '/hr/promotion-approvals', label: '晋升审批', icon: TrendingUp },
+  { path: '/hr/bonus-management', label: '奖金管理', icon: DollarSign },
+  { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
+  { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
 ];
 
 export function Sidebar({ role }: SidebarProps) {

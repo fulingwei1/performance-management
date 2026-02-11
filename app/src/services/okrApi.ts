@@ -128,6 +128,69 @@ export const assignmentApi = {
     request(`/okr/assignments/${id}/complete`, { method: 'PUT' }),
 };
 
+// 附件管理
+export const attachmentApi = {
+  upload: async (file: File, relatedType: string, relatedId: string) => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('relatedType', relatedType);
+    formData.append('relatedId', relatedId);
+    const response = await fetch(`${API_BASE_URL}/attachments/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    return response.json();
+  },
+  getByRelated: (relatedType: string, relatedId: string) =>
+    request(`/attachments/${relatedType}/${relatedId}`),
+  delete: (id: string) =>
+    request(`/attachments/${id}`, { method: 'DELETE' }),
+};
+
+// 奖金管理
+export const bonusApi = {
+  getConfig: () => request('/bonus/config'),
+  updateConfig: (rules: any[]) =>
+    request('/bonus/config', { method: 'PUT', body: JSON.stringify({ rules }) }),
+  calculate: (data: { year: number; quarter: number }) =>
+    request('/bonus/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  getResults: (params?: { year?: number; quarter?: number }) => {
+    const query = params ? '?' + new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined).map(([k, v]) => [k, String(v)])
+    ).toString() : '';
+    return request(`/bonus/results${query}`);
+  },
+  updateResult: (id: string, data: { bonus?: number; baseSalary?: number }) =>
+    request(`/bonus/results/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+};
+
+// 部门管理
+export const departmentApi = {
+  getTree: () => request('/departments/tree'),
+  create: (data: { name: string; parentId?: string; managerId?: string; code?: string }) =>
+    request('/departments', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: Partial<{ name: string; parentId: string; code: string }>) =>
+    request(`/departments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id: string) =>
+    request(`/departments/${id}`, { method: 'DELETE' }),
+  getMembers: (id: string) => request(`/departments/${id}/members`),
+  setManager: (id: string, managerId: string) =>
+    request(`/departments/${id}/manager`, { method: 'PUT', body: JSON.stringify({ managerId }) }),
+};
+
+// 互评周期
+export const peerReviewCycleApi = {
+  createCycle: (data: { title: string; year: number; quarter: number; startDate: string; endDate: string; participants: string[] }) =>
+    request('/peer-review-cycles/cycles', { method: 'POST', body: JSON.stringify(data) }),
+  getCycles: () => request('/peer-review-cycles/cycles'),
+  getPending: () => request('/peer-review-cycles/pending'),
+  submit: (data: { cycleId: string; revieweeId: string; scores: { dimension: string; score: number; comment?: string }[] }) =>
+    request('/peer-review-cycles/submit', { method: 'POST', body: JSON.stringify(data) }),
+  getResults: (cycleId: string) => request(`/peer-review-cycles/results/${cycleId}`),
+};
+
 // 绩效面谈
 export const interviewApi = {
   getMy: () => request('/okr/interviews/my'),

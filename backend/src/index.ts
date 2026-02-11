@@ -32,6 +32,10 @@ import kpiAssignmentRoutes from './routes/kpiAssignment.routes';
 import performanceContractRoutes from './routes/performanceContract.routes';
 import monthlyReportRoutes from './routes/monthlyReport.routes';
 import performanceInterviewRoutes from './routes/performanceInterview.routes';
+import attachmentRoutes from './routes/attachment.routes';
+import bonusRoutes from './routes/bonus.routes';
+import departmentRoutes from './routes/department.routes';
+import peerReviewCycleRoutes from './routes/peerReviewCycle.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -127,6 +131,10 @@ app.use('/api/kpi-assignments', kpiAssignmentRoutes);
 app.use('/api/contracts', performanceContractRoutes);
 app.use('/api/monthly-reports', monthlyReportRoutes);
 app.use('/api/interviews', performanceInterviewRoutes);
+app.use('/api/attachments', attachmentRoutes);
+app.use('/api/bonus', bonusRoutes);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/peer-review-cycles', peerReviewCycleRoutes);
 
 // 404处理
 app.use(notFoundHandler);

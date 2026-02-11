@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { AttachmentUpload } from '@/components/AttachmentUpload';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
@@ -214,6 +215,12 @@ export function MyObjectives() {
                     )}
                   </div>
                 )}
+
+                {/* 证据附件 */}
+                <div className="mt-4 pt-3 border-t">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">证据附件</h4>
+                  <AttachmentUpload relatedType="objective" relatedId={obj.id} />
+                </div>
               </CardContent>
             </Card>
           ))}

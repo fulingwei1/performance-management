@@ -531,3 +531,83 @@ export interface PerformanceInterview {
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }
+
+// ============ 附件管理 ============
+export interface Attachment {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  relatedType: string; // 'objective' | 'kpi' | 'monthly-report'
+  relatedId: string;
+  uploadedBy: string;
+  url?: string;
+  createdAt?: Date | string;
+}
+
+// ============ 互评周期 ============
+export interface PeerReviewCycle {
+  id: string;
+  title: string;
+  year: number;
+  quarter: number;
+  startDate: string;
+  endDate: string;
+  participants: string[]; // employeeIds
+  status: 'draft' | 'active' | 'completed';
+  createdBy: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface PeerReviewTask {
+  id: string;
+  cycleId: string;
+  reviewerId: string;
+  revieweeId: string;
+  scores?: PeerReviewScore[];
+  status: 'pending' | 'submitted';
+  submittedAt?: Date | string;
+  createdAt?: Date | string;
+}
+
+export interface PeerReviewScore {
+  dimension: string;
+  score: number;
+  comment?: string;
+}
+
+// ============ 奖金管理 ============
+export interface BonusRule {
+  grade: string;
+  coefficient: number;
+  label: string;
+  minScore: number;
+  maxScore?: number;
+}
+
+export interface BonusConfig {
+  id: string;
+  rules: BonusRule[];
+  updatedBy: string;
+  updatedAt?: Date | string;
+}
+
+export interface BonusResult {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  department?: string;
+  year: number;
+  quarter: number;
+  score: number;
+  grade: string;
+  coefficient: number;
+  baseSalary: number;
+  bonus: number;
+  adjusted: boolean;
+  adjustedBy?: string;
+  adjustedAt?: Date | string;
+  createdAt?: Date | string;
+}

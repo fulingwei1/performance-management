@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { AttachmentUpload } from '@/components/AttachmentUpload';
 import { format } from 'date-fns';
 
 const statusMap: Record<string, { label: string; color: string; icon: any }> = {
@@ -149,6 +150,10 @@ export function MonthlyReport() {
                         <p className="text-sm text-gray-600 mt-1">{report.nextPlan}</p>
                       </div>
                     )}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700">证据附件</h4>
+                      <AttachmentUpload relatedType="monthly-report" relatedId={report.id} />
+                    </div>
                     {report.reviewComment && (
                       <div className="bg-green-50 rounded-lg p-3 mt-2">
                         <h4 className="text-sm font-medium text-green-700">经理点评</h4>

@@ -3,7 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult } from '../types';
 import logger from './logger';
 
 // 内存数据存储
@@ -27,6 +27,11 @@ interface MemoryStore {
   monthlyReports: Map<string, MonthlyReport>;
   performanceInterviews: Map<string, PerformanceInterview>;
   okrAssignments: Map<string, OkrAssignment>;
+  attachments: Map<string, Attachment>;
+  peerReviewCycles: Map<string, PeerReviewCycle>;
+  peerReviewTasks: Map<string, PeerReviewTask>;
+  bonusConfig: Map<string, BonusConfig>;
+  bonusResults: Map<string, BonusResult>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -49,6 +54,11 @@ export const memoryStore: MemoryStore = {
   monthlyReports: new Map(),
   performanceInterviews: new Map(),
   okrAssignments: new Map(),
+  attachments: new Map(),
+  peerReviewCycles: new Map(),
+  peerReviewTasks: new Map(),
+  bonusConfig: new Map(),
+  bonusResults: new Map(),
 };
 
 // 员工数据操作
@@ -335,6 +345,36 @@ export const initMemoryDB = (): void => {
   memoryStore.monthlyReports.clear();
   memoryStore.performanceInterviews.clear();
   memoryStore.okrAssignments.clear();
+  memoryStore.attachments.clear();
+  memoryStore.peerReviewCycles.clear();
+  memoryStore.peerReviewTasks.clear();
+  memoryStore.bonusConfig.clear();
+  memoryStore.bonusResults.clear();
+
+  // 初始化默认部门
+  const defaultDepts: Department[] = [
+    { id: 'dept-1', name: '总公司', code: 'HQ', sortOrder: 0, status: 'active' },
+    { id: 'dept-2', name: '技术部', code: 'TECH', parentId: 'dept-1', sortOrder: 1, status: 'active' },
+    { id: 'dept-3', name: '市场部', code: 'MKT', parentId: 'dept-1', sortOrder: 2, status: 'active' },
+    { id: 'dept-4', name: '人力资源部', code: 'HR', parentId: 'dept-1', sortOrder: 3, status: 'active' },
+    { id: 'dept-5', name: '财务部', code: 'FIN', parentId: 'dept-1', sortOrder: 4, status: 'active' },
+  ];
+  defaultDepts.forEach(d => memoryStore.departments.set(d.id, d));
+
+  // 初始化默认奖金配置
+  memoryStore.bonusConfig.set('default', {
+    id: 'default',
+    rules: [
+      { grade: 'A+', coefficient: 2.0, label: '卓越', minScore: 95 },
+      { grade: 'A', coefficient: 1.5, label: '优秀', minScore: 85 },
+      { grade: 'B+', coefficient: 1.2, label: '良好', minScore: 75 },
+      { grade: 'B', coefficient: 1.0, label: '合格', minScore: 60 },
+      { grade: 'C', coefficient: 0.5, label: '待改进', minScore: 40 },
+      { grade: 'D', coefficient: 0, label: '不合格', minScore: 0 },
+    ],
+    updatedBy: 'system',
+    updatedAt: new Date().toISOString(),
+  });
   
   logger.info('✅ 内存数据库已初始化');
 };
@@ -360,6 +400,11 @@ export const clearMemoryDB = (): void => {
   memoryStore.monthlyReports.clear();
   memoryStore.performanceInterviews.clear();
   memoryStore.okrAssignments.clear();
+  memoryStore.attachments.clear();
+  memoryStore.peerReviewCycles.clear();
+  memoryStore.peerReviewTasks.clear();
+  memoryStore.bonusConfig.clear();
+  memoryStore.bonusResults.clear();
 };
 
 // 获取统计信息
@@ -383,6 +428,11 @@ export const getMemoryDBStats = (): {
   monthlyReports: number;
   performanceInterviews: number;
   okrAssignments: number;
+  attachments: number;
+  peerReviewCycles: number;
+  peerReviewTasks: number;
+  bonusConfig: number;
+  bonusResults: number;
 } => {
   return {
     employees: memoryStore.employees.size,
@@ -404,5 +454,10 @@ export const getMemoryDBStats = (): {
     monthlyReports: memoryStore.monthlyReports.size,
     performanceInterviews: memoryStore.performanceInterviews.size,
     okrAssignments: memoryStore.okrAssignments.size,
+    attachments: memoryStore.attachments.size,
+    peerReviewCycles: memoryStore.peerReviewCycles.size,
+    peerReviewTasks: memoryStore.peerReviewTasks.size,
+    bonusConfig: memoryStore.bonusConfig.size,
+    bonusResults: memoryStore.bonusResults.size,
   };
 };

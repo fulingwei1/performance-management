@@ -8,6 +8,7 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AttachmentUpload } from '@/components/AttachmentUpload';
 
 export function MyKPI() {
   const { myKPIs, fetchMyKPIs, updateKPIActual, loading } = useOKRStore();
@@ -146,6 +147,14 @@ export function MyKPI() {
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      {/* 证据附件 */}
+      <Card>
+        <CardHeader><CardTitle className="text-lg">证据附件</CardTitle></CardHeader>
+        <CardContent>
+          <AttachmentUpload relatedType="kpi" relatedId="my-kpi" />
         </CardContent>
       </Card>
     </motion.div>
