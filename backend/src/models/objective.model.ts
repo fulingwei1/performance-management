@@ -43,8 +43,8 @@ export class ObjectiveModel {
       return data;
     }
     await query(
-      'INSERT INTO objectives (id, title, description, level, parent_id, strategic_objective_id, department, owner_id, year, quarter, weight, progress, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [data.id, data.title, data.description, data.level, data.parentId, data.strategicObjectiveId, data.department, data.ownerId, data.year, data.quarter, data.weight || 100, data.progress || 0, data.status || 'draft']
+      'INSERT INTO objectives (id, title, description, level, parent_id, strategic_objective_id, department, owner_id, year, quarter, weight, progress, status, start_date, end_date, feedback_cycle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [data.id, data.title, data.description, data.level, data.parentId, data.strategicObjectiveId, data.department, data.ownerId, data.year, data.quarter, data.weight || 100, data.progress || 0, data.status || 'draft', data.startDate || null, data.endDate || null, data.feedbackCycle || 'monthly']
     );
     return (await this.findById(data.id))!;
   }
@@ -60,7 +60,8 @@ export class ObjectiveModel {
     const map: Record<string, string> = {
       title: 'title', description: 'description', level: 'level', parentId: 'parent_id',
       strategicObjectiveId: 'strategic_objective_id', department: 'department', ownerId: 'owner_id',
-      year: 'year', quarter: 'quarter', weight: 'weight', progress: 'progress', status: 'status'
+      year: 'year', quarter: 'quarter', weight: 'weight', progress: 'progress', status: 'status',
+      startDate: 'start_date', endDate: 'end_date', feedbackCycle: 'feedback_cycle'
     };
     const fields: string[] = []; const values: any[] = [];
     for (const [k, col] of Object.entries(map)) {
@@ -151,6 +152,7 @@ export class ObjectiveModel {
       parentId: row.parent_id, strategicObjectiveId: row.strategic_objective_id,
       department: row.department, ownerId: row.owner_id, year: row.year, quarter: row.quarter,
       weight: parseFloat(row.weight), progress: parseFloat(row.progress), status: row.status,
+      startDate: row.start_date, endDate: row.end_date, feedbackCycle: row.feedback_cycle,
       createdAt: row.created_at, updatedAt: row.updated_at
     };
   }

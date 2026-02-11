@@ -55,10 +55,12 @@ export const objectiveApi = {
   create: (data: {
     title: string; description?: string; level: 'company' | 'department' | 'personal';
     parentId?: string; strategicObjectiveId?: string; ownerId?: string;
-    startDate?: string; endDate?: string;
+    startDate?: string; endDate?: string; feedbackCycle?: string;
   }) => request('/okr/objectives', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: Partial<{ title: string; description: string; status: string; progress: number }>) =>
+  update: (id: string, data: Partial<{ title: string; description: string; status: string; progress: number; startDate: string; endDate: string; feedbackCycle: string }>) =>
     request(`/okr/objectives/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getRelated: () => request('/okr/objectives/related'),
+  getFeedbacks: (id: string) => request(`/okr/objectives/${id}/feedbacks`),
   delete: (id: string) =>
     request(`/okr/objectives/${id}`, { method: 'DELETE' }),
 };
@@ -115,6 +117,15 @@ export const monthlyReportApi = {
   }) => request('/okr/monthly-reports', { method: 'POST', body: JSON.stringify(data) }),
   review: (id: string, data: { comment: string; rating: number }) =>
     request(`/okr/monthly-reports/${id}/review`, { method: 'POST', body: JSON.stringify(data) }),
+};
+
+// OKR Assignments (分配拆解)
+export const assignmentApi = {
+  assign: (objectiveId: string, data: { assigneeId: string; deadline?: string; message?: string }) =>
+    request(`/okr/objectives/${objectiveId}/assign`, { method: 'POST', body: JSON.stringify(data) }),
+  getMy: () => request('/okr/assignments/my'),
+  complete: (id: string) =>
+    request(`/okr/assignments/${id}/complete`, { method: 'PUT' }),
 };
 
 // 绩效面谈

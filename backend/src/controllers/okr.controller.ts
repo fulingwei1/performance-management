@@ -8,6 +8,8 @@ import { MonthlyReportModel } from '../models/monthlyReport.model';
 import { PerformanceInterviewModel } from '../models/performanceInterview.model';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
+import { USE_MEMORY_DB, memoryStore } from '../config/database';
+import { OkrAssignment } from '../types';
 
 // Helpers for Express v5 where params/query can be string | string[]
 const s = (v: any): string => Array.isArray(v) ? v[0] : String(v ?? '');
@@ -75,13 +77,14 @@ export const objectiveController = {
 
   create: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
-    const { title, description, level, parentId, strategicObjectiveId, ownerId, department } = req.body;
+    const { title, description, level, parentId, strategicObjectiveId, ownerId, department, startDate, endDate, feedbackCycle } = req.body;
     const data = await ObjectiveModel.create({
       id: uuidv4(), title, description,
       level: level === 'personal' ? 'individual' : level,
       parentId, strategicObjectiveId, department,
       ownerId: ownerId || req.user.userId,
-      year: new Date().getFullYear(), weight: 100, progress: 0, status: 'draft'
+      year: new Date().getFullYear(), weight: 100, progress: 0, status: 'draft',
+      startDate, endDate, feedbackCycle
     });
     res.status(201).json({ success: true, data });
   }),
@@ -324,5 +327,142 @@ export const interviewController = {
     const data = await PerformanceInterviewModel.update(s(req.params.id), req.body);
     if (!data) return res.status(404).json({ success: false, error: '面谈不存在' });
     res.json({ success: true, data });
+  }),
+};
+
+// ============ OKR Assignments (分配拆解) ============
+export const assignmentController = {
+  assign: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    const objectiveId = s(req.params.id);
+    const { assigneeId, deadline, message } = req.body;
+    const assignment: OkrAssignment = {
+      id: uuidv4(), objectiveId, assigneeId, assignedBy: req.user.userId,
+      deadline, message, status: 'pending', createdAt: new Date()
+    };
+    if (USE_MEMORY_DB) {
+      memoryStore.okrAssignments.set(assignment.id, assignment);
+    }
+    res.status(201).json({ success: true, data: assignment });
+  }),
+
+  getMy: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    let assignments: OkrAssignment[] = [];
+    if (USE_MEMORY_DB) {
+      assignments = Array.from(memoryStore.okrAssignments.values())
+        .filter(a => a.assigneeId === req.user!.userId);
+    }
+    // Enrich with objective info
+    const enriched = await Promise.all(assignments.map(async a => {
+      const obj = await ObjectiveModel.findById(a.objectiveId);
+      return { ...a, objectiveTitle: obj?.title || '', objectiveDescription: obj?.description || '' };
+    }));
+    res.json({ success: true, data: enriched });
+  }),
+
+  complete: asyncHandler(async (req: Request, res: Response) => {
+    const id = s(req.params.id);
+    if (USE_MEMORY_DB) {
+      const existing = memoryStore.okrAssignments.get(id);
+      if (!existing) return res.status(404).json({ success: false, error: '任务不存在' });
+      existing.status = 'completed';
+      memoryStore.okrAssignments.set(id, existing);
+      return res.json({ success: true, data: existing });
+    }
+    res.status(404).json({ success: false, error: '任务不存在' });
+  }),
+};
+
+// ============ Related OKR (我的关联OKR) ============
+export const relatedOkrController = {
+  getRelated: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    const userId = req.user.userId;
+
+    // Get current user's employee info
+    const employees = await EmployeeModel.findAll();
+    const me = employees.find((e: any) => e.id === userId);
+    const myDepartment = me?.department;
+
+    // 1. My objectives
+    const myObjectives = await ObjectiveModel.findAll({ ownerId: userId });
+
+    // 2. Parent objectives
+    const parentIds = myObjectives.map(o => o.parentId).filter(Boolean) as string[];
+    const parentObjectives: any[] = [];
+    for (const pid of [...new Set(parentIds)]) {
+      const obj = await ObjectiveModel.findById(pid);
+      if (obj) parentObjectives.push(obj);
+    }
+
+    // 3. Child objectives (others' objectives whose parentId is one of mine)
+    const myIds = new Set(myObjectives.map(o => o.id));
+    const allObjectives = await ObjectiveModel.findAll();
+    const childObjectives = allObjectives.filter(o => o.parentId && myIds.has(o.parentId) && o.ownerId !== userId);
+
+    // 4. Same department colleagues' objectives
+    const colleagueObjectives = myDepartment
+      ? allObjectives.filter(o => o.department === myDepartment && o.ownerId !== userId)
+      : [];
+
+    const empMap = new Map(employees.map((e: any) => [e.id, e.name]));
+    const enrich = (objs: any[]) => objs.map(o => ({ ...o, ownerName: empMap.get(o.ownerId) || undefined }));
+
+    res.json({
+      success: true,
+      data: {
+        myObjectives: enrich(myObjectives),
+        parentObjectives: enrich(parentObjectives),
+        childObjectives: enrich(childObjectives),
+        colleagueObjectives: enrich(colleagueObjectives),
+      }
+    });
+  }),
+};
+
+// ============ Feedback Timeline (反馈周期关联月报) ============
+export const feedbackController = {
+  getByObjective: asyncHandler(async (req: Request, res: Response) => {
+    const objectiveId = s(req.params.id);
+    const obj = await ObjectiveModel.findById(objectiveId);
+    if (!obj) return res.status(404).json({ success: false, error: '目标不存在' });
+
+    const startDate = obj.startDate ? new Date(obj.startDate) : null;
+    const endDate = obj.endDate ? new Date(obj.endDate) : null;
+    const cycle = obj.feedbackCycle || 'monthly';
+
+    // Calculate feedback time points
+    const timepoints: { start: Date; end: Date }[] = [];
+    if (startDate && endDate) {
+      const cycleMonths = cycle === 'weekly' ? 0.25 : cycle === 'biweekly' ? 0.5 : cycle === 'quarterly' ? 3 : 1;
+      let current = new Date(startDate);
+      while (current < endDate) {
+        const next = new Date(current);
+        if (cycle === 'weekly') { next.setDate(next.getDate() + 7); }
+        else if (cycle === 'biweekly') { next.setDate(next.getDate() + 14); }
+        else if (cycle === 'quarterly') { next.setMonth(next.getMonth() + 3); }
+        else { next.setMonth(next.getMonth() + 1); }
+        timepoints.push({ start: new Date(current), end: next > endDate ? new Date(endDate) : next });
+        current = next;
+      }
+    }
+
+    // Find monthly reports for this owner in these time ranges
+    const reports = obj.ownerId ? await MonthlyReportModel.findAll({ employeeId: obj.ownerId }) : [];
+
+    const feedbacks = timepoints.map(tp => {
+      const matchingReports = reports.filter(r => {
+        const reportDate = new Date(r.year, r.month - 1, 15);
+        return reportDate >= tp.start && reportDate <= tp.end;
+      });
+      return {
+        periodStart: tp.start.toISOString().split('T')[0],
+        periodEnd: tp.end.toISOString().split('T')[0],
+        reports: matchingReports,
+      };
+    });
+
+    res.json({ success: true, data: { objective: obj, feedbackCycle: cycle, feedbacks } });
   }),
 };

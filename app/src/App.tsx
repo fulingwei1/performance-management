@@ -39,6 +39,8 @@ import { StrategicObjectives } from '@/pages/HR/StrategicObjectives';
 import { ContractManagement } from '@/pages/HR/ContractManagement';
 import { OKRDashboard } from '@/pages/HR/OKRDashboard';
 import { StrategicOverview } from '@/pages/GM/StrategicOverview';
+import { MyAssignments } from '@/pages/OKR/MyAssignments';
+import { RelatedOKR } from '@/pages/OKR/RelatedOKR';
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
@@ -123,6 +125,8 @@ function App() {
           <Route path="/employee/kpi" element={<MyKPI />} />
           <Route path="/employee/monthly-report" element={<MonthlyReport />} />
           <Route path="/employee/contract" element={<MyContract />} />
+          <Route path="/employee/assignments" element={<MyAssignments />} />
+          <Route path="/employee/related-okr" element={<RelatedOKR />} />
         </Route>
 
         {/* Manager routes */}

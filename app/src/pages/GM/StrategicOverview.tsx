@@ -76,7 +76,13 @@ export function StrategicOverview() {
                     <div key={obj.id} className="p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium">{obj.title}</span>
-                        <span className="text-sm text-gray-500">{obj.children?.length || 0} 个子目标</span>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          {obj.startDate && <span>{String(obj.startDate).split('T')[0]}</span>}
+                          {obj.startDate && obj.endDate && <span>~</span>}
+                          {obj.endDate && <span>{String(obj.endDate).split('T')[0]}</span>}
+                          {obj.feedbackCycle && <Badge className="text-xs bg-gray-100 text-gray-600">{({weekly:'周',biweekly:'双周',monthly:'月',quarterly:'季'} as Record<string,string>)[obj.feedbackCycle] || obj.feedbackCycle}</Badge>}
+                          <span>{obj.children?.length || 0} 个子目标</span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Progress value={obj.progress} className="flex-1 h-2" />

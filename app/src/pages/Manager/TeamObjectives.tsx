@@ -22,7 +22,7 @@ const statusLabels: Record<string, string> = { draft: '草稿', active: '进行�
 export function TeamObjectives() {
   const { objectiveTree, fetchObjectiveTree, createObjective, loading } = useOKRStore();
   const [showDialog, setShowDialog] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', parentId: '', level: 'personal' as 'department' | 'personal' });
+  const [form, setForm] = useState({ title: '', description: '', parentId: '', level: 'personal' as 'department' | 'personal', startDate: '', endDate: '', feedbackCycle: 'monthly' });
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => { fetchObjectiveTree(); }, [fetchObjectiveTree]);
@@ -39,8 +39,11 @@ export function TeamObjectives() {
       description: form.description,
       level: form.level,
       parentId: form.parentId || undefined,
+      startDate: form.startDate || undefined,
+      endDate: form.endDate || undefined,
+      feedbackCycle: form.feedbackCycle || undefined,
     });
-    setForm({ title: '', description: '', parentId: '', level: 'personal' });
+    setForm({ title: '', description: '', parentId: '', level: 'personal', startDate: '', endDate: '', feedbackCycle: 'monthly' });
     setShowDialog(false);
   };
 
@@ -111,6 +114,28 @@ export function TeamObjectives() {
               <div>
                 <Label>描述</Label>
                 <Input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="选填" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>开始日期</Label>
+                  <Input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
+                </div>
+                <div>
+                  <Label>结束日期</Label>
+                  <Input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <Label>反馈周期</Label>
+                <Select value={form.feedbackCycle} onValueChange={v => setForm({ ...form, feedbackCycle: v })}>
+                  <SelectTrigger><SelectValue placeholder="选择反馈周期" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">每周</SelectItem>
+                    <SelectItem value="biweekly">每两周</SelectItem>
+                    <SelectItem value="monthly">每月</SelectItem>
+                    <SelectItem value="quarterly">每季度</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <Button onClick={handleCreate} className="w-full" disabled={!form.title}>确认创建</Button>
             </div>

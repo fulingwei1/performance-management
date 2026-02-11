@@ -3,7 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment } from '../types';
 import logger from './logger';
 
 // 内存数据存储
@@ -26,6 +26,7 @@ interface MemoryStore {
   performanceContracts: Map<string, PerformanceContract>;
   monthlyReports: Map<string, MonthlyReport>;
   performanceInterviews: Map<string, PerformanceInterview>;
+  okrAssignments: Map<string, OkrAssignment>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -47,6 +48,7 @@ export const memoryStore: MemoryStore = {
   performanceContracts: new Map(),
   monthlyReports: new Map(),
   performanceInterviews: new Map(),
+  okrAssignments: new Map(),
 };
 
 // 员工数据操作
@@ -332,6 +334,7 @@ export const initMemoryDB = (): void => {
   memoryStore.performanceContracts.clear();
   memoryStore.monthlyReports.clear();
   memoryStore.performanceInterviews.clear();
+  memoryStore.okrAssignments.clear();
   
   logger.info('✅ 内存数据库已初始化');
 };
@@ -356,6 +359,7 @@ export const clearMemoryDB = (): void => {
   memoryStore.performanceContracts.clear();
   memoryStore.monthlyReports.clear();
   memoryStore.performanceInterviews.clear();
+  memoryStore.okrAssignments.clear();
 };
 
 // 获取统计信息
@@ -378,6 +382,7 @@ export const getMemoryDBStats = (): {
   performanceContracts: number;
   monthlyReports: number;
   performanceInterviews: number;
+  okrAssignments: number;
 } => {
   return {
     employees: memoryStore.employees.size,
@@ -398,5 +403,6 @@ export const getMemoryDBStats = (): {
     performanceContracts: memoryStore.performanceContracts.size,
     monthlyReports: memoryStore.monthlyReports.size,
     performanceInterviews: memoryStore.performanceInterviews.size,
+    okrAssignments: memoryStore.okrAssignments.size,
   };
 };

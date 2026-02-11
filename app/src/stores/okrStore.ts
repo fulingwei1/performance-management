@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import {
   strategicObjectiveApi, objectiveApi, krApi, kpiApi,
-  contractApi, monthlyReportApi, interviewApi
+  contractApi, monthlyReportApi, interviewApi, assignmentApi
 } from '@/services/okrApi';
 
 // Types
@@ -30,8 +30,35 @@ export interface Objective {
   progress: number;
   startDate?: string;
   endDate?: string;
+  feedbackCycle?: 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
   children?: Objective[];
   keyResults?: KeyResult[];
+}
+
+export interface OkrAssignment {
+  id: string;
+  objectiveId: string;
+  assigneeId: string;
+  assignedBy: string;
+  deadline?: string;
+  message?: string;
+  status: 'pending' | 'completed';
+  objectiveTitle?: string;
+  objectiveDescription?: string;
+  createdAt?: string;
+}
+
+export interface RelatedOKRData {
+  myObjectives: Objective[];
+  parentObjectives: Objective[];
+  childObjectives: Objective[];
+  colleagueObjectives: Objective[];
+}
+
+export interface FeedbackPeriod {
+  periodStart: string;
+  periodEnd: string;
+  reports: any[];
 }
 
 export interface KeyResult {
@@ -113,8 +140,22 @@ interface OKRState {
   teamReports: MonthlyReport[];
   interviews: Interview[];
   teamInterviews: Interview[];
+  myAssignments: OkrAssignment[];
+  relatedOKR: RelatedOKRData | null;
+  objectiveFeedbacks: Record<string, FeedbackPeriod[]>;
   loading: boolean;
   error: string | null;
+
+  // Assignments
+  fetchMyAssignments: () => Promise<void>;
+  assignObjective: (objectiveId: string, data: { assigneeId: string; deadline?: string; message?: string }) => Promise<void>;
+  completeAssignment: (id: string) => Promise<void>;
+
+  // Related OKR
+  fetchRelatedOKR: () => Promise<void>;
+
+  // Feedbacks
+  fetchObjectiveFeedbacks: (objectiveId: string) => Promise<void>;
 
   // Strategic Objectives
   fetchStrategicObjectives: () => Promise<void>;
@@ -167,8 +208,47 @@ export const useOKRStore = create<OKRState>((set, get) => ({
   teamReports: [],
   interviews: [],
   teamInterviews: [],
+  myAssignments: [],
+  relatedOKR: null,
+  objectiveFeedbacks: {},
   loading: false,
   error: null,
+
+  // Assignments
+  fetchMyAssignments: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await assignmentApi.getMy();
+      set({ myAssignments: res.data || res, loading: false });
+    } catch (e: any) { set({ error: e.message, loading: false }); }
+  },
+  assignObjective: async (objectiveId, data) => {
+    await assignmentApi.assign(objectiveId, data);
+  },
+  completeAssignment: async (id) => {
+    await assignmentApi.complete(id);
+    get().fetchMyAssignments();
+  },
+
+  // Related OKR
+  fetchRelatedOKR: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await objectiveApi.getRelated();
+      set({ relatedOKR: res.data || res, loading: false });
+    } catch (e: any) { set({ error: e.message, loading: false }); }
+  },
+
+  // Feedbacks
+  fetchObjectiveFeedbacks: async (objectiveId) => {
+    try {
+      const res = await objectiveApi.getFeedbacks(objectiveId);
+      const data = res.data || res;
+      set(state => ({
+        objectiveFeedbacks: { ...state.objectiveFeedbacks, [objectiveId]: data.feedbacks || [] }
+      }));
+    } catch (e: any) { console.error(e); }
+  },
 
   // Strategic Objectives
   fetchStrategicObjectives: async () => {

@@ -8,6 +8,9 @@ import {
   contractController,
   monthlyReportController,
   interviewController,
+  assignmentController,
+  relatedOkrController,
+  feedbackController,
 } from '../controllers/okr.controller';
 
 const router = Router();
@@ -25,11 +28,18 @@ router.delete('/strategic-objectives/:id', requireRole('hr', 'gm'), strategicObj
 router.get('/objectives', objectiveController.getAll);
 router.get('/objectives/my', objectiveController.getMy);
 router.get('/objectives/tree', objectiveController.getTree);
+router.get('/objectives/related', relatedOkrController.getRelated);
 router.post('/objectives', objectiveController.create);
 router.put('/objectives/:id', objectiveController.update);
 router.delete('/objectives/:id', objectiveController.delete);
 router.get('/objectives/:id/krs', objectiveController.getKRs);
 router.post('/objectives/:id/krs', objectiveController.createKR);
+router.post('/objectives/:id/assign', requireRole('manager', 'gm'), assignmentController.assign);
+router.get('/objectives/:id/feedbacks', feedbackController.getByObjective);
+
+// ============ OKR Assignments ============
+router.get('/assignments/my', assignmentController.getMy);
+router.put('/assignments/:id/complete', assignmentController.complete);
 
 // ============ Key Results (standalone) ============
 router.put('/krs/:id', krController.update);

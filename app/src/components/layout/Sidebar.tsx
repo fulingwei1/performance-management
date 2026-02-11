@@ -12,7 +12,9 @@ import {
   FileSignature,
   Calendar,
   MessageSquare,
-  Users
+  Users,
+  ClipboardList,
+  Link2
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -28,6 +30,8 @@ const employeeNavItems = [
   { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
   { path: '/employee/monthly-report', label: '月度汇报', icon: FileText },
   { path: '/employee/contract', label: '绩效合约', icon: FileSignature },
+  { path: '/employee/assignments', label: '待拆解任务', icon: ClipboardList },
+  { path: '/employee/related-okr', label: '关联OKR', icon: Link2 },
   { path: '/employee/promotion', label: '晋升加薪', icon: TrendingUp },
 ];
 

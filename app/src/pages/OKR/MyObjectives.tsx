@@ -27,9 +27,10 @@ const statusLabels: Record<string, string> = {
 };
 
 export function MyObjectives() {
-  const { myObjectives, fetchMyObjectives, createObjective, updateKR, createKR, loading } = useOKRStore();
+  const { myObjectives, fetchMyObjectives, createObjective, updateKR, createKR, loading, fetchObjectiveFeedbacks, objectiveFeedbacks } = useOKRStore();
+  const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newObj, setNewObj] = useState({ title: '', description: '' });
+  const [newObj, setNewObj] = useState({ title: '', description: '', startDate: '', endDate: '', feedbackCycle: 'monthly' });
   const [editingKR, setEditingKR] = useState<{ krId: string; value: number } | null>(null);
 
   useEffect(() => {
@@ -38,8 +39,12 @@ export function MyObjectives() {
 
   const handleCreateObjective = async () => {
     if (!newObj.title) return;
-    await createObjective({ title: newObj.title, description: newObj.description, level: 'personal' });
-    setNewObj({ title: '', description: '' });
+    await createObjective({
+      title: newObj.title, description: newObj.description, level: 'personal',
+      startDate: newObj.startDate || undefined, endDate: newObj.endDate || undefined,
+      feedbackCycle: newObj.feedbackCycle || undefined,
+    });
+    setNewObj({ title: '', description: '', startDate: '', endDate: '', feedbackCycle: 'monthly' });
     setShowAddDialog(false);
   };
 
@@ -75,6 +80,28 @@ export function MyObjectives() {
                 <Label>描述</Label>
                 <Input value={newObj.description} onChange={e => setNewObj({ ...newObj, description: e.target.value })} placeholder="目标描述（选填）" />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>开始日期</Label>
+                  <Input type="date" value={newObj.startDate} onChange={e => setNewObj({ ...newObj, startDate: e.target.value })} />
+                </div>
+                <div>
+                  <Label>结束日期</Label>
+                  <Input type="date" value={newObj.endDate} onChange={e => setNewObj({ ...newObj, endDate: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <Label>反馈周期</Label>
+                <Select value={newObj.feedbackCycle} onValueChange={v => setNewObj({ ...newObj, feedbackCycle: v })}>
+                  <SelectTrigger><SelectValue placeholder="选择反馈周期" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="weekly">每周</SelectItem>
+                    <SelectItem value="biweekly">每两周</SelectItem>
+                    <SelectItem value="monthly">每月</SelectItem>
+                    <SelectItem value="quarterly">每季度</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button onClick={handleCreateObjective} className="w-full" disabled={!newObj.title}>确认创建</Button>
             </div>
           </DialogContent>
@@ -104,6 +131,13 @@ export function MyObjectives() {
                   <Badge className={cn('text-xs', statusColors[obj.status])}>{statusLabels[obj.status]}</Badge>
                 </div>
                 {obj.description && <p className="text-sm text-gray-500">{obj.description}</p>}
+                {(obj.startDate || obj.endDate || obj.feedbackCycle) && (
+                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                    {obj.startDate && <span>开始：{String(obj.startDate).split('T')[0]}</span>}
+                    {obj.endDate && <span>结束：{String(obj.endDate).split('T')[0]}</span>}
+                    {obj.feedbackCycle && <Badge variant="outline" className="text-xs">{({weekly:'每周',biweekly:'每两周',monthly:'每月',quarterly:'每季度'} as Record<string,string>)[obj.feedbackCycle] || obj.feedbackCycle}</Badge>}
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2 mb-4">
@@ -147,6 +181,37 @@ export function MyObjectives() {
                         <div className="text-xs text-gray-400 mt-1">权重：{kr.weight}%</div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {/* Feedback timeline */}
+                {obj.feedbackCycle && obj.startDate && obj.endDate && (
+                  <div className="mt-4">
+                    <button
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() => {
+                        if (expandedFeedback === obj.id) { setExpandedFeedback(null); }
+                        else { fetchObjectiveFeedbacks(obj.id); setExpandedFeedback(obj.id); }
+                      }}
+                    >
+                      {expandedFeedback === obj.id ? '收起反馈历史' : '查看反馈历史'}
+                    </button>
+                    {expandedFeedback === obj.id && objectiveFeedbacks[obj.id] && (
+                      <div className="mt-2 space-y-2">
+                        {objectiveFeedbacks[obj.id].length === 0 ? (
+                          <p className="text-xs text-gray-400">暂无反馈记录</p>
+                        ) : objectiveFeedbacks[obj.id].map((fb, i) => (
+                          <div key={i} className="bg-gray-50 rounded p-2 text-xs">
+                            <span className="font-medium">{fb.periodStart} ~ {fb.periodEnd}</span>
+                            {fb.reports.length > 0 ? (
+                              <span className="ml-2 text-green-600">{fb.reports.length} 份月报</span>
+                            ) : (
+                              <span className="ml-2 text-gray-400">无月报</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

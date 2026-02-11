@@ -413,6 +413,8 @@ export interface StrategicObjective {
   updatedAt?: Date | string;
 }
 
+export type FeedbackCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
+
 export interface Objective {
   id: string;
   title: string;
@@ -427,10 +429,24 @@ export interface Objective {
   weight: number;
   progress: number;
   status: 'draft' | 'active' | 'completed' | 'cancelled';
+  startDate?: Date | string;
+  endDate?: Date | string;
+  feedbackCycle?: FeedbackCycle;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   children?: Objective[];
   keyResults?: KeyResult[];
+}
+
+export interface OkrAssignment {
+  id: string;
+  objectiveId: string;
+  assigneeId: string;
+  assignedBy: string;
+  deadline?: Date | string;
+  message?: string;
+  status: 'pending' | 'completed';
+  createdAt?: Date | string;
 }
 
 export interface KeyResult {
