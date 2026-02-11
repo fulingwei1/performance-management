@@ -6,7 +6,13 @@ import {
   LogOut,
   Award,
   FileText,
-  TrendingUp
+  TrendingUp,
+  Target,
+  Crosshair,
+  FileSignature,
+  Calendar,
+  MessageSquare,
+  Users
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -18,12 +24,19 @@ interface SidebarProps {
 const employeeNavItems = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/employee/scores', label: '我的绩效', icon: BarChart3 },
+  { path: '/employee/my-objectives', label: '我的目标', icon: Target },
+  { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
+  { path: '/employee/monthly-report', label: '月度汇报', icon: FileText },
+  { path: '/employee/contract', label: '绩效合约', icon: FileSignature },
   { path: '/employee/promotion', label: '晋升加薪', icon: TrendingUp },
 ];
 
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/manager/team-objectives', label: '团队目标', icon: Target },
+  { path: '/manager/review-reports', label: '月报审阅', icon: MessageSquare },
+  { path: '/manager/interviews', label: '绩效面谈', icon: Calendar },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },
   { path: '/manager/promotion', label: '晋升加薪', icon: TrendingUp },
 ];
@@ -32,6 +45,7 @@ const gmNavItems = [
   { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/gm/scoring', label: '总经理评分', icon: Award },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/gm/strategic-overview', label: '战略总览', icon: Crosshair },
   { path: '/gm/data-export', label: '数据导出', icon: LogOut },
   { path: '/gm/promotion-approvals', label: '晋升审批', icon: TrendingUp },
 ];
@@ -39,6 +53,9 @@ const gmNavItems = [
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/hr/strategic-objectives', label: '战略目标', icon: Crosshair },
+  { path: '/hr/contract-management', label: '合约管理', icon: FileSignature },
+  { path: '/hr/okr-dashboard', label: 'OKR总览', icon: Target },
   { path: '/hr/promotion-approvals', label: '晋升审批', icon: TrendingUp },
 ];
 

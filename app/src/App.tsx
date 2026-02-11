@@ -26,6 +26,20 @@ import { DataManagement } from '@/pages/HR/DataManagement';
 import { HRPromotionApprovals } from '@/pages/HR/PromotionApprovals';
 import { Toaster } from '@/components/ui/sonner';
 
+// OKR/KPI pages
+import { ObjectiveTree } from '@/pages/OKR/ObjectiveTree';
+import { MyObjectives } from '@/pages/OKR/MyObjectives';
+import { MyKPI } from '@/pages/Employee/MyKPI';
+import { MonthlyReport } from '@/pages/Employee/MonthlyReport';
+import { MyContract } from '@/pages/Employee/MyContract';
+import { TeamObjectives } from '@/pages/Manager/TeamObjectives';
+import { ReviewReports } from '@/pages/Manager/ReviewReports';
+import { InterviewSchedule } from '@/pages/Manager/InterviewSchedule';
+import { StrategicObjectives } from '@/pages/HR/StrategicObjectives';
+import { ContractManagement } from '@/pages/HR/ContractManagement';
+import { OKRDashboard } from '@/pages/HR/OKRDashboard';
+import { StrategicOverview } from '@/pages/GM/StrategicOverview';
+
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
   manager: '/manager/dashboard',
@@ -104,6 +118,11 @@ function App() {
           <Route path="/employee/summary" element={<WorkSummary />} />
           <Route path="/employee/scores" element={<MyScores />} />
           <Route path="/employee/promotion" element={<EmployeePromotionRequest />} />
+          <Route path="/employee/objectives" element={<ObjectiveTree />} />
+          <Route path="/employee/my-objectives" element={<MyObjectives />} />
+          <Route path="/employee/kpi" element={<MyKPI />} />
+          <Route path="/employee/monthly-report" element={<MonthlyReport />} />
+          <Route path="/employee/contract" element={<MyContract />} />
         </Route>
 
         {/* Manager routes */}
@@ -115,6 +134,10 @@ function App() {
           <Route path="/manager/analytics" element={<Analytics />} />
           <Route path="/manager/quarterly-summary" element={<QuarterlySummary />} />
           <Route path="/manager/promotion" element={<ManagerPromotionRequest />} />
+          <Route path="/manager/objectives" element={<ObjectiveTree />} />
+          <Route path="/manager/team-objectives" element={<TeamObjectives />} />
+          <Route path="/manager/review-reports" element={<ReviewReports />} />
+          <Route path="/manager/interviews" element={<InterviewSchedule />} />
         </Route>
 
         {/* GM routes */}
@@ -124,6 +147,8 @@ function App() {
           <Route path="/gm/analytics" element={<GMAnalytics />} />
           <Route path="/gm/data-export" element={<GMDataExport />} />
           <Route path="/gm/promotion-approvals" element={<GMPromotionApprovals />} />
+          <Route path="/gm/strategic-overview" element={<StrategicOverview />} />
+          <Route path="/gm/objectives" element={<ObjectiveTree />} />
         </Route>
 
         {/* HR routes */}
@@ -133,6 +158,10 @@ function App() {
           <Route path="/hr/data-management" element={<DataManagement />} />
           <Route path="/hr/promotion-approvals" element={<HRPromotionApprovals />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
+          <Route path="/hr/strategic-objectives" element={<StrategicObjectives />} />
+          <Route path="/hr/contract-management" element={<ContractManagement />} />
+          <Route path="/hr/okr-dashboard" element={<OKRDashboard />} />
+          <Route path="/hr/objectives" element={<ObjectiveTree />} />
         </Route>
 
         {/* Default redirects */}

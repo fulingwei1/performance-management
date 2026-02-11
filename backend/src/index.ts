@@ -25,6 +25,13 @@ import settingsRoutes from './routes/settings.routes';
 import exportRoutes from './routes/export.routes';
 import promotionRequestRoutes from './routes/promotionRequest.routes';
 import quarterlySummaryRoutes from './routes/quarterlySummary.routes';
+import okrRoutes from './routes/okr.routes';
+import strategicObjectiveRoutes from './routes/strategicObjective.routes';
+import objectiveRoutes from './routes/objective.routes';
+import kpiAssignmentRoutes from './routes/kpiAssignment.routes';
+import performanceContractRoutes from './routes/performanceContract.routes';
+import monthlyReportRoutes from './routes/monthlyReport.routes';
+import performanceInterviewRoutes from './routes/performanceInterview.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -113,6 +120,13 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/promotion-requests', promotionRequestRoutes);
 app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
+app.use('/api/okr', okrRoutes);
+app.use('/api/strategic-objectives', strategicObjectiveRoutes);
+app.use('/api/objectives', objectiveRoutes);
+app.use('/api/kpi-assignments', kpiAssignmentRoutes);
+app.use('/api/contracts', performanceContractRoutes);
+app.use('/api/monthly-reports', monthlyReportRoutes);
+app.use('/api/interviews', performanceInterviewRoutes);
 
 // 404处理
 app.use(notFoundHandler);

@@ -371,6 +371,13 @@ export const getMemoryDBStats = (): {
   holidays: number;
   performanceMetrics: number;
   metricTemplates: number;
+  strategicObjectives: number;
+  objectives: number;
+  keyResults: number;
+  kpiAssignments: number;
+  performanceContracts: number;
+  monthlyReports: number;
+  performanceInterviews: number;
 } => {
   return {
     employees: memoryStore.employees.size,
