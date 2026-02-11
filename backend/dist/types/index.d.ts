@@ -1,5 +1,5 @@
 export type EmployeeLevel = 'senior' | 'intermediate' | 'junior' | 'assistant';
-export type EmployeeRole = 'employee' | 'manager' | 'gm' | 'hr';
+export type EmployeeRole = 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 export type RecordStatus = 'draft' | 'submitted' | 'scored' | 'completed';
 export interface Employee {
     id: string;
@@ -11,6 +11,7 @@ export interface Employee {
     managerId?: string;
     avatar?: string;
     password?: string;
+    status?: 'active' | 'disabled' | 'inactive';
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -46,7 +47,7 @@ export interface EmployeeArchive extends Employee {
     bankAccount?: string;
     socialSecurityNumber?: string;
     providentFundNumber?: string;
-    status?: 'active' | 'inactive';
+    status?: 'active' | 'inactive' | 'disabled';
 }
 export interface PerformanceRecord {
     id: string;
@@ -306,5 +307,241 @@ export interface MetricTemplate {
     status: 'active' | 'inactive';
     createdAt?: Date | string;
     updatedAt?: Date | string;
+}
+export interface StrategicObjective {
+    id: string;
+    title: string;
+    description?: string;
+    year: number;
+    status: 'draft' | 'active' | 'completed' | 'cancelled';
+    createdBy?: string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export type FeedbackCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
+export interface QuarterlyTarget {
+    target: string;
+    weight: number;
+}
+export interface MonthlyTargets {
+    M1?: string;
+    M2?: string;
+    M3?: string;
+    M4?: string;
+    M5?: string;
+    M6?: string;
+    M7?: string;
+    M8?: string;
+    M9?: string;
+    M10?: string;
+    M11?: string;
+    M12?: string;
+}
+export interface Objective {
+    id: string;
+    title: string;
+    description?: string;
+    level: 'company' | 'department' | 'individual';
+    parentId?: string;
+    strategicObjectiveId?: string;
+    department?: string;
+    ownerId?: string;
+    year: number;
+    quarter?: string;
+    weight: number;
+    progress: number;
+    status: 'draft' | 'active' | 'completed' | 'cancelled';
+    startDate?: Date | string;
+    endDate?: Date | string;
+    feedbackCycle?: FeedbackCycle;
+    targetValue?: string;
+    quarterlyTargets?: {
+        Q1: QuarterlyTarget;
+        Q2: QuarterlyTarget;
+        Q3: QuarterlyTarget;
+        Q4: QuarterlyTarget;
+    };
+    monthlyTargets?: MonthlyTargets;
+    employeeConfirmedAt?: Date | string;
+    employeeFeedback?: string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+    children?: Objective[];
+    keyResults?: KeyResult[];
+}
+export interface OkrAssignment {
+    id: string;
+    objectiveId: string;
+    assigneeId: string;
+    assignedBy: string;
+    deadline?: Date | string;
+    message?: string;
+    status: 'pending' | 'completed';
+    createdAt?: Date | string;
+}
+export interface KeyResult {
+    id: string;
+    objectiveId: string;
+    title: string;
+    metricType: 'number' | 'percentage' | 'boolean' | 'currency';
+    targetValue?: number;
+    currentValue: number;
+    unit?: string;
+    weight: number;
+    progress: number;
+    status: 'not_started' | 'in_progress' | 'completed' | 'at_risk';
+    dueDate?: string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface KpiAssignment {
+    id: string;
+    employeeId: string;
+    objectiveId?: string;
+    keyResultId?: string;
+    kpiName: string;
+    targetValue?: number;
+    actualValue: number;
+    unit?: string;
+    weight: number;
+    score?: number;
+    year: number;
+    month?: string;
+    status: 'pending' | 'submitted' | 'approved';
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface PerformanceContract {
+    id: string;
+    employeeId: string;
+    managerId: string;
+    year: number;
+    objectivesSnapshot?: any;
+    kpiSnapshot?: any;
+    employeeSignedAt?: Date | string;
+    managerSignedAt?: Date | string;
+    status: 'draft' | 'pending_employee' | 'pending_manager' | 'signed' | 'revised';
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface GoalProgress {
+    id: string;
+    objectiveId: string;
+    employeeId: string;
+    year: number;
+    month: number;
+    employeeCompletionRate: number;
+    employeeComment?: string;
+    employeeSubmittedAt?: Date | string;
+    managerCompletionRate?: number;
+    managerComment?: string;
+    managerReviewedAt?: Date | string;
+    managerId?: string;
+    status: 'draft' | 'employee_submitted' | 'manager_reviewed';
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface MonthlyReport {
+    id: string;
+    employeeId: string;
+    year: number;
+    month: number;
+    summary?: string;
+    achievements?: string;
+    issues?: string;
+    nextMonthPlan?: string;
+    attachments?: any[];
+    managerComment?: string;
+    managerId?: string;
+    commentedAt?: Date | string;
+    status: 'draft' | 'submitted' | 'reviewed';
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface PerformanceInterview {
+    id: string;
+    employeeId: string;
+    interviewerId: string;
+    year: number;
+    interviewDate?: string;
+    performanceSummary?: string;
+    strengths?: string;
+    improvements?: string;
+    developmentPlan?: string;
+    employeeFeedback?: string;
+    agreedActions?: any[];
+    status: 'scheduled' | 'completed' | 'cancelled';
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface Attachment {
+    id: string;
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    relatedType: string;
+    relatedId: string;
+    uploadedBy: string;
+    url?: string;
+    createdAt?: Date | string;
+}
+export interface PeerReviewCycle {
+    id: string;
+    title: string;
+    year: number;
+    quarter: number;
+    startDate: string;
+    endDate: string;
+    participants: string[];
+    status: 'draft' | 'active' | 'completed';
+    createdBy: string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export interface PeerReviewTask {
+    id: string;
+    cycleId: string;
+    reviewerId: string;
+    revieweeId: string;
+    scores?: PeerReviewScore[];
+    status: 'pending' | 'submitted';
+    submittedAt?: Date | string;
+    createdAt?: Date | string;
+}
+export interface PeerReviewScore {
+    dimension: string;
+    score: number;
+    comment?: string;
+}
+export interface BonusRule {
+    grade: string;
+    coefficient: number;
+    label: string;
+    minScore: number;
+    maxScore?: number;
+}
+export interface BonusConfig {
+    id: string;
+    rules: BonusRule[];
+    updatedBy: string;
+    updatedAt?: Date | string;
+}
+export interface BonusResult {
+    id: string;
+    employeeId: string;
+    employeeName?: string;
+    department?: string;
+    year: number;
+    quarter: number;
+    score: number;
+    grade: string;
+    coefficient: number;
+    baseSalary: number;
+    bonus: number;
+    adjusted: boolean;
+    adjustedBy?: string;
+    adjustedAt?: Date | string;
+    createdAt?: Date | string;
 }
 //# sourceMappingURL=index.d.ts.map

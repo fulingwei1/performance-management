@@ -2,7 +2,7 @@
  * 内存数据库实现 - 用于开发和演示模式
  * 提供完整的CRUD操作模拟
  */
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult, GoalProgress } from '../types';
 interface MemoryStore {
     employees: Map<string, Employee>;
     performanceRecords: Map<string, PerformanceRecord>;
@@ -15,6 +15,20 @@ interface MemoryStore {
     holidays: Map<string, Holiday>;
     performanceMetrics: Map<string, PerformanceMetric>;
     metricTemplates: Map<string, MetricTemplate>;
+    strategicObjectives: Map<string, StrategicObjective>;
+    objectives: Map<string, Objective>;
+    keyResults: Map<string, KeyResult>;
+    kpiAssignments: Map<string, KpiAssignment>;
+    performanceContracts: Map<string, PerformanceContract>;
+    monthlyReports: Map<string, MonthlyReport>;
+    performanceInterviews: Map<string, PerformanceInterview>;
+    okrAssignments: Map<string, OkrAssignment>;
+    attachments: Map<string, Attachment>;
+    peerReviewCycles: Map<string, PeerReviewCycle>;
+    peerReviewTasks: Map<string, PeerReviewTask>;
+    bonusConfig: Map<string, BonusConfig>;
+    bonusResults: Map<string, BonusResult>;
+    goalProgress?: Map<string, GoalProgress>;
 }
 export declare const memoryStore: MemoryStore;
 export declare const memoryDB: {
@@ -81,6 +95,19 @@ export declare const getMemoryDBStats: () => {
     holidays: number;
     performanceMetrics: number;
     metricTemplates: number;
+    strategicObjectives: number;
+    objectives: number;
+    keyResults: number;
+    kpiAssignments: number;
+    performanceContracts: number;
+    monthlyReports: number;
+    performanceInterviews: number;
+    okrAssignments: number;
+    attachments: number;
+    peerReviewCycles: number;
+    peerReviewTasks: number;
+    bonusConfig: number;
+    bonusResults: number;
 };
 export {};
 //# sourceMappingURL=memory-db.d.ts.map

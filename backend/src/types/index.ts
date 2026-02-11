@@ -416,6 +416,26 @@ export interface StrategicObjective {
 
 export type FeedbackCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
 
+export interface QuarterlyTarget {
+  target: string;
+  weight: number;
+}
+
+export interface MonthlyTargets {
+  M1?: string;
+  M2?: string;
+  M3?: string;
+  M4?: string;
+  M5?: string;
+  M6?: string;
+  M7?: string;
+  M8?: string;
+  M9?: string;
+  M10?: string;
+  M11?: string;
+  M12?: string;
+}
+
 export interface Objective {
   id: string;
   title: string;
@@ -433,6 +453,21 @@ export interface Objective {
   startDate?: Date | string;
   endDate?: Date | string;
   feedbackCycle?: FeedbackCycle;
+  
+  // 新增：目标拆解
+  targetValue?: string;
+  quarterlyTargets?: {
+    Q1: QuarterlyTarget;
+    Q2: QuarterlyTarget;
+    Q3: QuarterlyTarget;
+    Q4: QuarterlyTarget;
+  };
+  monthlyTargets?: MonthlyTargets;
+  
+  // 新增：员工确认
+  employeeConfirmedAt?: Date | string;
+  employeeFeedback?: string;
+  
   createdAt?: Date | string;
   updatedAt?: Date | string;
   children?: Objective[];
@@ -494,6 +529,32 @@ export interface PerformanceContract {
   employeeSignedAt?: Date | string;
   managerSignedAt?: Date | string;
   status: 'draft' | 'pending_employee' | 'pending_manager' | 'signed' | 'revised';
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+// 目标进度（每月完成度追踪）
+export interface GoalProgress {
+  id: string;
+  objectiveId: string;
+  employeeId: string;
+  year: number;
+  month: number;
+  
+  // 员工填写
+  employeeCompletionRate: number;  // 0-100
+  employeeComment?: string;
+  employeeSubmittedAt?: Date | string;
+  
+  // 经理审核
+  managerCompletionRate?: number;  // 0-100
+  managerComment?: string;
+  managerReviewedAt?: Date | string;
+  managerId?: string;
+  
+  // 状态
+  status: 'draft' | 'employee_submitted' | 'manager_reviewed';
+  
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

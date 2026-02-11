@@ -1,8 +1,13 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeData = void 0;
 const employee_model_1 = require("../models/employee.model");
 const database_1 = require("./database");
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const logger_1 = __importDefault(require("./logger"));
 let isInitialized = false;
 // 初始化员工数据 - 从 ATE-人事档案系统.xlsx 导入
 const initialEmployees = [
@@ -178,37 +183,40 @@ const initialEmployees = [
     { id: 'e156', name: '谭章斌', department: '项目管理部', subDepartment: '项目管理组', role: 'employee', level: 'junior', managerId: 'm007', password: '123456' },
     { id: 'e157', name: '谢朝良', department: '制造中心', subDepartment: '生产部', role: 'employee', level: 'junior', managerId: 'gm001', password: '123456' },
     { id: 'e158', name: '张小保', department: '人力行政部', subDepartment: '行政组', role: 'employee', level: 'junior', managerId: undefined, password: '123456' },
+    { id: 'admin', name: '系统管理员', department: '总公司', subDepartment: '', role: 'admin', level: 'senior', managerId: undefined, password: 'admin123' },
 ];
 // 初始化数据
 const initializeData = async () => {
     if (isInitialized) {
-        console.log('✅ 数据已初始化，跳过');
+        logger_1.default.info('✅ 数据已初始化，跳过');
         return;
     }
     try {
-        console.log('📝 开始初始化员工数据...');
+        logger_1.default.info('📝 开始初始化员工数据...');
         if (database_1.USE_MEMORY_DB) {
-            // 内存数据库模式：使用明文密码，在验证时动态哈希
+            // 内存数据库模式：也使用 bcrypt hash 存储密码
+            const salt = bcryptjs_1.default.genSaltSync(10);
+            const defaultHash = bcryptjs_1.default.hashSync('123456', salt);
             const hashedEmployees = initialEmployees.map(emp => ({
                 ...emp,
-                password: '123456' // 明文密码
+                password: emp.password === '123456' ? defaultHash : bcryptjs_1.default.hashSync(emp.password, salt)
             }));
             for (const emp of hashedEmployees) {
                 database_1.memoryDB.employees.create(emp);
             }
             // 验证数据
             const allEmployees = database_1.memoryDB.employees.findAll();
-            console.log(`  📊 内存数据库中共有 ${allEmployees.length} 名员工`);
+            logger_1.default.info(`  📊 内存数据库中共有 ${allEmployees.length} 名员工`);
         }
         else {
             // MySQL模式：使用原有batchInsert逻辑
             await employee_model_1.EmployeeModel.batchInsert(initialEmployees);
         }
         isInitialized = true;
-        console.log(`✅ 成功初始化 ${initialEmployees.length} 名员工`);
+        logger_1.default.info(`✅ 成功初始化 ${initialEmployees.length} 名员工`);
     }
     catch (error) {
-        console.error('❌ 初始化数据失败:', error);
+        logger_1.default.error(`❌ 初始化数据失败: ${error}`);
         throw error;
     }
 };

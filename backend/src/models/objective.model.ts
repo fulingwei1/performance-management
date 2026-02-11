@@ -43,8 +43,21 @@ export class ObjectiveModel {
       return data;
     }
     await query(
-      'INSERT INTO objectives (id, title, description, level, parent_id, strategic_objective_id, department, owner_id, year, quarter, weight, progress, status, start_date, end_date, feedback_cycle) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [data.id, data.title, data.description, data.level, data.parentId, data.strategicObjectiveId, data.department, data.ownerId, data.year, data.quarter, data.weight || 100, data.progress || 0, data.status || 'draft', data.startDate || null, data.endDate || null, data.feedbackCycle || 'monthly']
+      `INSERT INTO objectives 
+      (id, title, description, level, parent_id, strategic_objective_id, department, owner_id, 
+       year, quarter, weight, progress, status, start_date, end_date, feedback_cycle,
+       target_value, quarterly_targets, monthly_targets, employee_confirmed_at, employee_feedback) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        data.id, data.title, data.description, data.level, data.parentId, data.strategicObjectiveId, 
+        data.department, data.ownerId, data.year, data.quarter, data.weight || 100, data.progress || 0, 
+        data.status || 'draft', data.startDate || null, data.endDate || null, data.feedbackCycle || 'monthly',
+        data.targetValue || null,
+        data.quarterlyTargets ? JSON.stringify(data.quarterlyTargets) : null,
+        data.monthlyTargets ? JSON.stringify(data.monthlyTargets) : null,
+        data.employeeConfirmedAt || null,
+        data.employeeFeedback || null
+      ]
     );
     return (await this.findById(data.id))!;
   }
@@ -61,12 +74,25 @@ export class ObjectiveModel {
       title: 'title', description: 'description', level: 'level', parentId: 'parent_id',
       strategicObjectiveId: 'strategic_objective_id', department: 'department', ownerId: 'owner_id',
       year: 'year', quarter: 'quarter', weight: 'weight', progress: 'progress', status: 'status',
-      startDate: 'start_date', endDate: 'end_date', feedbackCycle: 'feedback_cycle'
+      startDate: 'start_date', endDate: 'end_date', feedbackCycle: 'feedback_cycle',
+      targetValue: 'target_value', employeeConfirmedAt: 'employee_confirmed_at', 
+      employeeFeedback: 'employee_feedback'
     };
     const fields: string[] = []; const values: any[] = [];
     for (const [k, col] of Object.entries(map)) {
       if ((data as any)[k] !== undefined) { fields.push(`${col} = ?`); values.push((data as any)[k]); }
     }
+    
+    // Handle JSON fields separately
+    if (data.quarterlyTargets !== undefined) {
+      fields.push('quarterly_targets = ?');
+      values.push(JSON.stringify(data.quarterlyTargets));
+    }
+    if (data.monthlyTargets !== undefined) {
+      fields.push('monthly_targets = ?');
+      values.push(JSON.stringify(data.monthlyTargets));
+    }
+    
     if (fields.length === 0) return this.findById(id);
     values.push(id);
     await query(`UPDATE objectives SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
@@ -153,6 +179,11 @@ export class ObjectiveModel {
       department: row.department, ownerId: row.owner_id, year: row.year, quarter: row.quarter,
       weight: parseFloat(row.weight), progress: parseFloat(row.progress), status: row.status,
       startDate: row.start_date, endDate: row.end_date, feedbackCycle: row.feedback_cycle,
+      targetValue: row.target_value,
+      quarterlyTargets: row.quarterly_targets ? (typeof row.quarterly_targets === 'string' ? JSON.parse(row.quarterly_targets) : row.quarterly_targets) : undefined,
+      monthlyTargets: row.monthly_targets ? (typeof row.monthly_targets === 'string' ? JSON.parse(row.monthly_targets) : row.monthly_targets) : undefined,
+      employeeConfirmedAt: row.employee_confirmed_at,
+      employeeFeedback: row.employee_feedback,
       createdAt: row.created_at, updatedAt: row.updated_at
     };
   }

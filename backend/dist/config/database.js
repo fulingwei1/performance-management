@@ -8,6 +8,7 @@ const pg_1 = require("pg");
 const dotenv_1 = __importDefault(require("dotenv"));
 const memory_db_1 = require("./memory-db");
 Object.defineProperty(exports, "memoryDB", { enumerable: true, get: function () { return memory_db_1.memoryDB; } });
+const logger_1 = __importDefault(require("./logger"));
 dotenv_1.default.config();
 // Only use in-memory store when explicitly set
 const USE_MEMORY_DB = process.env.USE_MEMORY_DB === 'true';
@@ -16,16 +17,16 @@ const isVercel = process.env.VERCEL === '1';
 // 创建连接池
 const createPool = () => {
     if (USE_MEMORY_DB) {
-        console.log('📦 Using In-Memory Database');
+        logger_1.default.info('📦 Using In-Memory Database');
         return null;
     }
     // Supabase/PostgreSQL 配置
     if (!process.env.DATABASE_URL) {
-        console.error('❌ DATABASE_URL is missing!');
+        logger_1.default.error('❌ DATABASE_URL is missing!');
         // 即使缺少配置，也不要直接抛错导致 crash，而是让 testConnection 返回 false
         return null;
     }
-    console.log('🔌 Configuring PostgreSQL Pool...');
+    logger_1.default.info('🔌 Configuring PostgreSQL Pool...');
     // 强制添加 SSL 配置，解决 Vercel 连接 Supabase 的常见问题
     // 即使连接串里已经有了，这里显式配置更保险
     const config = {
@@ -44,12 +45,12 @@ const createPool = () => {
 exports.pool = createPool();
 const testConnection = async () => {
     if (USE_MEMORY_DB) {
-        console.log('✅ 使用内存数据库（仅测试/演示）');
+        logger_1.default.info('✅ 使用内存数据库（仅测试/演示）');
         (0, memory_db_1.initMemoryDB)();
         return true;
     }
     if (!exports.pool) {
-        console.error('❌ 未配置数据库连接池 (请设置 DATABASE_URL)');
+        logger_1.default.error('❌ 未配置数据库连接池 (请设置 DATABASE_URL)');
         return false;
     }
     // 增加重试机制
@@ -57,12 +58,12 @@ const testConnection = async () => {
     while (retries > 0) {
         try {
             const client = await exports.pool.connect();
-            console.log('✅ Supabase Postgres 数据库连接成功');
+            logger_1.default.info('✅ Supabase Postgres 数据库连接成功');
             client.release();
             return true;
         }
         catch (error) {
-            console.error(`❌ 数据库连接失败 (剩余重试: ${retries - 1}):`, error.message);
+            logger_1.default.error(`❌ 数据库连接失败 (剩余重试: ${retries - 1}):`, error.message);
             retries--;
             if (retries === 0)
                 return false;
@@ -76,18 +77,38 @@ exports.testConnection = testConnection;
 // Helper to convert MySQL ? placeholders to Postgres $n
 const convertSql = (sql) => {
     let i = 1;
-    // Replace ? with $1, $2, etc.
-    let converted = sql.replace(/\?/g, () => `$${i++}`);
+    // Replace ? with $1, $2, etc. (skip ?'s inside string literals)
+    let converted = '';
+    let inSingleQuote = false;
+    let inDoubleQuote = false;
+    for (let j = 0; j < sql.length; j++) {
+        const ch = sql[j];
+        const prev = j > 0 ? sql[j - 1] : '';
+        if (ch === "'" && prev !== '\\' && !inDoubleQuote)
+            inSingleQuote = !inSingleQuote;
+        if (ch === '"' && prev !== '\\' && !inSingleQuote)
+            inDoubleQuote = !inDoubleQuote;
+        if (ch === '?' && !inSingleQuote && !inDoubleQuote) {
+            converted += `$${i++}`;
+        }
+        else {
+            converted += ch;
+        }
+    }
     // Remove backticks (MySQL identifiers)
     converted = converted.replace(/`/g, '');
-    // Replace YEAR(date) -> EXTRACT(YEAR FROM date)
-    // Need to handle different spacings
+    // Replace MySQL date functions with Postgres equivalents
     converted = converted.replace(/YEAR\s*\(([^)]+)\)/gi, 'EXTRACT(YEAR FROM $1)');
+    converted = converted.replace(/MONTH\s*\(([^)]+)\)/gi, 'EXTRACT(MONTH FROM $1)');
+    converted = converted.replace(/DAY\s*\(([^)]+)\)/gi, 'EXTRACT(DAY FROM $1)');
+    // Replace IFNULL -> COALESCE
+    converted = converted.replace(/IFNULL\s*\(/gi, 'COALESCE(');
+    // Replace LIMIT ?, ? -> LIMIT $n OFFSET $m (already handled by ? replacement)
     return converted;
 };
 const query = async (sql, params) => {
     if (USE_MEMORY_DB) {
-        console.log('📦 Using memory database for query:', sql);
+        logger_1.default.info(`📦 Using memory database for query: ${sql}`);
         const { memoryQuery } = require('./memory-db');
         return memoryQuery(sql, params);
     }
@@ -103,9 +124,9 @@ const query = async (sql, params) => {
         return result;
     }
     catch (error) {
-        console.error('SQL Error:', error.message);
-        // console.error('Original SQL:', sql); // Reduce log noise
-        // console.error('Converted SQL:', convertedSql);
+        logger_1.default.error(`SQL Error: ${error.message}`);
+        // logger.error(`Original SQL: ${sql}`); // Reduce log noise
+        // logger.error(`Converted SQL: ${convertedSql}`);
         throw error;
     }
 };
@@ -132,7 +153,7 @@ const transaction = async (callback) => {
                 return result;
             }
             catch (err) {
-                console.error('Transaction Query Error:', err);
+                logger_1.default.error(`Transaction Query Error: ${err}`);
                 throw err;
             }
         }

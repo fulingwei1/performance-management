@@ -5,13 +5,12 @@ const express_validator_1 = require("express-validator");
 const employee_model_1 = require("../models/employee.model");
 const auth_1 = require("../middleware/auth");
 const errorHandler_1 = require("../middleware/errorHandler");
-const database_1 = require("../config/database");
 exports.authController = {
     // 登录
     login: [
         (0, express_validator_1.body)('username').notEmpty().withMessage('用户名不能为空'),
         (0, express_validator_1.body)('password').notEmpty().withMessage('密码不能为空'),
-        (0, express_validator_1.body)('role').isIn(['employee', 'manager', 'gm', 'hr']).withMessage('角色类型错误'),
+        (0, express_validator_1.body)('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
         (0, errorHandler_1.asyncHandler)(async (req, res) => {
             const errors = (0, express_validator_1.validationResult)(req);
             if (!errors.isEmpty()) {
@@ -36,22 +35,22 @@ exports.authController = {
                     message: `角色不匹配，用户角色是${employee.role}，但您选择了${role}`
                 });
             }
-            // 验证密码（支持明文和哈希）
+            // 验证密码 - 统一使用 bcrypt 比较
             let isValidPassword = false;
             if (employee.password) {
-                // 内存数据库模式支持明文密码（仅演示/测试用）
-                if (database_1.USE_MEMORY_DB && employee.password.startsWith('123456')) {
-                    isValidPassword = password === employee.password;
-                }
-                else {
-                    // 其他环境一律使用bcrypt比较
-                    isValidPassword = await employee_model_1.EmployeeModel.verifyPassword(password, employee.password);
-                }
+                isValidPassword = await employee_model_1.EmployeeModel.verifyPassword(password, employee.password);
             }
             if (!isValidPassword) {
                 return res.status(401).json({
                     success: false,
                     message: '用户名或密码错误'
+                });
+            }
+            // 检查用户状态
+            if (employee.status === 'disabled') {
+                return res.status(403).json({
+                    success: false,
+                    message: '该账号已被禁用，请联系管理员'
                 });
             }
             // 生成JWT Token

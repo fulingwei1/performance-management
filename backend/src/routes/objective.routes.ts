@@ -13,4 +13,10 @@ router.delete('/:id', authenticate, requireRole('manager', 'gm', 'hr'), objectiv
 router.put('/:id/progress', authenticate, objectiveController.updateProgress);
 router.post('/:id/key-results', authenticate, requireRole('manager', 'gm', 'hr'), objectiveController.addKeyResult);
 
+// 新增：员工确认目标
+router.post('/:id/confirm', authenticate, objectiveController.confirmObjective);
+
+// 新增：验证权重
+router.post('/validate-weights', authenticate, objectiveController.validateWeights);
+
 export default router;

@@ -55,7 +55,7 @@ exports.employeeController = {
     }),
     // 根据角色获取员工
     getEmployeesByRole: [
-        (0, express_validator_1.param)('role').isIn(['employee', 'manager', 'gm', 'hr']).withMessage('角色类型错误'),
+        (0, express_validator_1.param)('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
         (0, errorHandler_1.asyncHandler)(async (req, res) => {
             const errors = (0, express_validator_1.validationResult)(req);
             if (!errors.isEmpty()) {
@@ -85,7 +85,7 @@ exports.employeeController = {
         (0, express_validator_1.body)('name').notEmpty().withMessage('姓名不能为空'),
         (0, express_validator_1.body)('department').notEmpty().withMessage('部门不能为空'),
         (0, express_validator_1.body)('subDepartment').notEmpty().withMessage('子部门不能为空'),
-        (0, express_validator_1.body)('role').isIn(['employee', 'manager', 'gm', 'hr']).withMessage('角色类型错误'),
+        (0, express_validator_1.body)('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
         (0, express_validator_1.body)('level').isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别错误'),
         (0, express_validator_1.body)('password').isLength({ min: 6 }).withMessage('密码至少6位'),
         (0, errorHandler_1.asyncHandler)(async (req, res) => {
@@ -145,6 +145,46 @@ exports.employeeController = {
                 data: employee,
                 message: '员工更新成功'
             });
+        })
+    ],
+    // 重置密码
+    resetPassword: [
+        (0, express_validator_1.param)('id').notEmpty().withMessage('员工ID不能为空'),
+        (0, errorHandler_1.asyncHandler)(async (req, res) => {
+            const errors = (0, express_validator_1.validationResult)(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({ success: false, error: errors.array()[0].msg });
+            }
+            const employee = await employee_model_1.EmployeeModel.findById(req.params.id);
+            if (!employee) {
+                return res.status(404).json({ success: false, error: '员工不存在' });
+            }
+            const success = await employee_model_1.EmployeeModel.updatePassword(req.params.id, '123456');
+            if (!success) {
+                return res.status(500).json({ success: false, error: '重置密码失败' });
+            }
+            res.json({ success: true, message: '密码已重置为默认密码(123456)' });
+        })
+    ],
+    // 启用/禁用用户
+    toggleStatus: [
+        (0, express_validator_1.param)('id').notEmpty().withMessage('员工ID不能为空'),
+        (0, errorHandler_1.asyncHandler)(async (req, res) => {
+            const errors = (0, express_validator_1.validationResult)(req);
+            if (!errors.isEmpty()) {
+                return res.status(400).json({ success: false, error: errors.array()[0].msg });
+            }
+            const employee = await employee_model_1.EmployeeModel.findById(req.params.id);
+            if (!employee) {
+                return res.status(404).json({ success: false, error: '员工不存在' });
+            }
+            const currentStatus = employee.status || 'active';
+            const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+            const updated = await employee_model_1.EmployeeModel.update(req.params.id, { status: newStatus });
+            if (!updated) {
+                return res.status(500).json({ success: false, error: '状态更新失败' });
+            }
+            res.json({ success: true, data: updated, message: newStatus === 'active' ? '用户已启用' : '用户已禁用' });
         })
     ],
     // 删除员工

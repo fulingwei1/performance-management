@@ -3,7 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult, GoalProgress } from '../types';
 import logger from './logger';
 
 // 内存数据存储
@@ -32,6 +32,7 @@ interface MemoryStore {
   peerReviewTasks: Map<string, PeerReviewTask>;
   bonusConfig: Map<string, BonusConfig>;
   bonusResults: Map<string, BonusResult>;
+  goalProgress?: Map<string, GoalProgress>;
 }
 
 export const memoryStore: MemoryStore = {

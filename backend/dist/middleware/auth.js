@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.optionalAuth = exports.requireRole = exports.authenticate = exports.verifyToken = exports.generateToken = exports.SECRET = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const logger_1 = __importDefault(require("../config/logger"));
 // JWT Secret - 优先从环境变量获取，测试环境使用默认值
 const getJWTSecret = () => {
     const envSecret = process.env.JWT_SECRET;
@@ -12,11 +13,11 @@ const getJWTSecret = () => {
         return envSecret;
     if (process.env.NODE_ENV === 'test')
         return 'test-secret-key';
-    console.error('❌ 错误: JWT_SECRET环境变量未设置');
-    console.error('请在backend/.env文件中设置JWT_SECRET，例如:');
-    console.error('JWT_SECRET=your_random_secret_key_here');
-    console.error('\n生成随机密钥的命令:');
-    console.error('node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+    logger_1.default.error('❌ 错误: JWT_SECRET环境变量未设置');
+    logger_1.default.error('请在backend/.env文件中设置JWT_SECRET，例如:');
+    logger_1.default.error('JWT_SECRET=your_random_secret_key_here');
+    logger_1.default.error('\n生成随机密钥的命令:');
+    logger_1.default.error('node -e "logger.info(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
     process.exit(1);
 };
 const SECRET = getJWTSecret();

@@ -7,6 +7,8 @@ export declare const employeeController: {
     getAllManagers: (req: Request, res: Response, next: import("express").NextFunction) => void;
     createEmployee: (((req: Request, res: Response, next: import("express").NextFunction) => void) | import("express-validator").ValidationChain)[];
     updateEmployee: (((req: Request, res: Response, next: import("express").NextFunction) => void) | import("express-validator").ValidationChain)[];
+    resetPassword: (((req: Request, res: Response, next: import("express").NextFunction) => void) | import("express-validator").ValidationChain)[];
+    toggleStatus: (((req: Request, res: Response, next: import("express").NextFunction) => void) | import("express-validator").ValidationChain)[];
     deleteEmployee: (((req: Request, res: Response, next: import("express").NextFunction) => void) | import("express-validator").ValidationChain)[];
 };
 //# sourceMappingURL=employee.controller.d.ts.map

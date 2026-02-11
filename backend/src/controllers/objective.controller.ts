@@ -55,5 +55,55 @@ export const objectiveController = {
     if (!objective) return res.status(404).json({ success: false, error: '目标不存在' });
     const kr = await ObjectiveModel.addKeyResult({ id: uuidv4(), objectiveId: req.params.id as string, ...req.body, currentValue: req.body.currentValue || 0, progress: 0, status: 'not_started' });
     res.status(201).json({ success: true, data: kr });
-  })
+  }),
+
+  // 员工确认目标
+  confirmObjective: asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { feedback } = req.body;
+    const userId = (req as any).user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: '未授权' });
+    }
+
+    const objective = await ObjectiveModel.findById(id as string);
+    if (!objective) {
+      return res.status(404).json({ success: false, error: '目标不存在' });
+    }
+
+    // 检查是否是目标的所有者
+    if (objective.ownerId !== userId) {
+      return res.status(403).json({ success: false, error: '只能确认自己的目标' });
+    }
+
+    const data = await ObjectiveModel.update(id as string, {
+      employeeConfirmedAt: new Date(),
+      employeeFeedback: feedback,
+      status: 'active',
+    });
+
+    res.json({ success: true, data, message: '目标确认成功' });
+  }),
+
+  // 验证目标权重
+  validateWeights: asyncHandler(async (req: Request, res: Response) => {
+    const { objectives } = req.body;
+
+    if (!Array.isArray(objectives)) {
+      return res.status(400).json({ success: false, error: '请提供目标列表' });
+    }
+
+    const totalWeight = objectives.reduce((sum, obj) => sum + (obj.weight || 0), 0);
+    const isValid = Math.abs(totalWeight - 100) < 0.01; // 允许浮点误差
+
+    res.json({
+      success: true,
+      data: {
+        totalWeight,
+        isValid,
+        message: isValid ? '权重总和正确' : `权重总和为 ${totalWeight.toFixed(2)}%，应为 100%`,
+      },
+    });
+  }),
 };

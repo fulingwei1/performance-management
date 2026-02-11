@@ -1,8 +1,12 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PeerReviewModel = void 0;
 const database_1 = require("../config/database");
 const employee_model_1 = require("./employee.model");
+const logger_1 = __importDefault(require("../config/logger"));
 // 全局存储peerReviews数据
 const globalPeerReviews = new Map();
 class PeerReviewModel {
@@ -15,11 +19,11 @@ class PeerReviewModel {
                 createdAt: new Date(),
                 ...data
             };
-            console.log('创建记录到内存数据库:', id);
+            logger_1.default.info(`创建记录到内存数据库: ${id}`);
             // 同时存储到memoryStore和全局变量
             database_1.memoryStore.peerReviews.set(id, record);
             globalPeerReviews.set(id, record);
-            console.log('创建结果: 成功，globalPeerReviews总数量:', globalPeerReviews.size);
+            logger_1.default.info(`创建结果: 成功，globalPeerReviews总数量: ${globalPeerReviews.size}`);
             return record;
         }
         const id = `peer-${data.reviewerId}-${data.revieweeId}-${data.month}`;
@@ -120,13 +124,13 @@ class PeerReviewModel {
         if (database_1.USE_MEMORY_DB) {
             const store = database_1.memoryStore;
             const allReviews = Array.from(store.peerReviews.values());
-            console.log('查询reviewerId:', reviewerId, 'month:', month);
-            console.log('allReviews数量:', allReviews.length);
+            logger_1.default.info(`查询reviewerId: ${reviewerId} ${'month:'} ${month}`);
+            logger_1.default.info(`allReviews数量: ${allReviews.length}`);
             const filtered = allReviews.filter(r => r.reviewerId === reviewerId && r.month === month);
-            console.log('过滤后数量:', filtered.length);
+            logger_1.default.info(`过滤后数量: ${filtered.length}`);
             // 同时从globalPeerReviews查询
             const globalReviews = Array.from(globalPeerReviews.values()).filter(r => r.reviewerId === reviewerId && r.month === month);
-            console.log('globalPeerReviews数量:', globalReviews.length);
+            logger_1.default.info(`globalPeerReviews数量: ${globalReviews.length}`);
             return filtered.length > 0 ? filtered : globalReviews;
         }
         const sql = `
@@ -303,16 +307,16 @@ class PeerReviewModel {
     }
     // 随机分配360度评价任务
     static async allocatePeerReviews(department, month) {
-        console.log('分配360度评价任务 - 部门:', department, '月份:', month);
+        logger_1.default.info(`分配360度评价任务 - 部门: ${department} ${'月份:'} ${month}`);
         // 获取部门所有员工
         const allEmployees = await employee_model_1.EmployeeModel.findByDepartment(department);
-        console.log('找到的员工数量:', allEmployees.length);
-        console.log('员工列表:', allEmployees.map(e => ({ id: e.id, name: e.name, subDepartment: e.subDepartment, role: e.role })));
+        logger_1.default.info(`找到的员工数量: ${allEmployees.length}`);
+        logger_1.default.info(`员工列表: ${allEmployees.map(e => ({ id: e.id, name: e.name, subDepartment: e.subDepartment, role: e.role }))}`);
         // 只分配员工角色，不包括经理
         const employees = allEmployees.filter(e => e.role === 'employee');
-        console.log('筛选后的员工数量:', employees.length);
+        logger_1.default.info(`筛选后的员工数量: ${employees.length}`);
         if (employees.length < 2) {
-            console.log('员工数量不足2人，跳过分配');
+            logger_1.default.info('员工数量不足2人，跳过分配');
             return []; // 至少需要2人才能进行360度评价
         }
         // 为每个员工分配2个评价人
@@ -366,14 +370,14 @@ class PeerReviewModel {
                             month,
                             createdAt: new Date()
                         };
-                        console.log('创建评价记录:', record.id, '评价人:', reviewer.id, '被评价人:', employee.id);
+                        logger_1.default.info(`创建评价记录: ${record.id} ${'评价人:'} ${reviewer.id} ${'被评价人:'} ${employee.id}`);
                         await this.create(record);
                         allocations.push(record);
                     }
                 }
             }
         }
-        console.log('分配完成，共分配:', allocations.length);
+        logger_1.default.info(`分配完成，共分配: ${allocations.length}`);
         return allocations;
     }
     // 检查是否已经存在分配

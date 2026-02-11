@@ -32,6 +32,9 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.exportController = void 0;
 const employee_model_1 = require("../models/employee.model");
@@ -40,6 +43,7 @@ const errorHandler_1 = require("../middleware/errorHandler");
 const XLSX = __importStar(require("xlsx"));
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
+const logger_1 = __importDefault(require("../config/logger"));
 const formatDate = (dateStr) => {
     if (!dateStr)
         return '';
@@ -141,7 +145,7 @@ exports.exportController = {
                     XLSX.writeFile(wb, filePath);
                     res.download(filePath, fileName, (err) => {
                         if (err) {
-                            console.error('下载文件失败:', err);
+                            logger_1.default.error(`下载文件失败: ${err}`);
                         }
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);
@@ -161,7 +165,7 @@ exports.exportController = {
                 }
             }
             catch (error) {
-                console.error('导出绩效数据失败:', error);
+                logger_1.default.error(`导出绩效数据失败: ${error}`);
                 res.status(500).json({
                     success: false,
                     error: '导出失败: ' + error.message
@@ -255,7 +259,7 @@ exports.exportController = {
                     XLSX.writeFile(wb, filePath);
                     res.download(filePath, fileName, (err) => {
                         if (err) {
-                            console.error('下载文件失败:', err);
+                            logger_1.default.error(`下载文件失败: ${err}`);
                         }
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);
@@ -275,7 +279,7 @@ exports.exportController = {
                 }
             }
             catch (error) {
-                console.error('导出年度绩效失败:', error);
+                logger_1.default.error(`导出年度绩效失败: ${error}`);
                 res.status(500).json({
                     success: false,
                     error: '导出失败: ' + error.message
@@ -325,7 +329,7 @@ exports.exportController = {
                     XLSX.writeFile(wb, filePath);
                     res.download(filePath, fileName, (err) => {
                         if (err) {
-                            console.error('下载文件失败:', err);
+                            logger_1.default.error(`下载文件失败: ${err}`);
                         }
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);
@@ -344,7 +348,7 @@ exports.exportController = {
                 }
             }
             catch (error) {
-                console.error('导出员工信息失败:', error);
+                logger_1.default.error(`导出员工信息失败: ${error}`);
                 res.status(500).json({
                     success: false,
                     error: '导出失败: ' + error.message
