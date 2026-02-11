@@ -129,7 +129,7 @@ const initializeServer = async () => {
  await initializeData();
  logger.info('✅ Data initialization completed');
  } catch (error) {
- logger.error('❌ Initialization failed:', error);
+ logger.error(`❌ Initialization failed: ${error}`);
  }
 };
 

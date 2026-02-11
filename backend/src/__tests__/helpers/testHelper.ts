@@ -13,7 +13,7 @@ export const TestHelper = {
     if (response.status === 200) {
       return response.body.data.token;
     }
-    throw new Error('Login failed');
+    throw new Error(`Login failed: status=${response.status} body=${JSON.stringify(response.body)}`);
   },
 
   async getAuthToken(role: 'manager' | 'employee' | 'hr' = 'manager') {

@@ -215,7 +215,7 @@ export const initializeData = async (): Promise<void> => {
     isInitialized = true;
     logger.info(`✅ 成功初始化 ${initialEmployees.length} 名员工`);
   } catch (error) {
-    logger.error('❌ 初始化数据失败:', error);
+    logger.error(`❌ 初始化数据失败: ${error}`);
     throw error;
   }
 };

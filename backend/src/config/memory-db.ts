@@ -266,7 +266,7 @@ export const memoryDB = {
 
 // 初始化内存数据库
 export const memoryQuery = async (sql: string, params?: any[]): Promise<any[]> => {
-  logger.info('📦 Memory DB query:', sql, params);
+  logger.info(`📦 Memory DB query: ${sql} ${params}`);
   
   if (sql.includes('SELECT') && sql.includes('employees')) {
     if (sql.includes('WHERE id = ?')) {
@@ -286,7 +286,7 @@ export const memoryQuery = async (sql: string, params?: any[]): Promise<any[]> =
     return Array.from(memoryStore.performanceRecords.values());
   }
   
-  logger.info('⚠️ Unsupported memory database query:', sql);
+  logger.info(`⚠️ Unsupported memory database query: ${sql}`);
   return [];
 };
 

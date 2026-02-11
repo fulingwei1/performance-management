@@ -17,13 +17,13 @@ export class PeerReviewModel {
         ...data
       };
 
-      logger.info('创建记录到内存数据库:', id);
+      logger.info(`创建记录到内存数据库: ${id}`);
 
       // 同时存储到memoryStore和全局变量
       memoryStore.peerReviews.set(id, record);
       globalPeerReviews.set(id, record);
 
-      logger.info('创建结果: 成功，globalPeerReviews总数量:', globalPeerReviews.size);
+      logger.info(`创建结果: 成功，globalPeerReviews总数量: ${globalPeerReviews.size}`);
       return record;
     }
     
@@ -136,14 +136,14 @@ export class PeerReviewModel {
       const store = memoryStore as any;
       const allReviews = Array.from(store.peerReviews.values()) as PeerReview[];
 
-      logger.info('查询reviewerId:', reviewerId, 'month:', month);
-      logger.info('allReviews数量:', allReviews.length);
+      logger.info(`查询reviewerId: ${reviewerId} ${'month:'} ${month}`);
+      logger.info(`allReviews数量: ${allReviews.length}`);
       const filtered = allReviews.filter(r => r.reviewerId === reviewerId && r.month === month);
-      logger.info('过滤后数量:', filtered.length);
+      logger.info(`过滤后数量: ${filtered.length}`);
 
       // 同时从globalPeerReviews查询
       const globalReviews = Array.from(globalPeerReviews.values()).filter(r => r.reviewerId === reviewerId && r.month === month);
-      logger.info('globalPeerReviews数量:', globalReviews.length);
+      logger.info(`globalPeerReviews数量: ${globalReviews.length}`);
 
       return filtered.length > 0 ? filtered : globalReviews;
     }
@@ -340,16 +340,16 @@ export class PeerReviewModel {
   
   // 随机分配360度评价任务
   static async allocatePeerReviews(department: string, month: string): Promise<PeerReview[]> {
-    logger.info('分配360度评价任务 - 部门:', department, '月份:', month);
+    logger.info(`分配360度评价任务 - 部门: ${department} ${'月份:'} ${month}`);
 
     // 获取部门所有员工
     const allEmployees = await EmployeeModel.findByDepartment(department);
-    logger.info('找到的员工数量:', allEmployees.length);
-    logger.info('员工列表:', allEmployees.map(e => ({ id: e.id, name: e.name, subDepartment: e.subDepartment, role: e.role })));
+    logger.info(`找到的员工数量: ${allEmployees.length}`);
+    logger.info(`员工列表: ${allEmployees.map(e => ({ id: e.id, name: e.name, subDepartment: e.subDepartment, role: e.role }))}`);
 
     // 只分配员工角色，不包括经理
     const employees = allEmployees.filter(e => e.role === 'employee');
-    logger.info('筛选后的员工数量:', employees.length);
+    logger.info(`筛选后的员工数量: ${employees.length}`);
 
     if (employees.length < 2) {
       logger.info('员工数量不足2人，跳过分配');
@@ -422,7 +422,7 @@ export class PeerReviewModel {
               createdAt: new Date()
             };
 
-            logger.info('创建评价记录:', record.id, '评价人:', reviewer.id, '被评价人:', employee.id);
+            logger.info(`创建评价记录: ${record.id} ${'评价人:'} ${reviewer.id} ${'被评价人:'} ${employee.id}`);
             await this.create(record);
             allocations.push(record);
           }
@@ -430,7 +430,7 @@ export class PeerReviewModel {
       }
     }
 
-    logger.info('分配完成，共分配:', allocations.length);
+    logger.info(`分配完成，共分配: ${allocations.length}`);
     return allocations;
   }
   

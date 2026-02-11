@@ -94,7 +94,7 @@ const convertSql = (sql: string): string => {
 
 export const query = async (sql: string, params?: any[]): Promise<any[]> => {
   if (USE_MEMORY_DB) {
-    logger.info('📦 Using memory database for query:', sql);
+    logger.info(`📦 Using memory database for query: ${sql}`);
     const { memoryQuery } = require('./memory-db');
     return memoryQuery(sql, params);
   }
@@ -112,9 +112,9 @@ export const query = async (sql: string, params?: any[]): Promise<any[]> => {
     (result as any).affectedRows = rowCount;
     return result;
   } catch (error: any) {
-    logger.error('SQL Error:', error.message);
-    // logger.error('Original SQL:', sql); // Reduce log noise
-    // logger.error('Converted SQL:', convertedSql);
+    logger.error(`SQL Error: ${error.message}`);
+    // logger.error(`Original SQL: ${sql}`); // Reduce log noise
+    // logger.error(`Converted SQL: ${convertedSql}`);
     throw error;
   }
 };
@@ -143,7 +143,7 @@ export const transaction = async <T>(callback: (connection: any) => Promise<T>):
         (result as any).affectedRows = rowCount;
         return result;
       } catch (err) {
-        logger.error('Transaction Query Error:', err);
+        logger.error(`Transaction Query Error: ${err}`);
         throw err;
       }
     }

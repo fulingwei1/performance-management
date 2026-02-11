@@ -345,7 +345,7 @@ export const promotionRequestController = {
       XLSX.writeFile(wb, filePath);
       res.download(filePath, fileName, (err) => {
         if (err) {
-          logger.error('下载文件失败:', err);
+          logger.error(`下载文件失败: ${err}`);
         }
         if (fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);

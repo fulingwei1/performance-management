@@ -19,8 +19,8 @@ router.post('/submit', authenticate, peerReviewController.submitPeerReview);
 // 分配360度评价任务（HR或经理操作）
 router.post('/allocate', authenticate, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    logger.info('[DEBUG] 分配360度评价任务 - 用户信息:', req.user);
-    logger.info('[DEBUG] 请求体:', req.body);
+    logger.info(`[DEBUG] 分配360度评价任务 - 用户信息: ${req.user}`);
+    logger.info(`[DEBUG] 请求体: ${req.body}`);
     
     const user = req.user as any;
     
@@ -29,7 +29,7 @@ router.post('/allocate', authenticate, async (req: Request, res: Response, next:
       return res.status(401).json({ success: false, error: '未认证' });
     }
     
-    logger.info('[DEBUG] 用户角色:', user.role);
+    logger.info(`[DEBUG] 用户角色: ${user.role}`);
     
     if (user.role !== 'hr' && user.role !== 'manager') {
       logger.info('[DEBUG] 权限检查失败，角色不是hr或manager');
@@ -41,7 +41,7 @@ router.post('/allocate', authenticate, async (req: Request, res: Response, next:
     // 直接调用Model方法
     const { month, department } = req.body;
     const allocations = await PeerReviewModel.allocatePeerReviews(department, month);
-    logger.info('[DEBUG] 分配结果:', allocations);
+    logger.info(`[DEBUG] 分配结果: ${allocations}`);
     
     return res.json({
       success: true,
@@ -49,7 +49,7 @@ router.post('/allocate', authenticate, async (req: Request, res: Response, next:
       message: `已为部门${department}分配${allocations.length}个360度评价任务`
     });
   } catch (error: any) {
-    logger.error('[ERROR] 分配360度评价任务失败:', error);
+    logger.error(`[ERROR] 分配360度评价任务失败: ${error}`);
     return res.status(500).json({ success: false, error: error.message || '分配失败' });
   }
 });

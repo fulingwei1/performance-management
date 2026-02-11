@@ -122,7 +122,7 @@ export const exportController = {
 
           res.download(filePath, fileName, (err) => {
             if (err) {
-              logger.error('下载文件失败:', err);
+              logger.error(`下载文件失败: ${err}`);
             }
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
@@ -140,7 +140,7 @@ export const exportController = {
           });
         }
       } catch (error: any) {
-        logger.error('导出绩效数据失败:', error);
+        logger.error(`导出绩效数据失败: ${error}`);
         res.status(500).json({
           success: false,
           error: '导出失败: ' + error.message
@@ -249,7 +249,7 @@ export const exportController = {
 
           res.download(filePath, fileName, (err) => {
             if (err) {
-              logger.error('下载文件失败:', err);
+              logger.error(`下载文件失败: ${err}`);
             }
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
@@ -267,7 +267,7 @@ export const exportController = {
           });
         }
       } catch (error: any) {
-        logger.error('导出年度绩效失败:', error);
+        logger.error(`导出年度绩效失败: ${error}`);
         res.status(500).json({
           success: false,
           error: '导出失败: ' + error.message
@@ -327,7 +327,7 @@ export const exportController = {
 
           res.download(filePath, fileName, (err) => {
             if (err) {
-              logger.error('下载文件失败:', err);
+              logger.error(`下载文件失败: ${err}`);
             }
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
@@ -344,7 +344,7 @@ export const exportController = {
           });
         }
       } catch (error: any) {
-        logger.error('导出员工信息失败:', error);
+        logger.error(`导出员工信息失败: ${error}`);
         res.status(500).json({
           success: false,
           error: '导出失败: ' + error.message
