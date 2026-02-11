@@ -34,25 +34,27 @@ export default app;
 // 安全中间件
 app.use(helmet());
 
-// 全局限流：100次/分钟
-const globalLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: '请求过于频繁，请稍后再试' }
-});
-app.use(globalLimiter);
+// 全局限流：100次/分钟（测试环境禁用）
+if (process.env.NODE_ENV !== 'test') {
+  const globalLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: '请求过于频繁，请稍后再试' }
+  });
+  app.use(globalLimiter);
 
-// 登录接口限流：5次/分钟
-const loginLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: '登录尝试过于频繁，请1分钟后再试' }
-});
-app.use('/api/auth/login', loginLimiter);
+  // 登录接口限流：5次/分钟
+  const loginLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: '登录尝试过于频繁，请1分钟后再试' }
+  });
+  app.use('/api/auth/login', loginLimiter);
+}
 
 // CORS - 精确匹配项目域名
 app.use(cors({

@@ -3,7 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview } from '../types';
 import logger from './logger';
 
 // 内存数据存储
@@ -19,6 +19,13 @@ interface MemoryStore {
   holidays: Map<string, Holiday>;
   performanceMetrics: Map<string, PerformanceMetric>;
   metricTemplates: Map<string, MetricTemplate>;
+  strategicObjectives: Map<string, StrategicObjective>;
+  objectives: Map<string, Objective>;
+  keyResults: Map<string, KeyResult>;
+  kpiAssignments: Map<string, KpiAssignment>;
+  performanceContracts: Map<string, PerformanceContract>;
+  monthlyReports: Map<string, MonthlyReport>;
+  performanceInterviews: Map<string, PerformanceInterview>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -33,6 +40,13 @@ export const memoryStore: MemoryStore = {
   holidays: new Map(),
   performanceMetrics: new Map(),
   metricTemplates: new Map(),
+  strategicObjectives: new Map(),
+  objectives: new Map(),
+  keyResults: new Map(),
+  kpiAssignments: new Map(),
+  performanceContracts: new Map(),
+  monthlyReports: new Map(),
+  performanceInterviews: new Map(),
 };
 
 // 员工数据操作
@@ -291,6 +305,12 @@ export const memoryQuery = async (sql: string, params?: any[]): Promise<any[]> =
 };
 
 export const initMemoryDB = (): void => {
+  // 如果已有数据（被其他入口初始化过），不再清空
+  if (memoryStore.employees.size > 0) {
+    logger.info(`📦 内存数据库已有 ${memoryStore.employees.size} 条员工数据，跳过重新初始化`);
+    return;
+  }
+
   logger.info('📦 初始化内存数据库...');
   
   // 清空现有数据

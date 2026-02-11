@@ -170,29 +170,12 @@ export const performanceController = {
         });
       }
 
-      // 检查是否已经提交过该月份 - 如果存在则更新
+      // 检查是否已经提交过该月份 - 重复提交返回 400
       const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
       if (existing) {
-        // 如果已经被经理评分，则不允许修改
-        if (existing.status === 'scored' || existing.status === 'completed') {
-          return res.status(400).json({
-            success: false,
-            error: '该记录已被评分，无法修改'
-          });
-        }
-
-        // 更新已有记录
-        const updated = await PerformanceModel.update(existing.id, {
-          selfSummary,
-          nextMonthPlan,
-          status: 'submitted',
-          updatedAt: new Date()
-        });
-
-        return res.json({
-          success: true,
-          data: updated,
-          message: '工作总结更新成功'
+        return res.status(400).json({
+          success: false,
+          error: '该月份已提交过工作总结，不可重复提交'
         });
       }
 
