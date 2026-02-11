@@ -15,6 +15,7 @@ import { useHRStore } from '@/stores/hrStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { scoreToLevel } from '@/lib/calculateScore';
 import { cn } from '@/lib/utils';
+import { resolveGroupType } from '@/lib/config';
 import { format } from 'date-fns';
 
 export function DataManagement() {
@@ -370,13 +371,17 @@ export function DataManagement() {
                                 <TableCell>{record.subDepartment}</TableCell>
                                 <TableCell>{record.employeeLevel}</TableCell>
                                 <TableCell>
-                                  <Badge className={cn(
-                                    record.groupType === 'high' 
-                                      ? "bg-purple-100 text-purple-700" 
-                                      : "bg-green-100 text-green-700"
-                                  )}>
-                                    {record.groupType === 'high' ? '高分组' : '低分组'}
-                                  </Badge>
+                                  {resolveGroupType(record.groupType, record.employeeLevel) ? (
+                                    <Badge className={cn(
+                                      resolveGroupType(record.groupType, record.employeeLevel) === 'high' 
+                                        ? "bg-purple-100 text-purple-700" 
+                                        : "bg-green-100 text-green-700"
+                                    )}>
+                                      {resolveGroupType(record.groupType, record.employeeLevel) === 'high' ? '高分组' : '低分组'}
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-gray-100 text-gray-500">未分组</Badge>
+                                  )}
                                 </TableCell>
                                 <TableCell>{record.month}</TableCell>
                                 <TableCell className="text-right">

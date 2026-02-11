@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star, TrendingUp } from 'lucide-react';
+import { Award, Star, Target, TrendingUp } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { useTaskStore } from '@/stores/taskStore';
@@ -9,6 +9,7 @@ import { StatsCard } from '@/components/stats/StatsCard';
 import { TaskList } from '@/components/tasks/TaskList';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { resolveGroupType } from '@/lib/config';
 
 export function EmployeeDashboard() {
   const { user } = useAuthStore();
@@ -37,6 +38,10 @@ export function EmployeeDashboard() {
   // 获取最新记录
   const latestRecord = records.length > 0
     ? [...records].sort((a, b) => b.month.localeCompare(a.month))[0]
+    : null;
+
+  const latestGroupType = latestRecord
+    ? resolveGroupType(latestRecord.groupType, latestRecord.employeeLevel)
     : null;
 
   const containerVariants = {
@@ -70,7 +75,7 @@ export function EmployeeDashboard() {
       </motion.div>
       
       {/* Stats */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard
           title="最新考核得分"
           value={latestRecord?.totalScore.toFixed(2) || '-'}
@@ -84,6 +89,24 @@ export function EmployeeDashboard() {
           subtitle="本月排名"
           icon={Star}
           color="purple"
+        />
+        <StatsCard
+          title="组内排名"
+          value={latestRecord?.groupRank || '-'}
+          subtitle={
+            latestGroupType
+              ? (latestGroupType === 'high' ? '高分组' : '低分组')
+              : '本月组内排名'
+          }
+          icon={Target}
+          color="blue"
+        />
+        <StatsCard
+          title="跨部门排名"
+          value={latestRecord?.crossDeptRank || '-'}
+          subtitle="本月排名"
+          icon={Award}
+          color="green"
         />
       </motion.div>
       

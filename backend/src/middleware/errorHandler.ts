@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import logger from '../config/logger';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -12,14 +13,14 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  console.error('Error:', err);
+  logger.error({ err }, 'Unhandled error');
   
   // 默认错误响应
   const statusCode = err.statusCode || 500;
   const message = err.message || '服务器内部错误';
   
-  // MySQL错误处理
-  if (err.code === 'ER_DUP_ENTRY') {
+  // PostgreSQL错误处理
+  if (err.code === '23505') {
     res.status(409).json({
       success: false,
       error: '数据已存在'
@@ -27,7 +28,7 @@ export const errorHandler = (
     return;
   }
   
-  if (err.code === 'ER_NO_REFERENCED_ROW' || err.code === 'ER_NO_REFERENCED_ROW_2') {
+  if (err.code === '23503') {
     res.status(400).json({
       success: false,
       error: '引用的数据不存在'
@@ -35,7 +36,7 @@ export const errorHandler = (
     return;
   }
   
-  if (err.code === 'ER_BAD_NULL_ERROR') {
+  if (err.code === '23502') {
     res.status(400).json({
       success: false,
       error: '必填字段不能为空'

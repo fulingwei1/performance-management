@@ -1,13 +1,18 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
- 
+
 // 首先加载环境变量，必须在其他导入之前
 dotenv.config();
- 
+
+import { validateEnv } from './config/env';
+validateEnv();
+
 import { testConnection, USE_MEMORY_DB } from './config/database';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
- 
+
 // 导入路由（auth.ts会检查JWT_SECRET）
 import authRoutes from './routes/auth.routes';
 import employeeRoutes from './routes/employee.routes';
@@ -18,51 +23,82 @@ import metricLibraryRoutes from './routes/metricLibrary.routes';
 import peerReviewRoutes from './routes/peerReview.routes';
 import settingsRoutes from './routes/settings.routes';
 import exportRoutes from './routes/export.routes';
+import promotionRequestRoutes from './routes/promotionRequest.routes';
+import quarterlySummaryRoutes from './routes/quarterlySummary.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
- 
-export default app;
- 
-// 中间件
-app.use(cors({
-  origin: (origin, callback) => {
-    // 允许没有 origin 的请求（比如同源请求或非浏览器请求）
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      process.env.FRONTEND_URL
-    ].filter(Boolean);
 
-    // 检查是否在允许列表里，或者是否是 vercel.app 域名
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
+export default app;
+
+// 安全中间件
+app.use(helmet());
+
+// 全局限流：100次/分钟
+const globalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '请求过于频繁，请稍后再试' }
+});
+app.use(globalLimiter);
+
+// 登录接口限流：5次/分钟
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '登录尝试过于频繁，请1分钟后再试' }
+});
+app.use('/api/auth/login', loginLimiter);
+
+// CORS - 精确匹配项目域名
+app.use(cors({
+ origin: (origin, callback) => {
+  if (!origin) return callback(null, true);
+
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'https://performance-management-api-three.vercel.app',
+    process.env.FRONTEND_URL
+  ].filter(Boolean) as string[];
+
+  if (allowedOrigins.includes(origin)) {
+    callback(null, true);
+  } else {
+    callback(new Error('Not allowed by CORS'));
+  }
+ },
+ credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
- 
+
 // 请求日志
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
+ logger.info(`[Request] ${new Date().toISOString()} - ${req.method} ${req.path}`);
+ next();
 });
- 
-// 健康检查
-app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    message: '服务器运行正常',
-    timestamp: new Date().toISOString()
-  });
-});
- 
+
+// 健康检查 - Support both /health and /api/health
+const healthHandler = (req: express.Request, res: express.Response) => {
+ logger.info('Health check called');
+ res.json({
+  success: true,
+  message: '服务器运行正常',
+ timestamp: new Date().toISOString(),
+ url: req.url,
+ env: process.env.NODE_ENV
+ });
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
+
 // API路由
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -73,69 +109,38 @@ app.use('/api/metrics', metricLibraryRoutes);
 app.use('/api/peer-reviews', peerReviewRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
+app.use('/api/promotion-requests', promotionRequestRoutes);
+app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
 
 // 404处理
 app.use(notFoundHandler);
- 
+
 // 导入数据初始化
 import { initializeData } from './config/init-data';
- 
+import logger from './config/logger';
+
 // 错误处理
 app.use(errorHandler);
- 
-// Vercel Serverless 环境下导出 app，否则启动服务器
-if (process.env.NODE_ENV === 'test') {
-  // 测试环境不启动服务器
-} else if (process.env.VERCEL) {
-  // Vercel Serverless 环境 - 需要初始化数据
-  const initializeServer = async () => {
-    try {
-      // 初始化数据库连接
-      const dbConnected = await testConnection();
-      if (!dbConnected) {
-        console.error('❌ Vercel 环境数据库连接失败');
-      } else {
-        // 初始化员工数据
-        await initializeData();
-      }
-      console.log('✅ Vercel Serverless 环境初始化完成');
-    } catch (error) {
-      console.error('❌ Vercel 环境初始化失败:', error);
-    }
-  };
-  
-  initializeServer();
-  
-  // Vercel 会自动处理路由，不需要 app.listen()
+
+// 初始化数据（所有环境都需要）
+const initializeServer = async () => {
+ try {
+ await testConnection();
+ await initializeData();
+ logger.info('✅ Data initialization completed');
+ } catch (error) {
+ logger.error('❌ Initialization failed:', error);
+ }
+};
+
+// 只有在非 Vercel 环境下（本地开发）才直接监听端口
+if (process.env.VERCEL !== '1') {
+ const PORT = process.env.PORT || 3000;
+ app.listen(PORT, async () => {
+  await initializeServer();
+ logger.info(`Server is running on port ${PORT}`);
+ logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+ });
 } else {
-  // 本地开发环境 - 启动服务器
-  const startServer = async () => {
-    // 测试数据库连接
-    const dbConnected = await testConnection();
-    
-    if (!dbConnected) {
-      if (!USE_MEMORY_DB) {
-        console.error('❌ MySQL 连接失败，请检查 DB_* 配置与 MySQL 服务后重试');
-        process.exit(1);
-      }
-      console.warn('⚠️ 使用内存数据库（仅测试/演示）');
-    }
-    
-    // 初始化员工数据
-    try {
-      await initializeData();
-    } catch (error) {
-      console.error('❌ 初始化数据失败:', error);
-    }
-    
-    app.listen(PORT, () => {
-      console.log(`\n🚀 服务器启动成功`);
-      console.log(`📍 地址: http://localhost:${PORT}`);
-      console.log(`📚 API文档: http://localhost:${PORT}/health`);
-      console.log('');
-    });
-  };
-  
-  startServer();
+ initializeServer();
 }
- 

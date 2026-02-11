@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { employeeApi } from '@/services/api';
+import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
 
 type FilterType = 'all' | 'pending' | 'completed';
 
@@ -62,7 +63,10 @@ export function TeamList() {
       status: record ? record.status : 'not_submitted',
       totalScore: record ? record.totalScore : 0,
       selfSummary: record ? record.selfSummary : '',
-      month: currentMonth
+      month: currentMonth,
+      groupType: resolveGroupType(record?.groupType, sub.level),
+      groupRank: record?.groupRank || null,
+      crossDeptRank: record?.crossDeptRank || null
     };
   });
   
@@ -138,6 +142,13 @@ export function TeamList() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
+  };
+
+  const getGroupBadge = (groupType: 'high' | 'low' | null) => {
+    if (!groupType) return <Badge variant="outline" className="bg-gray-50 text-gray-400">未分组</Badge>;
+    return groupType === 'high'
+      ? <Badge className="bg-purple-100 text-purple-700">高分组</Badge>
+      : <Badge className="bg-green-100 text-green-700">低分组</Badge>;
   };
   
   const containerVariants = {
@@ -309,10 +320,32 @@ export function TeamList() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-gray-400">级别：</span>
-                          <span className="capitalize">{employee.level}</span>
+                          {employee.level ? (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                              style={{
+                                backgroundColor: `${getLevelColor(employee.level)}20`,
+                                color: getLevelColor(employee.level)
+                              }}
+                            >
+                              {getLevelLabel(employee.level)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
                           <span className="text-gray-300">•</span>
                           <span className="text-gray-400">月度：</span>
                           <span>{employee.month}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400">分组：</span>
+                          {getGroupBadge(employee.groupType)}
+                          <span className="text-gray-300">•</span>
+                          <span className="text-gray-400">组内排名：</span>
+                          <span>{employee.groupRank || '—'}</span>
+                          <span className="text-gray-300">•</span>
+                          <span className="text-gray-400">跨部门排名：</span>
+                          <span>{employee.crossDeptRank || '—'}</span>
                         </div>
                       </div>
                       

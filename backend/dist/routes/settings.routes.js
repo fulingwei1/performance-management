@@ -6,5 +6,7 @@ const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 router.get('/assessment-scope', auth_1.authenticate, settings_controller_1.settingsController.getAssessmentScope);
 router.put('/assessment-scope', auth_1.authenticate, (0, auth_1.requireRole)('hr'), settings_controller_1.settingsController.updateAssessmentScope);
+router.get('/promotion-approval-chain', auth_1.authenticate, settings_controller_1.settingsController.getPromotionApprovalChain);
+router.put('/promotion-approval-chain', auth_1.authenticate, (0, auth_1.requireRole)('hr'), settings_controller_1.settingsController.updatePromotionApprovalChain);
 exports.default = router;
 //# sourceMappingURL=settings.routes.js.map

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
 
 // 月份选项
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
@@ -86,7 +87,10 @@ export function ManagerDashboard() {
         level: emp.level,
         record: record || null,
         totalScore: record?.totalScore || 0,
-        status: record?.status || 'not_submitted'
+        status: record?.status || 'not_submitted',
+        groupType: resolveGroupType(record?.groupType, emp.level),
+        groupRank: record?.groupRank || null,
+        crossDeptRank: record?.crossDeptRank || null
       };
     });
   }, [subordinates, currentMonthRecords]);
@@ -216,6 +220,10 @@ export function ManagerDashboard() {
                   <TableRow>
                     <TableHead className="w-24">姓名</TableHead>
                     <TableHead>部门</TableHead>
+                    <TableHead className="text-center w-24">级别</TableHead>
+                    <TableHead className="text-center w-20">分组</TableHead>
+                    <TableHead className="text-center w-24">组内排名</TableHead>
+                    <TableHead className="text-center w-24">跨部门排名</TableHead>
                     <TableHead className="text-center w-24">考评状态</TableHead>
                     <TableHead className="text-right w-24">考评得分</TableHead>
                     <TableHead className="text-center w-20">操作</TableHead>
@@ -237,6 +245,44 @@ export function ManagerDashboard() {
                         {emp.subDepartment || emp.department}
                       </TableCell>
                       <TableCell className="text-center">
+                        {emp.level ? (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                            style={{
+                              backgroundColor: `${getLevelColor(emp.level)}20`,
+                              color: getLevelColor(emp.level)
+                            }}
+                          >
+                            {getLevelLabel(emp.level)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {emp.groupType ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            emp.groupType === 'high'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {emp.groupType === 'high' ? '高分组' : '低分组'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-sm text-gray-700">
+                          {emp.groupRank || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-sm text-gray-700">
+                          {emp.crossDeptRank || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
                         {emp.status === 'completed' || emp.status === 'scored' ? (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
                             已评分
@@ -247,7 +293,7 @@ export function ManagerDashboard() {
                           </span>
                         ) : (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
-                            未提交
+                            未提交总结
                           </span>
                         )}
                       </TableCell>

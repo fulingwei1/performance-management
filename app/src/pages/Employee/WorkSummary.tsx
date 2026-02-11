@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Sparkles, Lightbulb } from 'lucide-react';
+import { Save, Send, Calendar, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { Button } from '@/components/ui/button';
@@ -11,11 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { generateAISuggestion } from '@/services/aiService';
 
 export function WorkSummary() {
   const navigate = useNavigate();
@@ -28,15 +26,7 @@ export function WorkSummary() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, _setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
-  const [aiPreview, setAiPreview] = useState<any>(null);
-  const [showAIPreview, setShowAIPreview] = useState(false);
   
-  const handleGenerateAIPreview = () => {
-    if (selfSummary.length < 20) return;
-    const suggestion = generateAISuggestion(selfSummary, nextMonthPlan);
-    setAiPreview(suggestion);
-    setShowAIPreview(true);
-  };
   
   const handleSave = async (isDraft: boolean) => {
     if (!user) return;
@@ -92,7 +82,7 @@ export function WorkSummary() {
       {/* Header */}
       <motion.div variants={itemVariants} className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">月度工作总结</h1>
-        <p className="text-gray-500 mt-1">填写本月工作总结及下月计划，AI将为您生成评分建议</p>
+        <p className="text-gray-500 mt-1">填写本月工作总结及下月计划</p>
       </motion.div>
       
       {/* Success Alert */}
@@ -106,7 +96,7 @@ export function WorkSummary() {
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle className="w-4 h-4 text-green-600" />
             <AlertDescription className="text-green-700">
-              工作总结提交成功！经理将收到AI辅助评分建议
+              工作总结提交成功！经理将进行评分
             </AlertDescription>
           </Alert>
         </motion.div>
@@ -139,55 +129,6 @@ export function WorkSummary() {
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
-        </motion.div>
-      )}
-      
-      {/* AI Preview */}
-      {showAIPreview && aiPreview && (
-        <motion.div 
-          variants={itemVariants}
-          initial="hidden"
-          animate="visible"
-          className="mb-6"
-        >
-          <Card className="bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                AI评分预测
-                <Badge className="bg-purple-100 text-purple-700">预览</Badge>
-              </CardTitle>
-              <CardDescription>
-                基于您填写的内容，AI预测经理可能给出的评分建议
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">任务完成</p>
-                  <p className="text-xl font-bold text-purple-600">{aiPreview.suggestedScores.taskCompletion.toFixed(1)}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">主动性</p>
-                  <p className="text-xl font-bold text-purple-600">{aiPreview.suggestedScores.initiative.toFixed(1)}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">项目反馈</p>
-                  <p className="text-xl font-bold text-purple-600">{aiPreview.suggestedScores.projectFeedback.toFixed(1)}</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">质量改进</p>
-                  <p className="text-xl font-bold text-purple-600">{aiPreview.suggestedScores.qualityImprovement.toFixed(1)}</p>
-                </div>
-              </div>
-              <div className="bg-white/70 rounded-lg p-3">
-                <p className="text-sm text-gray-600">
-                  <Lightbulb className="w-4 h-4 inline mr-1 text-yellow-500" />
-                  {aiPreview.summary}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </motion.div>
       )}
       
@@ -244,24 +185,12 @@ export function WorkSummary() {
                 value={selfSummary}
                 onChange={(e) => {
                   setSelfSummary(e.target.value);
-                  if (showAIPreview) setShowAIPreview(false);
                 }}
                 className="min-h-[150px] resize-none"
               />
               <p className="text-xs text-gray-400">
                 建议包含：主要完成工作、项目经验、困难与解决方案
               </p>
-              {selfSummary.length >= 20 && !showAIPreview && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleGenerateAIPreview}
-                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                >
-                  <Sparkles className="w-4 h-4 mr-1" />
-                  生成AI评分预测
-                </Button>
-              )}
             </div>
             
             {/* Next Month Plan */}
@@ -276,7 +205,6 @@ export function WorkSummary() {
                 value={nextMonthPlan}
                 onChange={(e) => {
                   setNextMonthPlan(e.target.value);
-                  if (showAIPreview) setShowAIPreview(false);
                 }}
                 className="min-h-[150px] resize-none"
               />
@@ -325,7 +253,6 @@ export function WorkSummary() {
             <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
               <li>工作总结应客观真实，突出重点和亮点</li>
               <li>计划应具体可行，明确目标和措施</li>
-              <li>提交后AI将自动生成评分建议供经理参考</li>
               <li>可在提交前保存草稿，随时修改</li>
             </ul>
           </CardContent>

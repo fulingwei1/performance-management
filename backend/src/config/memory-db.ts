@@ -3,13 +3,16 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary } from '../types';
+import logger from './logger';
 
 // 内存数据存储
 interface MemoryStore {
   employees: Map<string, Employee>;
   performanceRecords: Map<string, PerformanceRecord>;
   peerReviews: Map<string, PeerReview>;
+  quarterlySummaries: Map<string, QuarterlySummary>;
+  promotionRequests: Map<string, PromotionRequest>;
   departments: Map<string, Department>;
   positions: Map<string, Position>;
   assessmentCycles: Map<string, AssessmentCycle>;
@@ -22,6 +25,8 @@ export const memoryStore: MemoryStore = {
   employees: new Map(),
   performanceRecords: new Map(),
   peerReviews: new Map(),
+  quarterlySummaries: new Map(),
+  promotionRequests: new Map(),
   departments: new Map(),
   positions: new Map(),
   assessmentCycles: new Map(),
@@ -164,21 +169,136 @@ const peerReviewOperations = {
   },
 };
 
+// 经理季度总结数据操作
+const quarterlySummaryOperations = {
+  findById: (id: string): QuarterlySummary | undefined => {
+    return memoryStore.quarterlySummaries.get(id);
+  },
+
+  findByManagerId: (managerId: string): QuarterlySummary[] => {
+    return Array.from(memoryStore.quarterlySummaries.values())
+      .filter(summary => summary.managerId === managerId)
+      .sort((a, b) => {
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+  },
+
+  findAll: (): QuarterlySummary[] => {
+    return Array.from(memoryStore.quarterlySummaries.values());
+  },
+
+  create: (summary: QuarterlySummary): QuarterlySummary => {
+    memoryStore.quarterlySummaries.set(summary.id, summary);
+    return summary;
+  },
+
+  update: (id: string, updates: Partial<QuarterlySummary>): QuarterlySummary | undefined => {
+    const existing = memoryStore.quarterlySummaries.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...updates, updatedAt: new Date() };
+    memoryStore.quarterlySummaries.set(id, updated as QuarterlySummary);
+    return updated as QuarterlySummary;
+  },
+
+  delete: (id: string): boolean => {
+    return memoryStore.quarterlySummaries.delete(id);
+  },
+};
+
+// 晋升/加薪申请数据操作
+const promotionRequestOperations = {
+  findById: (id: string): PromotionRequest | undefined => {
+    return memoryStore.promotionRequests.get(id);
+  },
+
+  findByEmployeeId: (employeeId: string): PromotionRequest[] => {
+    return Array.from(memoryStore.promotionRequests.values())
+      .filter(req => req.employeeId === employeeId)
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+  },
+
+  findByRequesterId: (requesterId: string): PromotionRequest[] => {
+    return Array.from(memoryStore.promotionRequests.values())
+      .filter(req => req.requesterId === requesterId)
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+  },
+
+  findAll: (): PromotionRequest[] => {
+    return Array.from(memoryStore.promotionRequests.values());
+  },
+
+  create: (request: PromotionRequest): PromotionRequest => {
+    memoryStore.promotionRequests.set(request.id, request);
+    return request;
+  },
+
+  update: (id: string, updates: Partial<PromotionRequest>): PromotionRequest | undefined => {
+    const existing = memoryStore.promotionRequests.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...updates, updatedAt: new Date() };
+    memoryStore.promotionRequests.set(id, updated as PromotionRequest);
+    return updated as PromotionRequest;
+  },
+
+  delete: (id: string): boolean => {
+    return memoryStore.promotionRequests.delete(id);
+  },
+};
+
 // 内存数据库接口
 export const memoryDB = {
   employees: employeeOperations,
   performanceRecords: performanceRecordOperations,
   peerReviews: peerReviewOperations,
+  quarterlySummaries: quarterlySummaryOperations,
+  promotionRequests: promotionRequestOperations,
 };
 
 // 初始化内存数据库
+export const memoryQuery = async (sql: string, params?: any[]): Promise<any[]> => {
+  logger.info('📦 Memory DB query:', sql, params);
+  
+  if (sql.includes('SELECT') && sql.includes('employees')) {
+    if (sql.includes('WHERE id = ?')) {
+      const employee = memoryStore.employees.get(params?.[0]);
+      return employee ? [employee] : [];
+    }
+    if (sql.includes('WHERE role = ?')) {
+      return Array.from(memoryStore.employees.values()).filter(emp => emp.role === params?.[0]);
+    }
+    if (sql.includes('WHERE department = ?')) {
+      return Array.from(memoryStore.employees.values()).filter(emp => emp.department === params?.[0]);
+    }
+    return Array.from(memoryStore.employees.values());
+  }
+  
+  if (sql.includes('SELECT') && sql.includes('performance')) {
+    return Array.from(memoryStore.performanceRecords.values());
+  }
+  
+  logger.info('⚠️ Unsupported memory database query:', sql);
+  return [];
+};
+
 export const initMemoryDB = (): void => {
-  console.log('📦 初始化内存数据库...');
+  logger.info('📦 初始化内存数据库...');
   
   // 清空现有数据
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
   memoryStore.peerReviews.clear();
+  memoryStore.quarterlySummaries.clear();
+  memoryStore.promotionRequests.clear();
   memoryStore.departments.clear();
   memoryStore.positions.clear();
   memoryStore.assessmentCycles.clear();
@@ -186,7 +306,7 @@ export const initMemoryDB = (): void => {
   memoryStore.performanceMetrics.clear();
   memoryStore.metricTemplates.clear();
   
-  console.log('✅ 内存数据库已初始化');
+  logger.info('✅ 内存数据库已初始化');
 };
 
 // 清空所有数据（用于测试）
@@ -194,6 +314,8 @@ export const clearMemoryDB = (): void => {
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
   memoryStore.peerReviews.clear();
+  memoryStore.quarterlySummaries.clear();
+  memoryStore.promotionRequests.clear();
   memoryStore.departments.clear();
   memoryStore.positions.clear();
   memoryStore.assessmentCycles.clear();
@@ -207,6 +329,8 @@ export const getMemoryDBStats = (): {
   employees: number; 
   performanceRecords: number; 
   peerReviews: number;
+  quarterlySummaries: number;
+  promotionRequests: number;
   departments: number;
   positions: number;
   assessmentCycles: number;
@@ -218,6 +342,8 @@ export const getMemoryDBStats = (): {
     employees: memoryStore.employees.size,
     performanceRecords: memoryStore.performanceRecords.size,
     peerReviews: memoryStore.peerReviews.size,
+    quarterlySummaries: memoryStore.quarterlySummaries.size,
+    promotionRequests: memoryStore.promotionRequests.size,
     departments: memoryStore.departments.size,
     positions: memoryStore.positions.size,
     assessmentCycles: memoryStore.assessmentCycles.size,

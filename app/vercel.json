@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://performance-management-api.vercel.app/api/$1"
+      "destination": "https://performance-management-api-three.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",

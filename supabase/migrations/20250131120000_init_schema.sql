@@ -40,6 +40,63 @@ CREATE TABLE IF NOT EXISTS performance_records (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Quarterly Summaries
+CREATE TABLE IF NOT EXISTS quarterly_summaries (
+    id TEXT PRIMARY KEY,
+    manager_id TEXT REFERENCES employees(id),
+    manager_name TEXT,
+    quarter TEXT,
+    summary TEXT,
+    next_quarter_plan TEXT,
+    status TEXT CHECK (status IN ('draft', 'submitted')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_quarterly_summaries_manager_quarter ON quarterly_summaries(manager_id, quarter);
+
+-- Promotion Requests
+CREATE TABLE IF NOT EXISTS promotion_requests (
+    id TEXT PRIMARY KEY,
+    employee_id TEXT REFERENCES employees(id),
+    requester_id TEXT REFERENCES employees(id),
+    requester_role TEXT CHECK (requester_role IN ('employee', 'manager')),
+    target_level TEXT CHECK (target_level IN ('senior', 'intermediate', 'junior', 'assistant')),
+    target_position TEXT,
+    raise_percentage DECIMAL(5,2),
+    performance_summary TEXT,
+    skill_summary TEXT,
+    competency_summary TEXT,
+    work_summary TEXT,
+    status TEXT CHECK (status IN ('draft', 'submitted', 'manager_approved', 'gm_approved', 'hr_approved', 'rejected')),
+    manager_comment TEXT,
+    manager_approver_id TEXT REFERENCES employees(id),
+    manager_approved_at TIMESTAMP WITH TIME ZONE,
+    gm_comment TEXT,
+    gm_approver_id TEXT REFERENCES employees(id),
+    gm_approved_at TIMESTAMP WITH TIME ZONE,
+    hr_comment TEXT,
+    hr_approver_id TEXT REFERENCES employees(id),
+    hr_approved_at TIMESTAMP WITH TIME ZONE,
+    rejected_reason TEXT,
+    rejected_by_role TEXT CHECK (rejected_by_role IN ('manager', 'gm', 'hr')),
+    rejected_by_id TEXT REFERENCES employees(id),
+    rejected_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_promotion_requests_employee_id ON promotion_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_requests_requester_id ON promotion_requests(requester_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_requests_status ON promotion_requests(status);
+
+-- Promotion Approval Settings
+CREATE TABLE IF NOT EXISTS promotion_approval_settings (
+    id TEXT PRIMARY KEY,
+    chain TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Peer Reviews
 CREATE TABLE IF NOT EXISTS peer_reviews (
     id TEXT PRIMARY KEY,

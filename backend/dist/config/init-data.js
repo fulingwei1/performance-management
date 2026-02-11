@@ -188,13 +188,10 @@ const initializeData = async () => {
     try {
         console.log('📝 开始初始化员工数据...');
         if (database_1.USE_MEMORY_DB) {
-            // 内存数据库模式：使用预计算的哈希值，避免 Vercel 函数超时
-            // 密码全是 '123456'，哈希值为 $2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
-            // 这里的哈希是 bcryptjs 生成的
-            const DEFAULT_PASSWORD_HASH = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+            // 内存数据库模式：使用明文密码，在验证时动态哈希
             const hashedEmployees = initialEmployees.map(emp => ({
                 ...emp,
-                password: DEFAULT_PASSWORD_HASH
+                password: '123456' // 明文密码
             }));
             for (const emp of hashedEmployees) {
                 database_1.memoryDB.employees.create(emp);

@@ -22,12 +22,12 @@ fi
 # 部署后端
 echo "🔧 部署后端服务..."
 cd backend
-vercel --prod --name performance-management-api
+vercel --prod --name performance-management-api --yes
 
 # 部署前端
 echo "🎨 部署前端应用..."
 cd ../app
-vercel --prod --name performance-management
+vercel --prod --name performance-management --yes
 
 echo "✅ 部署完成！"
 echo ""

@@ -4,7 +4,9 @@ import {
   LayoutDashboard,
   BarChart3,
   LogOut,
-  Award
+  Award,
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -16,22 +18,28 @@ interface SidebarProps {
 const employeeNavItems = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/employee/scores', label: '我的绩效', icon: BarChart3 },
+  { path: '/employee/promotion', label: '晋升加薪', icon: TrendingUp },
 ];
 
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },
+  { path: '/manager/promotion', label: '晋升加薪', icon: TrendingUp },
 ];
 
 const gmNavItems = [
   { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/gm/scoring', label: '总经理评分', icon: Award },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/gm/data-export', label: '数据导出', icon: LogOut },
+  { path: '/gm/promotion-approvals', label: '晋升审批', icon: TrendingUp },
 ];
 
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/hr/promotion-approvals', label: '晋升审批', icon: TrendingUp },
 ];
 
 export function Sidebar({ role }: SidebarProps) {

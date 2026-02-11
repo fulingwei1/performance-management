@@ -179,14 +179,27 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
     }
   },
 
-  submitPeerReview: async (_data: Partial<PerformanceRecord>) => {
+  submitPeerReview: async (data: Partial<PerformanceRecord>) => {
     set({ loading: true, error: null });
-    
-    // 模拟提交成功
-    await new Promise(resolve => setTimeout(resolve, 600));
-    
-    set({ loading: false });
-    return true;
+    try {
+      const response = await performanceApi.peerReview.submit({
+        reviewId: data.id as string,
+        score: data.score as number,
+        professionalism: (data as any).professionalism ?? 0,
+        communication: (data as any).communication ?? 0,
+        comment: (data as any).comment ?? '',
+      });
+      if (response.success) {
+        set({ loading: false });
+        return true;
+      } else {
+        set({ error: response.error || '互评提交失败', loading: false });
+        return false;
+      }
+    } catch (error: any) {
+      set({ error: error.message || '网络错误', loading: false });
+      return false;
+    }
   },
 
   setFilters: (filters: Filters) => {

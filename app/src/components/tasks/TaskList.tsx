@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { 
   FileText, 
-  Star, 
   CheckCircle2, 
   Clock, 
   AlertCircle,
@@ -28,17 +27,15 @@ const taskTypeConfig = {
     color: 'blue',
     link: '/employee/summary'
   },
-  peer_review: {
-    icon: Star,
-    color: 'purple',
-    link: '/employee/peer-review'
-  },
   manager_score: {
     icon: User,
     color: 'orange',
     link: '/manager/scoring'
   }
 };
+
+const isSupportedTask = (task: Task): task is Task & { type: keyof typeof taskTypeConfig } =>
+  task.type in taskTypeConfig;
 
 const priorityConfig = {
   high: { label: '高', color: 'text-red-600 bg-red-50' },
@@ -47,9 +44,10 @@ const priorityConfig = {
 };
 
 export function TaskList({ tasks, title = '本月任务', showProgress = true }: TaskListProps) {
-  const pendingTasks = tasks.filter(t => t.status !== 'completed');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-  const progress = tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0;
+  const supportedTasks = tasks.filter(isSupportedTask);
+  const pendingTasks = supportedTasks.filter(t => t.status !== 'completed');
+  const completedTasks = supportedTasks.filter(t => t.status === 'completed');
+  const progress = supportedTasks.length > 0 ? (completedTasks.length / supportedTasks.length) * 100 : 0;
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -71,7 +69,7 @@ export function TaskList({ tasks, title = '本月任务', showProgress = true }:
           </CardTitle>
           {showProgress && (
             <Badge variant="outline" className="font-medium">
-              {completedTasks.length}/{tasks.length} 完成
+              {completedTasks.length}/{supportedTasks.length} 完成
             </Badge>
           )}
         </div>
@@ -110,7 +108,7 @@ export function TaskList({ tasks, title = '本月任务', showProgress = true }:
             </div>
           )}
           
-          {tasks.length === 0 && (
+          {supportedTasks.length === 0 && (
             <div className="text-center py-8">
               <CheckCircle2 className="w-12 h-12 text-green-300 mx-auto mb-3" />
               <p className="text-gray-500">本月暂无任务</p>
@@ -128,7 +126,8 @@ interface TaskItemProps {
 }
 
 function TaskItem({ task, isCompleted = false }: TaskItemProps) {
-  const config = taskTypeConfig[task.type];
+  const config = taskTypeConfig[task.type as keyof typeof taskTypeConfig];
+  if (!config) return null;
   const Icon = config.icon;
   const priority = priorityConfig[task.priority];
   

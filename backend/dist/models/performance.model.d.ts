@@ -6,6 +6,7 @@ export declare class PerformanceModel {
     static findByMonth(month: string): Promise<PerformanceRecord[]>;
     static findAll(): Promise<PerformanceRecord[]>;
     static findByEmployeeIdAndMonth(employeeId: string, month: string): Promise<PerformanceRecord | null>;
+    static update(id: string, data: Partial<PerformanceRecord>): Promise<PerformanceRecord | null>;
     static saveSummary(data: {
         id: string;
         employeeId: string;

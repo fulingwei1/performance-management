@@ -1,0 +1,37 @@
+
+> my-app@0.0.0 dev
+> vite
+
+
+  VITE v7.3.0  ready in 1745 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/pages/Login.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/GM/Scoring.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/HR/DataManagement.tsx, /src/pages/HR/Dashboard.tsx
+10:25:57 PM [vite] (client) hmr update /src/index.css, /src/components/layout/Sidebar.tsx
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/pages/GM/Dashboard.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/pages/Login.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css, /src/components/layout/Sidebar.tsx
+10:25:57 PM [vite] (client) hmr update /src/index.css, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/GM/Scoring.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/HR/DataManagement.tsx, /src/pages/HR/Dashboard.tsx
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/App.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/pages/GM/Dashboard.tsx, /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/index.css
+10:25:57 PM [vite] (client) hmr update /src/pages/Manager/Dashboard.tsx, /src/index.css
+10:35:57 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/Login.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Analytics.tsx, /src/pages/GM/Analytics.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/Manager/Scoring.tsx, /src/pages/HR/Dashboard.tsx, /src/components/promotion/PromotionApprovalsPage.tsx, /src/components/promotion/PromotionRequestPage.tsx, /src/components/layout/Sidebar.tsx, /src/pages/Manager/EmployeePerformanceHistory.tsx, /src/pages/GM/GMDataExport.tsx, /src/pages/GM/Scoring.tsx, /src/pages/HR/DataManagement.tsx, /src/index.css
+10:36:02 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/Login.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Analytics.tsx, /src/pages/GM/Analytics.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/Manager/Scoring.tsx, /src/pages/HR/Dashboard.tsx, /src/components/promotion/PromotionApprovalsPage.tsx, /src/components/promotion/PromotionRequestPage.tsx, /src/components/layout/Sidebar.tsx, /src/pages/Manager/EmployeePerformanceHistory.tsx, /src/pages/GM/GMDataExport.tsx, /src/pages/GM/Scoring.tsx, /src/pages/HR/DataManagement.tsx, /src/index.css
+10:36:12 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/Login.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Analytics.tsx, /src/pages/GM/Analytics.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/Manager/Scoring.tsx, /src/pages/HR/Dashboard.tsx, /src/components/promotion/PromotionApprovalsPage.tsx, /src/components/promotion/PromotionRequestPage.tsx, /src/components/layout/Sidebar.tsx, /src/pages/Manager/EmployeePerformanceHistory.tsx, /src/pages/GM/GMDataExport.tsx, /src/pages/GM/Scoring.tsx, /src/pages/HR/DataManagement.tsx, /src/index.css
+10:36:17 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/Login.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Analytics.tsx, /src/pages/GM/Analytics.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/Manager/Scoring.tsx, /src/pages/HR/Dashboard.tsx, /src/components/promotion/PromotionApprovalsPage.tsx, /src/components/promotion/PromotionRequestPage.tsx, /src/components/layout/Sidebar.tsx, /src/pages/Manager/EmployeePerformanceHistory.tsx, /src/pages/GM/GMDataExport.tsx, /src/pages/GM/Scoring.tsx, /src/pages/HR/DataManagement.tsx, /src/index.css
+10:36:21 PM [vite] (client) hmr update /src/App.tsx, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/QuarterlySummary.tsx, /src/pages/Login.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Analytics.tsx, /src/pages/GM/Analytics.tsx, /src/pages/GM/Dashboard.tsx, /src/pages/Manager/Scoring.tsx, /src/pages/HR/Dashboard.tsx, /src/components/promotion/PromotionApprovalsPage.tsx, /src/components/promotion/PromotionRequestPage.tsx, /src/components/layout/Sidebar.tsx, /src/pages/Manager/EmployeePerformanceHistory.tsx, /src/pages/GM/GMDataExport.tsx, /src/pages/GM/Scoring.tsx, /src/pages/HR/DataManagement.tsx, /src/index.css
+10:36:42 PM [vite] (client) hmr update /src/index.css, /src/pages/Employee/Dashboard.tsx, /src/pages/Manager/Dashboard.tsx, /src/pages/Employee/MyScores.tsx, /src/pages/Manager/TeamList.tsx, /src/pages/Employee/WorkSummary.tsx, /src/pages/Manager/Scoring.tsx

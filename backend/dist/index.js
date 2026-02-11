@@ -20,6 +20,8 @@ const metricLibrary_routes_1 = __importDefault(require("./routes/metricLibrary.r
 const peerReview_routes_1 = __importDefault(require("./routes/peerReview.routes"));
 const settings_routes_1 = __importDefault(require("./routes/settings.routes"));
 const export_routes_1 = __importDefault(require("./routes/export.routes"));
+const promotionRequest_routes_1 = __importDefault(require("./routes/promotionRequest.routes"));
+const quarterlySummary_routes_1 = __importDefault(require("./routes/quarterlySummary.routes"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3001;
 exports.default = app;
@@ -31,6 +33,7 @@ app.use((0, cors_1.default)({
             return callback(null, true);
         const allowedOrigins = [
             'http://localhost:5173',
+            'http://localhost:5174',
             'http://localhost:3000',
             process.env.FRONTEND_URL
         ].filter(Boolean);
@@ -48,17 +51,22 @@ app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // 请求日志
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    console.log(`[Request] ${new Date().toISOString()} - ${req.method} ${req.path}`);
     next();
 });
-// 健康检查
-app.get('/health', (req, res) => {
+// 健康检查 - Support both /health and /api/health
+const healthHandler = (req, res) => {
+    console.log('Health check called');
     res.json({
         success: true,
         message: '服务器运行正常',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        url: req.url,
+        env: process.env.NODE_ENV
     });
-});
+};
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 // API路由
 app.use('/api/auth', auth_routes_1.default);
 app.use('/api/employees', employee_routes_1.default);
@@ -69,57 +77,35 @@ app.use('/api/metrics', metricLibrary_routes_1.default);
 app.use('/api/peer-reviews', peerReview_routes_1.default);
 app.use('/api/settings', settings_routes_1.default);
 app.use('/api/export', export_routes_1.default);
+app.use('/api/promotion-requests', promotionRequest_routes_1.default);
+app.use('/api/quarterly-summaries', quarterlySummary_routes_1.default);
 // 404处理
 app.use(errorHandler_1.notFoundHandler);
 // 导入数据初始化
 const init_data_1 = require("./config/init-data");
 // 错误处理
 app.use(errorHandler_1.errorHandler);
-// Vercel Serverless 环境下导出 app，否则启动服务器
-if (process.env.NODE_ENV === 'test') {
-    // 测试环境不启动服务器
-}
-else if (process.env.VERCEL) {
-    // Vercel Serverless 环境 - 需要初始化数据
-    const initializeServer = async () => {
-        try {
-            // 初始化员工数据
-            await (0, init_data_1.initializeData)();
-            console.log('✅ Vercel Serverless 环境初始化完成');
-        }
-        catch (error) {
-            console.error('❌ Vercel 环境初始化失败:', error);
-        }
-    };
-    initializeServer();
-    // Vercel 会自动处理路由，不需要 app.listen()
+// 初始化数据（所有环境都需要）
+const initializeServer = async () => {
+    try {
+        await (0, database_1.testConnection)();
+        await (0, init_data_1.initializeData)();
+        console.log('✅ Data initialization completed');
+    }
+    catch (error) {
+        console.error('❌ Initialization failed:', error);
+    }
+};
+// 只有在非 Vercel 环境下（本地开发）才直接监听端口
+if (process.env.VERCEL !== '1') {
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, async () => {
+        await initializeServer();
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
 }
 else {
-    // 本地开发环境 - 启动服务器
-    const startServer = async () => {
-        // 测试数据库连接
-        const dbConnected = await (0, database_1.testConnection)();
-        if (!dbConnected) {
-            if (!database_1.USE_MEMORY_DB) {
-                console.error('❌ MySQL 连接失败，请检查 DB_* 配置与 MySQL 服务后重试');
-                process.exit(1);
-            }
-            console.warn('⚠️ 使用内存数据库（仅测试/演示）');
-        }
-        // 初始化员工数据
-        try {
-            await (0, init_data_1.initializeData)();
-        }
-        catch (error) {
-            console.error('❌ 初始化数据失败:', error);
-        }
-        app.listen(PORT, () => {
-            console.log(`\n🚀 服务器启动成功`);
-            console.log(`📍 地址: http://localhost:${PORT}`);
-            console.log(`📚 API文档: http://localhost:${PORT}/health`);
-            console.log('');
-        });
-    };
-    startServer();
+    initializeServer();
 }
 //# sourceMappingURL=index.js.map

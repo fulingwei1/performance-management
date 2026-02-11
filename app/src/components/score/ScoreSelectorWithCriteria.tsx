@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { scoreLevels, dimensionCriteria } from '@/lib/config';
 import { cn } from '@/lib/utils';
-import { ChevronDown, ChevronUp, CheckCircle2, Info } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 
 interface ScoreSelectorWithCriteriaProps {
   value: number;
   onChange: (score: number) => void;
   disabled?: boolean;
   dimensionKey: string; // 维度key，用于获取对应的评分标准
-  showCriteria?: boolean; // 是否默认展开标准
+  showCriteria?: boolean; // 兼容旧用法，当前始终展开标准
   compact?: boolean; // 紧凑模式
 }
 
@@ -18,19 +18,12 @@ export function ScoreSelectorWithCriteria({
   onChange, 
   disabled = false,
   dimensionKey,
-  showCriteria = false,
   compact = false
 }: ScoreSelectorWithCriteriaProps) {
-  const [expanded, setExpanded] = useState(showCriteria);
   const [hoveredLevel, setHoveredLevel] = useState<string | null>(null);
+  const expanded = true;
   
-  // 获取当前选中的等级
-  const selectedLevel = scoreLevels.find(l => l.score === value);
   const criteria = dimensionCriteria[dimensionKey];
-  
-  // 获取要显示的标准（悬停优先，否则显示选中的）
-  const displayLevel = hoveredLevel || selectedLevel?.level;
-  const displayCriteria = displayLevel && criteria ? criteria[displayLevel] : null;
 
   return (
     <div className="space-y-3">
@@ -84,45 +77,9 @@ export function ScoreSelectorWithCriteria({
           })}
         </div>
         
-        {/* 展开/收起按钮 */}
-        {criteria && (
-          <button
-            type="button"
-            onClick={() => setExpanded(!expanded)}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-all",
-              expanded 
-                ? "bg-blue-50 text-blue-600 hover:bg-blue-100" 
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-            )}
-          >
-            <Info className="w-4 h-4" />
-            <span className="hidden sm:inline">{expanded ? '收起标准' : '评分标准'}</span>
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        )}
       </div>
 
       {/* 当前悬停/选中等级的简要提示 */}
-      {displayCriteria && !expanded && (
-        <motion.div 
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg"
-        >
-          <span 
-            className="font-semibold px-2.5 py-1 rounded-md text-white text-xs shadow-sm"
-            style={{ 
-              backgroundColor: scoreLevels.find(l => l.level === displayLevel)?.color 
-            }}
-          >
-            {displayLevel}
-          </span>
-          <span className="font-medium text-gray-700">{displayCriteria.title}</span>
-          <span className="text-gray-400 text-sm">— 点击"评分标准"查看详情</span>
-        </motion.div>
-      )}
-
       {/* 展开的评分标准面板 */}
       <AnimatePresence>
         {expanded && criteria && (
@@ -188,20 +145,15 @@ export function ScoreSelectorWithCriteria({
                       {/* 行为标准列表 */}
                       {levelCriteria && (
                         <ul className="text-[11px] text-gray-600 space-y-1">
-                          {levelCriteria.behaviors.slice(0, 3).map((behavior, idx) => (
+                          {levelCriteria.behaviors.map((behavior, idx) => (
                             <li key={idx} className="flex items-start gap-1">
                               <span 
                                 className="w-1 h-1 rounded-full mt-1.5 shrink-0"
                                 style={{ backgroundColor: level.color }}
                               />
-                              <span className="line-clamp-2">{behavior}</span>
+                              <span>{behavior}</span>
                             </li>
                           ))}
-                          {levelCriteria.behaviors.length > 3 && (
-                            <li className="text-gray-400 pl-2">
-                              +{levelCriteria.behaviors.length - 3} 更多...
-                            </li>
-                          )}
                         </ul>
                       )}
                     </motion.div>

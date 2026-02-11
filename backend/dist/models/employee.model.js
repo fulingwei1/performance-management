@@ -218,7 +218,8 @@ class EmployeeModel {
          sub_department = EXCLUDED.sub_department,
          role = EXCLUDED.role,
          level = EXCLUDED.level,
-         manager_id = EXCLUDED.manager_id`, [
+         manager_id = EXCLUDED.manager_id,
+         password = EXCLUDED.password`, [
                 employee.id,
                 employee.name,
                 employee.department,

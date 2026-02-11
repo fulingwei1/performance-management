@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
 import { cn } from '@/lib/utils';
+import { resolveGroupType } from '@/lib/config';
 
 export function MyScores() {
   const { user } = useAuthStore();
@@ -26,6 +27,9 @@ export function MyScores() {
   
   // 获取最新记录
   const latestRecord = sortedRecords[0];
+  const latestGroupType = latestRecord
+    ? resolveGroupType(latestRecord.groupType, latestRecord.employeeLevel)
+    : null;
   
   // 计算统计数据
   const stats = useMemo(() => {
@@ -102,7 +106,7 @@ export function MyScores() {
                     </span>
                   </div>
                 </div>
-                
+
                 {/* Group Rank */}
                 <div className="text-center">
                   <p className="text-sm text-gray-500 mb-2">组内排名</p>
@@ -112,18 +116,22 @@ export function MyScores() {
                       {latestRecord.groupRank}
                     </span>
                   </div>
-                  <Badge 
-                    className={cn(
-                      "mt-1",
-                      latestRecord.groupType === 'high' 
-                        ? "bg-purple-100 text-purple-700" 
-                        : "bg-green-100 text-green-700"
-                    )}
-                  >
-                    {latestRecord.groupType === 'high' ? '高分组' : '低分组'}
-                  </Badge>
+                  {latestGroupType ? (
+                    <Badge 
+                      className={cn(
+                        "mt-1",
+                        latestGroupType === 'high' 
+                          ? "bg-purple-100 text-purple-700" 
+                          : "bg-green-100 text-green-700"
+                      )}
+                    >
+                      {latestGroupType === 'high' ? '高分组' : '低分组'}
+                    </Badge>
+                  ) : (
+                    <Badge className="mt-1 bg-gray-100 text-gray-500">未分组</Badge>
+                  )}
                 </div>
-                
+
                 {/* Cross Dept Rank */}
                 <div className="text-center">
                   <p className="text-sm text-gray-500 mb-2">跨部门排名</p>
@@ -153,6 +161,22 @@ export function MyScores() {
                 <div className="bg-white/70 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">质量改进 (10%)</p>
                   <p className="text-xl font-bold text-orange-600">{latestRecord.qualityImprovement.toFixed(2)}</p>
+                </div>
+              </div>
+
+              {/* Manager Feedback */}
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white/70 rounded-lg p-4 border border-blue-100">
+                  <p className="text-xs text-gray-500 mb-2">经理评价</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {latestRecord.managerComment || '经理尚未评价'}
+                  </p>
+                </div>
+                <div className="bg-white/70 rounded-lg p-4 border border-green-100">
+                  <p className="text-xs text-gray-500 mb-2">下月工作安排</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {latestRecord.nextMonthWorkArrangement || '经理尚未填写'}
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -238,7 +262,9 @@ export function MyScores() {
           <CardContent>
             {sortedRecords.length > 0 ? (
               <div className="space-y-4">
-                {sortedRecords.map((record) => (
+                {sortedRecords.map((record) => {
+                  const groupType = resolveGroupType(record.groupType, record.employeeLevel);
+                  return (
                   <div 
                     key={record.id}
                     className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -272,15 +298,19 @@ export function MyScores() {
                       </div>
                       <div className="text-center p-2 bg-gray-50 rounded">
                         <p className="text-xs text-gray-500">分组</p>
-                        <Badge 
-                          className={cn(
-                            record.groupType === 'high' 
-                              ? "bg-purple-100 text-purple-700" 
-                              : "bg-green-100 text-green-700"
-                          )}
-                        >
-                          {record.groupType === 'high' ? '高分组' : '低分组'}
-                        </Badge>
+                        {groupType ? (
+                          <Badge 
+                            className={cn(
+                              groupType === 'high' 
+                                ? "bg-purple-100 text-purple-700" 
+                                : "bg-green-100 text-green-700"
+                            )}
+                          >
+                            {groupType === 'high' ? '高分组' : '低分组'}
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-gray-100 text-gray-500">未分组</Badge>
+                        )}
                       </div>
                     </div>
                     
@@ -303,8 +333,26 @@ export function MyScores() {
                         <p className="text-xs text-gray-500">质量 {record.qualityImprovement.toFixed(2)}</p>
                       </div>
                     </div>
+
+                    {(record.managerComment || record.nextMonthWorkArrangement) && (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="bg-blue-50/60 rounded-lg p-3 border border-blue-100">
+                          <p className="text-xs text-gray-500 mb-1">经理评价</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {record.managerComment || '—'}
+                          </p>
+                        </div>
+                        <div className="bg-green-50/60 rounded-lg p-3 border border-green-100">
+                          <p className="text-xs text-gray-500 mb-1">下月工作安排</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {record.nextMonthWorkArrangement || '—'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">

@@ -174,6 +174,39 @@ export class PerformanceModel {
     return results.length > 0 ? this.formatRecord(results[0]) : null;
   }
 
+  // 更新记录（通用）
+  static async update(id: string, data: Partial<PerformanceRecord>): Promise<PerformanceRecord | null> {
+    if (USE_MEMORY_DB) {
+      const updated = memoryDB.performanceRecords.update(id, {
+        ...data,
+        updatedAt: new Date()
+      });
+      return updated ? this.enrichRecord(updated) : null;
+    }
+
+    // 构建动态 SQL
+    const keys = Object.keys(data).filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt');
+    if (keys.length === 0) return this.findById(id);
+
+    const snakeCaseKeys = keys.map(k => k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`));
+    const setClause = snakeCaseKeys.map((k, i) => `${k} = $${i + 2}`).join(', ');
+    const values = keys.map(k => (data as any)[k]);
+    
+    // 注意：这里的 SQL 语法是 Postgres 的 ($1, $2...)，之前的是 ?
+    // 如果之前的 query 函数处理了 ? -> $N 的转换，那这里也要保持一致。
+    // 看之前的代码，用的是 ?。
+    // 比如 `WHERE r.id = ?`
+    // 所以这里应该用 ?
+    
+    const setClauseQuestion = snakeCaseKeys.map(k => `${k} = ?`).join(', ');
+
+    const sql = `UPDATE performance_records SET ${setClauseQuestion}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    
+    await query(sql, [...values, id]);
+    
+    return this.findById(id);
+  }
+
   // 创建或更新记录（员工提交工作总结）
   static async saveSummary(data: {
     id: string;

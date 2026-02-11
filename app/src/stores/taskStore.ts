@@ -75,18 +75,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       };
       newTasks.push(summaryTask);
 
-      // 360度评分任务（每月给3位同事评分）
-      const peerTask: Task = {
-        id: generateTaskId('peer_review', employee.id, targetMonth),
-        type: 'peer_review',
-        title: '完成360度互评',
-        description: `请对3位协作同事进行评分`,
-        status: 'pending', // 简化处理
-        dueDate: `${targetMonth}-10`,
-        priority: 'medium',
-        month: targetMonth
-      };
-      newTasks.push(peerTask);
     });
 
     // 为每个经理生成为下属评分的任务
@@ -129,7 +117,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     return tasks.filter(task =>
       task.id.includes(`-${employeeId}-`) &&
       task.month === targetMonth &&
-      (task.type === 'fill_summary' || task.type === 'peer_review')
+      task.type === 'fill_summary'
     );
   },
 
@@ -164,9 +152,8 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       task.month === currentMonth &&
       task.status !== 'completed' &&
       (role === 'employee'
-        ? (task.type === 'fill_summary' || task.type === 'peer_review')
+        ? task.type === 'fill_summary'
         : task.type === 'manager_score')
     ).length;
   }
 }));
-

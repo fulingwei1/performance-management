@@ -1,8 +1,5 @@
 import { useMemo } from 'react';
-import {
-  BarChart3,
-  Zap
-} from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -87,13 +84,7 @@ export function AdvancedDashboard({ records, totalTeamMembers, title = '绩效�
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-          <p className="text-gray-500 mt-1">分组排名 · 跨部门对比 · 智能分析</p>
-        </div>
-        <div className="flex gap-2">
-          <Badge className="bg-purple-100 text-purple-700">
-            <Zap className="w-3 h-3 mr-1" />
-            AI增强
-          </Badge>
+          <p className="text-gray-500 mt-1">分组排名 · 跨部门对比 · 综合分析</p>
         </div>
       </div>
       

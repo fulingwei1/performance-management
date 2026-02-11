@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWTPayload, EmployeeRole } from '../types';
+import logger from '../config/logger';
 
 // 扩展Express的Request类型
 declare global {
@@ -17,11 +18,11 @@ const getJWTSecret = (): string => {
   if (envSecret) return envSecret;
   if (process.env.NODE_ENV === 'test') return 'test-secret-key';
   
-  console.error('❌ 错误: JWT_SECRET环境变量未设置');
-  console.error('请在backend/.env文件中设置JWT_SECRET，例如:');
-  console.error('JWT_SECRET=your_random_secret_key_here');
-  console.error('\n生成随机密钥的命令:');
-  console.error('node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  logger.error('❌ 错误: JWT_SECRET环境变量未设置');
+  logger.error('请在backend/.env文件中设置JWT_SECRET，例如:');
+  logger.error('JWT_SECRET=your_random_secret_key_here');
+  logger.error('\n生成随机密钥的命令:');
+  logger.error('node -e "logger.info(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
   process.exit(1);
 };
 

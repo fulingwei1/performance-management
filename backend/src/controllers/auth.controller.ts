@@ -40,8 +40,11 @@ export const authController = {
         });
       }
 
-      // 验证密码
-      const isValidPassword = await EmployeeModel.verifyPassword(password, employee.password!);
+      // 验证密码 - 统一使用 bcrypt 比较
+      let isValidPassword = false;
+      if (employee.password) {
+        isValidPassword = await EmployeeModel.verifyPassword(password, employee.password);
+      }
 
       if (!isValidPassword) {
         return res.status(401).json({

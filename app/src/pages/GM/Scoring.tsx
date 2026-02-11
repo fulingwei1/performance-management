@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { 
-  Calendar, 
-  Target, 
-  Briefcase, 
-  Users, 
-  TrendingUp, 
-  Send, 
+import {
+  Calendar,
+  Target,
+  Briefcase,
+  Users,
+  TrendingUp,
+  Send,
   ChevronRight,
   CheckCircle2,
   Clock,
@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { ScoreSelector } from '@/components/score/ScoreSelector';
+import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { calculateTotalScore } from '@/lib/calculateScore';
 import { cn } from '@/lib/utils';
@@ -264,14 +264,14 @@ export function GMScoring() {
       )}
       
       <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <DrawerContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DrawerHeader className="border-b">
+        <DrawerContent className="max-w-3xl mx-auto max-h-[90vh] flex flex-col">
+          <DrawerHeader className="border-b flex-shrink-0">
             <DrawerTitle>
               {selectedManager && managers.find(m => m.id === selectedManager)?.name} - 总经理评分
             </DrawerTitle>
           </DrawerHeader>
-          
-          <div className="p-6 space-y-6">
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -302,12 +302,13 @@ export function GMScoring() {
                   </div>
                   <Badge className="bg-blue-100 text-blue-700">权重 40%</Badge>
                 </div>
-                <ScoreSelector 
+                <ScoreSelectorWithCriteria
                   value={scores.monthlyTaskCompletion}
                   onChange={(v) => setScores(prev => ({ ...prev, monthlyTaskCompletion: v }))}
+                  dimensionKey="monthlyTaskCompletion"
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -319,12 +320,13 @@ export function GMScoring() {
                   </div>
                   <Badge className="bg-purple-100 text-purple-700">权重 25%</Badge>
                 </div>
-                <ScoreSelector 
+                <ScoreSelectorWithCriteria
                   value={scores.temporaryWorkCompletion}
                   onChange={(v) => setScores(prev => ({ ...prev, temporaryWorkCompletion: v }))}
+                  dimensionKey="temporaryWorkCompletion"
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -336,12 +338,13 @@ export function GMScoring() {
                   </div>
                   <Badge className="bg-green-100 text-green-700">权重 20%</Badge>
                 </div>
-                <ScoreSelector 
+                <ScoreSelectorWithCriteria
                   value={scores.workload}
                   onChange={(v) => setScores(prev => ({ ...prev, workload: v }))}
+                  dimensionKey="workload"
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -353,9 +356,10 @@ export function GMScoring() {
                   </div>
                   <Badge className="bg-orange-100 text-orange-700">权重 15%</Badge>
                 </div>
-                <ScoreSelector 
+                <ScoreSelectorWithCriteria
                   value={scores.talentDevelopment}
                   onChange={(v) => setScores(prev => ({ ...prev, talentDevelopment: v }))}
+                  dimensionKey="talentDevelopment"
                 />
               </div>
             </div>
@@ -372,8 +376,10 @@ export function GMScoring() {
                 className="min-h-[120px] mt-2"
               />
             </div>
-            
-            <div className="flex justify-end gap-3">
+          </div>
+
+          <div className="flex-shrink-0 border-t bg-white p-6">
+            <div className="flex justify-end gap-3 max-w-3xl mx-auto">
               <Button variant="outline" onClick={() => setIsDrawerOpen(false)}>
                 取消
               </Button>

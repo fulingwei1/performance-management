@@ -148,6 +148,65 @@ CREATE TABLE IF NOT EXISTS gm_manager_scores (
   FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 经理季度工作总结
+CREATE TABLE IF NOT EXISTS quarterly_summaries (
+  id VARCHAR(50) PRIMARY KEY,
+  manager_id VARCHAR(20) NOT NULL,
+  manager_name VARCHAR(50),
+  quarter VARCHAR(7) NOT NULL,
+  summary TEXT,
+  next_quarter_plan TEXT,
+  status ENUM('draft', 'submitted') DEFAULT 'submitted',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_manager_quarter (manager_id, quarter),
+  INDEX idx_manager_id (manager_id),
+  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 晋升/加薪申请表
+CREATE TABLE IF NOT EXISTS promotion_requests (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(20) NOT NULL,
+  requester_id VARCHAR(20) NOT NULL,
+  requester_role ENUM('employee', 'manager') NOT NULL,
+  target_level ENUM('senior', 'intermediate', 'junior', 'assistant') NOT NULL,
+  target_position VARCHAR(100) NOT NULL,
+  raise_percentage DECIMAL(5,2) NOT NULL,
+  performance_summary TEXT,
+  skill_summary TEXT,
+  competency_summary TEXT,
+  work_summary TEXT,
+  status ENUM('draft', 'submitted', 'manager_approved', 'gm_approved', 'hr_approved', 'rejected') DEFAULT 'submitted',
+  manager_comment TEXT,
+  manager_approver_id VARCHAR(20),
+  manager_approved_at TIMESTAMP NULL,
+  gm_comment TEXT,
+  gm_approver_id VARCHAR(20),
+  gm_approved_at TIMESTAMP NULL,
+  hr_comment TEXT,
+  hr_approver_id VARCHAR(20),
+  hr_approved_at TIMESTAMP NULL,
+  rejected_reason TEXT,
+  rejected_by_role ENUM('manager', 'gm', 'hr'),
+  rejected_by_id VARCHAR(20),
+  rejected_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_employee_id (employee_id),
+  INDEX idx_requester_id (requester_id),
+  INDEX idx_status (status),
+  FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (requester_id) REFERENCES employees(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 晋升审批链配置
+CREATE TABLE IF NOT EXISTS promotion_approval_settings (
+  id VARCHAR(50) PRIMARY KEY,
+  chain TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 初始化数据：插入员工
 -- 密码都是 bcrypt 加密后的 '123456'
 -- 使用 bcrypt 生成的哈希值

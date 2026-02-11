@@ -1,6 +1,7 @@
 import { EmployeeModel } from '../models/employee.model';
 import { query, USE_MEMORY_DB, memoryDB } from './database';
 import bcrypt from 'bcryptjs';
+import logger from './logger';
 
 let isInitialized = false;
 
@@ -183,22 +184,20 @@ const initialEmployees = [
 // 初始化数据
 export const initializeData = async (): Promise<void> => {
   if (isInitialized) {
-    console.log('✅ 数据已初始化，跳过');
+    logger.info('✅ 数据已初始化，跳过');
     return;
   }
 
   try {
-    console.log('📝 开始初始化员工数据...');
+    logger.info('📝 开始初始化员工数据...');
 
     if (USE_MEMORY_DB) {
-      // 内存数据库模式：使用预计算的哈希值，避免 Vercel 函数超时
-      // 密码全是 '123456'，哈希值为 $2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
-      // 这里的哈希是 bcryptjs 生成的
-      const DEFAULT_PASSWORD_HASH = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
-      
+      // 内存数据库模式：也使用 bcrypt hash 存储密码
+      const salt = bcrypt.genSaltSync(10);
+      const hashedPassword = bcrypt.hashSync('123456', salt);
       const hashedEmployees = initialEmployees.map(emp => ({
         ...emp,
-        password: DEFAULT_PASSWORD_HASH
+        password: hashedPassword
       }));
 
       for (const emp of hashedEmployees) {
@@ -207,16 +206,16 @@ export const initializeData = async (): Promise<void> => {
 
       // 验证数据
       const allEmployees = memoryDB.employees.findAll();
-      console.log(`  📊 内存数据库中共有 ${allEmployees.length} 名员工`);
+      logger.info(`  📊 内存数据库中共有 ${allEmployees.length} 名员工`);
     } else {
       // MySQL模式：使用原有batchInsert逻辑
       await EmployeeModel.batchInsert(initialEmployees);
     }
 
     isInitialized = true;
-    console.log(`✅ 成功初始化 ${initialEmployees.length} 名员工`);
+    logger.info(`✅ 成功初始化 ${initialEmployees.length} 名员工`);
   } catch (error) {
-    console.error('❌ 初始化数据失败:', error);
+    logger.error('❌ 初始化数据失败:', error);
     throw error;
   }
 };

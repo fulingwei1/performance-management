@@ -5,6 +5,7 @@ const express_validator_1 = require("express-validator");
 const employee_model_1 = require("../models/employee.model");
 const auth_1 = require("../middleware/auth");
 const errorHandler_1 = require("../middleware/errorHandler");
+const database_1 = require("../config/database");
 exports.authController = {
     // 登录
     login: [
@@ -35,8 +36,18 @@ exports.authController = {
                     message: `角色不匹配，用户角色是${employee.role}，但您选择了${role}`
                 });
             }
-            // 验证密码
-            const isValidPassword = await employee_model_1.EmployeeModel.verifyPassword(password, employee.password);
+            // 验证密码（支持明文和哈希）
+            let isValidPassword = false;
+            if (employee.password) {
+                // 内存数据库模式支持明文密码（仅演示/测试用）
+                if (database_1.USE_MEMORY_DB && employee.password.startsWith('123456')) {
+                    isValidPassword = password === employee.password;
+                }
+                else {
+                    // 其他环境一律使用bcrypt比较
+                    isValidPassword = await employee_model_1.EmployeeModel.verifyPassword(password, employee.password);
+                }
+            }
             if (!isValidPassword) {
                 return res.status(401).json({
                     success: false,

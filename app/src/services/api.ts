@@ -16,6 +16,24 @@ if (!API_BASE_URL) {
 // 获取Token
 const getToken = () => localStorage.getItem('token');
 
+// 安全下载：通过 Authorization header 传递 token，避免 URL 泄露
+const secureDownload = async (url: string, filename: string) => {
+  const token = getToken();
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: '下载失败' }));
+    throw new Error(errorData.message || '下载失败');
+  }
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
 // 通用请求函数
 const request = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
@@ -188,6 +206,22 @@ export const performanceApi = {
   getEmployeeHistory: (employeeId: string) => request(`/performance/employee/${employeeId}/history`)
 };
 
+// 经理季度总结API
+export const quarterlySummaryApi = {
+  save: (data: { quarter: string; summary: string; nextQuarterPlan: string; status: 'draft' | 'submitted' }) =>
+    request('/quarterly-summaries', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  getMySummaries: (quarter?: string) => {
+    const params = new URLSearchParams();
+    if (quarter) params.append('quarter', quarter);
+    const query = params.toString();
+    return request(`/quarterly-summaries/my${query ? `?${query}` : ''}`);
+  }
+};
+
 // HR管理API
 export const hrApi = {
   // 获取所有员工
@@ -231,10 +265,7 @@ export const hrApi = {
   }),
   
   // 导出员工
-  exportEmployees: () => {
-    const token = getToken();
-    window.location.href = `${API_BASE_URL}/employees/export?token=${token}`;
-  }
+  exportEmployees: () => secureDownload(`${API_BASE_URL}/employees/export`, 'employees.xlsx')
 };
 
 export const exportApi = {
@@ -247,8 +278,7 @@ export const exportApi = {
       format: options?.format || 'excel',
       includeAnalysis: String(options?.includeAnalysis ?? true)
     });
-    const token = getToken();
-    window.location.href = `${API_BASE_URL}/export/monthly-performance?${params.toString()}&token=${token}`;
+    return secureDownload(`${API_BASE_URL}/export/monthly-performance?${params.toString()}`, `performance-${month}.xlsx`);
   },
 
   exportAnnualPerformance: (year: string, options?: {
@@ -258,8 +288,7 @@ export const exportApi = {
       year,
       format: options?.format || 'excel'
     });
-    const token = getToken();
-    window.location.href = `${API_BASE_URL}/export/annual-performance?${params.toString()}&token=${token}`;
+    return secureDownload(`${API_BASE_URL}/export/annual-performance?${params.toString()}`, `annual-performance-${year}.xlsx`);
   },
 
   exportEmployees: (options?: {
@@ -272,8 +301,46 @@ export const exportApi = {
     if (options?.department) {
       params.append('department', options.department);
     }
-    const token = getToken();
-    window.location.href = `${API_BASE_URL}/export/employees?${params.toString()}&token=${token}`;
+    return secureDownload(`${API_BASE_URL}/export/employees?${params.toString()}`, 'employees.xlsx');
+  }
+};
+
+// 晋升/加薪申请
+export const promotionApi = {
+  create: (data: {
+    employeeId?: string;
+    targetLevel: string;
+    targetPosition: string;
+    raisePercentage: number;
+    performanceSummary: string;
+    skillSummary: string;
+    competencySummary: string;
+    workSummary: string;
+  }) => request('/promotion-requests', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  getMyRequests: () => request('/promotion-requests/my'),
+
+  getPending: () => request('/promotion-requests/pending'),
+
+  approve: (id: string, comment?: string) => request(`/promotion-requests/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ comment })
+  }),
+
+  reject: (id: string, reason: string) => request(`/promotion-requests/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reason })
+  }),
+
+  getHistory: (page = 1, pageSize = 10) =>
+    request(`/promotion-requests/history?page=${page}&pageSize=${pageSize}`),
+
+  exportRecords: (format: 'excel' | 'json' = 'excel') => {
+    const query = new URLSearchParams({ format }).toString();
+    return secureDownload(`${API_BASE_URL}/promotion-requests/export?${query}`, `promotion-records.xlsx`);
   }
 };
 
@@ -350,7 +417,10 @@ export const organizationApi = {
 export const settingsApi = {
   getAssessmentScope: () => request('/settings/assessment-scope'),
   updateAssessmentScope: (data: { rootDepts: string[]; subDeptsByRoot: Record<string, string[]> }) =>
-    request('/settings/assessment-scope', { method: 'PUT', body: JSON.stringify(data) })
+    request('/settings/assessment-scope', { method: 'PUT', body: JSON.stringify(data) }),
+  getPromotionApprovalChain: () => request('/settings/promotion-approval-chain'),
+  updatePromotionApprovalChain: (chain: string[]) =>
+    request('/settings/promotion-approval-chain', { method: 'PUT', body: JSON.stringify({ chain }) })
 };
 
 // 考核周期API
@@ -475,10 +545,7 @@ export const metricLibraryApi = {
   }),
   
   // 导出指标
-  exportMetrics: () => {
-    const token = getToken();
-    window.location.href = `${API_BASE_URL}/metrics/export?token=${token}`;
-  },
+  exportMetrics: () => secureDownload(`${API_BASE_URL}/metrics/export`, 'metrics.xlsx'),
   
   // 初始化默认指标
   initializeDefaultMetrics: () => request('/metrics/initialize', {
@@ -543,6 +610,8 @@ export default {
   auth: authApi,
   employee: employeeApi,
   performance: performanceApi,
+  quarterlySummary: quarterlySummaryApi,
+  promotion: promotionApi,
   peerReview: peerReviewApi,
   export: exportApi
 };

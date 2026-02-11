@@ -5,7 +5,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
-import { AISuggestionCard } from '@/components/ai/AISuggestionCard';
 import { calculateTotalScore } from '@/lib/calculateScore';
 import { Button } from '@/components/ui/button';
 // Input component not currently used
@@ -24,8 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor } from '@/lib/config';
-import { generateAISuggestion } from '@/services/aiService';
+import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor, resolveGroupType } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { performanceApi, employeeApi } from '@/services/api';
@@ -46,8 +44,6 @@ export function ScoringManagement() {
   const [groupFilter] = useState<string>('all');
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<any>(null);
-  const [showAI, setShowAI] = useState(false);
   const [selectedMonth] = useState(monthParam || format(new Date(), 'yyyy-MM'));
   const [isNoSummary, setIsNoSummary] = useState(false);
   const hasHandledParams = useRef(false);
@@ -153,7 +149,7 @@ export function ScoringManagement() {
         qualityImprovement: 1.0,
         totalScore: 0,
         status: 'not_submitted',
-        groupType: null
+        groupType: resolveGroupType(record?.groupType, emp.level)
       };
     });
   }, [subordinates, monthRecords, selectedMonth]);
@@ -190,16 +186,6 @@ export function ScoringManagement() {
     });
     setManagerComment(record.managerComment || '');
     setNextMonthWorkArrangement(record.nextMonthWorkArrangement || '');
-    
-    // 生成AI建议（只有提交了总结才生成）
-    if (record.selfSummary) {
-      const suggestion = generateAISuggestion(record.selfSummary, record.nextMonthPlan || '');
-      setAiSuggestion(suggestion);
-      setShowAI(true);
-    } else {
-      setAiSuggestion(null);
-      setShowAI(false);
-    }
     
     setIsDrawerOpen(true);
   }, []);
@@ -260,10 +246,6 @@ export function ScoringManagement() {
     }
   }, [employeeParam, monthParam, noSummaryParam, records, handleOpenDrawer]);
   
-  const handleApplyAIScores = (suggestedScores: any) => {
-    setScores(suggestedScores);
-  };
-  
   const handleSubmit = async () => {
     if (!selectedRecord) return;
     
@@ -298,10 +280,9 @@ export function ScoringManagement() {
       nextMonthWorkArrangement
     });
     
-     if (success) {
+    if (success) {
       setIsDrawerOpen(false);
       setSelectedRecord(null);
-      setAiSuggestion(null);
       setIsNoSummary(false);
       toast.success('评分提交成功');
       // 刷新团队记录以确保数据同步
@@ -329,15 +310,16 @@ export function ScoringManagement() {
       case 'draft':
         return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">草稿</Badge>;
       case 'not_submitted':
-        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">未提交</Badge>;
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">未提交总结</Badge>;
       default:
         return <Badge>未知</Badge>;
     }
   };
   
-  const getGroupBadge = (groupType: 'high' | 'low' | null) => {
-    if (!groupType) return <Badge variant="outline" className="text-gray-400">未分组</Badge>;
-    return groupType === 'high'
+  const getGroupBadge = (groupType: 'high' | 'low' | null, level?: any) => {
+    const resolved = resolveGroupType(groupType, level);
+    if (!resolved) return <Badge variant="outline" className="text-gray-400">未分组</Badge>;
+    return resolved === 'high'
       ? <Badge className="bg-purple-100 text-purple-700">高分组</Badge>
       : <Badge className="bg-green-100 text-green-700">低分组</Badge>;
   };
@@ -349,7 +331,7 @@ export function ScoringManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">评分管理</h1>
-          <p className="text-gray-500 mt-1">分组评分 · AI辅助 · 智能排名</p>
+          <p className="text-gray-500 mt-1">分组评分 · 排名分析</p>
         </div>
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
@@ -402,6 +384,8 @@ export function ScoringManagement() {
                     <TableHead>员工姓名</TableHead>
                     <TableHead>级别</TableHead>
                     <TableHead>分组</TableHead>
+                    <TableHead className="text-center">组内排名</TableHead>
+                    <TableHead className="text-center">跨部门排名</TableHead>
                     <TableHead className="text-right">任务完成</TableHead>
                     <TableHead className="text-right">主动性</TableHead>
                     <TableHead className="text-right">项目反馈</TableHead>
@@ -465,7 +449,9 @@ export function ScoringManagement() {
                           {getLevelLabel(record.employeeLevel)}
                         </span>
                       </TableCell>
-                      <TableCell>{getGroupBadge(record.groupType)}</TableCell>
+                      <TableCell>{getGroupBadge(record.groupType, record.employeeLevel)}</TableCell>
+                      <TableCell className="text-center">{record.groupRank || '—'}</TableCell>
+                      <TableCell className="text-center">{record.crossDeptRank || '—'}</TableCell>
                       <TableCell className="text-right">{record.taskCompletion.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{record.initiative.toFixed(2)}</TableCell>
                       <TableCell className="text-right">{record.projectFeedback.toFixed(2)}</TableCell>
@@ -512,6 +498,8 @@ export function ScoringManagement() {
                   <TableHead>员工姓名</TableHead>
                   <TableHead>级别</TableHead>
                   <TableHead>分组</TableHead>
+                  <TableHead className="text-center">组内排名</TableHead>
+                  <TableHead className="text-center">跨部门排名</TableHead>
                   <TableHead>考核月份</TableHead>
                   <TableHead>工作总结</TableHead>
                   <TableHead>评分状态</TableHead>
@@ -567,7 +555,9 @@ export function ScoringManagement() {
                           {getLevelLabel(record.employeeLevel)}
                         </span>
                       </TableCell>
-                      <TableCell>{getGroupBadge(record.groupType)}</TableCell>
+                      <TableCell>{getGroupBadge(record.groupType, record.employeeLevel)}</TableCell>
+                      <TableCell className="text-center">{record.groupRank || '—'}</TableCell>
+                      <TableCell className="text-center">{record.crossDeptRank || '—'}</TableCell>
                       <TableCell>{record.month}</TableCell>
                       <TableCell>
                         {hasSummary ? (
@@ -578,7 +568,7 @@ export function ScoringManagement() {
                         ) : (
                           <span className="inline-flex items-center gap-1 text-gray-400 text-sm">
                             <Clock className="w-4 h-4" />
-                            未提交
+                            未提交总结
                           </span>
                         )}
                       </TableCell>
@@ -619,10 +609,10 @@ export function ScoringManagement() {
         </CardContent>
       </Card>
       
-      {/* Scoring Dialog - 全屏宽布局 */}
+      {/* Scoring Dialog - 优化宽度布局 */}
       <Dialog open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <DialogContent
-          className="!flex !flex-col !p-0 !gap-0 !w-[95vw] !max-w-[95vw] sm:!max-w-[95vw] xl:!w-[1600px] xl:!max-w-[1600px] !max-h-[92vh] overflow-hidden"
+          className="!fixed !inset-0 !translate-x-0 !translate-y-0 !flex !flex-col !p-0 !gap-0 !w-screen !h-screen !max-w-none !max-h-none !rounded-none !border-0 !shadow-none overflow-hidden"
           showCloseButton={false}
         >
           {/* Header */}
@@ -635,7 +625,8 @@ export function ScoringManagement() {
                 <div>
                   <DialogTitle className="flex items-center gap-3 text-xl">
                     {selectedRecord?.employeeName}
-                    {selectedRecord?.groupType && getGroupBadge(selectedRecord.groupType)}
+                    {(selectedRecord?.groupType || selectedRecord?.employeeLevel) &&
+                      getGroupBadge(selectedRecord.groupType, selectedRecord.employeeLevel)}
                     <span 
                       className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium"
                       style={{ 
@@ -669,14 +660,6 @@ export function ScoringManagement() {
             {/* 左侧：员工信息和工作总结 */}
             <div className="w-[480px] border-r bg-gray-50/50 overflow-y-auto">
               <div className="p-6 space-y-5">
-                {/* AI 建议 */}
-                {showAI && aiSuggestion && (
-                  <AISuggestionCard 
-                    suggestion={aiSuggestion} 
-                    onApplyScores={handleApplyAIScores}
-                  />
-                )}
-                
                 {/* 未提交提示 */}
                 {isNoSummary && (
                   <Card className="border-orange-200 bg-orange-50">
@@ -686,7 +669,7 @@ export function ScoringManagement() {
                         <div>
                           <p className="font-medium text-orange-800 text-sm">员工未提交自我评价总结</p>
                           <p className="text-xs text-orange-700 mt-1">
-                            您可以直接进行评分，系统会自动标记为"未提交"状态。
+                            您可以直接进行评分，系统会自动标记为"未提交总结"状态。
                           </p>
                         </div>
                       </div>

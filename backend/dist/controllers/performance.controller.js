@@ -144,12 +144,27 @@ exports.performanceController = {
                     error: '员工不存在'
                 });
             }
-            // 检查是否已经提交过该月份
+            // 检查是否已经提交过该月份 - 如果存在则更新
             const existing = await performance_model_1.PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
             if (existing) {
-                return res.status(400).json({
-                    success: false,
-                    error: '该月度总结已提交'
+                // 如果已经被经理评分，则不允许修改
+                if (existing.status === 'scored' || existing.status === 'completed') {
+                    return res.status(400).json({
+                        success: false,
+                        error: '该记录已被评分，无法修改'
+                    });
+                }
+                // 更新已有记录
+                const updated = await performance_model_1.PerformanceModel.update(existing.id, {
+                    selfSummary,
+                    nextMonthPlan,
+                    status: 'submitted',
+                    updatedAt: new Date()
+                });
+                return res.json({
+                    success: true,
+                    data: updated,
+                    message: '工作总结更新成功'
                 });
             }
             // 确定分组

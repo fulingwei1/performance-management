@@ -137,6 +137,53 @@ export interface GMManagerScore {
     createdAt?: Date;
     updatedAt?: Date;
 }
+export interface QuarterlySummary {
+    id: string;
+    managerId: string;
+    managerName?: string;
+    quarter: string;
+    summary: string;
+    nextQuarterPlan: string;
+    status: 'draft' | 'submitted';
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
+export type PromotionRequestStatus = 'draft' | 'submitted' | 'manager_approved' | 'gm_approved' | 'hr_approved' | 'rejected';
+export interface PromotionRequest {
+    id: string;
+    employeeId: string;
+    employeeName?: string;
+    department?: string;
+    subDepartment?: string;
+    employeeLevel?: EmployeeLevel;
+    requesterId: string;
+    requesterName?: string;
+    requesterRole: 'employee' | 'manager';
+    targetLevel: EmployeeLevel;
+    targetPosition: string;
+    raisePercentage: number;
+    performanceSummary: string;
+    skillSummary: string;
+    competencySummary: string;
+    workSummary: string;
+    status: PromotionRequestStatus;
+    nextRole?: EmployeeRole | null;
+    managerComment?: string;
+    managerApproverId?: string;
+    managerApprovedAt?: Date | string;
+    gmComment?: string;
+    gmApproverId?: string;
+    gmApprovedAt?: Date | string;
+    hrComment?: string;
+    hrApproverId?: string;
+    hrApprovedAt?: Date | string;
+    rejectedReason?: string;
+    rejectedByRole?: 'manager' | 'gm' | 'hr';
+    rejectedById?: string;
+    rejectedAt?: Date | string;
+    createdAt?: Date | string;
+    updatedAt?: Date | string;
+}
 export interface JWTPayload {
     userId: string;
     role: EmployeeRole;

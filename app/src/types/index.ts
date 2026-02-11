@@ -147,6 +147,51 @@ export interface GMManagerScore {
   updatedAt: string;
 }
 
+// 经理季度工作总结
+export interface QuarterlySummary {
+  id: string;
+  managerId: string;
+  managerName: string;
+  quarter: string; // 2026-Q1
+  summary: string;
+  nextQuarterPlan: string;
+  status: 'draft' | 'submitted';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 晋升/加薪申请
+export interface PromotionRequest {
+  id: string;
+  employeeId: string;
+  employeeName?: string;
+  department?: string;
+  subDepartment?: string;
+  employeeLevel?: EmployeeLevel;
+  requesterId: string;
+  requesterName?: string;
+  requesterRole: 'employee' | 'manager';
+  targetLevel: EmployeeLevel;
+  targetPosition: string;
+  raisePercentage: number;
+  performanceSummary: string;
+  skillSummary: string;
+  competencySummary: string;
+  workSummary: string;
+  status: 'draft' | 'submitted' | 'manager_approved' | 'gm_approved' | 'hr_approved' | 'rejected';
+  nextRole?: 'manager' | 'gm' | 'hr' | null;
+  managerComment?: string;
+  gmComment?: string;
+  hrComment?: string;
+  rejectedReason?: string;
+  rejectedByRole?: 'manager' | 'gm' | 'hr';
+  createdAt?: string;
+  updatedAt?: string;
+  managerApprovedAt?: string;
+  gmApprovedAt?: string;
+  hrApprovedAt?: string;
+}
+
 // 绩效考核记录
 export interface PerformanceRecord {
   id: string;

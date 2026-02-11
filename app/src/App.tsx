@@ -7,19 +7,23 @@ import { Login } from '@/pages/Login';
 import { EmployeeDashboard } from '@/pages/Employee/Dashboard';
 import { WorkSummary } from '@/pages/Employee/WorkSummary';
 import { MyScores } from '@/pages/Employee/MyScores';
-import { EmployeePeerReview } from '@/pages/Employee/PeerReview';
+import { EmployeePromotionRequest } from '@/pages/Employee/PromotionRequest';
 import { ManagerDashboard } from '@/pages/Manager/Dashboard';
 import { ScoringManagement } from '@/pages/Manager/Scoring';
-import { PeerReviewManage } from '@/pages/Manager/PeerReviewManage';
 import { Analytics } from '@/pages/Manager/Analytics';
+import { QuarterlySummary } from '@/pages/Manager/QuarterlySummary';
+import { ManagerPromotionRequest } from '@/pages/Manager/PromotionRequest';
 import { GMAnalytics } from '@/pages/GM/Analytics';
 import { EmployeePerformanceHistory } from '@/pages/Manager/EmployeePerformanceHistory';
 import { TeamList } from '@/pages/Manager/TeamList';
 import { GMDashboard } from '@/pages/GM/Dashboard';
 import { GMScoring } from '@/pages/GM/Scoring';
+import { GMDataExport } from '@/pages/GM/GMDataExport';
+import { GMPromotionApprovals } from '@/pages/GM/PromotionApprovals';
 import { HRDashboard } from '@/pages/HR/Dashboard';
 import { EmployeeInfo } from '@/pages/HR/EmployeeInfo';
 import { DataManagement } from '@/pages/HR/DataManagement';
+import { HRPromotionApprovals } from '@/pages/HR/PromotionApprovals';
 import { Toaster } from '@/components/ui/sonner';
 
 // 受保护路由组件
@@ -112,11 +116,11 @@ function App() {
           } 
         />
         <Route 
-          path="/employee/peer-review" 
+          path="/employee/promotion" 
           element={
             <ProtectedRoute allowedRole="employee">
               <Layout role="employee">
-                <EmployeePeerReview />
+                <EmployeePromotionRequest />
               </Layout>
             </ProtectedRoute>
           } 
@@ -163,25 +167,35 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route 
-          path="/manager/peer-review" 
-          element={
-            <ProtectedRoute allowedRole="manager">
-              <Layout role="manager">
-                <PeerReviewManage />
-              </Layout>
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/manager/analytics" 
+        <Route
+          path="/manager/analytics"
           element={
             <ProtectedRoute allowedRole="manager">
               <Layout role="manager">
                 <Analytics />
               </Layout>
             </ProtectedRoute>
-          } 
+          }
+        />
+        <Route
+          path="/manager/quarterly-summary"
+          element={
+            <ProtectedRoute allowedRole="manager">
+              <Layout role="manager">
+                <QuarterlySummary />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manager/promotion"
+          element={
+            <ProtectedRoute allowedRole="manager">
+              <Layout role="manager">
+                <ManagerPromotionRequest />
+              </Layout>
+            </ProtectedRoute>
+          }
         />
 
         {/* GM 总经理路由 */}
@@ -217,6 +231,26 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/gm/data-export" 
+          element={
+            <ProtectedRoute allowedRole="gm">
+              <Layout role="gm">
+                <GMDataExport />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/gm/promotion-approvals" 
+          element={
+            <ProtectedRoute allowedRole="gm">
+              <Layout role="gm">
+                <GMPromotionApprovals />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
         
         {/* HR路由 */}
          <Route 
@@ -240,15 +274,25 @@ function App() {
            } 
          />
          <Route 
-           path="/hr/data-management" 
-           element={
-             <ProtectedRoute allowedRole="hr">
-               <Layout role="hr">
-                 <DataManagement />
-               </Layout>
-             </ProtectedRoute>
-           } 
-         />
+          path="/hr/data-management" 
+          element={
+            <ProtectedRoute allowedRole="hr">
+              <Layout role="hr">
+                <DataManagement />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
+         <Route 
+          path="/hr/promotion-approvals" 
+          element={
+            <ProtectedRoute allowedRole="hr">
+              <Layout role="hr">
+                <HRPromotionApprovals />
+              </Layout>
+            </ProtectedRoute>
+          } 
+        />
          <Route 
            path="/hr/analytics" 
            element={

@@ -6,6 +6,7 @@ import type {
   TemporaryWork,
   TalentDevelopment,
   GMManagerScore,
+  QuarterlySummary,
   PerformanceRecord,
   ReportData
 } from '@/types';
@@ -19,6 +20,9 @@ interface HRState {
   
   // 总经理评分
   gmScores: GMManagerScore[];
+
+  // 经理季度总结
+  quarterlySummaries: QuarterlySummary[];
   
   // 所有绩效记录
   allPerformanceRecords: PerformanceRecord[];
@@ -49,6 +53,11 @@ interface HRState {
   // 总经理评分
   submitGMScore: (data: Omit<GMManagerScore, 'id' | 'totalScore' | 'rank' | 'createdAt' | 'updatedAt'>) => void;
   updateGMScore: (id: string, updates: Partial<GMManagerScore>) => void;
+
+  // 经理季度总结
+  saveQuarterlySummary: (data: Omit<QuarterlySummary, 'id' | 'createdAt' | 'updatedAt'>) => Promise<QuarterlySummary>;
+  fetchQuarterlySummary: (quarter: string) => Promise<QuarterlySummary | undefined>;
+  getQuarterlySummary: (managerId: string, quarter: string) => QuarterlySummary | undefined;
   
   // 绩效记录管理
   updatePerformanceRecord: (id: string, updates: Partial<PerformanceRecord>) => void;
@@ -104,6 +113,7 @@ export const useHRStore = create<HRState>()(
       temporaryWorks: [],
       talentDevelopments: [],
       gmScores: [],
+      quarterlySummaries: [],
       allPerformanceRecords: [],
       employeesList: [],
       metricsList: [
@@ -245,6 +255,68 @@ export const useHRStore = create<HRState>()(
           )
         }));
       },
+
+      // 保存经理季度总结（后端落库）
+      saveQuarterlySummary: async (data) => {
+        set({ loading: true, error: null });
+        try {
+          const { quarterlySummaryApi } = await import('@/services/api');
+          const response = await quarterlySummaryApi.save({
+            quarter: data.quarter,
+            summary: data.summary,
+            nextQuarterPlan: data.nextQuarterPlan,
+            status: data.status
+          });
+          const saved = response.data as QuarterlySummary;
+
+          set(state => {
+            const existingIndex = state.quarterlySummaries.findIndex(
+              s => s.id === saved.id || (s.managerId === saved.managerId && s.quarter === saved.quarter)
+            );
+            if (existingIndex >= 0) {
+              const next = [...state.quarterlySummaries];
+              next[existingIndex] = { ...next[existingIndex], ...saved };
+              return { quarterlySummaries: next, loading: false };
+            }
+            return { quarterlySummaries: [...state.quarterlySummaries, saved], loading: false };
+          });
+
+          return saved;
+        } catch (error: any) {
+          set({ error: error.message || '保存季度总结失败', loading: false });
+          throw error;
+        }
+      },
+
+      fetchQuarterlySummary: async (quarter) => {
+        set({ loading: true, error: null });
+        try {
+          const { quarterlySummaryApi } = await import('@/services/api');
+          const response = await quarterlySummaryApi.getMySummaries(quarter);
+          const records = (response.data || []) as QuarterlySummary[];
+          set(state => {
+            const merged = [...state.quarterlySummaries];
+            records.forEach(record => {
+              const idx = merged.findIndex(
+                s => s.id === record.id || (s.managerId === record.managerId && s.quarter === record.quarter)
+              );
+              if (idx >= 0) {
+                merged[idx] = { ...merged[idx], ...record };
+              } else {
+                merged.push(record);
+              }
+            });
+            return { quarterlySummaries: merged, loading: false };
+          });
+          return records.find(r => r.quarter === quarter);
+        } catch (error: any) {
+          set({ error: error.message || '获取季度总结失败', loading: false });
+          return undefined;
+        }
+      },
+
+      getQuarterlySummary: (managerId, quarter) =>
+        get().quarterlySummaries.find(s => s.managerId === managerId && s.quarter === quarter),
 
       // 更新绩效记录
       updatePerformanceRecord: (id, updates) => {

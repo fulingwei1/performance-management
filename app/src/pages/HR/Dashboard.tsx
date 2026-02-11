@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 // Assessment scope config - unused in current implementation
 import { settingsApi, performanceApi } from '@/services/api';
 import { cn } from '@/lib/utils';
+import { resolveGroupType } from '@/lib/config';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 
 export function HRDashboard() {
@@ -648,6 +649,9 @@ export function HRDashboard() {
                                           )}
                                         </div>
                                       </TableHead>
+                                      <TableHead className="text-xs text-center">分组</TableHead>
+                                      <TableHead className="text-xs text-center">组内排名</TableHead>
+                                      <TableHead className="text-xs text-center">跨部门排名</TableHead>
                                       <TableHead className="text-xs">考评状态</TableHead>
                                       <TableHead className="text-xs">操作</TableHead>
                                     </TableRow>
@@ -678,6 +682,26 @@ export function HRDashboard() {
                                           ) : (
                                             <span className="text-gray-400">--</span>
                                           )}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-center">
+                                          {resolveGroupType(emp.record?.groupType, emp.level) ? (
+                                            <Badge className={cn(
+                                              "text-[10px]",
+                                              resolveGroupType(emp.record?.groupType, emp.level) === 'high'
+                                                ? "bg-purple-100 text-purple-700"
+                                                : "bg-green-100 text-green-700"
+                                            )}>
+                                              {resolveGroupType(emp.record?.groupType, emp.level) === 'high' ? '高分组' : '低分组'}
+                                            </Badge>
+                                          ) : (
+                                            <span className="text-gray-400">—</span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-center">
+                                          {emp.record?.groupRank || '—'}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-center">
+                                          {emp.record?.crossDeptRank || '—'}
                                         </TableCell>
                                         <TableCell>
                                           {isScoredStatus(emp.status) ? (
@@ -779,6 +803,26 @@ export function HRDashboard() {
                           {isScoredStatus(selectedEmployee.status)
                             ? `${selectedEmployee.totalScore.toFixed(2)} 分` 
                             : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">分组：</span>
+                        <span className="font-semibold">
+                          {resolveGroupType(selectedEmployee.record?.groupType, selectedEmployee.level)
+                            ? (resolveGroupType(selectedEmployee.record?.groupType, selectedEmployee.level) === 'high' ? '高分组' : '低分组')
+                            : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">组内排名：</span>
+                        <span className="font-semibold">
+                          {selectedEmployee.record?.groupRank || '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">跨部门排名：</span>
+                        <span className="font-semibold">
+                          {selectedEmployee.record?.crossDeptRank || '—'}
                         </span>
                       </div>
                     </div>
