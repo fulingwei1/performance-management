@@ -9,10 +9,13 @@ import { PerformanceInterviewModel } from '../models/performanceInterview.model'
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 
+// Helpers for Express v5 where params/query can be string | string[]
+const s = (v: any): string => Array.isArray(v) ? v[0] : String(v ?? '');
+
 // ============ Strategic Objectives ============
 export const strategicObjectiveController = {
   getAll: asyncHandler(async (req: Request, res: Response) => {
-    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const year = req.query.year ? parseInt(s(req.query.year)) : undefined;
     const data = await StrategicObjectiveModel.findAll(year);
     res.json({ success: true, data });
   }),
@@ -27,13 +30,13 @@ export const strategicObjectiveController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await StrategicObjectiveModel.update(req.params.id, req.body);
+    const data = await StrategicObjectiveModel.update(s(req.params.id), req.body);
     if (!data) return res.status(404).json({ success: false, error: '战略目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
-    const ok = await StrategicObjectiveModel.delete(req.params.id);
+    const ok = await StrategicObjectiveModel.delete(s(req.params.id));
     if (!ok) return res.status(404).json({ success: false, error: '战略目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
@@ -43,10 +46,10 @@ export const strategicObjectiveController = {
 export const objectiveController = {
   getAll: asyncHandler(async (req: Request, res: Response) => {
     const filters: any = {};
-    if (req.query.year) filters.year = parseInt(req.query.year as string);
-    if (req.query.level) filters.level = req.query.level;
-    if (req.query.ownerId) filters.ownerId = req.query.ownerId;
-    if (req.query.department) filters.department = req.query.department;
+    if (req.query.year) filters.year = parseInt(s(req.query.year));
+    if (req.query.level) filters.level = s(req.query.level);
+    if (req.query.ownerId) filters.ownerId = s(req.query.ownerId);
+    if (req.query.department) filters.department = s(req.query.department);
     const data = await ObjectiveModel.findAll(filters);
     res.json({ success: true, data });
   }),
@@ -58,9 +61,8 @@ export const objectiveController = {
   }),
 
   getTree: asyncHandler(async (req: Request, res: Response) => {
-    const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+    const year = req.query.year ? parseInt(s(req.query.year)) : new Date().getFullYear();
     const data = await ObjectiveModel.getTree(year);
-    // Enrich with owner names
     const employees = await EmployeeModel.findAll();
     const empMap = new Map(employees.map((e: any) => [e.id, e.name]));
     const enrich = (obj: any) => {
@@ -73,7 +75,7 @@ export const objectiveController = {
 
   create: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
-    const { title, description, level, parentId, strategicObjectiveId, ownerId, startDate, endDate, department } = req.body;
+    const { title, description, level, parentId, strategicObjectiveId, ownerId, department } = req.body;
     const data = await ObjectiveModel.create({
       id: uuidv4(), title, description,
       level: level === 'personal' ? 'individual' : level,
@@ -85,20 +87,19 @@ export const objectiveController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await ObjectiveModel.update(req.params.id, req.body);
+    const data = await ObjectiveModel.update(s(req.params.id), req.body);
     if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
-    const ok = await ObjectiveModel.delete(req.params.id);
+    const ok = await ObjectiveModel.delete(s(req.params.id));
     if (!ok) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
 
-  // Key Results for an objective
   getKRs: asyncHandler(async (req: Request, res: Response) => {
-    const obj = await ObjectiveModel.findById(req.params.id);
+    const obj = await ObjectiveModel.findById(s(req.params.id));
     if (!obj) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, data: obj.keyResults || [] });
   }),
@@ -106,7 +107,7 @@ export const objectiveController = {
   createKR: asyncHandler(async (req: Request, res: Response) => {
     const { title, targetValue, unit, weight } = req.body;
     const data = await ObjectiveModel.addKeyResult({
-      id: uuidv4(), objectiveId: req.params.id, title,
+      id: uuidv4(), objectiveId: s(req.params.id), title,
       metricType: 'number', targetValue, currentValue: 0,
       unit, weight: weight || 0, progress: 0, status: 'not_started'
     });
@@ -117,7 +118,7 @@ export const objectiveController = {
 // ============ KR (standalone) ============
 export const krController = {
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await ObjectiveModel.updateKeyResult(req.params.id, req.body);
+    const data = await ObjectiveModel.updateKeyResult(s(req.params.id), req.body);
     if (!data) return res.status(404).json({ success: false, error: 'KR不存在' });
     res.json({ success: true, data });
   }),
@@ -138,14 +139,14 @@ export const kpiController = {
   }),
 
   getByEmployee: asyncHandler(async (req: Request, res: Response) => {
-    const data = await KpiAssignmentModel.findAll({ employeeId: req.params.employeeId });
+    const data = await KpiAssignmentModel.findAll({ employeeId: s(req.params.employeeId) });
     res.json({ success: true, data });
   }),
 
   getByDepartment: asyncHandler(async (req: Request, res: Response) => {
     // Get all employees in department, then their KPIs
     const employees = await EmployeeModel.findAll();
-    const deptEmps = employees.filter((e: any) => e.department === req.params.department);
+    const deptEmps = employees.filter((e: any) => e.department === s(req.params.department));
     const allKpis: any[] = [];
     for (const emp of deptEmps) {
       const kpis = await KpiAssignmentModel.findAll({ employeeId: emp.id });
@@ -168,7 +169,7 @@ export const kpiController = {
 
   updateActual: asyncHandler(async (req: Request, res: Response) => {
     const { actualValue } = req.body;
-    const data = await KpiAssignmentModel.update(req.params.id, { actualValue });
+    const data = await KpiAssignmentModel.update(s(req.params.id), { actualValue });
     if (!data) return res.status(404).json({ success: false, error: 'KPI不存在' });
     res.json({ success: true, data });
   }),
@@ -177,7 +178,7 @@ export const kpiController = {
     // KpiAssignmentModel doesn't have delete, add inline
     const { USE_MEMORY_DB, memoryStore } = require('../config/database');
     if (USE_MEMORY_DB) {
-      memoryStore.kpiAssignments.delete(req.params.id);
+      memoryStore.kpiAssignments.delete(s(req.params.id));
     }
     res.json({ success: true, message: '删除成功' });
   }),
@@ -194,8 +195,8 @@ export const contractController = {
 
   getAll: asyncHandler(async (req: Request, res: Response) => {
     const filters: any = {};
-    if (req.query.year) filters.year = parseInt(req.query.year as string);
-    if (req.query.status) filters.status = req.query.status;
+    if (req.query.year) filters.year = parseInt(s(req.query.year));
+    if (req.query.status) filters.status = s(req.query.status);
     const data = await PerformanceContractModel.findAll(filters);
     // Enrich with employee names
     const employees = await EmployeeModel.findAll();
@@ -205,7 +206,7 @@ export const contractController = {
   }),
 
   getById: asyncHandler(async (req: Request, res: Response) => {
-    const data = await PerformanceContractModel.findById(req.params.id);
+    const data = await PerformanceContractModel.findById(s(req.params.id));
     if (!data) return res.status(404).json({ success: false, error: '合约不存在' });
     res.json({ success: true, data });
   }),
@@ -223,15 +224,15 @@ export const contractController = {
 
   sign: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
-    const contract = await PerformanceContractModel.findById(req.params.id);
+    const contract = await PerformanceContractModel.findById(s(req.params.id));
     if (!contract) return res.status(404).json({ success: false, error: '合约不存在' });
     const role = contract.employeeId === req.user.userId ? 'employee' : 'manager';
-    const data = await PerformanceContractModel.sign(req.params.id, role as 'employee' | 'manager');
+    const data = await PerformanceContractModel.sign(s(req.params.id), role as 'employee' | 'manager');
     res.json({ success: true, data });
   }),
 
   approve: asyncHandler(async (req: Request, res: Response) => {
-    const data = await PerformanceContractModel.update(req.params.id, { status: 'signed' });
+    const data = await PerformanceContractModel.update(s(req.params.id), { status: 'signed' });
     if (!data) return res.status(404).json({ success: false, error: '合约不存在' });
     res.json({ success: true, data });
   }),
@@ -246,7 +247,7 @@ export const monthlyReportController = {
   }),
 
   getByEmployee: asyncHandler(async (req: Request, res: Response) => {
-    const data = await MonthlyReportModel.findAll({ employeeId: req.params.employeeId });
+    const data = await MonthlyReportModel.findAll({ employeeId: s(req.params.employeeId) });
     res.json({ success: true, data });
   }),
 
@@ -281,7 +282,7 @@ export const monthlyReportController = {
   review: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
     const { comment, rating } = req.body;
-    const data = await MonthlyReportModel.addComment(req.params.id, req.user.userId, comment);
+    const data = await MonthlyReportModel.addComment(s(req.params.id), req.user.userId, comment);
     if (!data) return res.status(404).json({ success: false, error: '报告不存在' });
     res.json({ success: true, data });
   }),
@@ -320,7 +321,7 @@ export const interviewController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await PerformanceInterviewModel.update(req.params.id, req.body);
+    const data = await PerformanceInterviewModel.update(s(req.params.id), req.body);
     if (!data) return res.status(404).json({ success: false, error: '面谈不存在' });
     res.json({ success: true, data });
   }),

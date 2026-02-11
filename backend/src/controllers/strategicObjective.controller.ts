@@ -12,7 +12,7 @@ export const strategicObjectiveController = {
   }),
 
   getById: asyncHandler(async (req: Request, res: Response) => {
-    const data = await StrategicObjectiveModel.findById(req.params.id);
+    const data = await StrategicObjectiveModel.findById(req.params.id as string);
     if (!data) return res.status(404).json({ success: false, error: '战略目标不存在' });
     res.json({ success: true, data });
   }),
@@ -26,19 +26,19 @@ export const strategicObjectiveController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await StrategicObjectiveModel.update(req.params.id, req.body);
+    const data = await StrategicObjectiveModel.update(req.params.id as string, req.body);
     if (!data) return res.status(404).json({ success: false, error: '战略目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
-    const ok = await StrategicObjectiveModel.delete(req.params.id);
+    const ok = await StrategicObjectiveModel.delete(req.params.id as string);
     if (!ok) return res.status(404).json({ success: false, error: '战略目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
 
   decompose: asyncHandler(async (req: Request, res: Response) => {
-    const strategic = await StrategicObjectiveModel.findById(req.params.id);
+    const strategic = await StrategicObjectiveModel.findById(req.params.id as string);
     if (!strategic) return res.status(404).json({ success: false, error: '战略目标不存在' });
     const { departments } = req.body; // [{ department, title, ownerId }]
     if (!Array.isArray(departments) || departments.length === 0) {

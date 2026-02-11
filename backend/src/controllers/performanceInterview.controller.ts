@@ -5,17 +5,15 @@ import { v4 as uuidv4 } from 'uuid';
 
 export const performanceInterviewController = {
   getAll: asyncHandler(async (req: Request, res: Response) => {
-    const { employeeId, interviewerId, year } = req.query;
-    const data = await PerformanceInterviewModel.findAll({
-      employeeId: employeeId as string,
-      interviewerId: interviewerId as string,
-      year: year ? parseInt(year as string) : undefined
-    });
+    const employeeId = req.query.employeeId as string | undefined;
+    const interviewerId = req.query.interviewerId as string | undefined;
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const data = await PerformanceInterviewModel.findAll({ employeeId, interviewerId, year });
     res.json({ success: true, data });
   }),
 
   getById: asyncHandler(async (req: Request, res: Response) => {
-    const data = await PerformanceInterviewModel.findById(req.params.id);
+    const data = await PerformanceInterviewModel.findById(req.params.id as string);
     if (!data) return res.status(404).json({ success: false, error: '面谈记录不存在' });
     res.json({ success: true, data });
   }),
@@ -26,7 +24,7 @@ export const performanceInterviewController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await PerformanceInterviewModel.update(req.params.id, req.body);
+    const data = await PerformanceInterviewModel.update(req.params.id as string, req.body);
     if (!data) return res.status(404).json({ success: false, error: '面谈记录不存在' });
     res.json({ success: true, data });
   })

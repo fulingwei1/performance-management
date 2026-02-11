@@ -14,7 +14,7 @@ export const objectiveController = {
   }),
 
   getById: asyncHandler(async (req: Request, res: Response) => {
-    const data = await ObjectiveModel.findById(req.params.id);
+    const data = await ObjectiveModel.findById(req.params.id as string);
     if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, data });
   }),
@@ -31,13 +31,13 @@ export const objectiveController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await ObjectiveModel.update(req.params.id, req.body);
+    const data = await ObjectiveModel.update(req.params.id as string, req.body);
     if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
-    const ok = await ObjectiveModel.delete(req.params.id);
+    const ok = await ObjectiveModel.delete(req.params.id as string);
     if (!ok) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
@@ -45,15 +45,15 @@ export const objectiveController = {
   updateProgress: asyncHandler(async (req: Request, res: Response) => {
     const { progress } = req.body;
     if (progress === undefined) return res.status(400).json({ success: false, error: '请提供进度值' });
-    const data = await ObjectiveModel.updateProgress(req.params.id, progress);
+    const data = await ObjectiveModel.updateProgress(req.params.id as string, progress);
     if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
     res.json({ success: true, data });
   }),
 
   addKeyResult: asyncHandler(async (req: Request, res: Response) => {
-    const objective = await ObjectiveModel.findById(req.params.id);
+    const objective = await ObjectiveModel.findById(req.params.id as string);
     if (!objective) return res.status(404).json({ success: false, error: '目标不存在' });
-    const kr = await ObjectiveModel.addKeyResult({ id: uuidv4(), objectiveId: req.params.id, ...req.body, currentValue: req.body.currentValue || 0, progress: 0, status: 'not_started' });
+    const kr = await ObjectiveModel.addKeyResult({ id: uuidv4(), objectiveId: req.params.id as string, ...req.body, currentValue: req.body.currentValue || 0, progress: 0, status: 'not_started' });
     res.status(201).json({ success: true, data: kr });
   })
 };

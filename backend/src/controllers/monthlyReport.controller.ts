@@ -13,7 +13,7 @@ export const monthlyReportController = {
   }),
 
   getById: asyncHandler(async (req: Request, res: Response) => {
-    const data = await MonthlyReportModel.findById(req.params.id);
+    const data = await MonthlyReportModel.findById(req.params.id as string);
     if (!data) return res.status(404).json({ success: false, error: '月报不存在' });
     res.json({ success: true, data });
   }),
@@ -24,7 +24,7 @@ export const monthlyReportController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await MonthlyReportModel.update(req.params.id, req.body);
+    const data = await MonthlyReportModel.update(req.params.id as string, req.body);
     if (!data) return res.status(404).json({ success: false, error: '月报不存在' });
     res.json({ success: true, data });
   }),
@@ -33,7 +33,7 @@ export const monthlyReportController = {
     if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
     const { comment } = req.body;
     if (!comment) return res.status(400).json({ success: false, error: '请提供点评内容' });
-    const data = await MonthlyReportModel.addComment(req.params.id, req.user.userId, comment);
+    const data = await MonthlyReportModel.addComment(req.params.id as string, req.user.userId, comment);
     if (!data) return res.status(404).json({ success: false, error: '月报不存在' });
     res.json({ success: true, data, message: '点评成功' });
   })

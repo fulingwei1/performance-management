@@ -25,7 +25,7 @@ export const kpiAssignmentController = {
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await KpiAssignmentModel.update(req.params.id, req.body);
+    const data = await KpiAssignmentModel.update(req.params.id as string, req.body);
     if (!data) return res.status(404).json({ success: false, error: 'KPI不存在' });
     res.json({ success: true, data });
   })
