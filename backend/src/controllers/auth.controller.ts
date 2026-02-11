@@ -9,7 +9,7 @@ export const authController = {
   login: [
     body('username').notEmpty().withMessage('用户名不能为空'),
     body('password').notEmpty().withMessage('密码不能为空'),
-    body('role').isIn(['employee', 'manager', 'gm', 'hr']).withMessage('角色类型错误'),
+    body('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -50,6 +50,14 @@ export const authController = {
         return res.status(401).json({
           success: false,
           message: '用户名或密码错误'
+        });
+      }
+
+      // 检查用户状态
+      if ((employee as any).status === 'disabled') {
+        return res.status(403).json({
+          success: false,
+          message: '该账号已被禁用，请联系管理员'
         });
       }
 

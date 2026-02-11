@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 
 interface LayoutProps {
   children: ReactNode;
-  role: 'employee' | 'manager' | 'gm' | 'hr';
+  role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 }
 
 export function Layout({ children, role }: LayoutProps) {

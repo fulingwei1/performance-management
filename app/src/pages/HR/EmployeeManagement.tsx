@@ -38,7 +38,7 @@ export function EmployeeManagement() {
 
   const [employeeForm, setEmployeeForm] = useState<{
     id: string; name: string; department: string; subDepartment: string;
-    role: 'employee' | 'manager' | 'gm' | 'hr'; level: EmployeeLevel; managerId: string;
+    role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin'; level: EmployeeLevel; managerId: string;
   }>({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '' });
   
   useEffect(() => { fetchEmployees(); fetchMetrics(); fetchOrganization(); }, []);
@@ -201,7 +201,7 @@ export function EmployeeManagement() {
                   <TableCell>{emp.subDepartment && emp.subDepartment !== '-/-' && emp.subDepartment !== '/-/' && emp.subDepartment !== '-' ? emp.subDepartment : ''}</TableCell>
                   <TableCell>
                     <Badge variant={emp.role === 'manager' ? 'default' : 'secondary'}>
-                      {emp.role === 'employee' ? '员工' : emp.role === 'manager' ? '经理' : emp.role === 'hr' ? 'HR' : '总经理'}
+                      {emp.role === 'employee' ? '员工' : emp.role === 'manager' ? '经理' : emp.role === 'hr' ? 'HR' : emp.role === 'admin' ? '管理员' : '总经理'}
                     </Badge>
                   </TableCell>
                   <TableCell>{emp.level}</TableCell>

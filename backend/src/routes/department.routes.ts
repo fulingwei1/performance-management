@@ -5,10 +5,10 @@ import { authenticate, requireRole } from '../middleware/auth';
 const router = Router();
 
 router.get('/tree', authenticate, departmentController.getTree);
-router.post('/', authenticate, requireRole('hr'), departmentController.create);
-router.put('/:id', authenticate, requireRole('hr'), departmentController.update);
-router.delete('/:id', authenticate, requireRole('hr'), departmentController.delete);
+router.post('/', authenticate, requireRole('hr', 'admin'), departmentController.create);
+router.put('/:id', authenticate, requireRole('hr', 'admin'), departmentController.update);
+router.delete('/:id', authenticate, requireRole('hr', 'admin'), departmentController.delete);
 router.get('/:id/members', authenticate, departmentController.getMembers);
-router.put('/:id/manager', authenticate, requireRole('hr'), departmentController.setManager);
+router.put('/:id/manager', authenticate, requireRole('hr', 'admin'), departmentController.setManager);
 
 export default router;

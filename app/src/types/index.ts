@@ -7,7 +7,7 @@ export interface Employee {
   name: string;
   department: string;
   subDepartment: string;
-  role: 'employee' | 'manager' | 'gm' | 'hr';
+  role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
   level: EmployeeLevel;
   managerId?: string;
   avatar?: string;
@@ -15,7 +15,7 @@ export interface Employee {
   position?: string;
   joinDate?: string;
   phone?: string;
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'inactive' | 'disabled';
 }
 
 // 员工档案（完整信息）
@@ -307,7 +307,7 @@ export interface Filters {
 export interface LoginCredentials {
   username: string;
   password: string;
-  role: 'employee' | 'manager' | 'gm' | 'hr';
+  role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 }
 
 // 分组配置

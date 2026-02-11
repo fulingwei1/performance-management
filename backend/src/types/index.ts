@@ -2,7 +2,7 @@
 export type EmployeeLevel = 'senior' | 'intermediate' | 'junior' | 'assistant';
 
 // 员工角色
-export type EmployeeRole = 'employee' | 'manager' | 'gm' | 'hr';
+export type EmployeeRole = 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 
 // 绩效记录状态
 export type RecordStatus = 'draft' | 'submitted' | 'scored' | 'completed';
@@ -18,6 +18,7 @@ export interface Employee {
   managerId?: string;
   avatar?: string;
   password?: string;
+  status?: 'active' | 'disabled' | 'inactive';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -80,7 +81,7 @@ export interface EmployeeArchive extends Employee {
   providentFundNumber?: string;
   
   // 状态
-  status?: 'active' | 'inactive';
+  status?: 'active' | 'inactive' | 'disabled';
 }
 
 // 绩效记录

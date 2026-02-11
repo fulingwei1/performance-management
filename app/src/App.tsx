@@ -45,16 +45,19 @@ import { MyBonus } from '@/pages/Employee/MyBonus';
 import { BonusManagement } from '@/pages/HR/BonusManagement';
 import { DepartmentTree } from '@/pages/HR/DepartmentTree';
 import { PeerReviewManagement } from '@/pages/HR/PeerReviewManagement';
+import { SystemSettings } from '@/pages/Admin/SystemSettings';
+import { UserManagement } from '@/pages/Admin/UserManagement';
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
   manager: '/manager/dashboard',
   gm: '/gm/dashboard',
   hr: '/hr/dashboard',
+  admin: '/admin/dashboard',
 };
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
-function ProtectedLayout({ allowedRole }: { allowedRole: 'employee' | 'manager' | 'gm' | 'hr' }) {
+function ProtectedLayout({ allowedRole }: { allowedRole: 'employee' | 'manager' | 'gm' | 'hr' | 'admin' }) {
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -174,6 +177,24 @@ function App() {
           <Route path="/hr/bonus-management" element={<BonusManagement />} />
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
+        </Route>
+
+        {/* Admin routes */}
+        <Route element={<ProtectedLayout allowedRole="admin" />}>
+          <Route path="/admin/dashboard" element={<HRDashboard />} />
+          <Route path="/admin/user-management" element={<UserManagement />} />
+          <Route path="/admin/system-settings" element={<SystemSettings />} />
+          <Route path="/admin/analytics" element={<GMAnalytics />} />
+          <Route path="/admin/strategic-objectives" element={<StrategicObjectives />} />
+          <Route path="/admin/contract-management" element={<ContractManagement />} />
+          <Route path="/admin/okr-dashboard" element={<OKRDashboard />} />
+          <Route path="/admin/promotion-approvals" element={<HRPromotionApprovals />} />
+          <Route path="/admin/bonus-management" element={<BonusManagement />} />
+          <Route path="/admin/peer-review-management" element={<PeerReviewManagement />} />
+          <Route path="/admin/department-tree" element={<DepartmentTree />} />
+          <Route path="/admin/scoring" element={<GMScoring />} />
+          <Route path="/admin/data-export" element={<GMDataExport />} />
+          <Route path="/admin/objectives" element={<ObjectiveTree />} />
         </Route>
 
         {/* Default redirects */}

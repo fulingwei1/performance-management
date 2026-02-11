@@ -16,13 +16,15 @@ import {
   ClipboardList,
   Link2,
   DollarSign,
-  Building2
+  Building2,
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
-  role: 'employee' | 'manager' | 'gm' | 'hr';
+  role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 }
 
 const employeeNavItems = [
@@ -69,6 +71,22 @@ const hrNavItems = [
   { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
 ];
 
+const adminNavItems = [
+  { path: '/admin/dashboard', label: '工作台', icon: LayoutDashboard },
+  { path: '/admin/user-management', label: '用户管理', icon: Users },
+  { path: '/admin/system-settings', label: '系统设置', icon: Settings },
+  { path: '/admin/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/admin/strategic-objectives', label: '战略目标', icon: Crosshair },
+  { path: '/admin/contract-management', label: '合约管理', icon: FileSignature },
+  { path: '/admin/okr-dashboard', label: 'OKR总览', icon: Target },
+  { path: '/admin/promotion-approvals', label: '晋升审批', icon: TrendingUp },
+  { path: '/admin/bonus-management', label: '奖金管理', icon: DollarSign },
+  { path: '/admin/peer-review-management', label: '360互评管理', icon: ShieldCheck },
+  { path: '/admin/department-tree', label: '组织架构', icon: Building2 },
+  { path: '/admin/scoring', label: '总经理评分', icon: Award },
+  { path: '/admin/data-export', label: '数据导出', icon: LogOut },
+];
+
 export function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
@@ -79,6 +97,8 @@ export function Sidebar({ role }: SidebarProps) {
     ? managerNavItems 
     : role === 'gm'
     ? gmNavItems
+    : role === 'admin'
+    ? adminNavItems
     : hrNavItems;
   
   const getRoleLabel = () => {
@@ -87,6 +107,7 @@ export function Sidebar({ role }: SidebarProps) {
       case 'manager': return '部门经理';
       case 'gm': return '总经理';
       case 'hr': return '人力资源';
+      case 'admin': return '系统管理员';
       default: return '';
     }
   };

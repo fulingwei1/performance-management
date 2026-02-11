@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BarChart3, User, Shield, Crown, Users, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { BarChart3, User, Shield, Crown, Users, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ export function Login() {
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuthStore();
   
-  const [activeTab, setActiveTab] = useState<'employee' | 'manager'>('employee');
+  const [activeTab, setActiveTab] = useState<'employee' | 'manager' | 'gm' | 'hr' | 'admin'>('employee');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,7 +33,8 @@ export function Login() {
         'employee': '/employee/dashboard',
         'manager': '/manager/dashboard',
         'gm': '/gm/dashboard',
-        'hr': '/hr/dashboard'
+        'hr': '/hr/dashboard',
+        'admin': '/admin/dashboard'
       };
       navigate(redirectMap[activeTab]);
     }
@@ -69,22 +70,26 @@ export function Login() {
           className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
         >
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full grid-cols-4 rounded-none h-14">
-              <TabsTrigger value="employee" className="gap-2">
+            <TabsList className="grid w-full grid-cols-5 rounded-none h-14">
+              <TabsTrigger value="employee" className="gap-1 text-xs">
                 <User className="w-4 h-4" />
                 员工
               </TabsTrigger>
-              <TabsTrigger value="manager" className="gap-2">
+              <TabsTrigger value="manager" className="gap-1 text-xs">
                 <Shield className="w-4 h-4" />
                 经理
               </TabsTrigger>
-              <TabsTrigger value="gm" className="gap-2">
+              <TabsTrigger value="gm" className="gap-1 text-xs">
                 <Crown className="w-4 h-4" />
                 总经理
               </TabsTrigger>
-              <TabsTrigger value="hr" className="gap-2">
+              <TabsTrigger value="hr" className="gap-1 text-xs">
                 <Users className="w-4 h-4" />
                 HR
+              </TabsTrigger>
+              <TabsTrigger value="admin" className="gap-1 text-xs">
+                <ShieldCheck className="w-4 h-4" />
+                管理员
               </TabsTrigger>
             </TabsList>
             

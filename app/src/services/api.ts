@@ -119,6 +119,16 @@ export const employeeApi = {
   // 删除员工
   deleteEmployee: (id: string) => request(`/employees/${id}`, {
     method: 'DELETE'
+  }),
+
+  // 重置密码
+  resetPassword: (id: string) => request(`/employees/${id}/reset-password`, {
+    method: 'PUT'
+  }),
+
+  // 启用/禁用用户
+  toggleStatus: (id: string) => request(`/employees/${id}/toggle-status`, {
+    method: 'PUT'
   })
 };
 

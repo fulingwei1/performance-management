@@ -179,6 +179,7 @@ const initialEmployees = [
   { id: 'e156', name: '谭章斌', department: '项目管理部', subDepartment: '项目管理组', role: 'employee' as const, level: 'junior' as const, managerId: 'm007', password: '123456' },
   { id: 'e157', name: '谢朝良', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
   { id: 'e158', name: '张小保', department: '人力行政部', subDepartment: '行政组', role: 'employee' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
+  { id: 'admin', name: '系统管理员', department: '总公司', subDepartment: '', role: 'admin' as const, level: 'senior' as const, managerId: undefined, password: 'admin123' },
 ];
 
 // 初始化数据
@@ -194,10 +195,10 @@ export const initializeData = async (): Promise<void> => {
     if (USE_MEMORY_DB) {
       // 内存数据库模式：也使用 bcrypt hash 存储密码
       const salt = bcrypt.genSaltSync(10);
-      const hashedPassword = bcrypt.hashSync('123456', salt);
+      const defaultHash = bcrypt.hashSync('123456', salt);
       const hashedEmployees = initialEmployees.map(emp => ({
         ...emp,
-        password: hashedPassword
+        password: emp.password === '123456' ? defaultHash : bcrypt.hashSync(emp.password, salt)
       }));
 
       for (const emp of hashedEmployees) {
