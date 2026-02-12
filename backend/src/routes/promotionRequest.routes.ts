@@ -1,6 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { promotionRequestController } from '../controllers/promotionRequest.controller';
 import { authenticate, requireRole, verifyToken } from '../middleware/auth';
+import { validate } from '../middleware/validation';
+import { 
+  submitPromotionValidation, 
+  reviewPromotionValidation 
+} from '../validators/promotion.validator';
 
 const router = Router();
 
@@ -29,7 +34,7 @@ const authenticateWithTokenParam = (req: Request, res: Response, next: NextFunct
 };
 
 // 创建申请（员工/经理）
-router.post('/', authenticate, requireRole('employee', 'manager'), promotionRequestController.create);
+router.post('/', authenticate, requireRole('employee', 'manager'), validate(submitPromotionValidation), promotionRequestController.create);
 
 // 获取我的申请
 router.get('/my', authenticate, promotionRequestController.getMyRequests);
@@ -44,9 +49,9 @@ router.get('/history', authenticate, requireRole('manager', 'gm', 'hr'), promoti
 router.get('/export', authenticateWithTokenParam, requireRole('manager', 'gm', 'hr'), promotionRequestController.exportRecords);
 
 // 审批通过
-router.post('/:id/approve', authenticate, requireRole('manager', 'gm', 'hr'), promotionRequestController.approve);
+router.post('/:id/approve', authenticate, requireRole('manager', 'gm', 'hr'), validate(reviewPromotionValidation), promotionRequestController.approve);
 
 // 审批拒绝
-router.post('/:id/reject', authenticate, requireRole('manager', 'gm', 'hr'), promotionRequestController.reject);
+router.post('/:id/reject', authenticate, requireRole('manager', 'gm', 'hr'), validate(reviewPromotionValidation), promotionRequestController.reject);
 
 export default router;

@@ -1,6 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { performanceController } from '../controllers/performance.controller';
 import { authenticate, requireRole } from '../middleware/auth';
+import { validate } from '../middleware/validation';
+import {
+  submitSummaryValidation,
+  submitScoreValidation,
+  createRecordValidation,
+  generateTasksValidation
+} from '../validators/performance.validator';
 import { insertDemoData, clearDemoData, hasDemoData } from '../scripts/generateDemoData';
 
 const router = Router();
@@ -27,16 +34,16 @@ router.get('/all-records', authenticate, requireRole('gm', 'hr'), performanceCon
 router.delete('/all-records', authenticate, requireRole('hr'), performanceController.deleteAllRecords);
 
 // 员工提交工作总结（需要员工权限）
-router.post('/summary', authenticate, requireRole('employee'), performanceController.submitSummary);
+router.post('/summary', authenticate, requireRole('employee'), validate(submitSummaryValidation), performanceController.submitSummary);
 
 // 创建空记录（经理给未提交的员工评分时使用）
-router.post('/create-empty-record', authenticate, requireRole('manager'), performanceController.createEmptyRecord);
+router.post('/create-empty-record', authenticate, requireRole('manager'), validate(createRecordValidation), performanceController.createEmptyRecord);
 
 // 经理评分（需要经理权限）
-router.post('/score', authenticate, requireRole('manager'), performanceController.submitScore);
+router.post('/score', authenticate, requireRole('manager'), validate(submitScoreValidation), performanceController.submitScore);
 
 // HR批量生成绩效任务
-router.post('/generate-tasks', authenticate, requireRole('hr'), performanceController.generateTasks);
+router.post('/generate-tasks', authenticate, requireRole('hr'), validate(generateTasksValidation), performanceController.generateTasks);
 
 // 获取月度统计数据（用于导出）
 router.get('/stats/:month', authenticate, requireRole('hr', 'gm'), performanceController.getStatsByMonth);

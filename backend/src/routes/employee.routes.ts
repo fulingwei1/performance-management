@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { employeeController } from '../controllers/employee.controller';
 import { authenticate, requireRole } from '../middleware/auth';
+import { validate } from '../middleware/validation';
+import { 
+  createEmployeeValidation, 
+  updateEmployeeValidation 
+} from '../validators/employee.validator';
 
 const router = Router();
 
@@ -20,10 +25,10 @@ router.get('/role/:role', authenticate, employeeController.getEmployeesByRole);
 router.get('/:id', authenticate, employeeController.getEmployeeById);
 
 // 创建员工（需要HR或Admin权限）
-router.post('/', authenticate, requireRole('hr', 'admin'), employeeController.createEmployee);
+router.post('/', authenticate, requireRole('hr', 'admin'), validate(createEmployeeValidation), employeeController.createEmployee);
 
 // 更新员工（需要HR或Admin权限）
-router.put('/:id', authenticate, requireRole('hr', 'admin'), employeeController.updateEmployee);
+router.put('/:id', authenticate, requireRole('hr', 'admin'), validate(updateEmployeeValidation), employeeController.updateEmployee);
 
 // 重置密码（需要HR或Admin权限）
 router.put('/:id/reset-password', authenticate, requireRole('hr', 'admin'), employeeController.resetPassword);
