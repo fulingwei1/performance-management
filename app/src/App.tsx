@@ -39,6 +39,7 @@ import { StrategicObjectives } from '@/pages/HR/StrategicObjectives';
 import { ContractManagement } from '@/pages/HR/ContractManagement';
 import { OKRDashboard } from '@/pages/HR/OKRDashboard';
 import { StrategicOverview } from '@/pages/GM/StrategicOverview';
+import { StrategicGoalsManagement } from '@/pages/GM/StrategicGoalsManagement';
 import { MyAssignments } from '@/pages/OKR/MyAssignments';
 import { RelatedOKR } from '@/pages/OKR/RelatedOKR';
 import { MyBonus } from '@/pages/Employee/MyBonus';
@@ -169,6 +170,7 @@ function App() {
           <Route path="/gm/data-export" element={<GMDataExport />} />
           <Route path="/gm/promotion-approvals" element={<GMPromotionApprovals />} />
           <Route path="/gm/strategic-overview" element={<StrategicOverview />} />
+          <Route path="/gm/strategic-goals" element={<StrategicGoalsManagement />} />
           <Route path="/gm/objectives" element={<ObjectiveTree />} />
           <Route path="/gm/goal-setting" element={<GoalSetting />} />
           <Route path="/gm/goal-progress" element={<GoalProgressPage />} />

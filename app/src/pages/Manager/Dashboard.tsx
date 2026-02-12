@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
+import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 
 // 月份选项
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
@@ -153,6 +154,11 @@ export function ManagerDashboard() {
         </div>
       </motion.div>
       
+      {/* 战略目标展示 */}
+      <motion.div variants={itemVariants}>
+        <StrategicGoalsDisplay showDepartment={true} />
+      </motion.div>
+
       {/* Stats */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Link to="/manager/team?filter=all">

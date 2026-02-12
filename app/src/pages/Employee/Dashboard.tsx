@@ -10,6 +10,7 @@ import { TaskList } from '@/components/tasks/TaskList';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { resolveGroupType } from '@/lib/config';
+import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 
 export function EmployeeDashboard() {
   const { user } = useAuthStore();
@@ -74,6 +75,11 @@ export function EmployeeDashboard() {
         </p>
       </motion.div>
       
+      {/* 战略目标展示 */}
+      <motion.div variants={itemVariants}>
+        <StrategicGoalsDisplay showDepartment={true} />
+      </motion.div>
+
       {/* Stats */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard

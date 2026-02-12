@@ -412,6 +412,11 @@ export interface StrategicObjective {
   createdBy?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  // 新增字段
+  type?: 'company-strategy' | 'company-key-work' | 'department-key-work';
+  department?: string; // 仅部门重点工作需要
+  content?: string; // 详细内容
+  progress?: number; // 进度百分比
 }
 
 export type FeedbackCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
