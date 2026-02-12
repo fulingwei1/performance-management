@@ -33,7 +33,8 @@ export const performanceController = {
     }
 
     const { month } = req.params;
-    const record = await PerformanceModel.findByEmployeeIdAndMonth(req.user.userId, month);
+    const monthStr = Array.isArray(month) ? month[0] : month;
+    const record = await PerformanceModel.findByEmployeeIdAndMonth(req.user.userId, monthStr);
     
     if (!record) {
       return res.json({
