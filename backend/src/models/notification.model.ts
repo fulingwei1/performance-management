@@ -1,4 +1,4 @@
-import { query, USE_MEMORY_DB, memoryDB } from '../config/database';
+import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 
 export type NotificationType = 'reminder' | 'approval' | 'system' | 'freeze';
@@ -28,6 +28,9 @@ export class NotificationModel {
     const id = uuidv4();
     
     if (USE_MEMORY_DB) {
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
       const notification: Notification = {
         id,
         userId: input.userId,
@@ -38,8 +41,7 @@ export class NotificationModel {
         link: input.link,
         createdAt: new Date(),
       };
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      (memoryDB as any).notifications.push(notification);
+      memoryStore.notifications.set(id, notification);
       return notification;
     }
 
@@ -66,10 +68,13 @@ export class NotificationModel {
     if (inputs.length === 0) return 0;
 
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
       for (const input of inputs) {
+        const id = uuidv4();
         const notification: Notification = {
-          id: uuidv4(),
+          id,
           userId: input.userId,
           type: input.type,
           title: input.title,
@@ -78,7 +83,7 @@ export class NotificationModel {
           link: input.link,
           createdAt: new Date(),
         };
-        (memoryDB as any).notifications.push(notification);
+        memoryStore.notifications.set(id, notification);
       }
       return inputs.length;
     }
@@ -100,12 +105,14 @@ export class NotificationModel {
   // 获取用户通知列表
   static async findByUserId(userId: string, readStatus?: boolean): Promise<Notification[]> {
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      let filtered = (memoryDB as any).notifications.filter((n: Notification) => n.userId === userId);
-      if (readStatus !== undefined) {
-        filtered = filtered.filter((n: Notification) => n.read === readStatus);
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
       }
-      return filtered.sort((a: Notification, b: Notification) => b.createdAt.getTime() - a.createdAt.getTime());
+      let filtered = Array.from(memoryStore.notifications.values()).filter(n => n.userId === userId);
+      if (readStatus !== undefined) {
+        filtered = filtered.filter(n => n.read === readStatus);
+      }
+      return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
     let sql = `
@@ -131,8 +138,10 @@ export class NotificationModel {
   // 获取未读数量
   static async getUnreadCount(userId: string): Promise<number> {
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      return (memoryDB as any).notifications.filter((n: Notification) => n.userId === userId && !n.read).length;
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
+      return Array.from(memoryStore.notifications.values()).filter(n => n.userId === userId && !n.read).length;
     }
 
     const sql = `
@@ -148,10 +157,13 @@ export class NotificationModel {
   // 标记为已读
   static async markAsRead(id: string, userId: string): Promise<boolean> {
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      const notification = (memoryDB as any).notifications.find((n: Notification) => n.id === id && n.userId === userId);
-      if (notification) {
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
+      const notification = memoryStore.notifications.get(id);
+      if (notification && notification.userId === userId) {
         notification.read = true;
+        memoryStore.notifications.set(id, notification);
         return true;
       }
       return false;
@@ -170,11 +182,14 @@ export class NotificationModel {
   // 全部标记为已读
   static async markAllAsRead(userId: string): Promise<number> {
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
       let count = 0;
-      for (const notification of (memoryDB as any).notifications) {
+      for (const [id, notification] of memoryStore.notifications.entries()) {
         if (notification.userId === userId && !notification.read) {
           notification.read = true;
+          memoryStore.notifications.set(id, notification);
           count++;
         }
       }
@@ -194,8 +209,10 @@ export class NotificationModel {
   // 根据ID查找通知
   static async findById(id: string): Promise<Notification | null> {
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      return (memoryDB as any).notifications.find((n: Notification) => n.id === id) || null;
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
+      return memoryStore.notifications.get(id) || null;
     }
 
     const sql = `
@@ -212,14 +229,18 @@ export class NotificationModel {
   // 删除旧通知（超过30天）
   static async deleteOldNotifications(days: number = 30): Promise<number> {
     if (USE_MEMORY_DB) {
-      (memoryDB as any).notifications = (memoryDB as any).notifications || [];
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
-      const beforeCount = (memoryDB as any).notifications.length;
-      (memoryDB as any).notifications = (memoryDB as any).notifications.filter(
-        (n: Notification) => n.createdAt > cutoffDate
-      );
-      return beforeCount - (memoryDB as any).notifications.length;
+      const beforeCount = memoryStore.notifications.size;
+      for (const [id, notification] of memoryStore.notifications.entries()) {
+        if (notification.createdAt <= cutoffDate) {
+          memoryStore.notifications.delete(id);
+        }
+      }
+      return beforeCount - memoryStore.notifications.size;
     }
 
     const sql = `

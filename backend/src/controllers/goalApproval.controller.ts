@@ -30,7 +30,7 @@ export const getPendingApprovals = asyncHandler(async (req: Request, res: Respon
   // 获取目标所有者信息
   const objectivesWithOwner = await Promise.all(
     objectives.map(async (obj) => {
-      const owner = obj.ownerId ? await EmployeeModel.findById(parseInt(obj.ownerId.toString())) : null;
+      const owner = obj.ownerId ? await EmployeeModel.findById(obj.ownerId.toString()) : null;
       return {
         ...obj,
         ownerName: owner?.name,
@@ -84,7 +84,7 @@ export const approveObjective = [
 
     // 检查是否是该员工的直属经理
     if (objective.ownerId) {
-      const employee = await EmployeeModel.findById(parseInt(objective.ownerId.toString()));
+      const employee = await EmployeeModel.findById(objective.ownerId.toString());
       if (!employee || employee.managerId !== userId.toString()) {
         return res.status(403).json({
           success: false,
@@ -149,7 +149,7 @@ export const rejectObjective = [
 
     // 检查是否是该员工的直属经理
     if (objective.ownerId) {
-      const employee = await EmployeeModel.findById(parseInt(objective.ownerId.toString()));
+      const employee = await EmployeeModel.findById(objective.ownerId.toString());
       if (!employee || employee.managerId !== userId.toString()) {
         return res.status(403).json({
           success: false,
@@ -214,7 +214,7 @@ export const adjustObjective = [
 
     // 检查是否是该员工的直属经理
     if (objective.ownerId) {
-      const employee = await EmployeeModel.findById(parseInt(objective.ownerId.toString()));
+      const employee = await EmployeeModel.findById(objective.ownerId.toString());
       if (!employee || employee.managerId !== userId.toString()) {
         return res.status(403).json({
           success: false,
@@ -228,8 +228,8 @@ export const adjustObjective = [
     for (const adj of adjustments) {
       const { type, oldValue, newValue } = adj;
       const record = await createAdjustment({
-        objectiveId: parseInt(objectiveId),
-        adjustedBy: userId,
+        objectiveId: Number(objectiveId),
+        adjustedBy: Number(userId),
         adjustmentType: type,
         oldValue,
         newValue,
