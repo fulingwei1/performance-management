@@ -26,19 +26,25 @@ const createPool = () => {
 
   logger.info('🔌 Configuring PostgreSQL Pool...');
   
-  // 强制添加 SSL 配置，解决 Vercel 连接 Supabase 的常见问题
-  // 即使连接串里已经有了，这里显式配置更保险
+  // 检测是否为本地连接（localhost, 127.0.0.1, postgres等本地主机名）
+  const isLocal = /localhost|127\.0\.0\.1|postgres|mysql/.test(process.env.DATABASE_URL);
+  
+  // 配置SSL：本地环境不需要，生产环境（Supabase等）需要
   const config: any = {
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false // 允许自签名证书
-    },
     // Vercel Serverless 优化配置
     max: 1, // 限制连接数
     idleTimeoutMillis: 3000,
     connectionTimeoutMillis: 10000, // 增加超时到10s
     keepAlive: true, // 开启 TCP KeepAlive
   };
+  
+  // 只有非本地连接才添加SSL配置
+  if (!isLocal) {
+    config.ssl = {
+      rejectUnauthorized: false // 允许自签名证书
+    };
+  }
 
   return new Pool(config);
 };

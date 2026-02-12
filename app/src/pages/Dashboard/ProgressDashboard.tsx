@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { dashboardApi } from '../../api/dashboardApi';
 import {
   BarChart,
@@ -31,7 +31,7 @@ const RISK_COLORS = {
 };
 
 export default function ProgressDashboard() {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [year, setYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   

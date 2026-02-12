@@ -22,8 +22,11 @@ export const authController = {
 
       const { username, password, role } = req.body;
 
-      // 查找员工（通过姓名匹配）
-      const employee = await EmployeeModel.findByName(username);
+      // 查找员工（先尝试ID，再尝试姓名）
+      let employee = await EmployeeModel.findById(username);
+      if (!employee) {
+        employee = await EmployeeModel.findByName(username);
+      }
 
       if (!employee) {
         return res.status(401).json({

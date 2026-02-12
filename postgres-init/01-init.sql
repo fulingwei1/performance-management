@@ -1,0 +1,303 @@
+-- ATE绩效管理系统 - PostgreSQL初始化脚本
+
+-- 创建自定义类型
+DO $$ BEGIN
+  CREATE TYPE employee_role AS ENUM ('employee', 'manager', 'gm', 'hr', 'admin');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE employee_status AS ENUM ('active', 'disabled');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE objective_level AS ENUM ('company', 'department', 'individual');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE objective_status AS ENUM ('draft', 'pending_approval', 'approved', 'rejected', 'active', 'completed', 'cancelled');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE progress_status AS ENUM ('draft', 'employee_submitted', 'manager_reviewed');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE strategic_type AS ENUM ('company_strategy', 'company_key_work', 'department_key_work');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE review_status AS ENUM ('draft', 'submitted', 'reviewed');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE promotion_status AS ENUM ('draft', 'pending', 'approved', 'rejected');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- 创建更新时间戳函数
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 员工表
+CREATE TABLE IF NOT EXISTS employees (
+  id VARCHAR(50) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255),
+  department VARCHAR(100),
+  sub_department VARCHAR(100),
+  position VARCHAR(100),
+  role employee_role NOT NULL DEFAULT 'employee',
+  level VARCHAR(50),
+  manager_id VARCHAR(50),
+  password VARCHAR(255),
+  avatar TEXT,
+  status employee_status DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_employees_department ON employees(department);
+CREATE INDEX IF NOT EXISTS idx_employees_manager_id ON employees(manager_id);
+CREATE INDEX IF NOT EXISTS idx_employees_role ON employees(role);
+
+DROP TRIGGER IF EXISTS update_employees_updated_at ON employees;
+CREATE TRIGGER update_employees_updated_at
+  BEFORE UPDATE ON employees
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 目标表（OKR/KPI）
+CREATE TABLE IF NOT EXISTS objectives (
+  id VARCHAR(50) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  level objective_level NOT NULL,
+  parent_id VARCHAR(50),
+  strategic_objective_id VARCHAR(50),
+  department VARCHAR(100),
+  owner_id VARCHAR(50),
+  year INT NOT NULL,
+  quarter VARCHAR(10),
+  weight DECIMAL(5,2) DEFAULT 0,
+  progress DECIMAL(5,2) DEFAULT 0,
+  status objective_status DEFAULT 'draft',
+  start_date DATE,
+  end_date DATE,
+  target_value VARCHAR(255),
+  target_unit VARCHAR(50),
+  q1_target DECIMAL(10,2),
+  q2_target DECIMAL(10,2),
+  q3_target DECIMAL(10,2),
+  q4_target DECIMAL(10,2),
+  employee_confirmed_at TIMESTAMP NULL,
+  employee_feedback TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_objectives_owner ON objectives(owner_id);
+CREATE INDEX IF NOT EXISTS idx_objectives_year ON objectives(year);
+CREATE INDEX IF NOT EXISTS idx_objectives_level ON objectives(level);
+CREATE INDEX IF NOT EXISTS idx_objectives_department ON objectives(department);
+
+DROP TRIGGER IF EXISTS update_objectives_updated_at ON objectives;
+CREATE TRIGGER update_objectives_updated_at
+  BEFORE UPDATE ON objectives
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 目标进度表
+CREATE TABLE IF NOT EXISTS goal_progress (
+  id VARCHAR(50) PRIMARY KEY,
+  objective_id VARCHAR(50) NOT NULL,
+  employee_id VARCHAR(50) NOT NULL,
+  year INT NOT NULL,
+  month INT NOT NULL,
+  employee_completion_rate DECIMAL(5,2) DEFAULT 0,
+  employee_comment TEXT,
+  employee_submitted_at TIMESTAMP NULL,
+  manager_completion_rate DECIMAL(5,2),
+  manager_comment TEXT,
+  manager_reviewed_at TIMESTAMP NULL,
+  manager_id VARCHAR(50),
+  status progress_status DEFAULT 'draft',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (objective_id, year, month),
+  FOREIGN KEY (objective_id) REFERENCES objectives(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_goal_progress_employee ON goal_progress(employee_id, year, month);
+CREATE INDEX IF NOT EXISTS idx_goal_progress_objective ON goal_progress(objective_id);
+
+DROP TRIGGER IF EXISTS update_goal_progress_updated_at ON goal_progress;
+CREATE TRIGGER update_goal_progress_updated_at
+  BEFORE UPDATE ON goal_progress
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 战略目标表
+CREATE TABLE IF NOT EXISTS strategic_objectives (
+  id VARCHAR(50) PRIMARY KEY,
+  year INT NOT NULL,
+  type strategic_type NOT NULL,
+  department VARCHAR(100),
+  title VARCHAR(255) NOT NULL,
+  content TEXT,
+  progress DECIMAL(5,2) DEFAULT 0,
+  order_index INT DEFAULT 0,
+  created_by VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_strategic_objectives_year_type ON strategic_objectives(year, type);
+CREATE INDEX IF NOT EXISTS idx_strategic_objectives_department ON strategic_objectives(department);
+
+DROP TRIGGER IF EXISTS update_strategic_objectives_updated_at ON strategic_objectives;
+CREATE TRIGGER update_strategic_objectives_updated_at
+  BEFORE UPDATE ON strategic_objectives
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- AI使用日志表
+CREATE TABLE IF NOT EXISTS ai_usage_logs (
+  id VARCHAR(50) PRIMARY KEY,
+  user_id VARCHAR(50) NOT NULL,
+  user_name VARCHAR(100),
+  feature_type VARCHAR(100) NOT NULL,
+  tokens_used INT DEFAULT 0,
+  cost_yuan DECIMAL(10,6) DEFAULT 0,
+  success BOOLEAN DEFAULT true,
+  error_message TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_user ON ai_usage_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_feature ON ai_usage_logs(feature_type);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_created ON ai_usage_logs(created_at);
+
+-- 月度绩效表
+CREATE TABLE IF NOT EXISTS monthly_performance (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  year INT NOT NULL,
+  month INT NOT NULL,
+  score DECIMAL(5,2),
+  work_summary TEXT,
+  next_month_plan TEXT,
+  manager_comment TEXT,
+  manager_id VARCHAR(50),
+  keywords JSON,
+  status review_status DEFAULT 'draft',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (employee_id, year, month)
+);
+
+CREATE INDEX IF NOT EXISTS idx_monthly_performance_employee ON monthly_performance(employee_id);
+CREATE INDEX IF NOT EXISTS idx_monthly_performance_year_month ON monthly_performance(year, month);
+
+DROP TRIGGER IF EXISTS update_monthly_performance_updated_at ON monthly_performance;
+CREATE TRIGGER update_monthly_performance_updated_at
+  BEFORE UPDATE ON monthly_performance
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 晋升申请表
+CREATE TABLE IF NOT EXISTS promotion_requests (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  current_level VARCHAR(50),
+  target_level VARCHAR(50) NOT NULL,
+  performance_summary TEXT,
+  skill_summary TEXT,
+  competency_summary TEXT,
+  work_summary TEXT,
+  status promotion_status DEFAULT 'draft',
+  manager_review TEXT,
+  hr_review TEXT,
+  gm_review TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_promotion_requests_employee ON promotion_requests(employee_id);
+CREATE INDEX IF NOT EXISTS idx_promotion_requests_status ON promotion_requests(status);
+
+DROP TRIGGER IF EXISTS update_promotion_requests_updated_at ON promotion_requests;
+CREATE TRIGGER update_promotion_requests_updated_at
+  BEFORE UPDATE ON promotion_requests
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 季度总结表
+CREATE TABLE IF NOT EXISTS quarterly_summaries (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  year INT NOT NULL,
+  quarter INT NOT NULL,
+  summary TEXT,
+  achievements TEXT,
+  challenges TEXT,
+  next_quarter_plan TEXT,
+  status review_status DEFAULT 'draft',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (employee_id, year, quarter)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quarterly_summaries_employee ON quarterly_summaries(employee_id);
+
+DROP TRIGGER IF EXISTS update_quarterly_summaries_updated_at ON quarterly_summaries;
+CREATE TRIGGER update_quarterly_summaries_updated_at
+  BEFORE UPDATE ON quarterly_summaries
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 同事互评表
+CREATE TABLE IF NOT EXISTS peer_reviews (
+  id VARCHAR(50) PRIMARY KEY,
+  reviewer_id VARCHAR(50) NOT NULL,
+  reviewee_id VARCHAR(50) NOT NULL,
+  year INT NOT NULL,
+  quarter INT,
+  comment TEXT,
+  is_anonymous BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_peer_reviews_reviewer ON peer_reviews(reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_peer_reviews_reviewee ON peer_reviews(reviewee_id);
+
+-- 初始化说明
+COMMENT ON DATABASE performance_db IS 'ATE绩效管理系统数据库';
+COMMENT ON TABLE employees IS '员工表';
+COMMENT ON TABLE objectives IS '目标表（OKR/KPI）';
+COMMENT ON TABLE goal_progress IS '目标进度跟踪表';
+COMMENT ON TABLE strategic_objectives IS '战略目标表';
+COMMENT ON TABLE ai_usage_logs IS 'AI功能使用统计表';
+COMMENT ON TABLE monthly_performance IS '月度绩效表';
+COMMENT ON TABLE promotion_requests IS '晋升申请表';
+COMMENT ON TABLE quarterly_summaries IS '季度总结表';
+COMMENT ON TABLE peer_reviews IS '同事互评表';

@@ -20,7 +20,8 @@ export class EmployeeModel {
     const sql = `
       SELECT 
         id, name, department, sub_department as subDepartment, 
-        role, level, manager_id as managerId, avatar, created_at as createdAt, updated_at as updatedAt
+        role, level, manager_id as managerId, avatar, password,
+        created_at as createdAt, updated_at as updatedAt
       FROM employees 
       WHERE id = ?
     `;
