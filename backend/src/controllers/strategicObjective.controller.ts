@@ -7,8 +7,48 @@ import { v4 as uuidv4 } from 'uuid';
 export const strategicObjectiveController = {
   getAll: asyncHandler(async (req: Request, res: Response) => {
     const year = req.query.year ? parseInt(req.query.year as string) : undefined;
-    const data = await StrategicObjectiveModel.findAll(year);
-    res.json({ success: true, data });
+    const allData = await StrategicObjectiveModel.findAll(year);
+    
+    // 根据用户角色过滤数据
+    const userRole = req.user?.role;
+    const userId = req.user?.userId;
+    
+    // GM、HR、Admin 可以看全部
+    if (userRole === 'gm' || userRole === 'hr' || userRole === 'admin') {
+      return res.json({ success: true, data: allData });
+    }
+    
+    // Manager和Employee需要按部门过滤
+    if (userRole === 'manager' || userRole === 'employee') {
+      // 获取用户部门信息
+      const { EmployeeModel } = require('../models/employee.model');
+      const user = await EmployeeModel.findById(userId);
+      
+      if (!user || !user.department) {
+        return res.json({ success: true, data: allData.filter((item: any) => 
+          item.type === 'company_strategy' || item.type === 'company_key_work'
+        )});
+      }
+      
+      // 过滤规则：
+      // 1. 公司战略 - 全部可见
+      // 2. 公司重点工作 - 全部可见
+      // 3. 部门重点工作 - 只看自己部门的
+      const filteredData = allData.filter((item: any) => {
+        if (item.type === 'company_strategy' || item.type === 'company_key_work') {
+          return true; // 公司级别的全部可见
+        }
+        if (item.type === 'department_key_work') {
+          return item.department === user.department; // 只看自己部门的
+        }
+        return false;
+      });
+      
+      return res.json({ success: true, data: filteredData });
+    }
+    
+    // 默认返回全部
+    res.json({ success: true, data: allData });
   }),
 
   getById: asyncHandler(async (req: Request, res: Response) => {

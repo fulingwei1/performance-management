@@ -66,7 +66,8 @@ export class StrategicObjectiveModel {
   private static format(row: any): StrategicObjective {
     return {
       id: row.id, title: row.title, description: row.description, year: row.year,
-      status: row.status, createdBy: row.created_by, createdAt: row.created_at, updatedAt: row.updated_at
+      status: row.status, type: row.type, department: row.department,
+      createdBy: row.created_by, createdAt: row.created_at, updatedAt: row.updated_at
     };
   }
 }
