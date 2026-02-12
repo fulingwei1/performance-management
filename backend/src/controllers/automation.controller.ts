@@ -43,15 +43,15 @@ export const automationController = {
       
       // 创建新记录（只插入必要的字段）
       const recordId = `auto-${emp.id}-${currentMonth}`;
-      // 根据level确定group_type（默认middle）
-      let groupType = 'middle';
+      // 根据level确定group_type（只有high/low两种，默认low）
+      let groupType: 'high' | 'low' = 'low';
       if (emp.level) {
         const levelStr = emp.level.toString();
-        if (levelStr === 'junior' || levelStr.includes('1') || levelStr.includes('2')) {
-          groupType = 'junior';
-        } else if (levelStr === 'senior' || levelStr.includes('5') || levelStr.includes('6')) {
-          groupType = 'senior';
+        // senior级别或包含5/6的归为high分组
+        if (levelStr === 'senior' || levelStr.includes('5') || levelStr.includes('6')) {
+          groupType = 'high';
         }
+        // junior/intermediate级别归为low分组
       }
       
       await query(
