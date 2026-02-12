@@ -343,6 +343,17 @@ CREATE TRIGGER update_performance_records_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- 月度考核结果发布表
+CREATE TABLE IF NOT EXISTS monthly_assessment_publications (
+  id VARCHAR(50) PRIMARY KEY,
+  month VARCHAR(7) NOT NULL UNIQUE,
+  published_by VARCHAR(50) REFERENCES employees(id),
+  published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_monthly_publications_month ON monthly_assessment_publications(month);
+
 -- 初始化说明
 COMMENT ON DATABASE performance_db IS 'ATE绩效管理系统数据库';
 COMMENT ON TABLE employees IS '员工表';
@@ -355,3 +366,4 @@ COMMENT ON TABLE promotion_requests IS '晋升申请表';
 COMMENT ON TABLE quarterly_summaries IS '季度总结表';
 COMMENT ON TABLE peer_reviews IS '同事互评表';
 COMMENT ON TABLE performance_records IS '绩效记录表（示例数据）';
+COMMENT ON TABLE monthly_assessment_publications IS '月度考核结果发布记录表';
