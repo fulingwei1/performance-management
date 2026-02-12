@@ -204,13 +204,13 @@ export function StrategicGoalsManagement() {
         payload.industry = '自动化测试设备';
       } else if (formData.type === 'company-key-work') {
         endpoint = '/ai/company-key-works';
-        payload.strategy = goals.find(g => g.type === 'company-strategy')?.content;
+        payload.strategy = companyStrategies[0]?.content;
         payload.companyName = '金凯博自动化';
       } else if (formData.type === 'department-key-work') {
         endpoint = '/ai/department-key-works';
         payload.department = formData.department;
-        payload.companyStrategy = goals.find(g => g.type === 'company-strategy')?.content;
-        payload.companyKeyWorks = goals.filter(g => g.type === 'company-key-work').map(g => g.title);
+        payload.companyStrategy = companyStrategies[0]?.content;
+        payload.companyKeyWorks = companyKeyWorks.map(g => g.title);
       }
 
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -259,9 +259,9 @@ export function StrategicGoalsManagement() {
     }
   };
 
-  const companyStrategy = goals.find(g => g.type === 'company-strategy' && g.status === 'active');
-  const companyKeyWorks = goals.filter(g => g.type === 'company-key-work' && g.status === 'active');
-  const departmentKeyWorks = goals.filter(g => g.type === 'department-key-work' && g.status === 'active');
+  const companyStrategies = goals.filter(g => g.type === 'company-strategy');
+  const companyKeyWorks = goals.filter(g => g.type === 'company-key-work');
+  const departmentKeyWorks = goals.filter(g => g.type === 'department-key-work');
 
   const departments = ['营销中心', '研发中心', '生产中心', '供应链中心', '管理中心'];
 
@@ -292,29 +292,31 @@ export function StrategicGoalsManagement() {
                 <CardDescription>公司长期发展方向</CardDescription>
               </CardHeader>
               <CardContent>
-                {companyStrategy ? (
+                {companyStrategies.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-semibold text-sm">{companyStrategy.title}</h3>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(companyStrategy)}>
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(companyStrategy.id)}>
-                            <Trash2 className="w-3 h-3 text-red-500" />
-                          </Button>
+                    {companyStrategies.map((strategy) => (
+                      <div key={strategy.id} className="p-3 bg-blue-50 rounded-lg">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-semibold text-sm">{strategy.title}</h3>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(strategy)}>
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDelete(strategy.id)}>
+                              <Trash2 className="w-3 h-3 text-red-500" />
+                            </Button>
+                          </div>
                         </div>
+                        {strategy.description && (
+                          <p className="text-xs text-gray-600 mb-2">{strategy.description}</p>
+                        )}
+                        {strategy.content && (
+                          <p className="text-xs text-gray-500 whitespace-pre-wrap p-2 bg-white rounded">
+                            {strategy.content}
+                          </p>
+                        )}
                       </div>
-                      {companyStrategy.description && (
-                        <p className="text-xs text-gray-600 mb-2">{companyStrategy.description}</p>
-                      )}
-                      {companyStrategy.content && (
-                        <p className="text-xs text-gray-500 whitespace-pre-wrap p-2 bg-white rounded">
-                          {companyStrategy.content}
-                        </p>
-                      )}
-                    </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-6">
