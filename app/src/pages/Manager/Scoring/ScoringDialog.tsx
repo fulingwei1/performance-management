@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Send, X, AlertCircle, TrendingUp, Clock } from 'lucide-react';
+import { FileText, Send, X, AlertCircle, TrendingUp, Clock, Sparkles } from 'lucide-react';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor, resolveGroupType } from '@/lib/config';
 import { KeywordSelector } from '@/components/KeywordSelector';
+import { AIAssistant } from '@/components/AIAssistant';
 import keywordsData from '@/data/evaluation-keywords.json';
 
 interface ScoringDialogProps {
@@ -35,6 +37,26 @@ export function ScoringDialog({
   totalScore, loading, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  
+  // AI助手状态
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [aiType, setAiType] = useState<'manager-comment' | 'work-arrangement'>('manager-comment');
+  
+  // 打开AI助手
+  const handleOpenAI = (type: 'manager-comment' | 'work-arrangement') => {
+    setAiType(type);
+    setAiDrawerOpen(true);
+  };
+  
+  // 采用AI建议
+  const handleAdoptAI = (content: string) => {
+    if (aiType === 'manager-comment') {
+      setManagerComment(content);
+    } else {
+      setNextMonthWorkArrangement(content);
+    }
+    setAiDrawerOpen(false);
+  };
   
   // 获取员工级别映射
   const getEmployeeLevel = (level?: string): 'basic' | 'senior' | 'manager' | 'executive' => {
@@ -266,8 +288,22 @@ export function ScoringDialog({
 
                   <Card className="shadow-sm">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">部门经理综合评价<span className="text-red-500 ml-1">*</span></CardTitle>
-                      <p className="text-xs text-gray-500">请对员工本月的整体工作表现进行评价（关键词已自动插入）</p>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-sm font-medium">部门经理综合评价<span className="text-red-500 ml-1">*</span></CardTitle>
+                          <p className="text-xs text-gray-500 mt-1">请对员工本月的整体工作表现进行评价（关键词已自动插入）</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenAI('manager-comment')}
+                          className="border-purple-300 text-purple-700 hover:bg-purple-50 shrink-0"
+                        >
+                          <Sparkles className="w-4 h-4 mr-1" />
+                          AI 建议
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <Textarea placeholder="请输入对员工本月工作的综合评价..." value={managerComment} onChange={(e) => setManagerComment(e.target.value)} className="min-h-[160px] resize-none" />
@@ -275,8 +311,22 @@ export function ScoringDialog({
                   </Card>
                   <Card className="shadow-sm">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">下月工作安排<span className="text-red-500 ml-1">*</span></CardTitle>
-                      <p className="text-xs text-gray-500">请填写对员工下月工作的安排和期望</p>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-sm font-medium">下月工作安排<span className="text-red-500 ml-1">*</span></CardTitle>
+                          <p className="text-xs text-gray-500 mt-1">请填写对员工下月工作的安排和期望</p>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenAI('work-arrangement')}
+                          className="border-purple-300 text-purple-700 hover:bg-purple-50 shrink-0"
+                        >
+                          <Sparkles className="w-4 h-4 mr-1" />
+                          AI 建议
+                        </Button>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       <Textarea placeholder="请输入对员工下月工作的安排和建议..." value={nextMonthWorkArrangement} onChange={(e) => setNextMonthWorkArrangement(e.target.value)} className="min-h-[160px] resize-none" />
@@ -306,6 +356,25 @@ export function ScoringDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* AI Assistant Drawer */}
+      <Sheet open={aiDrawerOpen} onOpenChange={setAiDrawerOpen}>
+        <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>AI 助手</SheetTitle>
+          </SheetHeader>
+          <AIAssistant
+            type={aiType}
+            requestData={{
+              employeeId: selectedRecord?.employeeId,
+              selfSummary: selectedRecord?.selfSummary || '',
+              scores: scores,
+              currentComment: aiType === 'work-arrangement' ? managerComment : undefined
+            }}
+            onAdopt={handleAdoptAI}
+          />
+        </SheetContent>
+      </Sheet>
     </Dialog>
   );
 }

@@ -37,6 +37,7 @@ import bonusRoutes from './routes/bonus.routes';
 import departmentRoutes from './routes/department.routes';
 import peerReviewCycleRoutes from './routes/peerReviewCycle.routes';
 import goalProgressRoutes from './routes/goalProgress.routes';
+import aiRoutes from './routes/ai.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -137,6 +138,7 @@ app.use('/api/bonus', bonusRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/peer-review-cycles', peerReviewCycleRoutes);
 app.use('/api/goal-progress', goalProgressRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404处理
 app.use(notFoundHandler);
