@@ -40,6 +40,7 @@ import { ContractManagement } from '@/pages/HR/ContractManagement';
 import { OKRDashboard } from '@/pages/HR/OKRDashboard';
 import { StrategicOverview } from '@/pages/GM/StrategicOverview';
 import { StrategicGoalsManagement } from '@/pages/GM/StrategicGoalsManagement';
+import { MyGoalPlanning } from '@/pages/Employee/MyGoalPlanning';
 import { MyAssignments } from '@/pages/OKR/MyAssignments';
 import { RelatedOKR } from '@/pages/OKR/RelatedOKR';
 import { MyBonus } from '@/pages/Employee/MyBonus';
@@ -131,6 +132,7 @@ function App() {
         <Route element={<ProtectedLayout allowedRole="employee" />}>
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/employee/summary" element={<WorkSummary />} />
+          <Route path="/employee/goal-planning" element={<MyGoalPlanning />} />
           <Route path="/employee/scores" element={<MyScores />} />
           <Route path="/employee/promotion" element={<EmployeePromotionRequest />} />
           <Route path="/employee/objectives" element={<ObjectiveTree />} />
