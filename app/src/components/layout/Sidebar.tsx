@@ -22,7 +22,8 @@ import {
   Lock,
   Send,
   Bell,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,7 @@ const managerNavItems = [
   { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/manager/team-objectives', label: '团队目标', icon: Target },
+  { path: '/manager/goal-approval', label: '目标审批', icon: ClipboardCheck },
   { path: '/manager/review-reports', label: '月报审阅', icon: MessageSquare },
   { path: '/manager/interviews', label: '绩效面谈', icon: Calendar },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },

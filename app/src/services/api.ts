@@ -654,7 +654,10 @@ export const appealApi = {
     body: JSON.stringify(data)
   }),
   
-  // 查询申诉列表（员工看自己，HR看全部）
+  // 员工查询自己的申诉列表
+  getMyAppeals: () => request('/appeals/my'),
+  
+  // HR查询所有申诉列表
   getAll: (status?: string) => {
     const url = status ? `/appeals?status=${status}` : '/appeals';
     return request(url);

@@ -1,188 +1,265 @@
 import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
+import { EmployeeModel } from './employee.model';
+import type { Appeal } from '../types';
 import logger from '../config/logger';
 
-export interface Appeal {
-  id: string;
-  performanceRecordId: string;
-  employeeId: string;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  hrComment?: string;
-  hrId?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export class AppealModel {
-  // 格式化数据库字段
-  static format(row: any): Appeal {
-    return {
-      id: row.id,
-      performanceRecordId: row.performance_record_id || row.performanceRecordId,
-      employeeId: row.employee_id || row.employeeId,
-      reason: row.reason,
-      status: row.status,
-      hrComment: row.hr_comment || row.hrComment,
-      hrId: row.hr_id || row.hrId,
-      createdAt: row.created_at || row.createdAt,
-      updatedAt: row.updated_at || row.updatedAt
-    };
-  }
-
-  // 创建申诉
-  static async create(data: Omit<Appeal, 'createdAt' | 'updatedAt'>): Promise<Appeal> {
+  /**
+   * 创建申诉记录
+   */
+  static async create(data: Omit<Appeal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Appeal> {
+    const id = `appeal-${data.employeeId}-${data.performanceRecordId}-${Date.now()}`;
+    
     if (USE_MEMORY_DB) {
-      if (!memoryStore.appeals) {
-        memoryStore.appeals = new Map();
-      }
-      const appeal: Appeal = {
+      const record: Appeal = {
+        id,
         ...data,
+        status: 'pending',
         createdAt: new Date(),
         updatedAt: new Date()
       };
-      memoryStore.appeals.set(data.id, appeal);
-      logger.info(`创建申诉到内存数据库: ${data.id}`);
-      return appeal;
+      
+      if (!memoryStore.appeals) {
+        memoryStore.appeals = new Map();
+      }
+      memoryStore.appeals.set(id, record);
+      logger.info(`创建申诉记录到内存: ${id}`);
+      
+      return record;
     }
-
+    
     const sql = `
       INSERT INTO appeals (
-        id, performance_record_id, employee_id, reason, status
-      ) VALUES (?, ?, ?, ?, ?)
+        id, performance_record_id, employee_id, reason, status, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+      RETURNING *
     `;
-
-    await query(sql, [
-      data.id,
+    
+    const results = await query(sql, [
+      id,
       data.performanceRecordId,
       data.employeeId,
       data.reason,
-      data.status || 'pending'
+      'pending'
     ]);
-
-    return (await this.findById(data.id))!;
+    
+    return this.formatAppeal(results[0]);
   }
-
-  // 根据ID查找申诉
+  
+  /**
+   * 根据ID查找申诉
+   */
   static async findById(id: string): Promise<Appeal | null> {
     if (USE_MEMORY_DB) {
       if (!memoryStore.appeals) {
-        memoryStore.appeals = new Map();
+        return null;
       }
-      return memoryStore.appeals.get(id) || null;
+      const appeal = memoryStore.appeals.get(id);
+      return appeal || null;
     }
-
-    const sql = 'SELECT * FROM appeals WHERE id = ?';
-    const rows = await query(sql, [id]);
-    return rows.length > 0 ? this.format(rows[0]) : null;
+    
+    const sql = `
+      SELECT 
+        a.*,
+        e.name as employee_name,
+        e.department,
+        e.sub_department,
+        hr.name as hr_name
+      FROM appeals a
+      JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN employees hr ON a.hr_id = hr.id
+      WHERE a.id = $1
+    `;
+    
+    const results = await query(sql, [id]);
+    return results.length > 0 ? this.formatAppeal(results[0]) : null;
   }
-
-  // 查询申诉列表（支持筛选）
+  
+  /**
+   * 获取员工自己的申诉列表
+   */
+  static async findByEmployeeId(employeeId: string): Promise<Appeal[]> {
+    if (USE_MEMORY_DB) {
+      if (!memoryStore.appeals) {
+        return [];
+      }
+      const allAppeals = Array.from(memoryStore.appeals.values());
+      return allAppeals.filter(a => a.employeeId === employeeId);
+    }
+    
+    const sql = `
+      SELECT 
+        a.*,
+        e.name as employee_name,
+        e.department,
+        e.sub_department,
+        hr.name as hr_name
+      FROM appeals a
+      JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN employees hr ON a.hr_id = hr.id
+      WHERE a.employee_id = $1
+      ORDER BY a.created_at DESC
+    `;
+    
+    const results = await query(sql, [employeeId]);
+    return results.map(r => this.formatAppeal(r));
+  }
+  
+  /**
+   * 获取所有申诉（HR查看）
+   */
   static async findAll(filters?: {
-    employeeId?: string;
-    status?: string;
-    hrId?: string;
+    status?: 'pending' | 'approved' | 'rejected';
+    department?: string;
   }): Promise<Appeal[]> {
     if (USE_MEMORY_DB) {
       if (!memoryStore.appeals) {
-        memoryStore.appeals = new Map();
+        return [];
       }
-      let items = Array.from(memoryStore.appeals.values());
-      if (filters?.employeeId) {
-        items = items.filter(i => i.employeeId === filters.employeeId);
-      }
+      let allAppeals = Array.from(memoryStore.appeals.values());
+      
       if (filters?.status) {
-        items = items.filter(i => i.status === filters.status);
+        allAppeals = allAppeals.filter(a => a.status === filters.status);
       }
-      if (filters?.hrId) {
-        items = items.filter(i => i.hrId === filters.hrId);
+      
+      if (filters?.department) {
+        allAppeals = allAppeals.filter(a => a.department === filters.department);
       }
-      return items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      
+      return allAppeals;
     }
-
-    let sql = 'SELECT * FROM appeals WHERE 1=1';
+    
+    let sql = `
+      SELECT 
+        a.*,
+        e.name as employee_name,
+        e.department,
+        e.sub_department,
+        hr.name as hr_name
+      FROM appeals a
+      JOIN employees e ON a.employee_id = e.id
+      LEFT JOIN employees hr ON a.hr_id = hr.id
+      WHERE 1=1
+    `;
+    
     const params: any[] = [];
-
-    if (filters?.employeeId) {
-      sql += ' AND employee_id = ?';
-      params.push(filters.employeeId);
-    }
+    let paramIndex = 1;
+    
     if (filters?.status) {
-      sql += ' AND status = ?';
+      sql += ` AND a.status = $${paramIndex}`;
       params.push(filters.status);
+      paramIndex++;
     }
-    if (filters?.hrId) {
-      sql += ' AND hr_id = ?';
-      params.push(filters.hrId);
+    
+    if (filters?.department) {
+      sql += ` AND e.department = $${paramIndex}`;
+      params.push(filters.department);
+      paramIndex++;
     }
-
-    sql += ' ORDER BY created_at DESC';
-
-    const rows = await query(sql, params);
-    return rows.map(this.format);
+    
+    sql += ` ORDER BY a.created_at DESC`;
+    
+    const results = await query(sql, params);
+    return results.map(r => this.formatAppeal(r));
   }
-
-  // 更新申诉（HR处理）
-  static async update(id: string, data: Partial<Appeal>): Promise<Appeal | null> {
+  
+  /**
+   * 处理申诉（HR操作）
+   */
+  static async review(
+    id: string,
+    hrId: string,
+    status: 'approved' | 'rejected',
+    hrComment?: string
+  ): Promise<Appeal> {
     if (USE_MEMORY_DB) {
       if (!memoryStore.appeals) {
-        memoryStore.appeals = new Map();
+        throw new Error('申诉记录不存在');
       }
-      const existing = memoryStore.appeals.get(id);
-      if (!existing) {
-        return null;
+      
+      const appeal = memoryStore.appeals.get(id);
+      if (!appeal) {
+        throw new Error('申诉记录不存在');
       }
-      const updated = {
-        ...existing,
-        ...data,
+      
+      const hr = await EmployeeModel.findById(hrId);
+      
+      const updated: Appeal = {
+        ...appeal,
+        status,
+        hrId,
+        hrName: hr?.name,
+        hrComment,
         updatedAt: new Date()
       };
+      
       memoryStore.appeals.set(id, updated);
+      logger.info(`更新申诉记录: ${id}, 状态: ${status}`);
+      
       return updated;
     }
-
-    const updateFields: string[] = [];
-    const updateValues: any[] = [];
-
-    if (data.status !== undefined) {
-      updateFields.push('status = ?');
-      updateValues.push(data.status);
-    }
-    if (data.hrComment !== undefined) {
-      updateFields.push('hr_comment = ?');
-      updateValues.push(data.hrComment);
-    }
-    if (data.hrId !== undefined) {
-      updateFields.push('hr_id = ?');
-      updateValues.push(data.hrId);
-    }
-
-    if (updateFields.length === 0) {
-      return await this.findById(id);
-    }
-
-    updateValues.push(id);
-
+    
     const sql = `
       UPDATE appeals
-      SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      SET status = $1, hr_id = $2, hr_comment = $3, updated_at = NOW()
+      WHERE id = $4
     `;
-
-    await query(sql, updateValues);
-    return await this.findById(id);
+    
+    await query(sql, [status, hrId, hrComment, id]);
+    
+    const updated = await this.findById(id);
+    if (!updated) {
+      throw new Error('申诉记录不存在');
+    }
+    
+    return updated;
   }
-
-  // 删除申诉
-  static async delete(id: string): Promise<boolean> {
+  
+  /**
+   * 检查员工是否已对某绩效记录提交申诉
+   */
+  static async existsByPerformanceRecord(
+    employeeId: string,
+    performanceRecordId: string
+  ): Promise<boolean> {
     if (USE_MEMORY_DB) {
       if (!memoryStore.appeals) {
-        memoryStore.appeals = new Map();
+        return false;
       }
-      return memoryStore.appeals.delete(id);
+      const allAppeals = Array.from(memoryStore.appeals.values());
+      return allAppeals.some(
+        a => a.employeeId === employeeId && a.performanceRecordId === performanceRecordId
+      );
     }
-
-    const sql = 'DELETE FROM appeals WHERE id = ?';
-    await query(sql, [id]);
-    return true;
+    
+    const sql = `
+      SELECT COUNT(*) as count
+      FROM appeals
+      WHERE employee_id = $1 AND performance_record_id = $2
+    `;
+    
+    const results = await query(sql, [employeeId, performanceRecordId]);
+    return results[0].count > 0;
+  }
+  
+  /**
+   * 格式化申诉记录
+   */
+  private static formatAppeal(row: any): Appeal {
+    return {
+      id: row.id,
+      performanceRecordId: row.performance_record_id,
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      department: row.department,
+      subDepartment: row.sub_department,
+      reason: row.reason,
+      status: row.status,
+      hrComment: row.hr_comment,
+      hrId: row.hr_id,
+      hrName: row.hr_name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
   }
 }

@@ -46,7 +46,7 @@ export const assessmentPublicationController = {
       });
     }
 
-    const { month } = req.params;
+    const month = req.params.month as string;
 
     const success = await AssessmentPublicationModel.unpublish(month);
     
@@ -67,7 +67,7 @@ export const assessmentPublicationController = {
    * 检查某月是否已发布
    */
   checkPublished: asyncHandler(async (req: Request, res: Response) => {
-    const { month } = req.params;
+    const month = req.params.month as string;
 
     const isPublished = await AssessmentPublicationModel.isPublished(month);
     const publication = isPublished 

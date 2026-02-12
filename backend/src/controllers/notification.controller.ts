@@ -73,7 +73,7 @@ export const notificationController = {
         });
       }
 
-      const notificationId = req.params.id;
+      const notificationId = req.params.id as string;
       
       // 验证消息是否属于当前用户
       const notification = await NotificationModel.findById(notificationId);
@@ -143,7 +143,7 @@ export const notificationController = {
         });
       }
 
-      const notification = await NotificationModel.findById(req.params.id);
+      const notification = await NotificationModel.findById(req.params.id as string);
       
       if (!notification) {
         return res.status(404).json({

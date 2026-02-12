@@ -701,3 +701,20 @@ export interface BonusResult {
   adjustedAt?: Date | string;
   createdAt?: Date | string;
 }
+
+// ============ 绩效申诉管理 ============
+export interface Appeal {
+  id: string;
+  performanceRecordId: string;
+  employeeId: string;
+  employeeName?: string;
+  department?: string;
+  subDepartment?: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  hrComment?: string;
+  hrId?: string;
+  hrName?: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}

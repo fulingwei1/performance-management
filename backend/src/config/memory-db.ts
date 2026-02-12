@@ -3,8 +3,9 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult, GoalProgress } from '../types';
+import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult, GoalProgress, Appeal, ObjectiveAdjustment } from '../types';
 import { AIUsageLog } from '../models/aiUsageLog.model';
+import { Notification } from '../models/notification.model';
 import logger from './logger';
 
 // 内存数据存储
@@ -35,6 +36,9 @@ interface MemoryStore {
   bonusResults: Map<string, BonusResult>;
   goalProgress?: Map<string, GoalProgress>;
   aiUsageLogs: Map<string, AIUsageLog>;
+  appeals?: Map<string, Appeal>;
+  notifications?: Map<string, Notification>;
+  objectiveAdjustments?: Map<string, ObjectiveAdjustment>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -64,6 +68,9 @@ export const memoryStore: MemoryStore = {
   bonusResults: new Map(),
   goalProgress: new Map(),
   aiUsageLogs: new Map(),
+  appeals: new Map(),
+  notifications: new Map(),
+  objectiveAdjustments: new Map(),
 };
 
 // 员工数据操作

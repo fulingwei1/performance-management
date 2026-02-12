@@ -49,7 +49,8 @@ export function MyGoalPlanning() {
   const [goals, setGoals] = useState<PersonalGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<'draft' | 'submitted'>('draft');
+  const [status, setStatus] = useState<'draft' | 'pending_approval' | 'approved' | 'rejected'>('draft');
+  const [rejectionReason, setRejectionReason] = useState<string>('');
 
   // AI助手状态
   const [aiLoading, setAiLoading] = useState(false);
@@ -96,8 +97,14 @@ export function MyGoalPlanning() {
         setGoals(personalGoals);
         
         // 检查状态
-        if (existingGoals.length > 0 && existingGoals[0].employeeConfirmedAt) {
-          setStatus('submitted');
+        if (existingGoals.length > 0) {
+          const currentStatus = existingGoals[0].status;
+          if (currentStatus === 'pending_approval' || currentStatus === 'approved' || currentStatus === 'rejected') {
+            setStatus(currentStatus);
+            if (currentStatus === 'rejected' && existingGoals[0].rejectionReason) {
+              setRejectionReason(existingGoals[0].rejectionReason);
+            }
+          }
         }
       }
     } catch (error) {
@@ -280,20 +287,46 @@ export function MyGoalPlanning() {
 
   const submitGoals = async () => {
     if (!validateGoals()) return;
+    if (!user?.managerId) {
+      toast.error('无法找到您的直属经理，请联系HR');
+      return;
+    }
 
     setSaving(true);
     try {
-      await saveGoalsToBackend('submitted');
-      setStatus('submitted');
+      // 先保存所有目标为草稿
+      await saveGoalsToBackend('draft');
+      
+      // 然后提交审批
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      
+      for (const goal of goals) {
+        // 调用提交审批API
+        await fetch(`${API_BASE_URL}/objectives/${goal.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            status: 'pending_approval',
+            approverId: user.managerId
+          })
+        });
+      }
+      
+      setStatus('pending_approval');
       toast.success('目标已提交，等待经理审批');
     } catch (error) {
-      toast.error('提交失败');
+      console.error('提交失败:', error);
+      toast.error('提交失败，请重试');
     } finally {
       setSaving(false);
     }
   };
 
-  const saveGoalsToBackend = async (submitStatus: 'draft' | 'submitted') => {
+  const saveGoalsToBackend = async (submitStatus: 'draft' | 'pending_approval') => {
     const token = localStorage.getItem('token');
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -311,7 +344,7 @@ export function MyGoalPlanning() {
         unit: goal.unit,
         quarterlyTargets: goal.quarterlyTargets,
         monthlyTargets: goal.monthlyTargets,
-        status: submitStatus === 'submitted' ? 'pending' : 'draft'
+        status: submitStatus
       };
 
       const response = await fetch(`${API_BASE_URL}/objectives`, {
@@ -345,8 +378,14 @@ export function MyGoalPlanning() {
             <p className="text-gray-500 mt-1">根据公司战略和部门重点，规划个人年度目标</p>
           </div>
           <div className="flex items-center gap-2">
-            {status === 'submitted' && (
-              <Badge className="bg-green-100 text-green-700">已提交审批</Badge>
+            {status === 'pending_approval' && (
+              <Badge className="bg-yellow-100 text-yellow-700">待审批</Badge>
+            )}
+            {status === 'approved' && (
+              <Badge className="bg-green-100 text-green-700">已批准</Badge>
+            )}
+            {status === 'rejected' && (
+              <Badge className="bg-red-100 text-red-700">已拒绝</Badge>
             )}
             {status === 'draft' && (
               <>
@@ -404,7 +443,7 @@ export function MyGoalPlanning() {
               </div>
               <Button
                 onClick={addGoal}
-                disabled={status === 'submitted'}
+                disabled={status !== 'draft' && status !== 'rejected'}
                 variant="outline"
                 className="border-purple-300 text-purple-700 hover:bg-purple-50"
               >
@@ -446,7 +485,7 @@ export function MyGoalPlanning() {
                           placeholder="目标名称（例如：完成销售额500万）"
                           value={goal.name}
                           onChange={(e) => updateGoal(goal.id, { name: e.target.value })}
-                          disabled={status === 'submitted'}
+                          disabled={status !== 'draft' && status !== 'rejected'}
                           className="font-medium"
                         />
                       </div>
@@ -454,7 +493,7 @@ export function MyGoalPlanning() {
                         size="sm"
                         variant="ghost"
                         onClick={() => removeGoal(goal.id)}
-                        disabled={status === 'submitted'}
+                        disabled={status !== 'draft' && status !== 'rejected'}
                         className="text-red-500 hover:text-red-700"
                       >
                         删除
@@ -469,7 +508,7 @@ export function MyGoalPlanning() {
                         placeholder="详细描述该目标的具体内容、衡量标准等"
                         value={goal.description}
                         onChange={(e) => updateGoal(goal.id, { description: e.target.value })}
-                        disabled={status === 'submitted'}
+                        disabled={status !== 'draft' && status !== 'rejected'}
                         rows={2}
                         className="text-sm"
                       />
@@ -484,7 +523,7 @@ export function MyGoalPlanning() {
                           placeholder="0"
                           value={goal.targetValue || ''}
                           onChange={(e) => updateGoal(goal.id, { targetValue: parseFloat(e.target.value) || 0 })}
-                          disabled={status === 'submitted'}
+                          disabled={status !== 'draft' && status !== 'rejected'}
                           className="text-sm"
                         />
                       </div>
@@ -494,7 +533,7 @@ export function MyGoalPlanning() {
                           placeholder="万元/个/件"
                           value={goal.unit}
                           onChange={(e) => updateGoal(goal.id, { unit: e.target.value })}
-                          disabled={status === 'submitted'}
+                          disabled={status !== 'draft' && status !== 'rejected'}
                           className="text-sm"
                         />
                       </div>
@@ -507,7 +546,7 @@ export function MyGoalPlanning() {
                           placeholder="0"
                           value={goal.weight || ''}
                           onChange={(e) => updateGoal(goal.id, { weight: parseFloat(e.target.value) || 0 })}
-                          disabled={status === 'submitted'}
+                          disabled={status !== 'draft' && status !== 'rejected'}
                           className="text-sm"
                         />
                       </div>
@@ -529,7 +568,7 @@ export function MyGoalPlanning() {
                                 newQT[qt.quarter - 1].target = parseFloat(e.target.value) || 0;
                                 updateGoal(goal.id, { quarterlyTargets: newQT });
                               }}
-                              disabled={status === 'submitted'}
+                              disabled={status !== 'draft' && status !== 'rejected'}
                               className="text-sm"
                             />
                           </div>
@@ -567,7 +606,7 @@ export function MyGoalPlanning() {
         )}
 
         {/* 操作按钮 */}
-        {status === 'draft' && (
+        {(status === 'draft' || status === 'rejected') && (
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -584,16 +623,42 @@ export function MyGoalPlanning() {
               className="flex-1 bg-purple-600 hover:bg-purple-700"
             >
               <Send className="w-4 h-4 mr-2" />
-              提交给经理审批
+              {status === 'rejected' ? '重新提交审批' : '提交给经理审批'}
             </Button>
           </div>
         )}
 
-        {status === 'submitted' && (
+        {status === 'pending_approval' && (
+          <Alert className="bg-yellow-50 border-yellow-200">
+            <AlertCircle className="w-4 h-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-700">
+              您的年度目标已提交，等待经理审批。审批通过后将正式生效。
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {status === 'approved' && (
           <Alert className="bg-green-50 border-green-200">
             <AlertCircle className="w-4 h-4 text-green-600" />
             <AlertDescription className="text-green-700">
-              您的年度目标已提交，等待经理审批。审批通过后将正式生效。
+              您的年度目标已获批准！现在可以开始执行目标并定期更新进度。
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {status === 'rejected' && (
+          <Alert className="bg-red-50 border-red-200">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+            <AlertDescription className="text-red-700">
+              <div className="font-medium mb-2">您的目标被拒绝</div>
+              {rejectionReason && (
+                <div className="text-sm">
+                  <strong>拒绝原因：</strong>{rejectionReason}
+                </div>
+              )}
+              <div className="text-sm mt-2">
+                请根据反馈修改目标后重新提交。
+              </div>
             </AlertDescription>
           </Alert>
         )}

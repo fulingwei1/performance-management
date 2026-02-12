@@ -53,7 +53,7 @@ export function EmployeePerformanceAppeals() {
   const fetchAppeals = async () => {
     try {
       setLoading(true);
-      const response = await api.appeal.getAll();
+      const response = await api.appeal.getMyAppeals();
       if (response.success) {
         setAppeals(response.data || []);
       }

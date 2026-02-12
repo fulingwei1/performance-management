@@ -197,4 +197,102 @@ export class ObjectiveModel {
       status: row.status, dueDate: row.due_date, createdAt: row.created_at, updatedAt: row.updated_at
     };
   }
+
+  // ==================== 审批相关方法 ====================
+
+  /**
+   * 提交目标审批
+   */
+  static async submitForApproval(objectiveId: string, approverId: string): Promise<Objective | null> {
+    if (USE_MEMORY_DB) {
+      const obj = memoryStore.objectives.get(objectiveId);
+      if (!obj) return null;
+      obj.status = 'pending_approval';
+      obj.updatedAt = new Date();
+      memoryStore.objectives.set(objectiveId, obj);
+      return obj;
+    }
+    
+    await query(
+      `UPDATE objectives 
+       SET status = 'pending_approval', 
+           approver_id = ?,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [approverId, objectiveId]
+    );
+    return this.findById(objectiveId);
+  }
+
+  /**
+   * 批准目标
+   */
+  static async approveObjective(objectiveId: string, approverId: string, comment?: string): Promise<Objective | null> {
+    if (USE_MEMORY_DB) {
+      const obj = memoryStore.objectives.get(objectiveId);
+      if (!obj) return null;
+      obj.status = 'approved';
+      obj.updatedAt = new Date();
+      memoryStore.objectives.set(objectiveId, obj);
+      return obj;
+    }
+    
+    await query(
+      `UPDATE objectives 
+       SET status = 'approved',
+           approved_by = ?,
+           approved_at = NOW(),
+           adjustment_reason = ?,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [approverId, comment || null, objectiveId]
+    );
+    return this.findById(objectiveId);
+  }
+
+  /**
+   * 拒绝目标
+   */
+  static async rejectObjective(objectiveId: string, approverId: string, reason: string): Promise<Objective | null> {
+    if (USE_MEMORY_DB) {
+      const obj = memoryStore.objectives.get(objectiveId);
+      if (!obj) return null;
+      obj.status = 'rejected';
+      obj.updatedAt = new Date();
+      memoryStore.objectives.set(objectiveId, obj);
+      return obj;
+    }
+    
+    await query(
+      `UPDATE objectives 
+       SET status = 'rejected',
+           rejection_reason = ?,
+           approved_by = ?,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [reason, approverId, objectiveId]
+    );
+    return this.findById(objectiveId);
+  }
+
+  /**
+   * 获取待审批的目标列表（经理）
+   */
+  static async getPendingApprovals(managerId: string): Promise<Objective[]> {
+    if (USE_MEMORY_DB) {
+      const items = Array.from(memoryStore.objectives.values()).filter(
+        obj => obj.status === 'pending_approval'
+      );
+      return items.map(o => ({ ...o, keyResults: this.getKeyResultsForObjective(o.id) }));
+    }
+    
+    const rows = await query(
+      `SELECT o.* FROM objectives o
+       JOIN employees e ON o.owner_id = e.id
+       WHERE e.manager_id = ? AND o.status = 'pending_approval'
+       ORDER BY o.created_at DESC`,
+      [managerId]
+    );
+    return rows.map(this.format);
+  }
 }

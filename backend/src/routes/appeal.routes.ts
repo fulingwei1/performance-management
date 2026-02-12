@@ -4,19 +4,31 @@ import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
 
-// 员工提交申诉
-router.post('/', authenticate, appealController.createAppeal);
+// 所有路由都需要认证
+router.use(authenticate);
 
-// 查询申诉列表（员工看自己，HR看全部）
-router.get('/', authenticate, appealController.getAppeals);
+/**
+ * 员工相关路由
+ */
+// 提交申诉
+router.post('/', appealController.create);
 
-// 根据ID获取申诉详情
-router.get('/:id', authenticate, appealController.getAppealById);
+// 查看自己的申诉列表
+router.get('/my', appealController.getMyAppeals);
 
-// HR处理申诉（批准/拒绝）
-router.put('/:id/review', authenticate, requireRole(['hr', 'admin']), appealController.reviewAppeal);
+/**
+ * HR相关路由
+ */
+// 查看所有申诉（需要HR或Admin权限）
+router.get('/', requireRole('hr', 'admin'), appealController.getAllAppeals);
 
-// 删除申诉（仅允许删除自己的待处理申诉）
-router.delete('/:id', authenticate, appealController.deleteAppeal);
+// 处理申诉（需要HR或Admin权限）
+router.put('/:id/review', requireRole('hr', 'admin'), appealController.review);
+
+/**
+ * 通用路由
+ */
+// 查看申诉详情
+router.get('/:id', appealController.getById);
 
 export default router;
