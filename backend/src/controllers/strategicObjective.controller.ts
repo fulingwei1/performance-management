@@ -13,13 +13,13 @@ export const strategicObjectiveController = {
     const userRole = req.user?.role;
     const userId = req.user?.userId;
     
-    // GM、HR、Admin 可以看全部
-    if (userRole === 'gm' || userRole === 'hr' || userRole === 'admin') {
+    // GM、HR、Admin、Manager 可以看全部
+    if (userRole === 'gm' || userRole === 'hr' || userRole === 'admin' || userRole === 'manager') {
       return res.json({ success: true, data: allData });
     }
     
-    // Manager和Employee需要按部门过滤
-    if (userRole === 'manager' || userRole === 'employee') {
+    // Employee需要按部门过滤
+    if (userRole === 'employee') {
       // 获取用户部门信息
       const { EmployeeModel } = require('../models/employee.model');
       const user = await EmployeeModel.findById(userId);
@@ -39,7 +39,7 @@ export const strategicObjectiveController = {
           return true; // 公司级别的全部可见
         }
         if (item.type === 'department-key-work') {
-          return item.department === user.department; // 只看自己部门的
+          return item.department === user.department; // 员工只看自己部门的
         }
         return false;
       });

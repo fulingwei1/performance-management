@@ -125,12 +125,16 @@ export function StrategicGoalsManagement() {
           body: JSON.stringify(payload)
         });
 
-        if (response.ok) {
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
           toast.success('更新成功');
           fetchGoals();
           setEditDialogOpen(false);
         } else {
-          toast.error('更新失败');
+          const errorMsg = result.error || result.message || '更新失败';
+          console.error('更新失败:', errorMsg, result);
+          toast.error(`更新失败：${errorMsg}`);
         }
       } else {
         // 创建
@@ -144,12 +148,16 @@ export function StrategicGoalsManagement() {
           body: JSON.stringify(payload)
         });
 
-        if (response.ok) {
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
           toast.success('创建成功');
           fetchGoals();
           setEditDialogOpen(false);
         } else {
-          toast.error('创建失败');
+          const errorMsg = result.error || result.message || '创建失败';
+          console.error('创建失败:', errorMsg, result);
+          toast.error(`创建失败：${errorMsg}`);
         }
       }
     } catch (error) {
@@ -266,13 +274,19 @@ export function StrategicGoalsManagement() {
   const departments = ['营销中心', '研发中心', '生产中心', '供应链中心', '管理中心'];
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8 p-6">
+        {/* 页面标题 - 优化设计 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">战略目标管理</h1>
-            <p className="text-gray-500 mt-1">设置公司战略、重点工作和部门目标</p>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              战略目标管理
+            </h1>
+            <p className="text-gray-500 mt-2">设置公司战略、重点工作和部门目标</p>
           </div>
-          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
+          <Button 
+            onClick={handleCreate} 
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30"
+          >
             <Plus className="w-4 h-4 mr-2" />
             添加目标
           </Button>
@@ -281,47 +295,59 @@ export function StrategicGoalsManagement() {
         {loading ? (
           <div className="text-center py-12 text-gray-400">加载中...</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* 公司战略 */}
-            <Card className="border-blue-200">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-blue-900">
-                  <Target className="w-5 h-5" />
-                  公司战略
-                </CardTitle>
-                <CardDescription>公司长期发展方向</CardDescription>
+          <div className="space-y-6">
+            {/* 公司战略 - 蓝色主题 */}
+            <Card className="border-0 shadow-xl shadow-blue-100 hover:shadow-2xl hover:shadow-blue-200 transition-all duration-300">
+              <CardHeader className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-b border-blue-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                    <Target className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-blue-900 text-lg">公司战略</CardTitle>
+                    <CardDescription className="text-blue-600">公司长期发展方向</CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-4 max-h-[600px] overflow-y-auto">
                 {companyStrategies.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {companyStrategies.map((strategy) => (
-                      <div key={strategy.id} className="p-3 bg-blue-50 rounded-lg">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-semibold text-sm">{strategy.title}</h3>
-                          <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(strategy)}>
-                              <Edit2 className="w-3 h-3" />
+                      <motion.div 
+                        key={strategy.id} 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="group p-4 bg-gradient-to-br from-blue-50 to-white rounded-xl border border-blue-100 hover:border-blue-300 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="font-semibold text-sm text-gray-900 flex-1 pr-2">{strategy.title}</h3>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(strategy)} className="h-7 w-7 p-0 hover:bg-blue-100">
+                              <Edit2 className="w-3.5 h-3.5 text-blue-600" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDelete(strategy.id)}>
-                              <Trash2 className="w-3 h-3 text-red-500" />
+                            <Button size="sm" variant="ghost" onClick={() => handleDelete(strategy.id)} className="h-7 w-7 p-0 hover:bg-red-100">
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
                             </Button>
                           </div>
                         </div>
                         {strategy.description && (
-                          <p className="text-xs text-gray-600 mb-2">{strategy.description}</p>
+                          <p className="text-xs text-gray-600 mb-3 leading-relaxed">{strategy.description}</p>
                         )}
                         {strategy.content && (
-                          <p className="text-xs text-gray-500 whitespace-pre-wrap p-2 bg-white rounded">
+                          <div className="text-xs text-gray-700 whitespace-pre-wrap p-3 bg-white rounded-lg border border-blue-100 leading-relaxed">
                             {strategy.content}
-                          </p>
+                          </div>
                         )}
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-gray-400 mb-3">暂未设置</p>
-                    <Button size="sm" variant="outline" onClick={handleCreate}>
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 flex items-center justify-center">
+                      <Target className="w-8 h-8 text-blue-400" />
+                    </div>
+                    <p className="text-sm text-gray-400 mb-4">暂未设置公司战略</p>
+                    <Button size="sm" variant="outline" onClick={handleCreate} className="border-blue-300 text-blue-600 hover:bg-blue-50">
                       <Plus className="w-3 h-3 mr-1" />
                       添加战略
                     </Button>
@@ -330,91 +356,119 @@ export function StrategicGoalsManagement() {
               </CardContent>
             </Card>
 
-            {/* 公司重点工作 */}
-            <Card className="border-purple-200">
-              <CardHeader>
+            {/* 年度重点工作 - 紫色主题 */}
+            <Card className="border-0 shadow-xl shadow-purple-100 hover:shadow-2xl hover:shadow-purple-200 transition-all duration-300">
+              <CardHeader className="bg-gradient-to-br from-purple-50 to-purple-100/50 border-b border-purple-200">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-purple-900">
-                      <Briefcase className="w-5 h-5" />
-                      年度重点工作
-                    </CardTitle>
-                    <CardDescription>{currentYear}年度重点任务</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Briefcase className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-purple-900 text-lg">年度重点工作</CardTitle>
+                      <CardDescription className="text-purple-600">{currentYear}年度重点任务</CardDescription>
+                    </div>
                   </div>
-                  <Badge variant="outline">{companyKeyWorks.length}项</Badge>
+                  <Badge className="bg-purple-600 text-white border-0">{companyKeyWorks.length}项</Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+              <CardContent className="pt-4 max-h-[600px] overflow-y-auto">
+                <div className="space-y-3">
                   {companyKeyWorks.map((kw, idx) => (
-                    <div key={kw.id} className="p-2 bg-purple-50 rounded flex items-start gap-2">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">
+                    <motion.div 
+                      key={kw.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="group p-3 bg-gradient-to-br from-purple-50 to-white rounded-xl border border-purple-100 hover:border-purple-300 hover:shadow-md transition-all duration-200 flex items-start gap-3"
+                    >
+                      <span className="flex-shrink-0 w-7 h-7 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white text-sm flex items-center justify-center font-bold shadow-md">
                         {idx + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{kw.title}</p>
+                        <p className="text-sm font-semibold text-gray-900 mb-1">{kw.title}</p>
                         {kw.description && (
-                          <p className="text-xs text-gray-600">{kw.description}</p>
+                          <p className="text-xs text-gray-600 leading-relaxed">{kw.description}</p>
                         )}
                       </div>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(kw)} className="h-6 w-6 p-0">
-                          <Edit2 className="w-3 h-3" />
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(kw)} className="h-7 w-7 p-0 hover:bg-purple-100">
+                          <Edit2 className="w-3.5 h-3.5 text-purple-600" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(kw.id)} className="h-6 w-6 p-0">
-                          <Trash2 className="w-3 h-3 text-red-500" />
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(kw.id)} className="h-7 w-7 p-0 hover:bg-red-100">
+                          <Trash2 className="w-3.5 h-3.5 text-red-500" />
                         </Button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                   {companyKeyWorks.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-6">暂无重点工作</p>
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
+                        <Briefcase className="w-8 h-8 text-purple-400" />
+                      </div>
+                      <p className="text-sm text-gray-400">暂无重点工作</p>
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* 部门重点工作 */}
-            <Card className="border-green-200">
-              <CardHeader>
+            {/* 部门重点工作 - 绿色主题 */}
+            <Card className="border-0 shadow-xl shadow-green-100 hover:shadow-2xl hover:shadow-green-200 transition-all duration-300">
+              <CardHeader className="bg-gradient-to-br from-green-50 to-green-100/50 border-b border-green-200">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-green-900">
-                      <Users className="w-5 h-5" />
-                      部门重点工作
-                    </CardTitle>
-                    <CardDescription>各部门年度重点任务</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-green-900 text-lg">部门重点工作</CardTitle>
+                      <CardDescription className="text-green-600">各部门年度重点任务</CardDescription>
+                    </div>
                   </div>
-                  <Badge variant="outline">{departmentKeyWorks.length}项</Badge>
+                  <Badge className="bg-green-600 text-white border-0">{departmentKeyWorks.length}项</Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {departmentKeyWorks.map((dw) => (
-                    <div key={dw.id} className="p-2 bg-green-50 rounded">
-                      <div className="flex items-start justify-between mb-1">
+              <CardContent className="pt-4 max-h-[600px] overflow-y-auto">
+                <div className="space-y-3">
+                  {departmentKeyWorks.map((dw, idx) => (
+                    <motion.div 
+                      key={dw.id}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                      className="group p-3 bg-gradient-to-br from-green-50 to-white rounded-xl border border-green-100 hover:border-green-300 hover:shadow-md transition-all duration-200"
+                    >
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge variant="outline" className="text-xs">{dw.department}</Badge>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge className="text-xs bg-gradient-to-r from-green-500 to-green-600 text-white border-0 shadow-sm">
+                              {dw.department}
+                            </Badge>
                           </div>
-                          <p className="text-sm font-medium text-gray-900">{dw.title}</p>
+                          <p className="text-sm font-semibold text-gray-900 mb-1">{dw.title}</p>
                           {dw.description && (
-                            <p className="text-xs text-gray-600 mt-0.5">{dw.description}</p>
+                            <p className="text-xs text-gray-600 leading-relaxed">{dw.description}</p>
                           )}
                         </div>
-                        <div className="flex gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(dw)} className="h-6 w-6 p-0">
-                            <Edit2 className="w-3 h-3" />
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(dw)} className="h-7 w-7 p-0 hover:bg-green-100">
+                            <Edit2 className="w-3.5 h-3.5 text-green-600" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(dw.id)} className="h-6 w-6 p-0">
-                            <Trash2 className="w-3 h-3 text-red-500" />
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(dw.id)} className="h-7 w-7 p-0 hover:bg-red-100">
+                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
                           </Button>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                   {departmentKeyWorks.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-6">暂无部门工作</p>
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                        <Users className="w-8 h-8 text-green-400" />
+                      </div>
+                      <p className="text-sm text-gray-400">暂无部门工作</p>
+                    </div>
                   )}
                 </div>
               </CardContent>

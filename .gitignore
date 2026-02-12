@@ -32,6 +32,9 @@ lerna-debug.log*
 *.swo
 *~
 
+# Backup files
+*.bak
+
 # Vite
 .vite/
 *.local

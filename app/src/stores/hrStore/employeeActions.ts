@@ -6,9 +6,18 @@ export const createEmployeeActions = (set: any, get: any) => ({
     try {
       const { hrApi } = await import('@/services/api');
       const response = await hrApi.getAllEmployees();
-      if (response.success) set({ employeesList: response.data, loading: false });
-      else set({ error: response.error || '获取员工失败', loading: false });
+      console.log('[hrStore] fetchEmployees响应:', response);
+      if (response.success) {
+        console.log(`[hrStore] 成功加载 ${response.data?.length || 0} 名员工`);
+        const managers = (response.data || []).filter((e: any) => e.role === 'manager');
+        console.log(`[hrStore] 其中部门经理 ${managers.length} 名:`, managers.map((m: any) => m.name));
+        set({ employeesList: response.data, loading: false });
+      } else {
+        console.error('[hrStore] 加载员工失败:', response.error);
+        set({ error: response.error || '获取员工失败', loading: false });
+      }
     } catch (error: any) {
+      console.error('[hrStore] 网络错误:', error);
       set({ error: error.message || '网络错误', loading: false });
     }
   },

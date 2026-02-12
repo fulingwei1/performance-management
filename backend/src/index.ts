@@ -39,6 +39,7 @@ import peerReviewCycleRoutes from './routes/peerReviewCycle.routes';
 import goalProgressRoutes from './routes/goalProgress.routes';
 import aiRoutes from './routes/ai.routes';
 import dashboardRoutes from './routes/dashboard.routes';
+import automationRoutes from './routes/automation.routes';
 // import goalApprovalRoutes from './routes/goalApproval.routes';  // 暂时禁用，等 ObjectiveModel 添加方法后启用
 
 const app = express();
@@ -142,6 +143,7 @@ app.use('/api/peer-review-cycles', peerReviewCycleRoutes);
 app.use('/api/goal-progress', goalProgressRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/automation', automationRoutes);
 // app.use('/api/goal-approval', goalApprovalRoutes);  // 暂时禁用
 
 // 404处理

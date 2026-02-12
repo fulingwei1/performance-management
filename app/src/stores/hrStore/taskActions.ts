@@ -136,9 +136,17 @@ export const createTaskActions = (set: any, get: any) => ({
   },
 
   generateGMTasks: (quarter: string) => {
-    const managers = get().employeesList.filter((e: any) => e.role === 'manager');
+    const employeesList = get().employeesList || [];
+    const managers = employeesList.filter((e: any) => e.role === 'manager');
+    console.log(`[hrStore] generateGMTasks - 季度: ${quarter}`);
+    console.log(`[hrStore] employeesList 总数: ${employeesList.length}`);
+    console.log(`[hrStore] 部门经理数: ${managers.length}`, managers.map((m: any) => m.name));
+    console.log(`[hrStore] 现有gmScores数: ${get().gmScores.length}`);
+    
+    let addedCount = 0;
     managers.forEach((manager: any) => {
       if (!get().gmScores.find((s: GMManagerScore) => s.managerId === manager.id && s.quarter === quarter)) {
+        console.log(`[hrStore] 为 ${manager.name} (${manager.id}) 生成 ${quarter} 评分任务`);
         set((state: any) => ({
           gmScores: [...state.gmScores, {
             id: generateId(), managerId: manager.id, managerName: manager.name, quarter,
@@ -147,7 +155,9 @@ export const createTaskActions = (set: any, get: any) => ({
             createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
           }]
         }));
+        addedCount++;
       }
     });
+    console.log(`[hrStore] 共生成 ${addedCount} 个评分任务`);
   },
 });

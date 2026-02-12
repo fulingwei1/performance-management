@@ -66,7 +66,7 @@ const MONTH_OPTIONS = getMonthOptions(24);
 
 export function GMDashboard() {
   const { user } = useAuthStore();
-  const { gmScores, getAllManagers, generateGMTasks } = useHRStore();
+  const { gmScores, getAllManagers, generateGMTasks, fetchEmployees } = useHRStore();
 
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [employees, setEmployees] = useState<{ id: string; name: string; department: string; subDepartment?: string; role?: string }[]>([]);
@@ -79,12 +79,18 @@ export function GMDashboard() {
   const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
 
   // 总经理评分（季度）相关
-  const currentQuarter = `2025-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
+  const currentQuarter = `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
   const quarterScores = gmScores.filter((s) => s.quarter === currentQuarter);
   const managers = getAllManagers();
   const pendingGMCount = quarterScores.filter((s) => s.status === 'pending').length;
   const completedGMCount = quarterScores.filter((s) => s.status === 'completed').length;
 
+  // 初始化：加载员工数据到 hrStore
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  // 生成总经理评分任务（在员工数据加载后）
   useEffect(() => {
     if (quarterScores.length === 0 && managers.length > 0) {
       generateGMTasks(currentQuarter);
@@ -526,68 +532,6 @@ export function GMDashboard() {
           </CardContent>
         </Card>
       </motion.div>
-
-      {/* 快捷入口：战略目标管理、总经理评分、数据分析 */}
-      <motion.div variants={itemVariants} custom={3} className="grid gap-4 md:grid-cols-3">
-        <Card className="border border-blue-200 bg-blue-50 hover:shadow-md transition-shadow">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              战略目标管理
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 mb-4">
-              编辑公司战略、年度重点工作及部门目标。
-            </p>
-            <Button asChild variant="default" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
-              <Link to="/gm/strategic-goals" className="inline-flex items-center gap-2">
-                管理战略目标
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Crown className="h-5 w-5 text-amber-600" />
-              总经理评分
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              本季度已完成 {completedGMCount} 人，待评分 {pendingGMCount} 人。对部门经理进行季度绩效评分。
-            </p>
-            <Button asChild variant="default" className="w-full sm:w-auto">
-              <Link to="/gm/scoring" className="inline-flex items-center gap-2">
-                进入评分
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card className="border border-gray-200 hover:shadow-md transition-shadow">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-              数据分析
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-500 mb-4">
-              查看全公司绩效趋势、部门对比与分布情况。
-            </p>
-            <Button asChild variant="outline" className="w-full sm:w-auto">
-              <Link to="/gm/analytics" className="inline-flex items-center gap-2">
-                查看分析
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
-
       {/* 绩效详情抽屉 */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent className="max-h-[90vh]">

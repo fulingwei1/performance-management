@@ -30,9 +30,13 @@ export class StrategicObjectiveModel {
       memoryStore.strategicObjectives.set(data.id, data);
       return data;
     }
+    
+    // type字段转换：连字符转下划线
+    const dbType = data.type ? data.type.replace(/-/g, '_') : null;
+    
     await query(
-      'INSERT INTO strategic_objectives (id, title, description, year, status, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-      [data.id, data.title, data.description, data.year, data.status || 'draft', data.createdBy]
+      'INSERT INTO strategic_objectives (id, title, description, content, year, type, department, status, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [data.id, data.title, data.description, data.content, data.year, dbType, data.department, data.status || 'draft', data.createdBy]
     );
     return (await this.findById(data.id))!;
   }
@@ -47,10 +51,31 @@ export class StrategicObjectiveModel {
     }
     const fields: string[] = [];
     const values: any[] = [];
-    const map: Record<string, string> = { title: 'title', description: 'description', year: 'year', status: 'status' };
-    for (const [k, col] of Object.entries(map)) {
-      if ((data as any)[k] !== undefined) { fields.push(`${col} = ?`); values.push((data as any)[k]); }
+    
+    // 字段映射：前端字段名 -> 数据库列名
+    const map: Record<string, string> = { 
+      title: 'title',
+      description: 'description',
+      year: 'year', 
+      status: 'status',
+      content: 'content',
+      department: 'department'
+    };
+    
+    // type字段需要特殊处理：连字符转下划线
+    if (data.type !== undefined) {
+      const dbType = data.type.replace(/-/g, '_'); // company-strategy -> company_strategy
+      fields.push('type = ?');
+      values.push(dbType);
     }
+    
+    for (const [k, col] of Object.entries(map)) {
+      if ((data as any)[k] !== undefined) { 
+        fields.push(`${col} = ?`); 
+        values.push((data as any)[k]); 
+      }
+    }
+    
     if (fields.length === 0) return this.findById(id);
     values.push(id);
     await query(`UPDATE strategic_objectives SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`, values);

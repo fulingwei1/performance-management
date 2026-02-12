@@ -5,11 +5,26 @@ import { memoryStore } from '../config/memory-db';
 import { USE_MEMORY_DB } from '../config/database';
 import { PeerReviewCycle, PeerReviewTask } from '../types';
 
+/**
+ * Fisher-Yates 洗牌算法
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 export const peerReviewCycleController = {
   createCycle: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
-    const { title, year, quarter, startDate, endDate, participants } = req.body;
+    const { title, year, quarter, startDate, endDate, participants, reviewsPerPerson } = req.body;
     const id = uuidv4();
+
+    // 默认每人评价4个同事（可配置3-5个）
+    const reviewCount = reviewsPerPerson || 4;
 
     const cycle: PeerReviewCycle = {
       id, title, year, quarter, startDate, endDate,
@@ -23,27 +38,48 @@ export const peerReviewCycleController = {
     if (USE_MEMORY_DB) {
       memoryStore.peerReviewCycles.set(id, cycle);
 
-      // Auto-assign: each participant reviews every other participant
+      // 🎲 随机分配逻辑：每人评价N个随机同事
       const parts = cycle.participants;
+      
+      if (parts.length <= 1) {
+        return res.status(400).json({ 
+          success: false, 
+          message: '参与者至少需要2人' 
+        });
+      }
+
       for (const reviewerId of parts) {
-        for (const revieweeId of parts) {
-          if (reviewerId !== revieweeId) {
-            const taskId = uuidv4();
-            const task: PeerReviewTask = {
-              id: taskId,
-              cycleId: id,
-              reviewerId,
-              revieweeId,
-              status: 'pending',
-              createdAt: new Date().toISOString(),
-            };
-            memoryStore.peerReviewTasks.set(taskId, task);
-          }
+        // 候选人：除自己外的所有人
+        const candidates = parts.filter(p => p !== reviewerId);
+        
+        // 随机洗牌
+        const shuffled = shuffleArray(candidates);
+        
+        // 取前N个（不超过候选人总数）
+        const selectedCount = Math.min(reviewCount, shuffled.length);
+        const selectedReviewees = shuffled.slice(0, selectedCount);
+        
+        // 创建互评任务
+        for (const revieweeId of selectedReviewees) {
+          const taskId = uuidv4();
+          const task: PeerReviewTask = {
+            id: taskId,
+            cycleId: id,
+            reviewerId,
+            revieweeId,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          };
+          memoryStore.peerReviewTasks.set(taskId, task);
         }
       }
     }
 
-    res.status(201).json({ success: true, data: cycle });
+    res.status(201).json({ 
+      success: true, 
+      data: cycle,
+      message: `互评周期创建成功，每人随机分配${reviewCount}个评价任务`
+    });
   }),
 
   getCycles: asyncHandler(async (_req: Request, res: Response) => {

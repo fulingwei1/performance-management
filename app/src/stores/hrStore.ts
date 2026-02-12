@@ -105,7 +105,8 @@ export const useHRStore = create<HRState>()(
         talentDevelopments: state.talentDevelopments,
         gmScores: state.gmScores,
         allPerformanceRecords: state.allPerformanceRecords,
-        metricsList: state.metricsList
+        metricsList: state.metricsList,
+        employeesList: state.employeesList  // 添加员工列表持久化
       })
     }
   )

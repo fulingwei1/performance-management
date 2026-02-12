@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Calendar,
   Target,
@@ -30,10 +30,13 @@ export function GMScoring() {
   const { 
     gmScores, 
     getAllManagers,
-    submitGMScore
+    submitGMScore,
+    fetchEmployees,
+    generateGMTasks
   } = useHRStore();
   
-  const [selectedQuarter, setSelectedQuarter] = useState('2025-Q1');
+  const currentQuarter = `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`;
+  const [selectedQuarter, setSelectedQuarter] = useState(currentQuarter);
   const [selectedManager, setSelectedManager] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   
@@ -50,6 +53,18 @@ export function GMScoring() {
   const quarterScores = gmScores.filter(s => s.quarter === selectedQuarter);
   const pendingScores = quarterScores.filter(s => s.status === 'pending');
   const completedScores = quarterScores.filter(s => s.status === 'completed');
+
+  // 初始化：加载员工数据
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
+
+  // 生成评分任务（当选择的季度没有任务时）
+  useEffect(() => {
+    if (quarterScores.length === 0 && managers.length > 0) {
+      generateGMTasks(selectedQuarter);
+    }
+  }, [selectedQuarter, quarterScores.length, managers.length, generateGMTasks]);
   
   const handleOpenDrawer = (managerId: string) => {
     setSelectedManager(managerId);
@@ -121,6 +136,10 @@ export function GMScoring() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="2026-Q1">2026年第一季度</SelectItem>
+                  <SelectItem value="2026-Q2">2026年第二季度</SelectItem>
+                  <SelectItem value="2026-Q3">2026年第三季度</SelectItem>
+                  <SelectItem value="2026-Q4">2026年第四季度</SelectItem>
                   <SelectItem value="2025-Q1">2025年第一季度</SelectItem>
                   <SelectItem value="2025-Q2">2025年第二季度</SelectItem>
                   <SelectItem value="2025-Q3">2025年第三季度</SelectItem>

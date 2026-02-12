@@ -23,6 +23,7 @@ export function PeerReviewManagement() {
   const [endDate, setEndDate] = useState('');
   const [employees, setEmployees] = useState<any[]>([]);
   const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
+  const [reviewsPerPerson, setReviewsPerPerson] = useState(4); // 每人评价数量，默认4个
   const [results, setResults] = useState<any[]>([]);
   const [selectedCycleId, setSelectedCycleId] = useState('');
 
@@ -50,10 +51,11 @@ export function PeerReviewManagement() {
       await peerReviewCycleApi.createCycle({
         title, year, quarter, startDate, endDate,
         participants: selectedParticipants,
+        reviewsPerPerson,
       });
       setShowCreate(false);
       loadCycles();
-      toast.success('互评周期已创建');
+      toast.success(`互评周期已创建，每人随机分配${reviewsPerPerson}个评价任务`);
     } catch { toast.error('创建失败'); }
   };
 
@@ -170,12 +172,39 @@ export function PeerReviewManagement() {
 
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>创建互评周期</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>创建互评周期</DialogTitle>
+          </DialogHeader>
+          
+          {/* 说明卡片 */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+            <div className="flex items-start gap-2">
+              <Users className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-blue-900">
+                <strong>随机匿名互评</strong>：系统将为每位参与者随机分配N个同事进行评价，被评价者看不到是谁评的。
+              </div>
+            </div>
+          </div>
+          
           <div className="space-y-4">
             <div><Label>标题</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="如：2026Q1互评" /></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div><Label>年份</Label><Input type="number" value={year} onChange={e => setYear(Number(e.target.value))} /></div>
               <div><Label>季度</Label><Input type="number" min={1} max={4} value={quarter} onChange={e => setQuarter(Number(e.target.value))} /></div>
+              <div>
+                <Label className="flex items-center gap-1">
+                  每人评价数
+                  <span className="text-xs text-gray-400 font-normal">（随机）</span>
+                </Label>
+                <Input 
+                  type="number" 
+                  min={1} 
+                  max={10} 
+                  value={reviewsPerPerson} 
+                  onChange={e => setReviewsPerPerson(Number(e.target.value))}
+                  placeholder="推荐3-5个" 
+                />
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>开始日期</Label><Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} /></div>
