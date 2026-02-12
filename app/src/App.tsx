@@ -38,6 +38,7 @@ import { MyContract } from '@/pages/Employee/MyContract';
 import { TeamObjectives } from '@/pages/Manager/TeamObjectives';
 import { ReviewReports } from '@/pages/Manager/ReviewReports';
 import { InterviewSchedule } from '@/pages/Manager/InterviewSchedule';
+import GoalApproval from '@/pages/Manager/GoalApproval';
 import { StrategicObjectives } from '@/pages/HR/StrategicObjectives';
 import { ContractManagement } from '@/pages/HR/ContractManagement';
 import { OKRDashboard } from '@/pages/HR/OKRDashboard';
@@ -172,6 +173,7 @@ function App() {
           <Route path="/manager/promotion" element={<ManagerPromotionRequest />} />
           <Route path="/manager/objectives" element={<ObjectiveTree />} />
           <Route path="/manager/team-objectives" element={<TeamObjectives />} />
+          <Route path="/manager/goal-approval" element={<GoalApproval />} />
           <Route path="/manager/review-reports" element={<ReviewReports />} />
           <Route path="/manager/interviews" element={<InterviewSchedule />} />
           <Route path="/manager/goal-setting" element={<GoalSetting />} />
