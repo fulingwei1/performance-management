@@ -529,6 +529,8 @@ export class PerformanceModel {
       departmentRank: row.department_rank,
       companyRank: row.company_rank,
       status: row.status,
+      frozen: row.frozen,
+      deadline: row.deadline,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
