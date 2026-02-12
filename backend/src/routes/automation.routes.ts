@@ -8,6 +8,7 @@ const router = Router();
 router.post('/generate-monthly-tasks', authenticate, automationController.generateMonthlyTasks);
 router.post('/generate-quarterly-tasks', authenticate, automationController.generateQuarterlyTasks);
 router.post('/freeze-overdue-tasks', authenticate, automationController.freezeOverdueTasks);
+router.post('/check-reminders', authenticate, automationController.checkDeadlineReminders);
 
 // HR解冻接口
 router.post('/unfreeze/:recordId', authenticate, requireRole('hr', 'admin'), automationController.unfreezeTask);

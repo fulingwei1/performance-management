@@ -7,6 +7,7 @@ import { Login } from '@/pages/Login';
 import { EmployeeDashboard } from '@/pages/Employee/Dashboard';
 import { WorkSummary } from '@/pages/Employee/WorkSummary';
 import { MyScores } from '@/pages/Employee/MyScores';
+import { EmployeePerformanceAppeals } from '@/pages/Employee/PerformanceAppeals';
 import { EmployeePromotionRequest } from '@/pages/Employee/PromotionRequest';
 import { ManagerDashboard } from '@/pages/Manager/Dashboard';
 import { ScoringManagement } from '@/pages/Manager/Scoring';
@@ -24,6 +25,7 @@ import { HRDashboard } from '@/pages/HR/Dashboard';
 import { EmployeeInfo } from '@/pages/HR/EmployeeInfo';
 import { DataManagement } from '@/pages/HR/DataManagement';
 import { HRPromotionApprovals } from '@/pages/HR/PromotionApprovals';
+import { HRAppealsManagement } from '@/pages/HR/AppealsManagement';
 import { AssessmentPublication } from '@/pages/HR/AssessmentPublication';
 import { Toaster } from '@/components/ui/sonner';
 
@@ -59,6 +61,9 @@ import { GoalProgressPage } from '@/pages/Goals/GoalProgress';
 
 // Dashboard pages
 import ProgressDashboard from '@/pages/Dashboard/ProgressDashboard';
+
+// Notification page
+import Notifications from '@/pages/Notifications';
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
@@ -136,6 +141,7 @@ function App() {
         {/* Employee routes */}
         <Route element={<ProtectedLayout allowedRole="employee" />}>
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/employee/summary" element={<WorkSummary />} />
           <Route path="/employee/goal-planning" element={<MyGoalPlanning />} />
           <Route path="/employee/scores" element={<MyScores />} />
@@ -148,6 +154,7 @@ function App() {
           <Route path="/employee/assignments" element={<MyAssignments />} />
           <Route path="/employee/related-okr" element={<RelatedOKR />} />
           <Route path="/employee/my-bonus" element={<MyBonus />} />
+          <Route path="/employee/appeals" element={<EmployeePerformanceAppeals />} />
           <Route path="/employee/goal-confirmation" element={<GoalConfirmation />} />
           <Route path="/employee/goal-progress" element={<GoalProgressPage />} />
           <Route path="/employee/progress-dashboard" element={<ProgressDashboard />} />
@@ -156,6 +163,7 @@ function App() {
         {/* Manager routes */}
         <Route element={<ProtectedLayout allowedRole="manager" />}>
           <Route path="/manager/dashboard" element={<ManagerDashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/scoring" element={<ScoringManagement />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
@@ -174,6 +182,7 @@ function App() {
         {/* GM routes */}
         <Route element={<ProtectedLayout allowedRole="gm" />}>
           <Route path="/gm/dashboard" element={<GMDashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/gm/scoring" element={<GMScoring />} />
           <Route path="/gm/analytics" element={<GMAnalytics />} />
           <Route path="/gm/data-export" element={<GMDataExport />} />
@@ -189,9 +198,11 @@ function App() {
         {/* HR routes */}
         <Route element={<ProtectedLayout allowedRole="hr" />}>
           <Route path="/hr/dashboard" element={<HRDashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/hr/employee-info" element={<EmployeeInfo />} />
           <Route path="/hr/data-management" element={<DataManagement />} />
           <Route path="/hr/promotion-approvals" element={<HRPromotionApprovals />} />
+          <Route path="/hr/appeals" element={<HRAppealsManagement />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/strategic-objectives" element={<StrategicObjectives />} />
           <Route path="/hr/contract-management" element={<ContractManagement />} />
@@ -210,6 +221,7 @@ function App() {
         {/* Admin routes */}
         <Route element={<ProtectedLayout allowedRole="admin" />}>
           <Route path="/admin/dashboard" element={<HRDashboard />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/admin/user-management" element={<UserManagement />} />
           <Route path="/admin/system-settings" element={<SystemSettings />} />
           <Route path="/admin/analytics" element={<GMAnalytics />} />

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
+import { NotificationModel, CreateNotificationInput } from '../models/notification.model';
 import { query } from '../config/database';
 
 export const automationController = {
@@ -216,6 +217,75 @@ export const automationController = {
       data: {
         month,
         unfrozen: unfrozenCount
+      }
+    });
+  }),
+
+  /**
+   * 检查截止日期临近的任务并发送提醒
+   * 查询所有未冻结、未提交且截止日期在3天内的任务
+   */
+  checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
+    const today = new Date();
+    const threeDaysLater = new Date(today);
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+    
+    const todayStr = today.toISOString().split('T')[0];
+    const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
+    
+    console.log(`[Automation] 检查截止日期提醒: ${todayStr} ~ ${threeDaysLaterStr}`);
+    
+    // 查询符合条件的任务
+    const tasks = await query(
+      `SELECT 
+        pr.id, pr.employee_id, pr.month, pr.deadline, pr.status,
+        e.name as employee_name
+       FROM performance_records pr
+       JOIN employees e ON pr.employee_id = e.id
+       WHERE pr.frozen = false 
+       AND pr.status IN ('draft')
+       AND pr.deadline >= ?
+       AND pr.deadline <= ?`,
+      [todayStr, threeDaysLaterStr]
+    ) as any[];
+    
+    console.log(`[Automation] 找到 ${tasks.length} 条需要提醒的任务`);
+    
+    if (tasks.length === 0) {
+      return res.json({
+        success: true,
+        message: '没有需要提醒的任务',
+        data: {
+          checked: 0,
+          reminded: 0
+        }
+      });
+    }
+    
+    // 为每个任务创建提醒消息
+    const notifications: CreateNotificationInput[] = tasks.map(task => {
+      const daysLeft = Math.ceil((new Date(task.deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      return {
+        userId: task.employee_id,
+        type: 'reminder' as const,
+        title: `绩效任务即将到期`,
+        content: `您的 ${task.month} 月度绩效任务还有 ${daysLeft} 天到期（截止日期：${task.deadline}），请尽快完成提交。`,
+        link: `/performance/my-tasks`
+      };
+    });
+    
+    // 批量创建通知
+    const createdCount = await NotificationModel.createBatch(notifications);
+    
+    console.log(`[Automation] 成功创建 ${createdCount} 条提醒消息`);
+    
+    res.json({
+      success: true,
+      message: `提醒检查完成，已创建 ${createdCount} 条消息`,
+      data: {
+        checked: tasks.length,
+        reminded: createdCount
       }
     });
   })

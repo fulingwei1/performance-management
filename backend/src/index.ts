@@ -41,6 +41,8 @@ import aiRoutes from './routes/ai.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import automationRoutes from './routes/automation.routes';
 import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
+import notificationRoutes from './routes/notification.routes';
+import appealRoutes from './routes/appeal.routes';
 // import goalApprovalRoutes from './routes/goalApproval.routes';  // 暂时禁用，等 ObjectiveModel 添加方法后启用
 
 const app = express();
@@ -146,6 +148,8 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/automation', automationRoutes);
 app.use('/api/assessment-publications', assessmentPublicationRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/appeals', appealRoutes);
 // app.use('/api/goal-approval', goalApprovalRoutes);  // 暂时禁用
 
 // 404处理

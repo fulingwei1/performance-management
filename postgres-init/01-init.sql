@@ -354,6 +354,57 @@ CREATE TABLE IF NOT EXISTS monthly_assessment_publications (
 
 CREATE INDEX IF NOT EXISTS idx_monthly_publications_month ON monthly_assessment_publications(month);
 
+-- 绩效申诉表
+DO $$ BEGIN
+  CREATE TYPE appeal_status AS ENUM ('pending', 'approved', 'rejected');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS appeals (
+  id VARCHAR(50) PRIMARY KEY,
+  performance_record_id VARCHAR(50) REFERENCES performance_records(id),
+  employee_id VARCHAR(50) REFERENCES employees(id),
+  reason TEXT NOT NULL,
+  status appeal_status DEFAULT 'pending',
+  hr_comment TEXT,
+  hr_id VARCHAR(50) REFERENCES employees(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_appeals_employee ON appeals(employee_id);
+CREATE INDEX IF NOT EXISTS idx_appeals_status ON appeals(status);
+CREATE INDEX IF NOT EXISTS idx_appeals_performance_record ON appeals(performance_record_id);
+
+DROP TRIGGER IF EXISTS update_appeals_updated_at ON appeals;
+CREATE TRIGGER update_appeals_updated_at
+  BEFORE UPDATE ON appeals
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- 站内消息通知表
+DO $$ BEGIN
+  CREATE TYPE notification_type AS ENUM ('reminder', 'approval', 'system', 'freeze');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id VARCHAR(50) PRIMARY KEY,
+  user_id VARCHAR(50) NOT NULL REFERENCES employees(id),
+  type notification_type NOT NULL,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  read BOOLEAN DEFAULT FALSE,
+  link VARCHAR(200),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+
 -- 初始化说明
 COMMENT ON DATABASE performance_db IS 'ATE绩效管理系统数据库';
 COMMENT ON TABLE employees IS '员工表';
@@ -367,3 +418,4 @@ COMMENT ON TABLE quarterly_summaries IS '季度总结表';
 COMMENT ON TABLE peer_reviews IS '同事互评表';
 COMMENT ON TABLE performance_records IS '绩效记录表（示例数据）';
 COMMENT ON TABLE monthly_assessment_publications IS '月度考核结果发布记录表';
+COMMENT ON TABLE notifications IS '站内消息通知表';
