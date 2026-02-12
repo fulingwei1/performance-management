@@ -1,20 +1,184 @@
-[dotenv@17.2.3] injecting env (11) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
-[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
-📦 Using In-Memory Database
-✅ 使用内存数据库（仅测试/演示）
-📦 初始化内存数据库...
-✅ 内存数据库已初始化
-📝 开始初始化员工数据...
-  📊 内存数据库中共有 172 名员工
-✅ 成功初始化 172 名员工
-✅ Data initialization completed
-Server is running on port 3001
-Environment: development
-[Request] 2026-02-10T09:56:49.045Z - GET /health
-Health check called
-[Request] 2026-02-10T09:57:12.159Z - GET /api/export/employees
-[Request] 2026-02-10T09:57:20.597Z - GET /api/performance/all-records
-[Request] 2026-02-10T09:57:29.226Z - POST /api/auth/login
-[Request] 2026-02-10T09:57:37.329Z - POST /api/performance/demo-data/generate
-[Request] 2026-02-10T20:40:45.145Z - GET /api
-[Request] 2026-02-10T20:41:19.694Z - GET /api
+
+> performance-backend@1.0.0 dev
+> ts-node src/index.ts
+
+[dotenv@17.2.3] injecting env (5) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[10:34:31.495] [32mINFO[39m (61602): [36m📦 Using In-Memory Database[39m
+[10:34:32.445] [32mINFO[39m (61602): [36m✅ 使用内存数据库（仅测试/演示）[39m
+[10:34:32.445] [32mINFO[39m (61602): [36m📦 初始化内存数据库...[39m
+[10:34:32.445] [32mINFO[39m (61602): [36m✅ 内存数据库已初始化[39m
+[10:34:32.445] [32mINFO[39m (61602): [36m📝 开始初始化员工数据...[39m
+[10:34:32.586] [32mINFO[39m (61602): [36m  📊 内存数据库中共有 173 名员工[39m
+[10:34:32.587] [32mINFO[39m (61602): [36m✅ 成功初始化 173 名员工[39m
+[10:34:32.587] [32mINFO[39m (61602): [36m✅ Data initialization completed[39m
+[10:34:32.587] [32mINFO[39m (61602): [36mServer is running on port 3001[39m
+[10:34:32.587] [32mINFO[39m (61602): [36mEnvironment: development[39m
+[10:34:38.668] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:38.668Z - POST /api/auth/login[39m
+[10:34:38.760] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:38.760Z - POST /api/ai/company-strategy[39m
+[10:34:38.775] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:38.775Z - POST /api/auth/login[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:34:38.865] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:38.865Z - POST /api/ai/goal-decomposition[39m
+[10:34:47.194] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:47.194Z - POST /api/objectives[39m
+[10:34:47.209] [31mERROR[39m (61602): [36mUnhandled error[39m
+    err: {
+      "type": "SyntaxError",
+      "message": "Unexpected token 'a', ...\"ctiveId\": aa871121-4\"... is not valid JSON",
+      "stack":
+          SyntaxError: Unexpected token 'a', ..."ctiveId": aa871121-4"... is not valid JSON
+              at JSON.parse (<anonymous>)
+              at parse (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/types/json.js:72:19)
+              at /Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/read.js:162:18
+              at AsyncResource.runInAsyncScope (node:async_hooks:212:14)
+              at invokeCallback (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:238:16)
+              at done (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:227:7)
+              at IncomingMessage.onEnd (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:287:7)
+              at IncomingMessage.emit (node:events:508:20)
+              at IncomingMessage.emit (node:domain:489:12)
+              at endReadableNT (node:internal/streams/readable:1729:12)
+      "expose": true,
+      "statusCode": 400,
+      "status": 400,
+      "body": "{\n    \"objectiveId\": aa871121-4d91-4192-93ed-72b92334f988,\n    \"quarter\": \"2026-Q1\",\n    \"employeeCompletion\": 0.4,\n    \"employeeComment\": \"Q1成功接触3家新能源客户，完成2家技术交流，1家进入需求沟通阶段，预计Q2可签约1家。\"\n  }"
+    }
+[10:34:47.223] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:47.223Z - POST /api/auth/login[39m
+[10:34:47.307] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:47.307Z - POST /api/ai/goal-progress-comment[39m
+[10:34:47.321] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:47.321Z - PUT /api/goal-progress/null[39m
+[10:34:47.332] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:47.332Z - GET /api/goal-progress/null[39m
+[10:34:58.448] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:58.448Z - POST /api/auth/login[39m
+[10:34:58.534] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:34:58.534Z - POST /api/ai/company-strategy[39m
+[10:35:51.025] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:35:51.025Z - POST /api/auth/login[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:35:51.125] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:35:51.125Z - POST /api/ai/company-strategy[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:35:56.986] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:35:56.986Z - POST /api/ai/company-key-works[39m
+[10:36:08.285] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:08.285Z - POST /api/auth/login[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:36:08.382] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:08.382Z - POST /api/ai/goal-decomposition[39m
+[10:36:17.424] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:17.423Z - POST /api/objectives[39m
+[10:36:17.441] [31mERROR[39m (61602): [36mUnhandled error[39m
+    err: {
+      "type": "SyntaxError",
+      "message": "Expected ',' or '}' after property value in JSON at position 23 (line 2 column 22)",
+      "stack":
+          SyntaxError: Expected ',' or '}' after property value in JSON at position 23 (line 2 column 22)
+              at JSON.parse (<anonymous>)
+              at parse (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/types/json.js:72:19)
+              at /Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/read.js:162:18
+              at AsyncResource.runInAsyncScope (node:async_hooks:212:14)
+              at invokeCallback (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:238:16)
+              at done (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:227:7)
+              at IncomingMessage.onEnd (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:287:7)
+              at IncomingMessage.emit (node:events:508:20)
+              at IncomingMessage.emit (node:domain:489:12)
+              at endReadableNT (node:internal/streams/readable:1729:12)
+      "expose": true,
+      "statusCode": 400,
+      "status": 400,
+      "body": "{\n    \"objectiveId\": 30fc2114-7d99-4b5e-bde1-94dee7762e01,\n    \"quarter\": \"2026-Q1\",\n    \"employeeCompletion\": 0.45,\n    \"employeeComment\": \"Q1成功对接3家新能源客户,完成2家技术交流,1家进入商务洽谈,预计Q2可签约至少1家。\"\n  }"
+    }
+[10:36:17.459] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:17.459Z - POST /api/auth/login[39m
+[10:36:17.541] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:17.541Z - POST /api/ai/goal-progress-comment[39m
+[10:36:17.556] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:17.556Z - PUT /api/goal-progress/null[39m
+[10:36:17.566] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:17.566Z - GET /api/goal-progress/null[39m
+[10:36:26.562] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:26.562Z - POST /api/auth/login[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:36:26.655] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:26.655Z - POST /api/ai/company-strategy[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:36:32.913] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:32.913Z - POST /api/ai/company-key-works[39m
+[10:36:45.403] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:45.403Z - POST /api/auth/login[39m
+[DEBUG] KIMI_API_KEY exists: true
+[DEBUG] MOONSHOT_API_KEY exists: false
+[DEBUG] kimiApiKey length: 51
+[10:36:45.499] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:45.499Z - POST /api/ai/goal-decomposition[39m
+[10:36:54.139] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:54.139Z - POST /api/objectives[39m
+[10:36:54.152] [31mERROR[39m (61602): [36mUnhandled error[39m
+    err: {
+      "type": "SyntaxError",
+      "message": "Unexpected token 'b', ...\"ctiveId\": b680d2ad-7\"... is not valid JSON",
+      "stack":
+          SyntaxError: Unexpected token 'b', ..."ctiveId": b680d2ad-7"... is not valid JSON
+              at JSON.parse (<anonymous>)
+              at parse (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/types/json.js:72:19)
+              at /Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/read.js:162:18
+              at AsyncResource.runInAsyncScope (node:async_hooks:212:14)
+              at invokeCallback (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:238:16)
+              at done (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:227:7)
+              at IncomingMessage.onEnd (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:287:7)
+              at IncomingMessage.emit (node:events:508:20)
+              at IncomingMessage.emit (node:domain:489:12)
+              at endReadableNT (node:internal/streams/readable:1729:12)
+      "expose": true,
+      "statusCode": 400,
+      "status": 400,
+      "body": "{\n    \"objectiveId\": b680d2ad-78db-47c4-a50f-15ff26edda4a,\n    \"quarter\": \"2026-Q1\",\n    \"employeeCompletion\": 0.45,\n    \"employeeComment\": \"Q1成功对接3家新能源客户,完成2家技术交流,1家进入商务洽谈,预计Q2可签约至少1家。\"\n  }"
+    }
+[10:36:54.174] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:54.174Z - POST /api/auth/login[39m
+[10:36:54.257] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:54.257Z - POST /api/ai/goal-progress-comment[39m
+[10:36:54.273] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:54.273Z - PUT /api/goal-progress/null[39m
+[10:36:54.282] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:36:54.282Z - GET /api/goal-progress/null[39m
+[10:37:02.562] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:02.562Z - POST /api/auth/login[39m
+[10:37:02.659] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:02.659Z - POST /api/auth/login[39m
+[10:37:02.740] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:02.740Z - POST /api/objectives[39m
+[10:37:02.752] [31mERROR[39m (61602): [36mUnhandled error[39m
+    err: {
+      "type": "SyntaxError",
+      "message": "Unexpected number in JSON at position 16 (line 1 column 17)",
+      "stack":
+          SyntaxError: Unexpected number in JSON at position 16 (line 1 column 17)
+              at JSON.parse (<anonymous>)
+              at parse (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/types/json.js:72:19)
+              at /Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/read.js:162:18
+              at AsyncResource.runInAsyncScope (node:async_hooks:212:14)
+              at invokeCallback (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:238:16)
+              at done (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:227:7)
+              at IncomingMessage.onEnd (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:287:7)
+              at IncomingMessage.emit (node:events:508:20)
+              at IncomingMessage.emit (node:domain:489:12)
+              at endReadableNT (node:internal/streams/readable:1729:12)
+      "expose": true,
+      "statusCode": 400,
+      "status": 400,
+      "body": "{\"objectiveId\":00b37dee-db8c-4509-82f2-759e29fbbcb5,\"quarter\":\"2026-Q1\",\"employeeCompletion\":0.40,\"employeeComment\":\"Q1已接触3家客户,2家完成技术交流,1家进入商务洽谈阶段\"}"
+    }
+[10:37:02.764] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:02.764Z - POST /api/auth/login[39m
+[10:37:02.843] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:02.843Z - PUT /api/goal-progress/null[39m
+[10:37:02.851] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:02.851Z - GET /api/goal-progress/null[39m
+[10:37:24.547] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:24.547Z - POST /api/auth/login[39m
+[10:37:24.648] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:24.648Z - POST /api/objectives[39m
+[10:37:24.660] [31mERROR[39m (61602): [36mUnhandled error[39m
+    err: {
+      "type": "SyntaxError",
+      "message": "Expected ',' or '}' after property value in JSON at position 18 (line 1 column 19)",
+      "stack":
+          SyntaxError: Expected ',' or '}' after property value in JSON at position 18 (line 1 column 19)
+              at JSON.parse (<anonymous>)
+              at parse (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/types/json.js:72:19)
+              at /Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/body-parser/lib/read.js:162:18
+              at AsyncResource.runInAsyncScope (node:async_hooks:212:14)
+              at invokeCallback (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:238:16)
+              at done (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:227:7)
+              at IncomingMessage.onEnd (/Users/fulingwei/.openclaw/workspace/performance-management/backend/node_modules/raw-body/index.js:287:7)
+              at IncomingMessage.emit (node:events:508:20)
+              at IncomingMessage.emit (node:domain:489:12)
+              at endReadableNT (node:internal/streams/readable:1729:12)
+      "expose": true,
+      "statusCode": 400,
+      "status": 400,
+      "body": "{\"objectiveId\":2e3cf776-4758-4163-b96a-8e800b976593,\"quarter\":\"2026-Q1\",\"employeeCompletion\":0.55,\"employeeComment\":\"Q1超额完成,新签3家客户,合同金额45万,达成率150%\"}"
+    }
+[10:37:24.683] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:24.683Z - PUT /api/goal-progress/null[39m
+[10:37:24.691] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:24.691Z - GET /api/goal-progress/null[39m
+[10:37:34.774] [32mINFO[39m (61602): [36m[Request] 2026-02-12T02:37:34.774Z - GET /api/goal-progress[39m

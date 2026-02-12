@@ -26,6 +26,14 @@ export const objectiveController = {
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
+    const userId = (req as any).user?.userId;
+    const userRole = (req as any).user?.role;
+    
+    // 如果是员工角色,只能创建自己的目标
+    if (userRole === 'employee' && req.body.employeeId !== userId) {
+      return res.status(403).json({ success: false, error: '权限不足:员工只能创建自己的目标' });
+    }
+    
     const data = await ObjectiveModel.create({ id: uuidv4(), ...req.body, progress: 0, status: req.body.status || 'draft' });
     res.status(201).json({ success: true, data });
   }),
