@@ -33,3 +33,7 @@
 [11:04:55.397] [32mINFO[39m (62154): [36m[Request] 2026-02-12T03:04:55.397Z - GET /api/dashboard/my-progress[39m
 [11:05:02.008] [32mINFO[39m (62154): [36m[Request] 2026-02-12T03:05:02.008Z - GET /api/objectives[39m
 [11:05:06.212] [32mINFO[39m (62154): [36m[Request] 2026-02-12T03:05:06.212Z - GET /api/objectives[39m
+[11:32:06.839] [32mINFO[39m (62154): [36m[Request] 2026-02-12T03:32:06.837Z - GET /health[39m
+[11:32:06.841] [32mINFO[39m (62154): [36mHealth check called[39m
+[11:41:13.955] [32mINFO[39m (62154): [36m[Request] 2026-02-12T03:41:13.955Z - GET /health[39m
+[11:41:13.955] [32mINFO[39m (62154): [36mHealth check called[39m
