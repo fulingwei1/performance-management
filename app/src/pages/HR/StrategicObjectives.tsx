@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Target, Plus, Pencil, Trash2 } from 'lucide-react';
-import { useOKRStore, StrategicObjective } from '@/stores/okrStore';
+import { useOKRStore } from '@/stores/okrStore';
+import type { StrategicObjective } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

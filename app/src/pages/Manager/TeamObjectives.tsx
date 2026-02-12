@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Target, Plus, Users, ChevronDown, ChevronRight } from 'lucide-react';
-import { useOKRStore, Objective } from '@/stores/okrStore';
+import { useOKRStore } from '@/stores/okrStore';
+import type { Objective } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
