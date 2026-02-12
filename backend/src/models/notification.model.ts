@@ -101,11 +101,11 @@ export class NotificationModel {
   static async findByUserId(userId: string, readStatus?: boolean): Promise<Notification[]> {
     if (USE_MEMORY_DB) {
       (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      let filtered = (memoryDB as any).notifications.filter(n => n.userId === userId);
+      let filtered = (memoryDB as any).notifications.filter((n: Notification) => n.userId === userId);
       if (readStatus !== undefined) {
-        filtered = filtered.filter(n => n.read === readStatus);
+        filtered = filtered.filter((n: Notification) => n.read === readStatus);
       }
-      return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      return filtered.sort((a: Notification, b: Notification) => b.createdAt.getTime() - a.createdAt.getTime());
     }
 
     let sql = `
