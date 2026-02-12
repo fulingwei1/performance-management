@@ -598,5 +598,6 @@ export function MyGoalPlanning() {
           </Alert>
         )}
       </motion.div>
+    </>
   );
 }
