@@ -497,3 +497,86 @@ export interface AssessmentAppeal {
   originalScore: number;
   adjustedScore?: number;
 }
+
+// OKR/目标相关类型
+export interface StrategicObjective {
+  id: string;
+  title: string;
+  description?: string;
+  year: number;
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  createdBy?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  type?: 'company-strategy' | 'company-key-work' | 'department-key-work';
+  department?: string;
+  content?: string;
+  progress?: number;
+}
+
+export type FeedbackCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
+
+export interface QuarterlyTarget {
+  target: string;
+  weight: number;
+}
+
+export interface MonthlyTargets {
+  M1?: string;
+  M2?: string;
+  M3?: string;
+  M4?: string;
+  M5?: string;
+  M6?: string;
+  M7?: string;
+  M8?: string;
+  M9?: string;
+  M10?: string;
+  M11?: string;
+  M12?: string;
+}
+
+export interface Objective {
+  id: string;
+  title: string;
+  description?: string;
+  level: 'company' | 'department' | 'individual';
+  parentId?: string;
+  strategicObjectiveId?: string;
+  department?: string;
+  ownerId?: string;
+  year: number;
+  quarter?: string;
+  weight: number;
+  progress: number;
+  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  startDate?: Date | string;
+  endDate?: Date | string;
+  feedbackCycle?: FeedbackCycle;
+  targetValue?: string;
+  quarterlyTargets?: {
+    Q1: QuarterlyTarget;
+    Q2: QuarterlyTarget;
+    Q3: QuarterlyTarget;
+    Q4: QuarterlyTarget;
+  };
+  monthlyTargets?: MonthlyTargets;
+  employeeConfirmedAt?: Date | string;
+  employeeFeedback?: string;
+}
+
+export interface KeyResult {
+  id: string;
+  objectiveId: string;
+  title: string;
+  metricType: 'number' | 'percentage' | 'boolean' | 'currency';
+  targetValue?: number;
+  currentValue: number;
+  unit?: string;
+  weight: number;
+  progress: number;
+  status: 'not_started' | 'in_progress' | 'completed' | 'at_risk';
+  dueDate?: string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
