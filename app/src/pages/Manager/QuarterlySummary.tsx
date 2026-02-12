@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Save, Send, Calendar, FileText, Loader2, CheckCircle } from 'lucide-react';
+import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useHRStore } from '@/stores/hrStore';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,9 @@ export function QuarterlySummary() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
 
+  // AI助手状态
+  const [aiLoading, setAiLoading] = useState(false);
+
   const quarterKey = `${year}-${quarter}`;
 
   useEffect(() => {
@@ -58,6 +61,56 @@ export function QuarterlySummary() {
       active = false;
     };
   }, [user, quarterKey, getQuarterlySummary, fetchQuarterlySummary]);
+
+  /**
+   * AI生成季度总结
+   */
+  const handleGenerateAI = async () => {
+    if (!user) return;
+
+    setAiLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      // 调用AI生成接口
+      const response = await fetch(`${API_BASE_URL}/ai/quarterly-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          quarter: quarterKey,
+          teamSize: 10, // TODO: 从实际数据获取
+          avgScore: undefined,
+          topPerformers: [],
+          keyProjects: []
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        
+        // 自动采用第一个版本
+        if (versions.length > 0) {
+          setQuarterlySummary(versions[0]);
+          toast.success('AI已生成季度总结');
+        } else {
+          toast.error('AI生成的内容为空');
+        }
+      } else {
+        toast.error('AI生成失败');
+      }
+    } catch (error) {
+      console.error('Error generating AI:', error);
+      toast.error('AI生成失败');
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const handleSave = async (isDraft: boolean) => {
     if (!user) return;
@@ -220,11 +273,28 @@ export function QuarterlySummary() {
               </span>
             </div>
 
-            {/* Quarterly Summary */}
+            {/* Quarterly Summary with AI */}
             <div className="space-y-2">
-              <Label htmlFor="quarterlySummary" className="text-base font-semibold">
-                季度工作总结 <span className="text-red-500">*</span>
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="quarterlySummary" className="text-base font-semibold">
+                  季度工作总结 <span className="text-red-500">*</span>
+                </Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerateAI}
+                  disabled={aiLoading}
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  {aiLoading ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-1" />
+                  )}
+                  AI 帮我写
+                </Button>
+              </div>
               <p className="text-sm text-gray-500 mb-2">
                 请总结本季度部门主要工作成果、重点任务完成情况、遇到的挑战及解决方案等（建议300字以上）
               </p>
@@ -300,6 +370,9 @@ export function QuarterlySummary() {
                   {nextQuarterPlan.length < 200 ? '建议至少200字' : '字数充足'}
                 </span>
               </div>
+              <p className="text-xs text-purple-600 mt-1">
+                💡 提示：季度总结可以使用"AI 帮我写"快速生成，下季度计划可基于总结内容手动规划
+              </p>
             </div>
           </CardContent>
         </Card>
