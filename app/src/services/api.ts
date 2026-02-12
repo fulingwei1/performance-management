@@ -619,6 +619,101 @@ export const peerReviewApi = {
   }
 };
 
+// 考核结果发布相关API
+export const assessmentPublicationApi = {
+  // 发布某月考核结果（HR/Admin）
+  publish: (month: string) => 
+    request('/assessment-publications/publish', {
+      method: 'POST',
+      body: JSON.stringify({ month })
+    }),
+  
+  // 取消发布（仅测试环境）
+  unpublish: (month: string) => 
+    request(`/assessment-publications/${month}/unpublish`, {
+      method: 'DELETE'
+    }),
+  
+  // 检查某月是否已发布
+  checkPublished: (month: string) => 
+    request(`/assessment-publications/${month}/status`),
+  
+  // 获取所有已发布月份列表
+  getAllPublished: () => 
+    request('/assessment-publications/published')
+};
+
+// 绩效申诉相关API
+export const appealApi = {
+  // 员工提交申诉
+  create: (data: {
+    performanceRecordId: string;
+    reason: string;
+  }) => request('/appeals', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  
+  // 查询申诉列表（员工看自己，HR看全部）
+  getAll: (status?: string) => {
+    const url = status ? `/appeals?status=${status}` : '/appeals';
+    return request(url);
+  },
+  
+  // 根据ID获取申诉详情
+  getById: (id: string) => request(`/appeals/${id}`),
+  
+  // HR处理申诉（批准/拒绝）
+  review: (id: string, data: {
+    status: 'approved' | 'rejected';
+    hrComment: string;
+  }) => request(`/appeals/${id}/review`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  
+  // 删除申诉（仅允许删除自己的待处理申诉）
+  delete: (id: string) => request(`/appeals/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+// 站内消息通知相关API
+export const notificationApi = {
+  // 获取我的消息列表
+  getMyNotifications: (read?: boolean) => {
+    const url = read !== undefined ? `/notifications?read=${read}` : '/notifications';
+    return request(url);
+  },
+  
+  // 获取未读数量
+  getUnreadCount: () => request('/notifications/unread-count'),
+  
+  // 标记为已读
+  markAsRead: (id: string) => 
+    request(`/notifications/${id}/read`, {
+      method: 'PUT'
+    }),
+  
+  // 全部标记为已读
+  markAllAsRead: () => 
+    request('/notifications/read-all', {
+      method: 'PUT'
+    }),
+  
+  // 根据ID获取消息详情
+  getById: (id: string) => request(`/notifications/${id}`)
+};
+
+// 自动化任务相关API
+export const automationApi = {
+  // 检查截止日期提醒
+  checkReminders: () => 
+    request('/automation/check-reminders', {
+      method: 'POST'
+    })
+};
+
 export default {
   auth: authApi,
   employee: employeeApi,
@@ -626,5 +721,9 @@ export default {
   quarterlySummary: quarterlySummaryApi,
   promotion: promotionApi,
   peerReview: peerReviewApi,
-  export: exportApi
+  assessmentPublication: assessmentPublicationApi,
+  appeal: appealApi,
+  export: exportApi,
+  notification: notificationApi,
+  automation: automationApi
 };

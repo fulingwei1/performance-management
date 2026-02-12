@@ -19,7 +19,8 @@ import {
   Building2,
   Settings,
   ShieldCheck,
-  Lock
+  Lock,
+  Send
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,7 @@ const hrNavItems = [
   { path: '/hr/strategic-objectives', label: '战略目标', icon: Crosshair },
   { path: '/hr/contract-management', label: '合约管理', icon: FileSignature },
   { path: '/hr/okr-dashboard', label: 'OKR总览', icon: Target },
+  { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
   { path: '/hr/promotion-approvals', label: '晋升审批', icon: TrendingUp },
   { path: '/hr/bonus-management', label: '奖金管理', icon: DollarSign },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
@@ -81,6 +83,7 @@ const adminNavItems = [
   { path: '/admin/strategic-objectives', label: '战略目标', icon: Crosshair },
   { path: '/admin/contract-management', label: '合约管理', icon: FileSignature },
   { path: '/admin/okr-dashboard', label: 'OKR总览', icon: Target },
+  { path: '/admin/assessment-publication', label: '考核结果发布', icon: Send },
   { path: '/admin/promotion-approvals', label: '晋升审批', icon: TrendingUp },
   { path: '/admin/bonus-management', label: '奖金管理', icon: DollarSign },
   { path: '/admin/peer-review-management', label: '360互评管理', icon: ShieldCheck },

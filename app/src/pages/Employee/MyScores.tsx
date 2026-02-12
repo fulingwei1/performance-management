@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar, Award, BarChart3, Users, Trophy, Target } from 'lucide-react';
+import { TrendingUp, Calendar, Award, BarChart3, Users, Trophy, Target, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -8,6 +8,7 @@ import { PerformanceChart } from '@/components/charts/PerformanceChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { assessmentPublicationApi } from '@/services/api';
 
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
@@ -15,12 +16,41 @@ import { resolveGroupType } from '@/lib/config';
 export function MyScores() {
   const { user } = useAuthStore();
   const { records, fetchMyRecords } = usePerformanceStore();
+  const [publicationStatus, setPublicationStatus] = useState<Record<string, boolean>>({});
   
   useEffect(() => {
     if (user) {
       fetchMyRecords(user.id);
     }
   }, [user, fetchMyRecords]);
+
+  // 检查所有月份的发布状态
+  useEffect(() => {
+    const checkPublicationStatus = async () => {
+      const uniqueMonths = [...new Set(records.map(r => r.month))];
+      const statusMap: Record<string, boolean> = {};
+      
+      await Promise.all(
+        uniqueMonths.map(async (month) => {
+          try {
+            const response = await assessmentPublicationApi.checkPublished(month);
+            if (response.success) {
+              statusMap[month] = response.data.isPublished;
+            }
+          } catch (error) {
+            console.error(`检查 ${month} 发布状态失败:`, error);
+            statusMap[month] = false;
+          }
+        })
+      );
+      
+      setPublicationStatus(statusMap);
+    };
+
+    if (records.length > 0) {
+      checkPublicationStatus();
+    }
+  }, [records]);
   
   // 按月份排序
   const sortedRecords = [...records].sort((a, b) => b.month.localeCompare(a.month));
@@ -83,10 +113,28 @@ export function MyScores() {
         <motion.div variants={itemVariants}>
           <Card className="bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 border-blue-200">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-yellow-500" />
-                最新绩效 ({latestRecord.month})
+              <CardTitle className="text-lg flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-500" />
+                  最新绩效 ({latestRecord.month})
+                </div>
+                {publicationStatus[latestRecord.month] ? (
+                  <Badge className="bg-green-100 text-green-700 border-green-300">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    正式
+                  </Badge>
+                ) : (
+                  <Badge className="bg-gray-100 text-gray-600 border-gray-300">
+                    <FileText className="w-3 h-3 mr-1" />
+                    草稿
+                  </Badge>
+                )}
               </CardTitle>
+              {!publicationStatus[latestRecord.month] && (
+                <p className="text-sm text-orange-600 mt-2">
+                  ⚠️ 考核结果尚未正式发布，仅供参考
+                </p>
+              )}
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -272,13 +320,24 @@ export function MyScores() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <span className="font-semibold text-lg">{record.month}</span>
-                        <Badge 
-                          className={cn(
-                            latestRecord?.id === record.id && "bg-yellow-100 text-yellow-800"
+                        <div className="flex items-center gap-2">
+                          {latestRecord?.id === record.id && (
+                            <Badge className="bg-yellow-100 text-yellow-800">
+                              最新
+                            </Badge>
                           )}
-                        >
-                          {latestRecord?.id === record.id ? '最新' : record.status}
-                        </Badge>
+                          {publicationStatus[record.month] ? (
+                            <Badge className="bg-green-100 text-green-700">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              正式
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-gray-100 text-gray-600">
+                              <FileText className="w-3 h-3 mr-1" />
+                              草稿
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <ScoreDisplay score={record.totalScore} size="sm" />
                     </div>

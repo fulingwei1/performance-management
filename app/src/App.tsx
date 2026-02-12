@@ -24,6 +24,7 @@ import { HRDashboard } from '@/pages/HR/Dashboard';
 import { EmployeeInfo } from '@/pages/HR/EmployeeInfo';
 import { DataManagement } from '@/pages/HR/DataManagement';
 import { HRPromotionApprovals } from '@/pages/HR/PromotionApprovals';
+import { AssessmentPublication } from '@/pages/HR/AssessmentPublication';
 import { Toaster } from '@/components/ui/sonner';
 
 // OKR/KPI pages
@@ -200,6 +201,7 @@ function App() {
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
+          <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
           <Route path="/hr/goal-setting" element={<GoalSetting />} />
           <Route path="/hr/goal-progress" element={<GoalProgressPage />} />
           <Route path="/hr/progress-dashboard" element={<ProgressDashboard />} />
@@ -219,6 +221,7 @@ function App() {
           <Route path="/admin/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/admin/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/admin/department-tree" element={<DepartmentTree />} />
+          <Route path="/admin/assessment-publication" element={<AssessmentPublication />} />
           <Route path="/admin/scoring" element={<GMScoring />} />
           <Route path="/admin/data-export" element={<GMDataExport />} />
           <Route path="/admin/objectives" element={<ObjectiveTree />} />
