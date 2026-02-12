@@ -38,8 +38,8 @@ router.post('/generate-tasks', authenticate, requireRole('hr'), performanceContr
 // 获取月度统计数据（用于导出）
 router.get('/stats/:month', authenticate, requireRole('hr', 'gm'), performanceController.getStatsByMonth);
 
-// 模拟数据管理（HR/GM权限）
-router.post('/demo-data/generate', authenticate, requireRole('hr', 'gm'), async (req: Request, res: Response) => {
+// 模拟数据管理（经理/HR/GM权限）
+router.post('/demo-data/generate', authenticate, requireRole('manager', 'hr', 'gm'), async (req: Request, res: Response) => {
   try {
     if (await hasDemoData()) {
       return res.status(400).json({ success: false, message: '模拟数据已存在，请先清除' });
@@ -51,7 +51,7 @@ router.post('/demo-data/generate', authenticate, requireRole('hr', 'gm'), async 
   }
 });
 
-router.delete('/demo-data', authenticate, requireRole('hr', 'gm'), async (req: Request, res: Response) => {
+router.delete('/demo-data', authenticate, requireRole('manager', 'hr', 'gm'), async (req: Request, res: Response) => {
   try {
     const count = await clearDemoData();
     res.json({ success: true, message: `成功清除 ${count} 条模拟数据`, count });

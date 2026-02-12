@@ -290,6 +290,57 @@ CREATE TABLE IF NOT EXISTS peer_reviews (
 CREATE INDEX IF NOT EXISTS idx_peer_reviews_reviewer ON peer_reviews(reviewer_id);
 CREATE INDEX IF NOT EXISTS idx_peer_reviews_reviewee ON peer_reviews(reviewee_id);
 
+-- 绩效记录表（用于示例数据）
+DO $$ BEGIN
+  CREATE TYPE record_status AS ENUM ('draft', 'submitted', 'scored', 'completed');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE group_type AS ENUM ('high', 'low');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS performance_records (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  assessor_id VARCHAR(50) NOT NULL,
+  month VARCHAR(7) NOT NULL,
+  self_summary TEXT,
+  next_month_plan TEXT,
+  task_completion DECIMAL(3,2) DEFAULT 1.00,
+  initiative DECIMAL(3,2) DEFAULT 1.00,
+  project_feedback DECIMAL(3,2) DEFAULT 1.00,
+  quality_improvement DECIMAL(3,2) DEFAULT 1.00,
+  total_score DECIMAL(3,2) DEFAULT 0.00,
+  level VARCHAR(2) DEFAULT 'L3',
+  normalized_score DECIMAL(3,2),
+  manager_comment TEXT,
+  next_month_work_arrangement TEXT,
+  group_type group_type NOT NULL,
+  group_rank INT DEFAULT 0,
+  cross_dept_rank INT DEFAULT 0,
+  department_rank INT DEFAULT 0,
+  company_rank INT DEFAULT 0,
+  status record_status DEFAULT 'draft',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (employee_id, month)
+);
+
+CREATE INDEX IF NOT EXISTS idx_performance_records_assessor ON performance_records(assessor_id);
+CREATE INDEX IF NOT EXISTS idx_performance_records_month ON performance_records(month);
+CREATE INDEX IF NOT EXISTS idx_performance_records_status ON performance_records(status);
+CREATE INDEX IF NOT EXISTS idx_performance_records_group_type ON performance_records(group_type);
+
+DROP TRIGGER IF EXISTS update_performance_records_updated_at ON performance_records;
+CREATE TRIGGER update_performance_records_updated_at
+  BEFORE UPDATE ON performance_records
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- 初始化说明
 COMMENT ON DATABASE performance_db IS 'ATE绩效管理系统数据库';
 COMMENT ON TABLE employees IS '员工表';
@@ -301,3 +352,4 @@ COMMENT ON TABLE monthly_performance IS '月度绩效表';
 COMMENT ON TABLE promotion_requests IS '晋升申请表';
 COMMENT ON TABLE quarterly_summaries IS '季度总结表';
 COMMENT ON TABLE peer_reviews IS '同事互评表';
+COMMENT ON TABLE performance_records IS '绩效记录表（示例数据）';
