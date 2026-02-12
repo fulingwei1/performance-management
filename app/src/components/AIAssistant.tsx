@@ -35,10 +35,10 @@ export function AIAssistant({ type, requestData, onAdopt, className }: AIAssista
   // 获取API端点
   const getEndpoint = () => {
     const endpoints = {
-      'self-summary': '/api/ai/self-summary',
-      'next-month-plan': '/api/ai/next-month-plan',
-      'manager-comment': '/api/ai/manager-comment',
-      'work-arrangement': '/api/ai/work-arrangement'
+      'self-summary': '/ai/self-summary',
+      'next-month-plan': '/ai/next-month-plan',
+      'manager-comment': '/ai/manager-comment',
+      'work-arrangement': '/ai/work-arrangement'
     };
     return endpoints[type];
   };

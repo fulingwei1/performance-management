@@ -38,6 +38,7 @@ import departmentRoutes from './routes/department.routes';
 import peerReviewCycleRoutes from './routes/peerReviewCycle.routes';
 import goalProgressRoutes from './routes/goalProgress.routes';
 import aiRoutes from './routes/ai.routes';
+// import goalApprovalRoutes from './routes/goalApproval.routes';  // 暂时禁用，等 ObjectiveModel 添加方法后启用
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -139,6 +140,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/peer-review-cycles', peerReviewCycleRoutes);
 app.use('/api/goal-progress', goalProgressRoutes);
 app.use('/api/ai', aiRoutes);
+// app.use('/api/goal-approval', goalApprovalRoutes);  // 暂时禁用
 
 // 404处理
 app.use(notFoundHandler);

@@ -4,6 +4,7 @@ export type EmployeeLevel = 'senior' | 'intermediate' | 'junior' | 'assistant';
 // 员工信息
 export interface Employee {
   id: string;
+  userId?: string | number;  // 别名，兼容不同代码中的引用
   name: string;
   department: string;
   subDepartment: string;

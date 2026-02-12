@@ -52,9 +52,10 @@ const managerNavItems = [
 
 const gmNavItems = [
   { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
+  { path: '/gm/strategic-goals', label: '战略目标管理', icon: FileText },
+  { path: '/gm/strategic-overview', label: '战略总览', icon: Crosshair },
   { path: '/gm/scoring', label: '总经理评分', icon: Award },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/gm/strategic-overview', label: '战略总览', icon: Crosshair },
   { path: '/gm/data-export', label: '数据导出', icon: LogOut },
   { path: '/gm/promotion-approvals', label: '晋升审批', icon: TrendingUp },
 ];

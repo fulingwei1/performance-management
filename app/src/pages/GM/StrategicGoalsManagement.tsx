@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Target, Briefcase, Users, Plus, Save, Edit2, Trash2 } from 'lucide-react';
+import { Target, Briefcase, Users, Plus, Save, Edit2, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,9 @@ export function StrategicGoalsManagement() {
   const [loading, setLoading] = useState(true);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<StrategicGoal | null>(null);
+
+  // AI助手状态
+  const [aiLoading, setAiLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -179,6 +182,83 @@ export function StrategicGoalsManagement() {
     }
   };
 
+  /**
+   * AI生成内容
+   */
+  const handleGenerateAI = async () => {
+    setAiLoading(true);
+    setAiVersions([]);
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      let endpoint = '';
+      let payload: any = { year: currentYear };
+
+      // 根据类型选择不同的AI生成接口
+      if (formData.type === 'company-strategy') {
+        endpoint = '/ai/company-strategy';
+        payload.currentStrategy = formData.content;
+        payload.companyName = '金凯博自动化';
+        payload.industry = '自动化测试设备';
+      } else if (formData.type === 'company-key-work') {
+        endpoint = '/ai/company-key-works';
+        payload.strategy = goals.find(g => g.type === 'company-strategy')?.content;
+        payload.companyName = '金凯博自动化';
+      } else if (formData.type === 'department-key-work') {
+        endpoint = '/ai/department-key-works';
+        payload.department = formData.department;
+        payload.companyStrategy = goals.find(g => g.type === 'company-strategy')?.content;
+        payload.companyKeyWorks = goals.filter(g => g.type === 'company-key-work').map(g => g.title);
+      }
+
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // 处理不同的响应格式并自动采用第一个版本
+        let contentToAdopt = '';
+        
+        if (formData.type === 'company-strategy') {
+          const versions = result.data.versions || [];
+          contentToAdopt = versions[0] || '';
+        } else {
+          // 对于company-key-works和department-key-works，需要格式化works数组
+          const versions = result.data.versions || [];
+          if (versions.length > 0 && versions[0].works && Array.isArray(versions[0].works)) {
+            contentToAdopt = versions[0].works.map((w: any, idx: number) => 
+              `${idx + 1}. ${w.name}\n   ${w.description || ''}`
+            ).join('\n\n');
+          }
+        }
+
+        // 自动采用第一个版本
+        if (contentToAdopt) {
+          setFormData({ ...formData, content: contentToAdopt });
+          toast.success('AI内容已自动填入');
+        } else {
+          toast.error('AI生成的内容为空');
+        }
+      } else {
+        toast.error('AI生成失败');
+      }
+    } catch (error) {
+      console.error('Error generating AI:', error);
+      toast.error('AI生成失败');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const companyStrategy = goals.find(g => g.type === 'company-strategy' && g.status === 'active');
   const companyKeyWorks = goals.filter(g => g.type === 'company-key-work' && g.status === 'active');
   const departmentKeyWorks = goals.filter(g => g.type === 'department-key-work' && g.status === 'active');
@@ -187,243 +267,263 @@ export function StrategicGoalsManagement() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">战略目标管理</h1>
-          <p className="text-gray-500 mt-1">设置公司战略、重点工作和部门目标</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">战略目标管理</h1>
+            <p className="text-gray-500 mt-1">设置公司战略、重点工作和部门目标</p>
+          </div>
+          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            添加目标
+          </Button>
         </div>
-        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          添加目标
-        </Button>
-      </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-gray-400">加载中...</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 公司战略 */}
-          <Card className="border-blue-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-blue-900">
-                <Target className="w-5 h-5" />
-                公司战略
-              </CardTitle>
-              <CardDescription>公司长期发展方向</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {companyStrategy ? (
-                <div className="space-y-3">
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-semibold text-sm">{companyStrategy.title}</h3>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(companyStrategy)}>
-                          <Edit2 className="w-3 h-3" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(companyStrategy.id)}>
-                          <Trash2 className="w-3 h-3 text-red-500" />
-                        </Button>
+        {loading ? (
+          <div className="text-center py-12 text-gray-400">加载中...</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 公司战略 */}
+            <Card className="border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-900">
+                  <Target className="w-5 h-5" />
+                  公司战略
+                </CardTitle>
+                <CardDescription>公司长期发展方向</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {companyStrategy ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-sm">{companyStrategy.title}</h3>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(companyStrategy)}>
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(companyStrategy.id)}>
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    {companyStrategy.description && (
-                      <p className="text-xs text-gray-600 mb-2">{companyStrategy.description}</p>
-                    )}
-                    {companyStrategy.content && (
-                      <p className="text-xs text-gray-500 whitespace-pre-wrap p-2 bg-white rounded">
-                        {companyStrategy.content}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-sm text-gray-400 mb-3">暂未设置</p>
-                  <Button size="sm" variant="outline" onClick={handleCreate}>
-                    <Plus className="w-3 h-3 mr-1" />
-                    添加战略
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 公司重点工作 */}
-          <Card className="border-purple-200">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-purple-900">
-                    <Briefcase className="w-5 h-5" />
-                    年度重点工作
-                  </CardTitle>
-                  <CardDescription>{currentYear}年度重点任务</CardDescription>
-                </div>
-                <Badge variant="outline">{companyKeyWorks.length}项</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {companyKeyWorks.map((kw, idx) => (
-                  <div key={kw.id} className="p-2 bg-purple-50 rounded flex items-start gap-2">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{kw.title}</p>
-                      {kw.description && (
-                        <p className="text-xs text-gray-600">{kw.description}</p>
+                      {companyStrategy.description && (
+                        <p className="text-xs text-gray-600 mb-2">{companyStrategy.description}</p>
+                      )}
+                      {companyStrategy.content && (
+                        <p className="text-xs text-gray-500 whitespace-pre-wrap p-2 bg-white rounded">
+                          {companyStrategy.content}
+                        </p>
                       )}
                     </div>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(kw)} className="h-6 w-6 p-0">
-                        <Edit2 className="w-3 h-3" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => handleDelete(kw.id)} className="h-6 w-6 p-0">
-                        <Trash2 className="w-3 h-3 text-red-500" />
-                      </Button>
-                    </div>
                   </div>
-                ))}
-                {companyKeyWorks.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-6">暂无重点工作</p>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-gray-400 mb-3">暂未设置</p>
+                    <Button size="sm" variant="outline" onClick={handleCreate}>
+                      <Plus className="w-3 h-3 mr-1" />
+                      添加战略
+                    </Button>
+                  </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          {/* 部门重点工作 */}
-          <Card className="border-green-200">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-green-900">
-                    <Users className="w-5 h-5" />
-                    部门重点工作
-                  </CardTitle>
-                  <CardDescription>各部门年度重点任务</CardDescription>
+            {/* 公司重点工作 */}
+            <Card className="border-purple-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-purple-900">
+                      <Briefcase className="w-5 h-5" />
+                      年度重点工作
+                    </CardTitle>
+                    <CardDescription>{currentYear}年度重点任务</CardDescription>
+                  </div>
+                  <Badge variant="outline">{companyKeyWorks.length}项</Badge>
                 </div>
-                <Badge variant="outline">{departmentKeyWorks.length}项</Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {departmentKeyWorks.map((dw) => (
-                  <div key={dw.id} className="p-2 bg-green-50 rounded">
-                    <div className="flex items-start justify-between mb-1">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant="outline" className="text-xs">{dw.department}</Badge>
-                        </div>
-                        <p className="text-sm font-medium text-gray-900">{dw.title}</p>
-                        {dw.description && (
-                          <p className="text-xs text-gray-600 mt-0.5">{dw.description}</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {companyKeyWorks.map((kw, idx) => (
+                    <div key={kw.id} className="p-2 bg-purple-50 rounded flex items-start gap-2">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-600 text-white text-xs flex items-center justify-center font-bold">
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{kw.title}</p>
+                        {kw.description && (
+                          <p className="text-xs text-gray-600">{kw.description}</p>
                         )}
                       </div>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(dw)} className="h-6 w-6 p-0">
+                        <Button size="sm" variant="ghost" onClick={() => handleEdit(kw)} className="h-6 w-6 p-0">
                           <Edit2 className="w-3 h-3" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => handleDelete(dw.id)} className="h-6 w-6 p-0">
+                        <Button size="sm" variant="ghost" onClick={() => handleDelete(kw.id)} className="h-6 w-6 p-0">
                           <Trash2 className="w-3 h-3 text-red-500" />
                         </Button>
                       </div>
                     </div>
+                  ))}
+                  {companyKeyWorks.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-6">暂无重点工作</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 部门重点工作 */}
+            <Card className="border-green-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-green-900">
+                      <Users className="w-5 h-5" />
+                      部门重点工作
+                    </CardTitle>
+                    <CardDescription>各部门年度重点任务</CardDescription>
                   </div>
-                ))}
-                {departmentKeyWorks.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-6">暂无部门工作</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                  <Badge variant="outline">{departmentKeyWorks.length}项</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {departmentKeyWorks.map((dw) => (
+                    <div key={dw.id} className="p-2 bg-green-50 rounded">
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-xs">{dw.department}</Badge>
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{dw.title}</p>
+                          {dw.description && (
+                            <p className="text-xs text-gray-600 mt-0.5">{dw.description}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => handleEdit(dw)} className="h-6 w-6 p-0">
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => handleDelete(dw.id)} className="h-6 w-6 p-0">
+                            <Trash2 className="w-3 h-3 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {departmentKeyWorks.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-6">暂无部门工作</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-      {/* 编辑对话框 */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingGoal ? '编辑目标' : '添加目标'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>类型 <span className="text-red-500">*</span></Label>
-              <Select
-                value={formData.type}
-                onValueChange={(v: any) => setFormData({...formData, type: v})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="company-strategy">公司战略</SelectItem>
-                  <SelectItem value="company-key-work">年度重点工作</SelectItem>
-                  <SelectItem value="department-key-work">部门重点工作</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.type === 'department-key-work' && (
+        {/* 编辑对话框 */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editingGoal ? '编辑目标' : '添加目标'}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
               <div>
-                <Label>部门 <span className="text-red-500">*</span></Label>
+                <Label>类型 <span className="text-red-500">*</span></Label>
                 <Select
-                  value={formData.department}
-                  onValueChange={(v) => setFormData({...formData, department: v})}
+                  value={formData.type}
+                  onValueChange={(v: any) => setFormData({...formData, type: v})}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="选择部门" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {departments.map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                    ))}
+                    <SelectItem value="company-strategy">公司战略</SelectItem>
+                    <SelectItem value="company-key-work">年度重点工作</SelectItem>
+                    <SelectItem value="department-key-work">部门重点工作</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            <div>
-              <Label>标题 <span className="text-red-500">*</span></Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="输入目标标题"
-              />
-            </div>
+              {formData.type === 'department-key-work' && (
+                <div>
+                  <Label>部门 <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={formData.department}
+                    onValueChange={(v) => setFormData({...formData, department: v})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择部门" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map(dept => (
+                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div>
-              <Label>简介</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="简要描述（选填）"
-                rows={2}
-              />
-            </div>
+              <div>
+                <Label>标题 <span className="text-red-500">*</span></Label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  placeholder="输入目标标题"
+                />
+              </div>
 
-            <div>
-              <Label>详细内容</Label>
-              <Textarea
-                value={formData.content}
-                onChange={(e) => setFormData({...formData, content: e.target.value})}
-                placeholder="详细描述目标内容、具体措施等（选填）"
-                rows={5}
-              />
-            </div>
+              <div>
+                <Label>简介</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  placeholder="简要描述（选填）"
+                  rows={2}
+                />
+              </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="flex-1">
-                取消
-              </Button>
-              <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                <Save className="w-4 h-4 mr-2" />
-                保存
-              </Button>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>详细内容</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateAI}
+                    disabled={aiLoading || (formData.type === 'department-key-work' && !formData.department)}
+                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                  >
+                    {aiLoading ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-1" />
+                    )}
+                    AI 帮我写
+                  </Button>
+                </div>
+                <Textarea
+                  value={formData.content}
+                  onChange={(e) => setFormData({...formData, content: e.target.value})}
+                  placeholder="详细描述目标内容、具体措施等（选填）"
+                  rows={5}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  💡 点击"AI 帮我写"可以根据已有信息生成建议内容
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="flex-1">
+                  取消
+                </Button>
+                <Button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                  <Save className="w-4 h-4 mr-2" />
+                  保存
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </motion.div>
+          </DialogContent>
+        </Dialog>
+      </motion.div>
   );
 }

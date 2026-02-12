@@ -527,8 +527,27 @@ export function GMDashboard() {
         </Card>
       </motion.div>
 
-      {/* 快捷入口：总经理评分、数据分析 */}
-      <motion.div variants={itemVariants} custom={3} className="grid gap-4 md:grid-cols-2">
+      {/* 快捷入口：战略目标管理、总经理评分、数据分析 */}
+      <motion.div variants={itemVariants} custom={3} className="grid gap-4 md:grid-cols-3">
+        <Card className="border border-blue-200 bg-blue-50 hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              战略目标管理
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 mb-4">
+              编辑公司战略、年度重点工作及部门目标。
+            </p>
+            <Button asChild variant="default" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
+              <Link to="/gm/strategic-goals" className="inline-flex items-center gap-2">
+                管理战略目标
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
         <Card className="border border-gray-200 hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg flex items-center gap-2">

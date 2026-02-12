@@ -4,6 +4,7 @@
  */
 
 import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult, GoalProgress } from '../types';
+import { AIUsageLog } from '../models/aiUsageLog.model';
 import logger from './logger';
 
 // 内存数据存储
@@ -33,6 +34,7 @@ interface MemoryStore {
   bonusConfig: Map<string, BonusConfig>;
   bonusResults: Map<string, BonusResult>;
   goalProgress?: Map<string, GoalProgress>;
+  aiUsageLogs: Map<string, AIUsageLog>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -61,6 +63,7 @@ export const memoryStore: MemoryStore = {
   bonusConfig: new Map(),
   bonusResults: new Map(),
   goalProgress: new Map(),
+  aiUsageLogs: new Map(),
 };
 
 // 员工数据操作
@@ -353,6 +356,7 @@ export const initMemoryDB = (): void => {
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
   memoryStore.goalProgress?.clear();
+  memoryStore.aiUsageLogs.clear();
 
   // 初始化默认部门
   const defaultDepts: Department[] = [
@@ -409,6 +413,7 @@ export const clearMemoryDB = (): void => {
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
   memoryStore.goalProgress?.clear();
+  memoryStore.aiUsageLogs.clear();
 };
 
 // 获取统计信息

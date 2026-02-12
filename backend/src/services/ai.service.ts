@@ -34,6 +34,10 @@ interface AIResponse {
 async function callKimiAPI(request: AIRequest): Promise<AIResponse> {
   const kimiApiKey = process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY;
   
+  console.log('[DEBUG] KIMI_API_KEY exists:', !!process.env.KIMI_API_KEY);
+  console.log('[DEBUG] MOONSHOT_API_KEY exists:', !!process.env.MOONSHOT_API_KEY);
+  console.log('[DEBUG] kimiApiKey length:', kimiApiKey?.length || 0);
+  
   if (!kimiApiKey) {
     throw new Error('Kimi API Key not configured');
   }
@@ -299,6 +303,230 @@ ${data.currentComment ? `本月评价：\n${data.currentComment}\n` : ''}
 2. 包含：重点任务、期望目标、提升方向
 3. 语气：专业、鼓励、具体
 4. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 总经理 - 公司战略撰写
+   */
+  companyStrategy: (data: {
+    companyName?: string;
+    industry?: string;
+    year: number;
+    currentStrategy?: string;
+  }) => {
+    return {
+      systemPrompt: '你是一位资深的企业战略顾问，擅长制定清晰、可执行的公司战略。',
+      prompt: `请为${data.companyName || '公司'}制定${data.year}年度战略：
+
+行业背景：
+${data.industry || '自动化测试设备行业'}
+
+${data.currentStrategy ? `当前战略参考：\n${data.currentStrategy}\n` : ''}
+
+要求：
+1. 战略陈述应简洁有力（200-300字）
+2. 包含：战略方向、核心目标、关键举措
+3. 符合行业趋势和公司发展阶段
+4. 可执行、可衡量
+5. 生成3个不同风格的版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 总经理 - 公司年度重点工作
+   */
+  companyKeyWorks: (data: {
+    companyName?: string;
+    year: number;
+    strategy?: string;
+    departments?: string[];
+  }) => {
+    const deptList = data.departments && data.departments.length > 0
+      ? data.departments.join('、')
+      : '研发、销售、生产、人力资源等部门';
+
+    return {
+      systemPrompt: '你是一位企业运营专家，擅长将战略目标分解为具体的年度重点工作。',
+      prompt: `请基于公司战略，制定${data.year}年度重点工作清单：
+
+${data.strategy ? `公司战略：\n${data.strategy}\n` : ''}
+
+公司部门：
+${deptList}
+
+要求：
+1. 列出5-8项年度重点工作
+2. 每项工作应包含：工作名称 + 简短说明（50字内）
+3. 工作应跨部门、具有战略意义
+4. 可衡量、有明确负责方向
+5. 生成3个不同版本，JSON格式：
+{
+  "versions": [
+    {
+      "works": [
+        {"name": "工作名称", "description": "工作说明"},
+        ...
+      ]
+    }
+  ]
+}`
+    };
+  },
+
+  /**
+   * 总经理 - 部门年度重点工作
+   */
+  departmentKeyWorks: (data: {
+    department: string;
+    year: number;
+    companyStrategy?: string;
+    companyKeyWorks?: string[];
+  }) => {
+    const companyWorksText = data.companyKeyWorks && data.companyKeyWorks.length > 0
+      ? data.companyKeyWorks.map((w, i) => `${i + 1}. ${w}`).join('\n')
+      : '暂无公司重点工作';
+
+    return {
+      systemPrompt: '你是一位部门管理专家，擅长将公司战略分解为部门具体行动计划。',
+      prompt: `请为${data.department}制定${data.year}年度重点工作：
+
+${data.companyStrategy ? `公司战略：\n${data.companyStrategy}\n` : ''}
+
+公司年度重点工作：
+${companyWorksText}
+
+要求：
+1. 列出3-5项部门重点工作
+2. 与公司战略和重点工作高度对齐
+3. 符合部门职能特点
+4. 每项工作包含：名称 + 说明（50字内）
+5. 生成3个版本，JSON格式：
+{
+  "versions": [
+    {
+      "works": [
+        {"name": "工作名称", "description": "工作说明"},
+        ...
+      ]
+    }
+  ]
+}`
+    };
+  },
+
+  /**
+   * 经理 - 季度团队总结
+   */
+  quarterlySummary: (data: {
+    managerName: string;
+    department: string;
+    quarter: string;
+    teamSize: number;
+    avgScore?: number;
+    topPerformers?: string[];
+    keyProjects?: string[];
+  }) => {
+    const topPerformersText = data.topPerformers && data.topPerformers.length > 0
+      ? data.topPerformers.join('、')
+      : '暂无数据';
+
+    const projectsText = data.keyProjects && data.keyProjects.length > 0
+      ? data.keyProjects.join('、')
+      : '暂无项目数据';
+
+    return {
+      systemPrompt: '你是一位资深的部门经理，擅长撰写团队季度总结报告。',
+      prompt: `请撰写${data.quarter}季度团队总结：
+
+部门信息：
+- 经理：${data.managerName}
+- 部门：${data.department}
+- 团队规模：${data.teamSize}人
+- 平均绩效：${data.avgScore ? data.avgScore.toFixed(2) : '未统计'}
+
+优秀员工：
+${topPerformersText}
+
+重点项目：
+${projectsText}
+
+要求：
+1. 总结字数300-400字
+2. 包含：整体表现、亮点成果、存在问题、改进措施
+3. 语气：客观、专业、鼓舞士气
+4. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 目标拆解 - 基于公司战略/部门目标拆解个人OKR/KPI
+   */
+  goalDecomposition: (data: {
+    name: string;
+    role: 'employee' | 'manager' | 'gm';
+    level: string;
+    department: string;
+    companyStrategy?: string;
+    companyKeyWorks?: string[];
+    departmentKeyWorks?: string[];
+    currentGoals?: any[];
+  }) => {
+    const strategyText = data.companyStrategy || '暂无公司战略';
+    const companyWorksText = data.companyKeyWorks && data.companyKeyWorks.length > 0
+      ? data.companyKeyWorks.map((w, i) => `${i + 1}. ${w}`).join('\n')
+      : '暂无年度重点工作';
+    const deptWorksText = data.departmentKeyWorks && data.departmentKeyWorks.length > 0
+      ? data.departmentKeyWorks.map((w, i) => `${i + 1}. ${w}`).join('\n')
+      : '暂无部门重点工作';
+
+    return {
+      systemPrompt: '你是一位专业的目标管理顾问，擅长帮助员工和经理将公司战略和部门目标拆解为个人OKR/KPI。',
+      prompt: `请帮助${data.role === 'employee' ? '员工' : '经理'}拆解个人年度目标：
+
+个人信息：
+- 姓名：${data.name}
+- 职位：${data.level}
+- 部门：${data.department}
+- 角色：${data.role === 'employee' ? '员工' : '经理'}
+
+📋 公司战略（2026年）：
+${strategyText}
+
+🎯 公司年度重点工作：
+${companyWorksText}
+
+🏢 ${data.department} 部门重点工作：
+${deptWorksText}
+
+要求：
+1. 根据上述战略和重点工作，为该${data.role === 'employee' ? '员工' : '经理'}生成3-5个个人年度目标
+2. 每个目标应包含：
+   - 目标名称（简洁明了）
+   - 目标描述（具体措施）
+   - 目标值（可量化的数字）
+   - 单位（如：件、%、小时等）
+   - 权重（所有目标权重总和为100%）
+3. 目标应该：
+   - 与公司战略和部门重点高度对齐
+   - 符合${data.role === 'employee' ? '员工' : '经理'}的岗位职责
+   - 具体可衡量（SMART原则）
+   - 有挑战性但可达成
+
+请用以下JSON格式返回：
+{
+  "goals": [
+    {
+      "name": "目标名称",
+      "description": "具体描述和实施措施",
+      "targetValue": 100,
+      "unit": "件",
+      "weight": 30,
+      "alignedTo": "对齐的公司/部门目标名称"
+    }
+  ],
+  "explanation": "简要说明为什么选择这些目标"
+}`
     };
   }
 };

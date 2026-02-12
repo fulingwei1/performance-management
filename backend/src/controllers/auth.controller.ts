@@ -69,7 +69,7 @@ export const authController = {
 
       // 返回用户信息（显式排除 password，避免泄露）
       const { id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt } = employee;
-      const userInfo = { id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt };
+      const userInfo = { id, userId: id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt };
 
       res.json({
         success: true,

@@ -454,7 +454,7 @@ export interface Objective {
   quarter?: string;
   weight: number;
   progress: number;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
+  status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled';
   startDate?: Date | string;
   endDate?: Date | string;
   feedbackCycle?: FeedbackCycle;
@@ -473,10 +473,29 @@ export interface Objective {
   employeeConfirmedAt?: Date | string;
   employeeFeedback?: string;
   
+  // 新增：审批相关
+  submittedAt?: Date | string;
+  reviewedAt?: Date | string;
+  reviewedBy?: string | number;
+  reviewComment?: string;
+  adjustmentReason?: string;
+  
   createdAt?: Date | string;
   updatedAt?: Date | string;
   children?: Objective[];
   keyResults?: KeyResult[];
+}
+
+// 目标调整历史记录
+export interface ObjectiveAdjustment {
+  id: number;
+  objectiveId: number;
+  adjustedBy: number;
+  adjustmentType: 'target_value' | 'quarterly_targets' | 'monthly_targets' | 'weight' | 'description';
+  oldValue: string;  // JSON string
+  newValue: string;  // JSON string
+  reason?: string;
+  createdAt: Date | string;
 }
 
 export interface OkrAssignment {
