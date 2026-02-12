@@ -132,7 +132,7 @@ export class NotificationModel {
   static async getUnreadCount(userId: string): Promise<number> {
     if (USE_MEMORY_DB) {
       (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      return (memoryDB as any).notifications.filter(n => n.userId === userId && !n.read).length;
+      return (memoryDB as any).notifications.filter((n: Notification) => n.userId === userId && !n.read).length;
     }
 
     const sql = `
@@ -149,7 +149,7 @@ export class NotificationModel {
   static async markAsRead(id: string, userId: string): Promise<boolean> {
     if (USE_MEMORY_DB) {
       (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      const notification = (memoryDB as any).notifications.find(n => n.id === id && n.userId === userId);
+      const notification = (memoryDB as any).notifications.find((n: Notification) => n.id === id && n.userId === userId);
       if (notification) {
         notification.read = true;
         return true;
@@ -195,7 +195,7 @@ export class NotificationModel {
   static async findById(id: string): Promise<Notification | null> {
     if (USE_MEMORY_DB) {
       (memoryDB as any).notifications = (memoryDB as any).notifications || [];
-      return (memoryDB as any).notifications.find(n => n.id === id) || null;
+      return (memoryDB as any).notifications.find((n: Notification) => n.id === id) || null;
     }
 
     const sql = `
@@ -217,7 +217,7 @@ export class NotificationModel {
       cutoffDate.setDate(cutoffDate.getDate() - days);
       const beforeCount = (memoryDB as any).notifications.length;
       (memoryDB as any).notifications = (memoryDB as any).notifications.filter(
-        n => n.createdAt > cutoffDate
+        (n: Notification) => n.createdAt > cutoffDate
       );
       return beforeCount - (memoryDB as any).notifications.length;
     }
