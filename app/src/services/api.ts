@@ -137,6 +137,9 @@ export const performanceApi = {
   // 获取我的绩效记录
   getMyRecords: () => request('/performance/my-records'),
   
+  // 获取我的某月绩效记录
+  getMyRecordByMonth: (month: string) => request(`/performance/my-record/${month}`),
+  
   // 获取团队绩效记录（经理）
   // month: 指定月份; months: 最近N个月; 都不传返回全部
   getTeamRecords: (month?: string, months?: number) => {

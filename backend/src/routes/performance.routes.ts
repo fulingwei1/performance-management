@@ -8,6 +8,9 @@ const router = Router();
 // 获取当前用户的绩效记录（需要认证）
 router.get('/my-records', authenticate, performanceController.getMyRecords);
 
+// 获取当前用户某月的绩效记录（需要认证）
+router.get('/my-record/:month', authenticate, performanceController.getMyRecordByMonth);
+
 // 获取经理的评分记录（下属）（需要经理权限）
 router.get('/team-records', authenticate, requireRole('manager'), performanceController.getTeamRecords);
 

@@ -23,6 +23,32 @@ export const performanceController = {
     });
   }),
 
+  // 获取当前用户某月的绩效记录
+  getMyRecordByMonth: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: '未认证'
+      });
+    }
+
+    const { month } = req.params;
+    const record = await PerformanceModel.findByEmployeeIdAndMonth(req.user.userId, month);
+    
+    if (!record) {
+      return res.json({
+        success: true,
+        data: null,
+        message: '该月份暂无记录'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: record
+    });
+  }),
+
   // 获取经理的评分记录（下属）
   // 支持 ?month=2026-01 查询单月
   // 支持 ?months=3 查询最近N个月

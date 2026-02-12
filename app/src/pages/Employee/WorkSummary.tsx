@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
@@ -13,6 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { AIAssistant } from '@/components/AIAssistant';
+import { FrozenAlert } from '@/components/FrozenAlert';
+import { performanceApi } from '@/services/api';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -29,9 +31,47 @@ export function WorkSummary() {
   const [showSuccess, _setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
   
+  // 冻结状态
+  const [frozen, setFrozen] = useState(false);
+  const [deadline, setDeadline] = useState<string | undefined>(undefined);
+  const [recordId, setRecordId] = useState<string | null>(null);
+  
   // AI助手状态
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [aiType, setAiType] = useState<'self-summary' | 'next-month-plan'>('self-summary');
+  
+  // 加载该月份的记录（检测冻结状态）
+  useEffect(() => {
+    const loadRecord = async () => {
+      if (!user) return;
+      
+      const monthStr = format(month, 'yyyy-MM');
+      try {
+        const response = await performanceApi.getMyRecordByMonth(monthStr);
+        if (response.success && response.data) {
+          const record = response.data;
+          setRecordId(record.id);
+          setFrozen(record.frozen || false);
+          setDeadline(record.deadline);
+          
+          // 如果记录已存在，加载已保存的内容
+          if (record.selfSummary) setSelfSummary(record.selfSummary);
+          if (record.nextMonthPlan) setNextMonthPlan(record.nextMonthPlan);
+        } else {
+          // 该月份无记录，清空状态
+          setRecordId(null);
+          setFrozen(false);
+          setDeadline(undefined);
+          setSelfSummary('');
+          setNextMonthPlan('');
+        }
+      } catch (error) {
+        console.error('加载记录失败:', error);
+      }
+    };
+    
+    loadRecord();
+  }, [month, user]);
   
   const handleSave = async (isDraft: boolean) => {
     if (!user) return;
@@ -154,6 +194,11 @@ export function WorkSummary() {
           </motion.div>
         )}
         
+        {/* Frozen Alert */}
+        <motion.div variants={itemVariants} className="mb-4">
+          <FrozenAlert frozen={frozen} deadline={deadline} />
+        </motion.div>
+        
         {/* Form */}
         <motion.div variants={itemVariants}>
           <Card>
@@ -207,6 +252,7 @@ export function WorkSummary() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleOpenAI('self-summary')}
+                    disabled={frozen}
                     className="border-purple-300 text-purple-700 hover:bg-purple-50"
                   >
                     <Sparkles className="w-4 h-4 mr-1" />
@@ -218,6 +264,7 @@ export function WorkSummary() {
                   placeholder="请描述本月完成的主要工作、项目经验与收获、遇到的困难与解决方案..."
                   value={selfSummary}
                   onChange={(e) => setSelfSummary(e.target.value)}
+                  disabled={frozen}
                   className="min-h-[150px] resize-none"
                 />
                 <p className="text-xs text-gray-400">
@@ -237,6 +284,7 @@ export function WorkSummary() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleOpenAI('next-month-plan')}
+                    disabled={frozen}
                     className="border-purple-300 text-purple-700 hover:bg-purple-50"
                   >
                     <Sparkles className="w-4 h-4 mr-1" />
@@ -248,6 +296,7 @@ export function WorkSummary() {
                   placeholder="请描述下月工作目标、计划开展的项目、需要协调的资源..."
                   value={nextMonthPlan}
                   onChange={(e) => setNextMonthPlan(e.target.value)}
+                  disabled={frozen}
                   className="min-h-[150px] resize-none"
                 />
                 <p className="text-xs text-gray-400">
@@ -260,7 +309,7 @@ export function WorkSummary() {
                 <Button
                   variant="outline"
                   onClick={() => handleSave(true)}
-                  disabled={isSubmitting || loading}
+                  disabled={isSubmitting || loading || frozen}
                   className="flex-1"
                 >
                   {isSubmitting ? (
@@ -272,7 +321,7 @@ export function WorkSummary() {
                 </Button>
                 <Button
                   onClick={() => handleSave(false)}
-                  disabled={isSubmitting || loading || !selfSummary || !nextMonthPlan}
+                  disabled={isSubmitting || loading || frozen || !selfSummary || !nextMonthPlan}
                   className="flex-1"
                 >
                   {isSubmitting ? (
