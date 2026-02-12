@@ -55,6 +55,9 @@ import { GoalSetting } from '@/pages/Goals/GoalSetting';
 import { GoalConfirmation } from '@/pages/Goals/GoalConfirmation';
 import { GoalProgressPage } from '@/pages/Goals/GoalProgress';
 
+// Dashboard pages
+import ProgressDashboard from '@/pages/Dashboard/ProgressDashboard';
+
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
   manager: '/manager/dashboard',
@@ -145,6 +148,7 @@ function App() {
           <Route path="/employee/my-bonus" element={<MyBonus />} />
           <Route path="/employee/goal-confirmation" element={<GoalConfirmation />} />
           <Route path="/employee/goal-progress" element={<GoalProgressPage />} />
+          <Route path="/employee/progress-dashboard" element={<ProgressDashboard />} />
         </Route>
 
         {/* Manager routes */}
@@ -162,6 +166,7 @@ function App() {
           <Route path="/manager/interviews" element={<InterviewSchedule />} />
           <Route path="/manager/goal-setting" element={<GoalSetting />} />
           <Route path="/manager/goal-progress" element={<GoalProgressPage />} />
+          <Route path="/manager/progress-dashboard" element={<ProgressDashboard />} />
         </Route>
 
         {/* GM routes */}
@@ -176,6 +181,7 @@ function App() {
           <Route path="/gm/objectives" element={<ObjectiveTree />} />
           <Route path="/gm/goal-setting" element={<GoalSetting />} />
           <Route path="/gm/goal-progress" element={<GoalProgressPage />} />
+          <Route path="/gm/progress-dashboard" element={<ProgressDashboard />} />
         </Route>
 
         {/* HR routes */}
@@ -194,6 +200,7 @@ function App() {
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
           <Route path="/hr/goal-setting" element={<GoalSetting />} />
           <Route path="/hr/goal-progress" element={<GoalProgressPage />} />
+          <Route path="/hr/progress-dashboard" element={<ProgressDashboard />} />
         </Route>
 
         {/* Admin routes */}
