@@ -779,6 +779,516 @@ export const generateDepartmentKeyWorks = [
 ];
 
 /**
+ * 生成晋升申请 - 绩效总结
+ */
+export const generatePromotionPerformance = [
+  body('employeeName').notEmpty().withMessage('员工姓名不能为空'),
+  body('currentLevel').notEmpty().withMessage('当前职级不能为空'),
+  body('targetLevel').notEmpty().withMessage('目标职级不能为空'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { employeeName, currentLevel, targetLevel, recentScores, avgScore } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.promotionPerformance({
+      employeeName,
+      currentLevel,
+      targetLevel,
+      recentScores,
+      avgScore
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    // 记录使用日志
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 生成晋升申请 - 技能总结
+ */
+export const generatePromotionSkills = [
+  body('employeeName').notEmpty().withMessage('员工姓名不能为空'),
+  body('currentLevel').notEmpty().withMessage('当前职级不能为空'),
+  body('targetLevel').notEmpty().withMessage('目标职级不能为空'),
+  body('department').notEmpty().withMessage('部门不能为空'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { employeeName, currentLevel, targetLevel, department } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.promotionSkills({
+      employeeName,
+      currentLevel,
+      targetLevel,
+      department
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 生成晋升申请 - 胜任力总结
+ */
+export const generatePromotionCompetency = [
+  body('employeeName').notEmpty().withMessage('员工姓名不能为空'),
+  body('currentLevel').notEmpty().withMessage('当前职级不能为空'),
+  body('targetLevel').notEmpty().withMessage('目标职级不能为空'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { employeeName, currentLevel, targetLevel } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.promotionCompetency({
+      employeeName,
+      currentLevel,
+      targetLevel
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 生成晋升申请 - 工作总结
+ */
+export const generatePromotionWork = [
+  body('employeeName').notEmpty().withMessage('员工姓名不能为空'),
+  body('currentLevel').notEmpty().withMessage('当前职级不能为空'),
+  body('targetLevel').notEmpty().withMessage('目标职级不能为空'),
+  body('department').notEmpty().withMessage('部门不能为空'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { employeeName, currentLevel, targetLevel, department } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.promotionWork({
+      employeeName,
+      currentLevel,
+      targetLevel,
+      department
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 生成同事互评意见
+ */
+export const generatePeerReviewComment = [
+  body('reviewerName').notEmpty().withMessage('评价人姓名不能为空'),
+  body('revieweeName').notEmpty().withMessage('被评价人姓名不能为空'),
+  body('scores').isObject().withMessage('评分必须是对象'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { reviewerName, revieweeName, scores } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.peerReviewComment({
+      reviewerName,
+      revieweeName,
+      scores: {
+        collaboration: scores.collaboration || 3,
+        professionalism: scores.professionalism || 3,
+        communication: scores.communication || 3
+      }
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 生成目标确认反馈
+ */
+export const generateGoalConfirmationFeedback = [
+  body('employeeName').notEmpty().withMessage('员工姓名不能为空'),
+  body('goalName').notEmpty().withMessage('目标名称不能为空'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { employeeName, goalName, targetValue, unit } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.goalConfirmationFeedback({
+      employeeName,
+      goalName,
+      targetValue,
+      unit
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 生成目标进度说明
+ */
+export const generateGoalProgressComment = [
+  body('employeeName').notEmpty().withMessage('员工姓名不能为空'),
+  body('goalName').notEmpty().withMessage('目标名称不能为空'),
+  body('completionRate').isNumeric().withMessage('完成率必须是数字'),
+  body('month').notEmpty().withMessage('月份不能为空'),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { employeeName, goalName, completionRate, month } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const promptData = prompts.goalProgressComment({
+      employeeName,
+      goalName,
+      completionRate,
+      month
+    });
+
+    const result = await generateAISuggestion(promptData);
+
+    const user = await EmployeeModel.findById(userId);
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user?.name || '未知用户',
+      feature_type: 'self-summary',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    let versions: string[] = [];
+    try {
+      const parsed = JSON.parse(result.content || '{}');
+      versions = parsed.versions || [result.content || ''];
+    } catch {
+      versions = [result.content || ''];
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        versions,
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
  * 生成季度团队总结
  */
 export const generateQuarterlySummary = [

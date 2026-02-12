@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Target, CheckCircle, MessageSquare } from 'lucide-react';
+import { Target, CheckCircle, MessageSquare, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ export function GoalConfirmation() {
   const [confirmingGoal, setConfirmingGoal] = useState<Objective | null>(null);
   const [feedback, setFeedback] = useState('');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [aiLoading, setAiLoading] = useState(false);
 
   // 加载目标列表
   const loadObjectives = async () => {
@@ -53,6 +54,46 @@ export function GoalConfirmation() {
   useEffect(() => {
     loadObjectives();
   }, [selectedYear, user?.userId]);
+
+  /**
+   * AI生成反馈意见
+   */
+  const handleGenerateFeedback = async () => {
+    if (!confirmingGoal || !user) return;
+
+    setAiLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/goal-confirmation-feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employeeName: user.name,
+          goalName: confirmingGoal.title,
+          targetValue: confirmingGoal.targetValue,
+          unit: confirmingGoal.unit
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          setFeedback(versions[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error generating AI feedback:', error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // 确认目标
   const handleConfirm = async () => {
@@ -287,13 +328,28 @@ export function GoalConfirmation() {
             </div>
 
             <div>
-              <Label>您的反馈（选填）</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label>您的反馈（选填）</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerateFeedback}
+                  disabled={aiLoading}
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  {aiLoading ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-1" />
+                  )}
+                  AI 帮我写
+                </Button>
+              </div>
               <Textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
                 placeholder="对这个目标有什么想法或建议？可以在这里填写..."
                 rows={4}
-                className="mt-2"
               />
               <p className="text-xs text-gray-500 mt-1">
                 您可以提供对目标的看法、建议或疑问，经理会收到您的反馈。

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { PromotionApprovalsList } from '@/components/promotion/PromotionApprovalsList';
 import { toast } from 'sonner';
 
@@ -74,6 +75,14 @@ export function PromotionRequestPage({
   const [skillSummary, setSkillSummary] = useState('');
   const [competencySummary, setCompetencySummary] = useState('');
   const [workSummary, setWorkSummary] = useState('');
+  
+  // AI助手状态
+  const [aiLoading, setAiLoading] = useState({
+    performance: false,
+    skills: false,
+    competency: false,
+    work: false
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -165,6 +174,192 @@ export function PromotionRequestPage({
       return;
     }
     setPerformanceSummary(formatPerformanceSummary(latestRecord));
+  };
+
+  /**
+   * AI生成绩效总结
+   */
+  const handleGeneratePerformance = async () => {
+    if (!selectedEmployee) {
+      toast.error('请先选择员工');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, performance: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/promotion-performance`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employeeName: selectedEmployee.name,
+          currentLevel: getLevelLabel(selectedEmployee.level),
+          targetLevel: getLevelLabel(targetLevel)
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          setPerformanceSummary(versions[0]);
+          toast.success('AI已生成绩效总结');
+        }
+      } else {
+        toast.error('AI生成失败');
+      }
+    } catch (error) {
+      console.error('Error generating AI:', error);
+      toast.error('AI生成失败');
+    } finally {
+      setAiLoading(prev => ({ ...prev, performance: false }));
+    }
+  };
+
+  /**
+   * AI生成技能总结
+   */
+  const handleGenerateSkills = async () => {
+    if (!selectedEmployee) {
+      toast.error('请先选择员工');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, skills: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/promotion-skills`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employeeName: selectedEmployee.name,
+          currentLevel: getLevelLabel(selectedEmployee.level),
+          targetLevel: getLevelLabel(targetLevel),
+          department: selectedEmployee.department
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          setSkillSummary(versions[0]);
+          toast.success('AI已生成技能总结');
+        }
+      } else {
+        toast.error('AI生成失败');
+      }
+    } catch (error) {
+      console.error('Error generating AI:', error);
+      toast.error('AI生成失败');
+    } finally {
+      setAiLoading(prev => ({ ...prev, skills: false }));
+    }
+  };
+
+  /**
+   * AI生成胜任力总结
+   */
+  const handleGenerateCompetency = async () => {
+    if (!selectedEmployee) {
+      toast.error('请先选择员工');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, competency: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/promotion-competency`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employeeName: selectedEmployee.name,
+          currentLevel: getLevelLabel(selectedEmployee.level),
+          targetLevel: getLevelLabel(targetLevel)
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          setCompetencySummary(versions[0]);
+          toast.success('AI已生成胜任力总结');
+        }
+      } else {
+        toast.error('AI生成失败');
+      }
+    } catch (error) {
+      console.error('Error generating AI:', error);
+      toast.error('AI生成失败');
+    } finally {
+      setAiLoading(prev => ({ ...prev, competency: false }));
+    }
+  };
+
+  /**
+   * AI生成工作总结
+   */
+  const handleGenerateWork = async () => {
+    if (!selectedEmployee) {
+      toast.error('请先选择员工');
+      return;
+    }
+
+    setAiLoading(prev => ({ ...prev, work: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/promotion-work`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employeeName: selectedEmployee.name,
+          currentLevel: getLevelLabel(selectedEmployee.level),
+          targetLevel: getLevelLabel(targetLevel),
+          department: selectedEmployee.department
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          setWorkSummary(versions[0]);
+          toast.success('AI已生成工作总结');
+        }
+      } else {
+        toast.error('AI生成失败');
+      }
+    } catch (error) {
+      console.error('Error generating AI:', error);
+      toast.error('AI生成失败');
+    } finally {
+      setAiLoading(prev => ({ ...prev, work: false }));
+    }
   };
 
   const handleSubmit = async () => {
@@ -287,9 +482,25 @@ export function PromotionRequestPage({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>绩效考核数据</Label>
-              <Button size="sm" variant="outline" onClick={handleFillPerformance}>
-                填充最近绩效
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handleFillPerformance}>
+                  填充最近绩效
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={handleGeneratePerformance}
+                  disabled={aiLoading.performance}
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  {aiLoading.performance ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-1" />
+                  )}
+                  AI 帮我写
+                </Button>
+              </div>
             </div>
             <Textarea
               value={performanceSummary}
@@ -300,7 +511,23 @@ export function PromotionRequestPage({
           </div>
 
           <div className="space-y-2">
-            <Label>技能水平总结</Label>
+            <div className="flex items-center justify-between">
+              <Label>技能水平总结</Label>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleGenerateSkills}
+                disabled={aiLoading.skills}
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                {aiLoading.skills ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-1" />
+                )}
+                AI 帮我写
+              </Button>
+            </div>
             <Textarea
               value={skillSummary}
               onChange={(e) => setSkillSummary(e.target.value)}
@@ -310,7 +537,23 @@ export function PromotionRequestPage({
           </div>
 
           <div className="space-y-2">
-            <Label>能力素质总结</Label>
+            <div className="flex items-center justify-between">
+              <Label>能力素质总结</Label>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleGenerateCompetency}
+                disabled={aiLoading.competency}
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                {aiLoading.competency ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-1" />
+                )}
+                AI 帮我写
+              </Button>
+            </div>
             <Textarea
               value={competencySummary}
               onChange={(e) => setCompetencySummary(e.target.value)}
@@ -320,7 +563,23 @@ export function PromotionRequestPage({
           </div>
 
           <div className="space-y-2">
-            <Label>工作总结</Label>
+            <div className="flex items-center justify-between">
+              <Label>工作总结</Label>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={handleGenerateWork}
+                disabled={aiLoading.work}
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                {aiLoading.work ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 mr-1" />
+                )}
+                AI 帮我写
+              </Button>
+            </div>
             <Textarea
               value={workSummary}
               onChange={(e) => setWorkSummary(e.target.value)}

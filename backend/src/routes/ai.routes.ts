@@ -14,7 +14,14 @@ import {
   generateCompanyStrategy,
   generateCompanyKeyWorks,
   generateDepartmentKeyWorks,
-  generateQuarterlySummary
+  generateQuarterlySummary,
+  generatePromotionPerformance,
+  generatePromotionSkills,
+  generatePromotionCompetency,
+  generatePromotionWork,
+  generatePeerReviewComment,
+  generateGoalConfirmationFeedback,
+  generateGoalProgressComment
 } from '../controllers/ai.controller';
 import { authenticate } from '../middleware/auth';
 
@@ -99,5 +106,54 @@ router.post('/department-key-works', generateDepartmentKeyWorks);
  * @access Manager only
  */
 router.post('/quarterly-summary', generateQuarterlySummary);
+
+/**
+ * @route POST /api/ai/promotion-performance
+ * @desc 生成晋升申请 - 绩效总结
+ * @access Private
+ */
+router.post('/promotion-performance', generatePromotionPerformance);
+
+/**
+ * @route POST /api/ai/promotion-skills
+ * @desc 生成晋升申请 - 技能总结
+ * @access Private
+ */
+router.post('/promotion-skills', generatePromotionSkills);
+
+/**
+ * @route POST /api/ai/promotion-competency
+ * @desc 生成晋升申请 - 胜任力总结
+ * @access Private
+ */
+router.post('/promotion-competency', generatePromotionCompetency);
+
+/**
+ * @route POST /api/ai/promotion-work
+ * @desc 生成晋升申请 - 工作总结
+ * @access Private
+ */
+router.post('/promotion-work', generatePromotionWork);
+
+/**
+ * @route POST /api/ai/peer-review-comment
+ * @desc 生成同事互评意见
+ * @access Private
+ */
+router.post('/peer-review-comment', generatePeerReviewComment);
+
+/**
+ * @route POST /api/ai/goal-confirmation-feedback
+ * @desc 生成目标确认反馈
+ * @access Private
+ */
+router.post('/goal-confirmation-feedback', generateGoalConfirmationFeedback);
+
+/**
+ * @route POST /api/ai/goal-progress-comment
+ * @desc 生成目标进度说明
+ * @access Private
+ */
+router.post('/goal-progress-comment', generateGoalProgressComment);
 
 export default router;

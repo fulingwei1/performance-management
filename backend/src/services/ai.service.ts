@@ -460,6 +460,214 @@ ${projectsText}
   },
 
   /**
+   * 晋升申请 - 绩效总结
+   */
+  promotionPerformance: (data: {
+    employeeName: string;
+    currentLevel: string;
+    targetLevel: string;
+    recentScores?: { month: string; score: number }[];
+    avgScore?: number;
+  }) => {
+    const scoresText = data.recentScores && data.recentScores.length > 0
+      ? data.recentScores.map(s => `${s.month}: ${s.score.toFixed(2)}分`).join(', ')
+      : '暂无历史数据';
+
+    return {
+      systemPrompt: '你是一位专业的HR顾问，擅长撰写晋升申请中的绩效总结。',
+      prompt: `请为员工撰写晋升申请中的绩效总结：
+
+员工信息：
+- 姓名：${data.employeeName}
+- 当前职级：${data.currentLevel}
+- 目标职级：${data.targetLevel}
+
+近期绩效：
+${scoresText}
+${data.avgScore ? `平均分：${data.avgScore.toFixed(2)}` : ''}
+
+要求：
+1. 总结字数150-200字
+2. 突出绩效亮点、稳定性、排名等
+3. 与晋升职级匹配
+4. 语气：客观、专业、积极
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 晋升申请 - 技能总结
+   */
+  promotionSkills: (data: {
+    employeeName: string;
+    currentLevel: string;
+    targetLevel: string;
+    department: string;
+  }) => {
+    return {
+      systemPrompt: '你是一位技术专家，擅长评估员工的专业技能水平。',
+      prompt: `请为员工撰写晋升申请中的技能水平总结：
+
+员工信息：
+- 姓名：${data.employeeName}
+- 当前职级：${data.currentLevel}
+- 目标职级：${data.targetLevel}
+- 部门：${data.department}
+
+要求：
+1. 总结字数150-200字
+2. 列举核心技能、专业能力、技术深度
+3. 符合目标职级的技能要求
+4. 包含：专业技能、工具掌握、学习能力
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 晋升申请 - 胜任力总结
+   */
+  promotionCompetency: (data: {
+    employeeName: string;
+    currentLevel: string;
+    targetLevel: string;
+  }) => {
+    return {
+      systemPrompt: '你是一位人才发展专家，擅长评估员工的综合能力素质。',
+      prompt: `请为员工撰写晋升申请中的能力素质总结：
+
+员工信息：
+- 姓名：${data.employeeName}
+- 当前职级：${data.currentLevel}
+- 目标职级：${data.targetLevel}
+
+要求：
+1. 总结字数150-200字
+2. 包含：领导力、沟通协作、问题解决、创新思维、责任心
+3. 体现职级提升所需的软实力
+4. 具体事例支撑（可虚构合理示例）
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 晋升申请 - 工作总结
+   */
+  promotionWork: (data: {
+    employeeName: string;
+    currentLevel: string;
+    targetLevel: string;
+    department: string;
+  }) => {
+    return {
+      systemPrompt: '你是一位资深HR，擅长撰写员工晋升申请中的工作总结。',
+      prompt: `请为员工撰写晋升申请中的工作总结：
+
+员工信息：
+- 姓名：${data.employeeName}
+- 当前职级：${data.currentLevel}
+- 目标职级：${data.targetLevel}
+- 部门：${data.department}
+
+要求：
+1. 总结字数200-250字
+2. 包含：主要工作成果、重点项目、业绩贡献、团队协作
+3. 突出与晋升职级相关的业绩亮点
+4. 体现责任范围和影响力的提升
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 同事互评 - 评价意见
+   */
+  peerReviewComment: (data: {
+    reviewerName: string;
+    revieweeName: string;
+    scores: {
+      collaboration: number;
+      professionalism: number;
+      communication: number;
+    };
+  }) => {
+    return {
+      systemPrompt: '你是一位团队成员，正在对同事进行360度评价。',
+      prompt: `请撰写对同事的评价意见：
+
+评价人：${data.reviewerName}
+被评价人：${data.revieweeName}
+
+评分：
+- 协作配合：${data.scores.collaboration}分（满分5分）
+- 专业能力：${data.scores.professionalism}分（满分5分）
+- 沟通能力：${data.scores.communication}分（满分5分）
+
+要求：
+1. 评价字数100-150字
+2. 基于评分给出客观、具体的评价
+3. 包含：优点、合作体验、改进建议
+4. 语气：友好、建设性
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 目标确认 - 反馈意见
+   */
+  goalConfirmationFeedback: (data: {
+    employeeName: string;
+    goalName: string;
+    targetValue?: number;
+    unit?: string;
+  }) => {
+    const target = data.targetValue && data.unit 
+      ? `${data.targetValue}${data.unit}` 
+      : '待定';
+
+    return {
+      systemPrompt: '你是一位员工，正在确认经理为你设定的目标。',
+      prompt: `请撰写对目标的确认反馈：
+
+员工：${data.employeeName}
+目标：${data.goalName}
+目标值：${target}
+
+要求：
+1. 反馈字数80-120字
+2. 表达对目标的理解、接受态度
+3. 可提出合理建议或需要的支持
+4. 语气：积极、专业、务实
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
+   * 目标进度 - 完成情况说明
+   */
+  goalProgressComment: (data: {
+    employeeName: string;
+    goalName: string;
+    completionRate: number;
+    month: string;
+  }) => {
+    return {
+      systemPrompt: '你是一位员工，正在汇报目标的月度完成情况。',
+      prompt: `请撰写目标完成情况说明：
+
+员工：${data.employeeName}
+目标：${data.goalName}
+本月完成率：${data.completionRate}%
+月份：${data.month}
+
+要求：
+1. 说明字数100-150字
+2. 根据完成率说明进度情况
+3. ${data.completionRate >= 100 ? '突出成果和亮点' : data.completionRate >= 80 ? '说明进度正常，下月重点' : '分析未达标原因及改进措施'}
+4. 语气：客观、务实
+5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
+    };
+  },
+
+  /**
    * 目标拆解 - 基于公司战略/部门目标拆解个人OKR/KPI
    */
   goalDecomposition: (data: {

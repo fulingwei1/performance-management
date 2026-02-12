@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { TrendingUp, CheckCircle, Clock, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +49,7 @@ export function GoalProgressPage() {
     completionRate: 100,
     comment: '',
   });
+  const [aiLoading, setAiLoading] = useState(false);
 
   // 加载目标列表
   const loadObjectives = async () => {
@@ -102,6 +103,46 @@ export function GoalProgressPage() {
   useEffect(() => {
     loadObjectives();
   }, [selectedYear, selectedMonth, user?.userId]);
+
+  /**
+   * AI生成完成情况说明
+   */
+  const handleGenerateComment = async () => {
+    if (!selectedObjective || !user) return;
+
+    setAiLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/goal-progress-comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          employeeName: user.name,
+          goalName: selectedObjective.name,
+          completionRate: formData.completionRate,
+          month: `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          setFormData(prev => ({ ...prev, comment: versions[0] }));
+        }
+      }
+    } catch (error) {
+      console.error('Error generating AI comment:', error);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // 员工提交进度
   const handleSubmitProgress = async () => {
@@ -437,13 +478,28 @@ export function GoalProgressPage() {
             </div>
 
             <div>
-              <Label>完成情况说明（选填）</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label>完成情况说明（选填）</Label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleGenerateComment}
+                  disabled={aiLoading}
+                  className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  {aiLoading ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-1" />
+                  )}
+                  AI 帮我写
+                </Button>
+              </div>
               <Textarea
                 value={formData.comment}
                 onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
                 placeholder="简要说明本月完成情况、遇到的问题或下月计划..."
                 rows={4}
-                className="mt-2"
               />
             </div>
           </div>

@@ -25,6 +25,7 @@ export function EmployeePeerReview() {
   const [reviews, setReviews] = useState<Record<string, ReviewState>>({});
   const [submitted, setSubmitted] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   
   const currentMonth = format(new Date(), 'yyyy-MM');
   
@@ -71,6 +72,55 @@ export function EmployeePeerReview() {
         [field]: value
       }
     }));
+  };
+  
+  /**
+   * AI生成评价意见
+   */
+  const handleGenerateComment = async (revieweeId: string, revieweeName: string) => {
+    if (!user) return;
+
+    const review = reviews[revieweeId] || { collaboration: 0, professionalism: 0, communication: 0, comment: '' };
+    
+    if (!review.collaboration || !review.professionalism || !review.communication) {
+      return; // 评分未完成，不生成
+    }
+
+    setAiLoading(prev => ({ ...prev, [revieweeId]: true }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+      const response = await fetch(`${API_BASE_URL}/ai/peer-review-comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          reviewerName: user.name,
+          revieweeName,
+          scores: {
+            collaboration: review.collaboration,
+            professionalism: review.professionalism,
+            communication: review.communication
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const versions = result.data.versions || [];
+        if (versions.length > 0) {
+          handleReviewChange(revieweeId, 'comment', versions[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error generating AI comment:', error);
+    } finally {
+      setAiLoading(prev => ({ ...prev, [revieweeId]: false }));
+    }
   };
   
   const handleSubmit = async (revieweeId: string) => {
@@ -289,9 +339,25 @@ export function EmployeePeerReview() {
                   
                   {/* Comment */}
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">
-                      评价建议（可选）
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium text-gray-700">
+                        评价建议（可选）
+                      </label>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleGenerateComment(reviewee.revieweeId, reviewee.revieweeName)}
+                        disabled={aiLoading[reviewee.revieweeId] || isSubmitted || !isReviewComplete(reviewee.revieweeId)}
+                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                      >
+                        {aiLoading[reviewee.revieweeId] ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-4 h-4 mr-1" />
+                        )}
+                        AI 帮我写
+                      </Button>
+                    </div>
                     <Textarea
                       placeholder="请描述您对该同事的评价和建议..."
                       value={review.comment}
