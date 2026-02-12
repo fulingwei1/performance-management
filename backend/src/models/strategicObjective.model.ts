@@ -64,9 +64,15 @@ export class StrategicObjectiveModel {
   }
 
   private static format(row: any): StrategicObjective {
+    // 转换 type 格式：数据库下划线 -> 前端连字符
+    let type = row.type;
+    if (type) {
+      type = type.replace(/_/g, '-'); // company_strategy -> company-strategy
+    }
+    
     return {
       id: row.id, title: row.title, description: row.description, year: row.year,
-      status: row.status, type: row.type, department: row.department,
+      status: row.status, type, department: row.department, content: row.content,
       createdBy: row.created_by, createdAt: row.created_at, updatedAt: row.updated_at
     };
   }

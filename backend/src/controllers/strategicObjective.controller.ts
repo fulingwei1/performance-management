@@ -26,7 +26,7 @@ export const strategicObjectiveController = {
       
       if (!user || !user.department) {
         return res.json({ success: true, data: allData.filter((item: any) => 
-          item.type === 'company_strategy' || item.type === 'company_key_work'
+          item.type === 'company-strategy' || item.type === 'company-key-work'
         )});
       }
       
@@ -35,10 +35,10 @@ export const strategicObjectiveController = {
       // 2. 公司重点工作 - 全部可见
       // 3. 部门重点工作 - 只看自己部门的
       const filteredData = allData.filter((item: any) => {
-        if (item.type === 'company_strategy' || item.type === 'company_key_work') {
+        if (item.type === 'company-strategy' || item.type === 'company-key-work') {
           return true; // 公司级别的全部可见
         }
-        if (item.type === 'department_key_work') {
+        if (item.type === 'department-key-work') {
           return item.department === user.department; // 只看自己部门的
         }
         return false;
