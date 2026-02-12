@@ -29,8 +29,8 @@ RUN npm ci --only=production
 # 从构建阶段复制编译后的代码
 COPY --from=builder /app/dist ./dist
 
-# 复制必要的配置文件
-COPY --from=builder /app/src/config/employees.csv ./src/config/employees.csv
+# 复制配置目录（如果存在）
+RUN mkdir -p ./src/config
 
 # 创建日志目录
 RUN mkdir -p /app/logs
