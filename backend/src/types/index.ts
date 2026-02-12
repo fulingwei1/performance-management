@@ -129,6 +129,10 @@ export interface PerformanceRecord {
   
   status: RecordStatus;
   
+  // 任务冻结（超期自动冻结，仅HR可解冻）
+  frozen?: boolean;
+  deadline?: string; // 截止日期（下月3号）
+  
   // 模拟数据标记
   isDemo?: boolean;
   

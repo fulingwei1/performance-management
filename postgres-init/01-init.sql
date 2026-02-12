@@ -325,6 +325,8 @@ CREATE TABLE IF NOT EXISTS performance_records (
   department_rank INT DEFAULT 0,
   company_rank INT DEFAULT 0,
   status record_status DEFAULT 'draft',
+  frozen BOOLEAN DEFAULT false,
+  deadline DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (employee_id, month)

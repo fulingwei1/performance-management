@@ -18,7 +18,8 @@ import {
   DollarSign,
   Building2,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,7 @@ const hrNavItems = [
   { path: '/hr/promotion-approvals', label: '晋升审批', icon: TrendingUp },
   { path: '/hr/bonus-management', label: '奖金管理', icon: DollarSign },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
+  { path: '/hr/task-freeze-management', label: '任务冻结管理', icon: Lock },
   { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
 ];
 
@@ -82,6 +84,7 @@ const adminNavItems = [
   { path: '/admin/promotion-approvals', label: '晋升审批', icon: TrendingUp },
   { path: '/admin/bonus-management', label: '奖金管理', icon: DollarSign },
   { path: '/admin/peer-review-management', label: '360互评管理', icon: ShieldCheck },
+  { path: '/admin/task-freeze-management', label: '任务冻结管理', icon: Lock },
   { path: '/admin/department-tree', label: '组织架构', icon: Building2 },
   { path: '/admin/scoring', label: '总经理评分', icon: Award },
   { path: '/admin/data-export', label: '数据导出', icon: LogOut },

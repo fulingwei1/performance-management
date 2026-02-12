@@ -47,6 +47,7 @@ import { MyBonus } from '@/pages/Employee/MyBonus';
 import { BonusManagement } from '@/pages/HR/BonusManagement';
 import { DepartmentTree } from '@/pages/HR/DepartmentTree';
 import { PeerReviewManagement } from '@/pages/HR/PeerReviewManagement';
+import { TaskFreezeManagement } from '@/pages/HR/TaskFreezeManagement';
 import { SystemSettings } from '@/pages/Admin/SystemSettings';
 import { UserManagement } from '@/pages/Admin/UserManagement';
 
@@ -197,6 +198,7 @@ function App() {
           <Route path="/hr/objectives" element={<ObjectiveTree />} />
           <Route path="/hr/bonus-management" element={<BonusManagement />} />
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
+          <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
           <Route path="/hr/goal-setting" element={<GoalSetting />} />
           <Route path="/hr/goal-progress" element={<GoalProgressPage />} />
@@ -215,6 +217,7 @@ function App() {
           <Route path="/admin/promotion-approvals" element={<HRPromotionApprovals />} />
           <Route path="/admin/bonus-management" element={<BonusManagement />} />
           <Route path="/admin/peer-review-management" element={<PeerReviewManagement />} />
+          <Route path="/admin/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/admin/department-tree" element={<DepartmentTree />} />
           <Route path="/admin/scoring" element={<GMScoring />} />
           <Route path="/admin/data-export" element={<GMDataExport />} />
