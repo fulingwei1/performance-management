@@ -44,7 +44,7 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
-  CREATE TYPE promotion_status AS ENUM ('draft', 'pending', 'approved', 'rejected');
+  CREATE TYPE promotion_status AS ENUM ('draft', 'submitted', 'manager_approved', 'gm_approved', 'hr_approved', 'rejected');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;

@@ -10,7 +10,7 @@ export interface AIUsageLog {
   id: number;
   user_id: number;
   user_name: string;
-  feature_type: 'self-summary' | 'next-month-plan' | 'manager-comment' | 'work-arrangement';
+  feature_type: 'self-summary' | 'next-month-plan' | 'manager-comment' | 'work-arrangement' | 'generate' | 'optimize' | 'summary' | string;
   tokens_used: number;
   cost_yuan: number;
   success: boolean;
@@ -68,12 +68,15 @@ export async function createAIUsageLog(params: CreateAIUsageLogParams): Promise<
     return log;
   }
 
+  // 生成唯一ID
+  const id = `ai-log-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  
   const result = await pool!.query(
     `INSERT INTO ai_usage_logs 
-     (user_id, user_name, feature_type, tokens_used, cost_yuan, success, error_message)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     (id, user_id, user_name, feature_type, tokens_used, cost_yuan, success, error_message)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [user_id, user_name, feature_type, tokens_used, cost_yuan, success, error_message]
+    [id, user_id, user_name, feature_type, tokens_used, cost_yuan, success, error_message]
   );
 
   return result.rows[0];
