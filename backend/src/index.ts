@@ -64,10 +64,10 @@ if (process.env.NODE_ENV !== 'test') {
   });
   app.use(globalLimiter);
 
-  // 登录接口限流：5次/分钟
+  // 登录接口限流：开发/测试环境50次/分钟，生产环境5次/分钟
   const loginLimiter = rateLimit({
     windowMs: 60 * 1000,
-    max: 5,
+    max: process.env.NODE_ENV === 'production' && process.env.PRODUCTION_MODE === 'strict' ? 5 : 50,
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: '登录尝试过于频繁，请1分钟后再试' }
