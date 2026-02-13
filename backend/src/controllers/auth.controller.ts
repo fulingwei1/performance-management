@@ -9,7 +9,6 @@ export const authController = {
   login: [
     body('username').notEmpty().withMessage('用户名不能为空'),
     body('password').notEmpty().withMessage('密码不能为空'),
-    body('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -20,7 +19,7 @@ export const authController = {
         });
       }
 
-      const { username, password, role } = req.body;
+      const { username, password } = req.body;
 
       // 查找员工（先尝试ID，再尝试姓名）
       let employee = await EmployeeModel.findById(username);
@@ -32,14 +31,6 @@ export const authController = {
         return res.status(401).json({
           success: false,
           message: '用户名或密码错误'
-        });
-      }
-
-      // 验证角色
-      if (employee.role !== role) {
-        return res.status(401).json({
-          success: false,
-          message: `角色不匹配，用户角色是${employee.role}，但您选择了${role}`
         });
       }
 
