@@ -167,8 +167,12 @@ export const performanceController = {
   // 员工提交工作总结
   submitSummary: [
     body('month').matches(/^\d{4}-\d{2}$/).withMessage('月份格式错误'),
-    body('selfSummary').notEmpty().withMessage('工作总结不能为空'),
-    body('nextMonthPlan').notEmpty().withMessage('下月计划不能为空'),
+    // 支持两种格式的字段
+    body('summary').optional().isString(),
+    body('selfSummary').optional().isString(),
+    body('achievements').optional().isString(),
+    body('issues').optional().isString(),
+    body('nextMonthPlan').optional().isString(),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -186,7 +190,40 @@ export const performanceController = {
         });
       }
 
-      const { month, selfSummary, nextMonthPlan } = req.body;
+      // 支持两种格式:
+      // 格式1: {month, summary, achievements, issues}
+      // 格式2: {month, selfSummary, nextMonthPlan}
+      let selfSummary: string;
+      let nextMonthPlan: string;
+      
+      if (req.body.summary || req.body.achievements || req.body.issues) {
+        // 格式1: 组合 summary, achievements, issues
+        const parts = [];
+        if (req.body.summary) parts.push(`工作总结：${req.body.summary}`);
+        if (req.body.achievements) parts.push(`主要成就：${req.body.achievements}`);
+        if (req.body.issues) parts.push(`遇到的问题：${req.body.issues}`);
+        
+        if (parts.length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: '工作总结内容不能为空（至少需要 summary、achievements 或 issues 之一）'
+          });
+        }
+        
+        selfSummary = parts.join('\n\n');
+        nextMonthPlan = req.body.nextMonthPlan || '待补充';
+      } else if (req.body.selfSummary) {
+        // 格式2: 直接使用 selfSummary 和 nextMonthPlan
+        selfSummary = req.body.selfSummary;
+        nextMonthPlan = req.body.nextMonthPlan || '待补充';
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: '工作总结不能为空（请提供 summary/achievements/issues 或 selfSummary）'
+        });
+      }
+
+      const { month } = req.body;
 
       // 获取员工信息
       const employee = await EmployeeModel.findById(req.user.userId);

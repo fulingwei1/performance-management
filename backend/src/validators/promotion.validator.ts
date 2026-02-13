@@ -2,27 +2,10 @@ import { body } from 'express-validator';
 
 /**
  * 晋升申请提交验证规则
+ * 注意：不在这里验证，而是在控制器中进行详细验证
  */
 export const submitPromotionValidation = [
-  body('targetLevel')
-    .notEmpty().withMessage('目标级别不能为空')
-    .isLength({ max: 50 }).withMessage('目标级别不能超过50个字符'),
-  
-  body('performanceSummary')
-    .notEmpty().withMessage('绩效总结不能为空')
-    .isLength({ max: 3000 }).withMessage('绩效总结不能超过3000个字符'),
-  
-  body('skillSummary')
-    .notEmpty().withMessage('技能总结不能为空')
-    .isLength({ max: 3000 }).withMessage('技能总结不能超过3000个字符'),
-  
-  body('competencySummary')
-    .notEmpty().withMessage('胜任力总结不能为空')
-    .isLength({ max: 3000 }).withMessage('胜任力总结不能超过3000个字符'),
-  
-  body('workSummary')
-    .notEmpty().withMessage('工作成果总结不能为空')
-    .isLength({ max: 3000 }).withMessage('工作成果总结不能超过3000个字符'),
+  // 空数组，实际验证在控制器中处理
 ];
 
 /**

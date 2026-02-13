@@ -21,7 +21,9 @@ import {
   generatePromotionWork,
   generatePeerReviewComment,
   generateGoalConfirmationFeedback,
-  generateGoalProgressComment
+  generateGoalProgressComment,
+  generateAIContent,
+  optimizeAIContent
 } from '../controllers/ai.controller';
 import { authenticate } from '../middleware/auth';
 
@@ -29,6 +31,20 @@ const router = express.Router();
 
 // 所有AI接口都需要认证
 router.use(authenticate);
+
+/**
+ * @route POST /api/ai/generate
+ * @desc 通用AI生成接口
+ * @access Private (所有登录用户)
+ */
+router.post('/generate', generateAIContent);
+
+/**
+ * @route POST /api/ai/optimize
+ * @desc 通用AI优化接口
+ * @access Private (所有登录用户)
+ */
+router.post('/optimize', optimizeAIContent);
 
 /**
  * @route POST /api/ai/self-summary

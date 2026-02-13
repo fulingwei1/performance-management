@@ -2,18 +2,40 @@ import { body } from 'express-validator';
 
 /**
  * 工作总结提交验证规则
+ * 支持两种格式：
+ * 1. {month, summary, achievements, issues}
+ * 2. {month, selfSummary, nextMonthPlan}
  */
 export const submitSummaryValidation = [
   body('month')
     .notEmpty().withMessage('考核月份不能为空')
     .matches(/^\d{4}-\d{2}$/).withMessage('月份格式必须为YYYY-MM'),
   
+  // 格式1字段（可选）
+  body('summary')
+    .optional()
+    .isString().withMessage('工作总结必须为字符串')
+    .isLength({ max: 5000 }).withMessage('工作总结不能超过5000个字符'),
+  
+  body('achievements')
+    .optional()
+    .isString().withMessage('主要成就必须为字符串')
+    .isLength({ max: 5000 }).withMessage('主要成就不能超过5000个字符'),
+  
+  body('issues')
+    .optional()
+    .isString().withMessage('遇到的问题必须为字符串')
+    .isLength({ max: 5000 }).withMessage('遇到的问题不能超过5000个字符'),
+  
+  // 格式2字段（可选）
   body('selfSummary')
-    .notEmpty().withMessage('工作总结不能为空')
+    .optional()
+    .isString().withMessage('工作总结必须为字符串')
     .isLength({ max: 5000 }).withMessage('工作总结不能超过5000个字符'),
   
   body('nextMonthPlan')
-    .notEmpty().withMessage('下月计划不能为空')
+    .optional()
+    .isString().withMessage('下月计划必须为字符串')
     .isLength({ max: 5000 }).withMessage('下月计划不能超过5000个字符'),
 ];
 

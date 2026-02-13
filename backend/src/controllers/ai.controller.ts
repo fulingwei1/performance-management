@@ -1289,6 +1289,153 @@ export const generateGoalProgressComment = [
 ];
 
 /**
+ * 通用AI生成接口
+ */
+export const generateAIContent = [
+  body('prompt').notEmpty().withMessage('提示词不能为空'),
+  body('type').optional().isString(),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { prompt, context, type } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const user = await EmployeeModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+
+    // 构建提示词
+    let fullPrompt = prompt;
+    if (context) {
+      fullPrompt = `${prompt}\n\n上下文信息：\n${context}`;
+    }
+
+    const promptData = {
+      systemPrompt: '你是一个专业的绩效管理助手，帮助用户撰写工作总结、计划和评价。请用中文回答。',
+      prompt: fullPrompt
+    };
+
+    // 调用AI
+    const result = await generateAISuggestion(promptData);
+
+    // 记录使用日志
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user.name,
+      feature_type: type || 'generate',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI生成失败'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        content: result.content || '',
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
+ * 通用AI优化接口
+ */
+export const optimizeAIContent = [
+  body('text').notEmpty().withMessage('待优化文本不能为空'),
+  body('type').optional().isString(),
+  
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg
+      });
+    }
+
+    const { text, type } = req.body;
+    const userId = (req as any).user?.userId;
+
+    const user = await EmployeeModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: '用户不存在'
+      });
+    }
+
+    // 构建提示词
+    const promptData = {
+      systemPrompt: '你是一个专业的文本优化助手，帮助用户改进和润色工作文档。请用中文回答，保持专业性和清晰度。',
+      prompt: `请优化以下文本，使其更加专业、清晰、有条理：\n\n${text}`
+    };
+
+    // 调用AI
+    const result = await generateAISuggestion(promptData);
+
+    // 记录使用日志
+    const tokensUsed = result.usage?.totalTokens || 0;
+    const costYuan = result.usage ? calculateCost({
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens
+    }) : 0;
+
+    await createAIUsageLog({
+      user_id: userId,
+      user_name: user.name,
+      feature_type: type || 'optimize',
+      tokens_used: tokensUsed,
+      cost_yuan: costYuan,
+      success: result.success,
+      error_message: result.error
+    });
+
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        message: result.error || 'AI优化失败'
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        optimized: result.content || '',
+        provider: result.provider,
+        usage: result.usage
+      }
+    });
+  })
+];
+
+/**
  * 生成季度团队总结
  */
 export const generateQuarterlySummary = [

@@ -51,24 +51,7 @@ const getParamValue = (value: string | string[] | undefined): string => {
 export const promotionRequestController = {
   // 创建申请
   create: [
-    body('employeeId').optional().isString(),
-    body('targetLevel').isIn(LEVELS).withMessage('目标职级无效'),
-    body('targetPosition').notEmpty().withMessage('目标岗位不能为空'),
-    body('raisePercentage').isFloat({ min: 0.1, max: 100 }).withMessage('调薪比例应在0.1-100之间'),
-    body('performanceSummary').notEmpty().withMessage('请填写绩效考核数据'),
-    body('skillSummary').notEmpty().withMessage('请填写技能水平总结'),
-    body('competencySummary').notEmpty().withMessage('请填写能力素质总结'),
-    body('workSummary').notEmpty().withMessage('请填写工作总结'),
-
     asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          error: errors.array()[0].msg
-        });
-      }
-
       if (!req.user) {
         return res.status(401).json({ success: false, error: '未认证' });
       }
@@ -78,16 +61,41 @@ export const promotionRequestController = {
         return res.status(403).json({ success: false, error: '权限不足' });
       }
 
-      const {
-        employeeId: inputEmployeeId,
-        targetLevel,
-        targetPosition,
-        raisePercentage,
-        performanceSummary,
-        skillSummary,
-        competencySummary,
-        workSummary
-      } = req.body;
+      // 支持下划线和驼峰命名
+      const inputEmployeeId = req.body.employeeId || req.body.employee_id;
+      const targetLevel = req.body.targetLevel || req.body.target_level;
+      const targetPosition = req.body.targetPosition || req.body.target_position;
+      const raisePercentage = req.body.raisePercentage || req.body.raise_percentage;
+      const performanceSummary = req.body.performanceSummary || req.body.performance_summary;
+      const skillSummary = req.body.skillSummary || req.body.skill_summary;
+      const competencySummary = req.body.competencySummary || req.body.competency_summary;
+      const workSummary = req.body.workSummary || req.body.work_summary;
+      
+      // 验证必填字段
+      if (!targetLevel) {
+        return res.status(400).json({ success: false, error: '目标级别不能为空' });
+      }
+      if (!LEVELS.includes(targetLevel)) {
+        return res.status(400).json({ success: false, error: '目标职级无效' });
+      }
+      if (!targetPosition) {
+        return res.status(400).json({ success: false, error: '目标岗位不能为空' });
+      }
+      if (!raisePercentage || isNaN(parseFloat(raisePercentage)) || parseFloat(raisePercentage) < 0.1 || parseFloat(raisePercentage) > 100) {
+        return res.status(400).json({ success: false, error: '调薪比例应在0.1-100之间' });
+      }
+      if (!performanceSummary) {
+        return res.status(400).json({ success: false, error: '请填写绩效考核数据' });
+      }
+      if (!skillSummary) {
+        return res.status(400).json({ success: false, error: '请填写技能水平总结' });
+      }
+      if (!competencySummary) {
+        return res.status(400).json({ success: false, error: '请填写能力素质总结' });
+      }
+      if (!workSummary) {
+        return res.status(400).json({ success: false, error: '请填写工作总结' });
+      }
 
       const employeeId = role === 'employee' ? userId : (inputEmployeeId || userId);
       const employee = await EmployeeModel.findById(employeeId);

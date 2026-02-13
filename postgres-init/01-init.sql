@@ -228,16 +228,30 @@ CREATE TRIGGER update_monthly_performance_updated_at
 CREATE TABLE IF NOT EXISTS promotion_requests (
   id VARCHAR(50) PRIMARY KEY,
   employee_id VARCHAR(50) NOT NULL,
+  requester_id VARCHAR(50),
+  requester_role VARCHAR(20),
   current_level VARCHAR(50),
   target_level VARCHAR(50) NOT NULL,
+  target_position VARCHAR(100),
+  raise_percentage DECIMAL(5,2),
   performance_summary TEXT,
   skill_summary TEXT,
   competency_summary TEXT,
   work_summary TEXT,
   status promotion_status DEFAULT 'draft',
-  manager_review TEXT,
-  hr_review TEXT,
-  gm_review TEXT,
+  manager_comment TEXT,
+  manager_approver_id VARCHAR(50),
+  manager_approved_at TIMESTAMP,
+  gm_comment TEXT,
+  gm_approver_id VARCHAR(50),
+  gm_approved_at TIMESTAMP,
+  hr_comment TEXT,
+  hr_approver_id VARCHAR(50),
+  hr_approved_at TIMESTAMP,
+  rejected_reason TEXT,
+  rejected_by_role VARCHAR(20),
+  rejected_by_id VARCHAR(50),
+  rejected_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -250,6 +264,18 @@ CREATE TRIGGER update_promotion_requests_updated_at
   BEFORE UPDATE ON promotion_requests
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
+
+-- 晋升审批配置表
+CREATE TABLE IF NOT EXISTS promotion_approval_settings (
+  id VARCHAR(50) PRIMARY KEY DEFAULT 'default',
+  chain TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 插入默认审批链配置
+INSERT INTO promotion_approval_settings (id, chain, updated_at)
+VALUES ('default', '["manager", "gm", "hr"]', CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO NOTHING;
 
 -- 季度总结表
 CREATE TABLE IF NOT EXISTS quarterly_summaries (
