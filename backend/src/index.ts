@@ -12,6 +12,7 @@ validateEnv();
 
 import { testConnection, USE_MEMORY_DB } from './config/database';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { auditLogMiddleware } from './middleware/auditLog';
 
 // 导入路由（auth.ts会检查JWT_SECRET）
 import authRoutes from './routes/auth.routes';
@@ -44,6 +45,7 @@ import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
 import notificationRoutes from './routes/notification.routes';
 import appealRoutes from './routes/appeal.routes';
 import goalApprovalRoutes from './routes/goalApproval.routes';
+import auditLogRoutes from './routes/auditLog.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -105,6 +107,9 @@ app.use((req, res, next) => {
  next();
 });
 
+// 审计日志中间件（在路由之前，记录所有操作）
+app.use(auditLogMiddleware);
+
 // 健康检查 - Support both /health and /api/health
 const healthHandler = (req: express.Request, res: express.Response) => {
  logger.info('Health check called');
@@ -151,6 +156,7 @@ app.use('/api/assessment-publications', assessmentPublicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/appeals', appealRoutes);
 app.use('/api/goal-approval', goalApprovalRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // 404处理
 app.use(notFoundHandler);

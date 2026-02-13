@@ -431,6 +431,58 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
 
+-- 审计日志表
+DO $$ BEGIN
+  CREATE TYPE audit_action AS ENUM ('CREATE', 'READ', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE audit_result AS ENUM ('SUCCESS', 'FAILED', 'UNAUTHORIZED');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id SERIAL PRIMARY KEY,
+  
+  -- 操作人信息
+  user_id VARCHAR(50),
+  user_name VARCHAR(100),
+  user_role VARCHAR(20),
+  
+  -- 操作信息
+  action audit_action NOT NULL,
+  module VARCHAR(50) NOT NULL,
+  target_type VARCHAR(50),
+  target_id VARCHAR(100),
+  
+  -- 详细信息
+  description TEXT,
+  changes JSONB,
+  
+  -- 请求信息
+  ip_address VARCHAR(50),
+  user_agent TEXT,
+  request_method VARCHAR(10),
+  request_url TEXT,
+  
+  -- 结果
+  result audit_result DEFAULT 'SUCCESS',
+  error_message TEXT,
+  
+  -- 时间戳
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 索引优化
+CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_module ON audit_logs(module);
+CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_logs(target_type, target_id);
+
 -- 初始化说明
 COMMENT ON DATABASE performance_db IS 'ATE绩效管理系统数据库';
 COMMENT ON TABLE employees IS '员工表';
@@ -445,3 +497,4 @@ COMMENT ON TABLE peer_reviews IS '同事互评表';
 COMMENT ON TABLE performance_records IS '绩效记录表（示例数据）';
 COMMENT ON TABLE monthly_assessment_publications IS '月度考核结果发布记录表';
 COMMENT ON TABLE notifications IS '站内消息通知表';
+COMMENT ON TABLE audit_logs IS '审计日志表';
