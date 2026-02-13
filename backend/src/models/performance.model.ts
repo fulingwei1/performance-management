@@ -14,11 +14,11 @@ export class PerformanceModel {
     const sql = `
       SELECT 
         r.*,
-        e.name as employeeName,
+        e.name as "employeeName",
         e.department,
-        e.sub_department as subDepartment,
-        e.level as employeeLevel,
-        m.name as assessorName
+        e.sub_department as "subDepartment",
+        e.level as "employeeLevel",
+        m.name as "assessorName"
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
@@ -38,11 +38,11 @@ export class PerformanceModel {
     const sql = `
       SELECT 
         r.*,
-        e.name as employeeName,
+        e.name as "employeeName",
         e.department,
-        e.sub_department as subDepartment,
-        e.level as employeeLevel,
-        m.name as assessorName
+        e.sub_department as "subDepartment",
+        e.level as "employeeLevel",
+        m.name as "assessorName"
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
@@ -74,11 +74,11 @@ export class PerformanceModel {
     let sql = `
       SELECT 
         r.*,
-        e.name as employeeName,
+        e.name as "employeeName",
         e.department,
-        e.sub_department as subDepartment,
-        e.level as employeeLevel,
-        m.name as assessorName
+        e.sub_department as "subDepartment",
+        e.level as "employeeLevel",
+        m.name as "assessorName"
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
@@ -107,11 +107,11 @@ export class PerformanceModel {
     const sql = `
       SELECT 
         r.*,
-        e.name as employeeName,
+        e.name as "employeeName",
         e.department,
-        e.sub_department as subDepartment,
-        e.level as employeeLevel,
-        m.name as assessorName
+        e.sub_department as "subDepartment",
+        e.level as "employeeLevel",
+        m.name as "assessorName"
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
@@ -132,11 +132,11 @@ export class PerformanceModel {
     const sql = `
       SELECT 
         r.*,
-        e.name as employeeName,
+        e.name as "employeeName",
         e.department,
-        e.sub_department as subDepartment,
-        e.level as employeeLevel,
-        m.name as assessorName
+        e.sub_department as "subDepartment",
+        e.level as "employeeLevel",
+        m.name as "assessorName"
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
@@ -158,11 +158,11 @@ export class PerformanceModel {
     const sql = `
       SELECT
         r.*,
-        e.name as employeeName,
+        e.name as "employeeName",
         e.department,
-        e.sub_department as subDepartment,
-        e.level as employeeLevel,
-        m.name as assessorName
+        e.sub_department as "subDepartment",
+        e.level as "employeeLevel",
+        m.name as "assessorName"
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
