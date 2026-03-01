@@ -10,7 +10,10 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "vercel-build": "tsc && mkdir -p api && echo \"module.exports = require('../dist/index.js').default;\" > api/index.js"
+    "vercel-build": "tsc && mkdir -p api && echo \"module.exports = require('../dist/index.js').default;\" > api/index.js",
+    "test:perf": "jest src/__tests__/performance/ --verbose --forceExit",
+    "seed:phase2": "ts-node src/seeds/phase2-demo-data.ts",
+    "seed:phase2:clean": "ts-node src/seeds/phase2-demo-data.ts --clean"
   },
   "keywords": [
     "performance",
