@@ -149,6 +149,11 @@ export const ReviewRelationshipModel = {
     return await query(sql, params);
   },
 
+  async delete(id: number): Promise<boolean> {
+    const result: any = await query('DELETE FROM review_relationships WHERE id = $1', [id]);
+    return (result.affectedRows || 0) > 0;
+  },
+
   async updateStatus(id: number, status: 'pending' | 'completed'): Promise<boolean> {
     const result: any = await query(
       'UPDATE review_relationships SET status = $1, updated_at = NOW() WHERE id = $2',

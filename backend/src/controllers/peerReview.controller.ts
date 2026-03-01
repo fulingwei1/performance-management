@@ -264,6 +264,30 @@ export const ReviewRelationshipController = {
         error: error.message
       });
     }
+  },
+
+  /**
+   * 删除评价关系
+   * DELETE /api/peer-review/relationships/:id
+   */
+  async deleteRelationship(req: Request, res: Response) {
+    try {
+      const id = parseInt(String(req.params.id));
+      const success = await ReviewRelationshipModel.delete(id);
+      
+      if (success) {
+        res.json({ success: true, message: '删除成功' });
+      } else {
+        res.status(404).json({ success: false, message: '关系不存在' });
+      }
+    } catch (error: any) {
+      console.error('删除评价关系失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '删除评价关系失败',
+        error: error.message
+      });
+    }
   }
 };
 
