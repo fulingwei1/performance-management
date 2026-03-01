@@ -41,3 +41,9 @@ lerna-debug.log*
 
 # OS
 Thumbs.db
+
+# Playwright
+test-results/
+playwright-report/
+tests/screenshots/
+blob-report/
