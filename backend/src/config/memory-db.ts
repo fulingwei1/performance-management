@@ -315,9 +315,188 @@ export const memoryDB = {
   promotionRequests: promotionRequestOperations,
 };
 
+// ========================================
+// Generic in-memory table store for SQL-like queries
+// ========================================
+const genericTables: Record<string, any[]> = {};
+let genericAutoId: Record<string, number> = {};
+
+function getTable(name: string): any[] {
+  if (!genericTables[name]) genericTables[name] = [];
+  return genericTables[name];
+}
+
+function nextId(table: string): number {
+  if (!genericAutoId[table]) genericAutoId[table] = 1;
+  return genericAutoId[table]++;
+}
+
+function substituteParams(sql: string, params?: any[]): { sql: string; values: any[] } {
+  // Normalize $1, $2... placeholders to array indices
+  return { sql, values: params || [] };
+}
+
+function matchesConditions(row: any, conditions: Array<{ field: string; value: any }>): boolean {
+  return conditions.every(c => {
+    if (c.value === undefined || c.value === null) return true;
+    return row[c.field] == c.value; // loose equality for number/string compat
+  });
+}
+
+// Parse simple WHERE clauses like "WHERE col1 = $1 AND col2 = $2"
+function parseWhereConditions(whereClause: string, params: any[]): Array<{ field: string; value: any }> {
+  const conditions: Array<{ field: string; value: any }> = [];
+  const parts = whereClause.split(/\s+AND\s+/i);
+  for (const part of parts) {
+    const match = part.trim().match(/(\w+)\s*=\s*\$(\d+)/);
+    if (match) {
+      conditions.push({ field: match[1], value: params[parseInt(match[2]) - 1] });
+    }
+  }
+  return conditions;
+}
+
+const GENERIC_TABLES = [
+  'review_cycles', 'review_relationships', 'peer_reviews',
+  'interview_plans', 'interview_records', 'improvement_plans'
+];
+
+function detectTable(sql: string): string | null {
+  for (const t of GENERIC_TABLES) {
+    if (sql.includes(t)) return t;
+  }
+  return null;
+}
+
+function handleGenericSQL(sql: string, params: any[]): any[] | null {
+  const table = detectTable(sql);
+  if (!table) return null;
+  
+  const normalized = sql.trim().replace(/\s+/g, ' ');
+  
+  // INSERT ... RETURNING *
+  if (/^INSERT\s+INTO/i.test(normalized)) {
+    const colMatch = normalized.match(/INSERT\s+INTO\s+\w+\s*\(([^)]+)\)/i);
+    if (!colMatch) return [];
+    const columns = colMatch[1].split(',').map(c => c.trim());
+    const row: any = { id: nextId(table) };
+    columns.forEach((col, i) => {
+      row[col] = params[i] !== undefined ? params[i] : null;
+    });
+    // Check if batch insert (more params than columns)
+    const rowSize = columns.length;
+    if (params.length > rowSize) {
+      // Batch insert
+      const numRows = Math.floor(params.length / rowSize);
+      const results: any[] = [];
+      for (let r = 0; r < numRows; r++) {
+        const batchRow: any = { id: nextId(table) };
+        columns.forEach((col, ci) => {
+          batchRow[col] = params[r * rowSize + ci] !== undefined ? params[r * rowSize + ci] : null;
+        });
+        batchRow.created_at = new Date().toISOString();
+        batchRow.updated_at = new Date().toISOString();
+        getTable(table).push(batchRow);
+        results.push(batchRow);
+      }
+      const result = results;
+      (result as any).affectedRows = numRows;
+      return result;
+    }
+    
+    // Single row insert
+    row.created_at = new Date().toISOString();
+    row.updated_at = new Date().toISOString();
+    getTable(table).push(row);
+    
+    if (/RETURNING\s+\*/i.test(normalized)) {
+      return [row];
+    }
+    const result = [row];
+    (result as any).affectedRows = 1;
+    return result;
+  }
+  
+  // SELECT
+  if (/^SELECT/i.test(normalized)) {
+    let rows = [...getTable(table)];
+    const whereMatch = normalized.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+LIMIT|\s*$)/i);
+    if (whereMatch) {
+      // Remove "1=1 AND " prefix
+      let whereClause = whereMatch[1].replace(/1\s*=\s*1\s+AND\s+/i, '').trim();
+      if (whereClause && whereClause !== '1=1') {
+        const conditions = parseWhereConditions(whereClause, params);
+        rows = rows.filter(r => matchesConditions(r, conditions));
+      }
+    }
+    const result = rows;
+    (result as any).affectedRows = rows.length;
+    return result;
+  }
+  
+  // UPDATE
+  if (/^UPDATE/i.test(normalized)) {
+    const setMatch = normalized.match(/SET\s+(.+?)\s+WHERE/i);
+    const whereMatch = normalized.match(/WHERE\s+(.+?)$/i);
+    if (!setMatch || !whereMatch) return [];
+    
+    const setParts = setMatch[1].split(',').map(s => s.trim());
+    const conditions = parseWhereConditions(whereMatch[1], params);
+    
+    // Figure out which params are for SET vs WHERE
+    const setFields: Array<{ field: string; paramIdx: number }> = [];
+    for (const part of setParts) {
+      const m = part.match(/(\w+)\s*=\s*\$(\d+)/i);
+      if (m) setFields.push({ field: m[1], paramIdx: parseInt(m[2]) - 1 });
+      // Handle NOW() or other non-param values
+      if (part.match(/(\w+)\s*=\s*NOW\(\)/i)) {
+        const fm = part.match(/(\w+)\s*=/);
+        if (fm) setFields.push({ field: fm[1], paramIdx: -1 });
+      }
+    }
+    
+    let affected = 0;
+    for (const row of getTable(table)) {
+      if (matchesConditions(row, conditions)) {
+        for (const sf of setFields) {
+          if (sf.paramIdx >= 0) {
+            row[sf.field] = params[sf.paramIdx];
+          } else {
+            row[sf.field] = new Date().toISOString();
+          }
+        }
+        affected++;
+      }
+    }
+    const result: any[] = [];
+    (result as any).affectedRows = affected;
+    return result;
+  }
+  
+  // DELETE
+  if (/^DELETE/i.test(normalized)) {
+    const whereMatch = normalized.match(/WHERE\s+(.+?)$/i);
+    if (!whereMatch) return [];
+    const conditions = parseWhereConditions(whereMatch[1], params);
+    const tableData = getTable(table);
+    const before = tableData.length;
+    const remaining = tableData.filter(r => !matchesConditions(r, conditions));
+    genericTables[table] = remaining;
+    const result: any[] = [];
+    (result as any).affectedRows = before - remaining.length;
+    return result;
+  }
+  
+  return [];
+}
+
 // 初始化内存数据库
 export const memoryQuery = async (sql: string, params?: any[]): Promise<any[]> => {
   logger.info(`📦 Memory DB query: ${sql} ${params}`);
+  
+  // Try generic table handler first
+  const genericResult = handleGenericSQL(sql, params || []);
+  if (genericResult !== null) return genericResult;
   
   if (sql.includes('SELECT') && sql.includes('employees')) {
     if (sql.includes('WHERE id = ?')) {
@@ -408,6 +587,12 @@ export const initMemoryDB = (): void => {
 
 // 清空所有数据（用于测试）
 export const clearMemoryDB = (): void => {
+  // Clear generic tables
+  for (const key of Object.keys(genericTables)) {
+    genericTables[key] = [];
+  }
+  genericAutoId = {};
+  
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
   memoryStore.peerReviews.clear();

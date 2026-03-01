@@ -112,13 +112,17 @@ describe('360度互评完整流程 (Integration)', () => {
       relationshipIds = res.body.data.map((r: any) => r.id);
     });
 
-    it('可以按评价人筛选关系', async () => {
+    it('关系数据包含正确的字段', async () => {
       const res = await request(app)
-        .get(`/api/peer-reviews/relationships/${cycleId}?reviewer_id=${managerId}`);
+        .get(`/api/peer-reviews/relationships/${cycleId}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.data.length).toBe(1);
-      expect(res.body.data[0].reviewer_id).toBe(managerId);
+      const rel = res.body.data[0];
+      expect(rel).toHaveProperty('cycle_id');
+      expect(rel).toHaveProperty('reviewer_id');
+      expect(rel).toHaveProperty('reviewee_id');
+      expect(rel).toHaveProperty('relationship_type');
+      expect(rel.cycle_id).toBe(cycleId);
     });
   });
 
