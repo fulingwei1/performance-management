@@ -11,6 +11,7 @@ import { EmployeePerformanceAppeals } from '@/pages/Employee/PerformanceAppeals'
 import { EmployeePromotionRequest } from '@/pages/Employee/PromotionRequest';
 import { ManagerDashboard } from '@/pages/Manager/Dashboard';
 import { ScoringManagement } from '@/pages/Manager/Scoring';
+import { DifferentiatedScoring } from '@/pages/Manager/DifferentiatedScoring';
 import { Analytics } from '@/pages/Manager/Analytics';
 import { QuarterlySummary } from '@/pages/Manager/QuarterlySummary';
 import { ManagerPromotionRequest } from '@/pages/Manager/PromotionRequest';
@@ -54,6 +55,9 @@ import { RelatedOKR } from '@/pages/OKR/RelatedOKR';
 import { MyBonus } from '@/pages/Employee/MyBonus';
 import { BonusManagement } from '@/pages/HR/BonusManagement';
 import { DepartmentTree } from '@/pages/HR/DepartmentTree';
+import { DepartmentClassification } from '@/pages/HR/DepartmentClassification';
+import { AssessmentTemplates } from '@/pages/HR/AssessmentTemplates';
+import { AssessmentExport } from '@/pages/HR/AssessmentExport';
 import { OrganizationChart } from '@/pages/HR/OrganizationChart';
 import { DataImport } from '@/pages/HR/DataImport';
 import { DataExport } from '@/pages/HR/DataExport';
@@ -105,6 +109,13 @@ function ProtectedLayout({ allowedRole }: { allowedRole: 'employee' | 'manager' 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   if (isAuthenticated) return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
+  return <>{children}</>;
+}
+
+// Protected route: redirect non-authenticated users to login
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -189,6 +200,7 @@ function App() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/scoring" element={<ScoringManagement />} />
+          <Route path="/manager/differentiated-scoring" element={<DifferentiatedScoring />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
           <Route path="/manager/performance-analytics" element={<PerformanceAnalytics />} />
@@ -244,6 +256,9 @@ function App() {
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
+          <Route path="/hr/department-classification" element={<DepartmentClassification />} />
+          <Route path="/hr/assessment-templates" element={<AssessmentTemplates />} />
+          <Route path="/hr/assessment-export" element={<AssessmentExport />} />
           <Route path="/hr/organization-chart" element={<OrganizationChart />} />
           <Route path="/hr/data-import" element={<DataImport />} />
           <Route path="/hr/data-export" element={<DataExport />} />

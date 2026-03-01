@@ -40,6 +40,12 @@ interface MemoryStore {
   notifications?: Map<string, Notification>;
   objectiveAdjustments?: Map<string, ObjectiveAdjustment>;
   todos?: Map<string, any>;
+  assessmentTemplates?: Map<string, any>;
+  templateMetrics?: Map<string, any>;
+  metricScoringCriteria?: Map<string, any>;
+  departmentTemplates?: Map<string, any>;
+  systemSettings?: Map<string, any>;
+  monthlyAssessments?: Map<string, any>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -72,6 +78,12 @@ export const memoryStore: MemoryStore = {
   appeals: new Map(),
   notifications: new Map(),
   objectiveAdjustments: new Map(),
+  assessmentTemplates: new Map(),
+  templateMetrics: new Map(),
+  metricScoringCriteria: new Map(),
+  departmentTemplates: new Map(),
+  systemSettings: new Map(),
+  monthlyAssessments: new Map(),
 };
 
 // 员工数据操作

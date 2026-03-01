@@ -51,6 +51,11 @@ import todoRoutes from './routes/todo.routes';
 import dataImportRoutes from './routes/dataImport.routes';
 import dataExportRoutes from './routes/dataExport.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import systemSettingsRoutes from './routes/systemSettings.routes';
+import assessmentTemplateRoutes from './routes/assessmentTemplate.routes';
+import monthlyAssessmentRoutes from './routes/monthlyAssessment.routes';
+import assessmentExportRoutes from './routes/assessmentExport.routes';
+import assessmentStatsRoutes from './routes/assessmentStats.routes';
 import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
@@ -168,12 +173,18 @@ app.use('/api/todos', todoRoutes);
 app.use('/api/data-import', dataImportRoutes);
 app.use('/api/data-export', dataExportRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/system-settings', systemSettingsRoutes);
+app.use('/api/assessment-templates', assessmentTemplateRoutes);
+app.use('/api/performance', monthlyAssessmentRoutes);
+app.use('/api/export', assessmentExportRoutes);
+app.use('/api/stats', assessmentStatsRoutes);
 
 // 404处理
 app.use(notFoundHandler);
 
 // 导入数据初始化
 import { initializeData } from './config/init-data';
+import { initializeDefaultTemplates, updateDepartmentTypes } from './config/init-templates';
 import logger from './config/logger';
 
 // 错误处理
@@ -184,6 +195,8 @@ const initializeServer = async () => {
  try {
  await testConnection();
  await initializeData();
+ updateDepartmentTypes();
+ initializeDefaultTemplates();
  logger.info('✅ Data initialization completed');
     SchedulerService.init();
  } catch (error) {
