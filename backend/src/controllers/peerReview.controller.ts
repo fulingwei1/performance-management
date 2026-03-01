@@ -1,304 +1,410 @@
 import { Request, Response } from 'express';
-import { body, param, query, validationResult } from 'express-validator';
-import { PeerReviewModel } from '../models/peerReview.model';
-import { EmployeeModel } from '../models/employee.model';
-import { PerformanceModel } from '../models/performance.model';
-import { asyncHandler } from '../middleware/errorHandler';
+import {
+  ReviewCycleModel,
+  ReviewRelationshipModel,
+  PeerReviewModel,
+  ReviewStatisticsModel
+} from '../models/peerReview.model';
 
-export const peerReviewController = {
-  // 获取我的360度评价（作为被评价人）
-  getMyPeerReviews: [
-    query('month').matches(/^\d{4}-\d{2}$/).withMessage('月份格式错误'),
-    
-    asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
+/**
+ * 互评周期管理
+ */
+export const PeerReviewCycleController = {
+  /**
+   * 创建互评周期
+   * POST /api/peer-review/cycles
+   */
+  async createCycle(req: Request, res: Response) {
+    try {
+      const { name, description, start_date, end_date, review_type, is_anonymous } = req.body;
+      
+      // 验证必填字段
+      if (!name || !start_date || !end_date) {
         return res.status(400).json({
           success: false,
-          error: errors.array()[0].msg
+          message: '缺少必填字段：name, start_date, end_date'
         });
       }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: '未认证'
-        });
-      }
-
-      const { month } = req.query;
-      const reviews = await PeerReviewModel.findByReviewee(req.user.userId, month as string);
       
-      // 被评价人只能看到分数，看不到是谁评价的
-      const anonymizedReviews = reviews.map(r => ({
-        id: r.id,
-        month: r.month,
-        collaboration: r.collaboration,
-        professionalism: r.professionalism,
-        communication: r.communication,
-        comment: r.comment,
-        averageScore: ((r.collaboration + r.professionalism + r.communication) / 3).toFixed(2),
-        submittedAt: r.createdAt
+      // 验证日期
+      if (new Date(start_date) >= new Date(end_date)) {
+        return res.status(400).json({
+          success: false,
+          message: '结束日期必须晚于开始日期'
+        });
+      }
+      
+      const cycle = await ReviewCycleModel.create({
+        name,
+        description,
+        start_date,
+        end_date,
+        status: 'draft',
+        review_type: review_type || 'peer',
+        is_anonymous: is_anonymous || false,
+        created_by: (req as any).user?.id
+      });
+      
+      res.status(201).json({
+        success: true,
+        message: '互评周期创建成功',
+        data: cycle
+      });
+    } catch (error: any) {
+      console.error('创建互评周期失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '创建互评周期失败',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * 获取互评周期列表
+   * GET /api/peer-review/cycles
+   */
+  async getCycles(req: Request, res: Response) {
+    try {
+      const { status, review_type } = req.query;
+      
+      const cycles = await ReviewCycleModel.findAll({
+        status: typeof status === 'string' ? status : undefined,
+        review_type: typeof review_type === 'string' ? review_type : undefined
+      });
+      
+      res.json({
+        success: true,
+        data: cycles,
+        total: cycles.length
+      });
+    } catch (error: any) {
+      console.error('获取互评周期失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取互评周期失败',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * 获取单个互评周期
+   * GET /api/peer-review/cycles/:id
+   */
+  async getCycleById(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const cycle = await ReviewCycleModel.findById(id);
+      
+      if (!cycle) {
+        return res.status(404).json({
+          success: false,
+          message: '互评周期不存在'
+        });
+      }
+      
+      res.json({
+        success: true,
+        data: cycle
+      });
+    } catch (error: any) {
+      console.error('获取互评周期失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取互评周期失败',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * 更新互评周期
+   * PUT /api/peer-review/cycles/:id
+   */
+  async updateCycle(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const success = await ReviewCycleModel.update(id, updates);
+      
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: '互评周期不存在'
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: '更新成功'
+      });
+    } catch (error: any) {
+      console.error('更新互评周期失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '更新互评周期失败',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * 删除互评周期
+   * DELETE /api/peer-review/cycles/:id
+   */
+  async deleteCycle(req: Request, res: Response) {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await ReviewCycleModel.delete(id);
+      
+      if (!success) {
+        return res.status(404).json({
+          success: false,
+          message: '互评周期不存在'
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: '删除成功'
+      });
+    } catch (error: any) {
+      console.error('删除互评周期失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '删除互评周期失败',
+        error: error.message
+      });
+    }
+  }
+};
+
+/**
+ * 评价关系管理
+ */
+export const ReviewRelationshipController = {
+  /**
+   * 批量创建评价关系
+   * POST /api/peer-review/relationships
+   */
+  async createRelationships(req: Request, res: Response) {
+    try {
+      const { cycle_id, relationships } = req.body;
+      
+      if (!cycle_id || !Array.isArray(relationships) || relationships.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: '参数错误：需要 cycle_id 和 relationships 数组'
+        });
+      }
+      
+      // 验证周期是否存在
+      const cycle = await ReviewCycleModel.findById(cycle_id);
+      if (!cycle) {
+        return res.status(404).json({
+          success: false,
+          message: '互评周期不存在'
+        });
+      }
+      
+      // 构建关系数据
+      const relationshipsData = relationships.map(r => ({
+        cycle_id,
+        reviewer_id: r.reviewer_id,
+        reviewee_id: r.reviewee_id,
+        relationship_type: r.relationship_type || 'peer',
+        department_id: r.department_id,
+        weight: r.weight || 1.0,
+        status: 'pending' as 'pending'
       }));
       
+      const count = await ReviewRelationshipModel.createBatch(relationshipsData);
+      
+      res.status(201).json({
+        success: true,
+        message: `成功创建 ${count} 条评价关系`,
+        count
+      });
+    } catch (error: any) {
+      console.error('创建评价关系失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '创建评价关系失败',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * 获取评价关系
+   * GET /api/peer-review/relationships/:cycleId
+   */
+  async getRelationships(req: Request, res: Response) {
+    try {
+      const cycleId = parseInt(req.params.cycleId);
+      const { reviewer_id, reviewee_id } = req.query;
+      
+      const relationships = await ReviewRelationshipModel.findByCycle(cycleId, {
+        reviewer_id: reviewer_id && typeof reviewer_id === 'string' ? parseInt(reviewer_id) : undefined,
+        reviewee_id: reviewee_id && typeof reviewee_id === 'string' ? parseInt(reviewee_id) : undefined
+      });
+      
       res.json({
         success: true,
-        data: anonymizedReviews
+        data: relationships,
+        total: relationships.length
       });
-    })
-  ],
+    } catch (error: any) {
+      console.error('获取评价关系失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取评价关系失败',
+        error: error.message
+      });
+    }
+  }
+};
 
-  // 获取我的360度评价任务（作为评价人）
-  getMyPeerReviewTasks: [
-    query('month').matches(/^\d{4}-\d{2}$/).withMessage('月份格式错误'),
-    
-    asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
+/**
+ * 互评记录管理
+ */
+export const PeerReviewController = {
+  /**
+   * 提交互评
+   * POST /api/peer-review/reviews
+   */
+  async submitReview(req: Request, res: Response) {
+    try {
+      const {
+        relationship_id,
+        cycle_id,
+        reviewer_id,
+        reviewee_id,
+        teamwork_score,
+        communication_score,
+        professional_score,
+        responsibility_score,
+        innovation_score,
+        strengths,
+        improvements,
+        overall_comment,
+        is_anonymous
+      } = req.body;
+      
+      // 验证必填字段
+      if (!relationship_id || !cycle_id || !reviewer_id || !reviewee_id) {
         return res.status(400).json({
           success: false,
-          error: errors.array()[0].msg
+          message: '缺少必填字段'
         });
       }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: '未认证'
-        });
-      }
-
-      const { month } = req.query;
-      const tasks = await PeerReviewModel.findByReviewer(req.user.userId, month as string);
       
-      // 评价人可以看到自己给谁评价
-      res.json({
-        success: true,
-        data: tasks
+      // 计算总分
+      const scores = [
+        teamwork_score,
+        communication_score,
+        professional_score,
+        responsibility_score,
+        innovation_score
+      ].filter(s => typeof s === 'number');
+      
+      const total_score = scores.length > 0 
+        ? Number((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
+        : undefined;
+      
+      const review = await PeerReviewModel.create({
+        relationship_id,
+        cycle_id,
+        reviewer_id,
+        reviewee_id,
+        teamwork_score,
+        communication_score,
+        professional_score,
+        responsibility_score,
+        innovation_score,
+        total_score,
+        strengths,
+        improvements,
+        overall_comment,
+        is_anonymous: is_anonymous || false,
+        submitted_at: new Date()
       });
-    })
-  ],
-
-  // 提交360度评价
-  submitPeerReview: [
-    body('id').notEmpty().withMessage('评价ID不能为空'),
-    body('collaboration').isFloat({ min: 0.5, max: 1.5 }).withMessage('协作分数范围0.5-1.5'),
-    body('professionalism').isFloat({ min: 0.5, max: 1.5 }).withMessage('专业分数范围0.5-1.5'),
-    body('communication').isFloat({ min: 0.5, max: 1.5 }).withMessage('沟通分数范围0.5-1.5'),
-    body('comment').notEmpty().withMessage('评语不能为空'),
-    
-    asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          error: errors.array()[0].msg
-        });
-      }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: '未认证'
-        });
-      }
-
-      const { id, collaboration, professionalism, communication, comment } = req.body;
       
-      // 验证评价人权限
-      const existing = await PeerReviewModel.findById(id);
-      if (!existing) {
-        return res.status(404).json({
-          success: false,
-          error: '评价记录不存在'
-        });
-      }
+      // 更新关系状态
+      await ReviewRelationshipModel.updateStatus(relationship_id, 'completed');
       
-      if (existing.reviewerId !== req.user.userId) {
-        return res.status(403).json({
-          success: false,
-          error: '无权修改此评价'
-        });
-      }
+      res.status(201).json({
+        success: true,
+        message: '互评提交成功',
+        data: review
+      });
+    } catch (error: any) {
+      console.error('提交互评失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '提交互评失败',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * 获取互评记录
+   * GET /api/peer-review/reviews/:cycleId
+   */
+  async getReviews(req: Request, res: Response) {
+    try {
+      const cycleId = parseInt(req.params.cycleId);
+      const { reviewer_id, reviewee_id } = req.query;
       
-      // 更新评价
-      const updated = await PeerReviewModel.update(id, {
-        collaboration,
-        professionalism,
-        communication,
-        comment
+      const reviews = await PeerReviewModel.findByCycle(cycleId, {
+        reviewer_id: reviewer_id && typeof reviewer_id === 'string' ? parseInt(reviewer_id) : undefined,
+        reviewee_id: reviewee_id && typeof reviewee_id === 'string' ? parseInt(reviewee_id) : undefined
       });
       
       res.json({
         success: true,
-        data: updated,
-        message: '360度评价提交成功'
+        data: reviews,
+        total: reviews.length
       });
-    })
-  ],
+    } catch (error: any) {
+      console.error('获取互评记录失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取互评记录失败',
+        error: error.message
+      });
+    }
+  },
 
-  // 分配360度评价任务（经理操作）
-  allocatePeerReviews: [
-    body('month').matches(/^\d{4}-\d{2}$/).withMessage('月份格式错误'),
-    body('department').notEmpty().withMessage('部门不能为空'),
-    
-    asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          error: errors.array()[0].msg
-        });
-      }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: '未认证'
-        });
-      }
-
-      const { month, department } = req.body;
+  /**
+   * 获取互评统计
+   * GET /api/peer-review/statistics/:cycleId
+   */
+  async getStatistics(req: Request, res: Response) {
+    try {
+      const cycleId = parseInt(req.params.cycleId);
+      const { reviewee_id } = req.query;
       
-      // 随机分配评价任务
-      const allocations = await PeerReviewModel.allocatePeerReviews(department, month);
+      const statistics = await ReviewStatisticsModel.findByCycle(
+        cycleId,
+        reviewee_id && typeof reviewee_id === 'string' ? parseInt(reviewee_id) : undefined
+      );
       
       res.json({
         success: true,
-        data: {
-          allocated: allocations.length,
-          allocations,
-          department,
-          month
-        },
-        message: `已为部门${department}分配${allocations.length}个360度评价任务`
+        data: statistics,
+        total: statistics.length
       });
-    })
-  ],
-
-  // 获取部门360度评价统计（经理）
-  getDepartmentPeerReviewStats: [
-    query('month').matches(/^\d{4}-\d{2}$/).withMessage('月份格式错误'),
-    
-    asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          error: errors.array()[0].msg
-        });
-      }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: '未认证'
-        });
-      }
-
-      const { month } = req.query;
-      
-      // 获取用户的部门
-      const employee = await EmployeeModel.findById(req.user.userId);
-      if (!employee) {
-        return res.status(404).json({
-          success: false,
-          error: '员工不存在'
-        });
-      }
-      
-      // 获取部门所有360度评价
-      const reviews = await PeerReviewModel.findByDepartment(employee.department, month as string);
-      
-      // 统计每个员工收到的评价
-      const stats = reviews.reduce((acc, review) => {
-        if (!acc[review.revieweeId]) {
-          acc[review.revieweeId] = {
-            revieweeId: review.revieweeId,
-            revieweeName: review.revieweeName,
-            reviews: [],
-            completedReviews: 0,
-            averageScore: 0
-          };
-        }
-        acc[review.revieweeId].reviews.push(review);
-        if (review.collaboration > 1 && review.professionalism > 1 && review.communication > 1) {
-          acc[review.revieweeId].completedReviews++;
-          const avg = (review.collaboration + review.professionalism + review.communication) / 3;
-          acc[review.revieweeId].averageScore += avg;
-        }
-        return acc;
-      }, {} as Record<string, any>);
-      
-      // 计算最终平均分
-      const employeeStats = Object.values(stats).map(stat => {
-        const finalAvg = stat.completedReviews > 0 
-          ? stat.averageScore / stat.completedReviews 
-          : 0;
-        return {
-          ...stat,
-          averageScore: parseFloat(finalAvg.toFixed(2)),
-          totalReviews: stat.reviews.length,
-          completedReviews: stat.completedReviews,
-          completionRate: stat.reviews.length > 0 
-            ? (stat.completedReviews / stat.reviews.length) * 100 
-            : 0
-        };
+    } catch (error: any) {
+      console.error('获取互评统计失败:', error);
+      res.status(500).json({
+        success: false,
+        message: '获取互评统计失败',
+        error: error.message
       });
-      
-      res.json({
-        success: true,
-        data: employeeStats
-      });
-    })
-  ],
-
-  // 获取部门的360度评价记录（经理）
-  getDepartmentPeerReviews: [
-    query('month').matches(/^\d{4}-\d{2}$/).withMessage('月份格式错误'),
-    query('revieweeId').optional(),
-    
-    asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          error: errors.array()[0].msg
-        });
-      }
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: '未认证'
-        });
-      }
-
-      const { month, revieweeId } = req.query;
-      
-      // 获取用户的部门
-      const employee = await EmployeeModel.findById(req.user.userId);
-      if (!employee) {
-        return res.status(404).json({
-          success: false,
-          error: '员工不存在'
-        });
-      }
-      
-      let reviews;
-      
-      if (revieweeId) {
-        // 获取特定员工的360度评价
-        reviews = await PeerReviewModel.findByReviewee(revieweeId as string, month as string);
-      } else {
-        // 获取部门所有360度评价
-        reviews = await PeerReviewModel.findByDepartment(employee.department, month as string);
-      }
-      
-      res.json({
-        success: true,
-        data: reviews
-      });
-    })
-  ]
+    }
+  }
 };
