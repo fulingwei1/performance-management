@@ -58,6 +58,7 @@ import monthlyAssessmentRoutes from './routes/monthlyAssessment.routes';
 import assessmentExportRoutes from './routes/assessmentExport.routes';
 import assessmentStatsRoutes from './routes/assessmentStats.routes';
 import { SchedulerService } from './services/scheduler.service';
+import { setupSwagger } from './swagger';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -180,6 +181,9 @@ app.use('/api/assessment-templates', assessmentTemplateRoutes);
 app.use('/api/performance', monthlyAssessmentRoutes);
 app.use('/api/export', assessmentExportRoutes);
 app.use('/api/stats', assessmentStatsRoutes);
+
+// Swagger API文档
+setupSwagger(app);
 
 // 404处理
 app.use(notFoundHandler);
