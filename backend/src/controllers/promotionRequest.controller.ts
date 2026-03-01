@@ -5,7 +5,7 @@ import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import type { PromotionRequestStatus, EmployeeRole, PromotionRequest } from '../types';
 import { getPromotionApprovalChain } from '../config/promotion-approval-store';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../config/logger';
@@ -339,9 +339,26 @@ export const promotionRequestController = {
     }));
 
     if (format === 'excel') {
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      XLSX.utils.book_append_sheet(wb, ws, '晋升加薪审批记录');
+      const wb = new ExcelJS.Workbook();
+      wb.creator = '绩效管理系统';
+      
+      const ws = wb.addWorksheet('晋升加薪审批记录');
+      
+      // 添加表头和数据
+      if (exportData.length > 0) {
+        const headers = Object.keys(exportData[0]);
+        ws.addRow(headers);
+        
+        exportData.forEach(item => {
+          ws.addRow(Object.values(item));
+        });
+        
+        // 设置表头样式
+        const headerRow = ws.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      }
 
       const fileName = `晋升加薪审批记录_${Date.now()}.xlsx`;
       const filePath = path.join(__dirname, '../../temp', fileName);
@@ -350,7 +367,7 @@ export const promotionRequestController = {
         fs.mkdirSync(tempDir, { recursive: true });
       }
 
-      XLSX.writeFile(wb, filePath);
+      await wb.xlsx.writeFile(filePath);
       res.download(filePath, fileName, (err) => {
         if (err) {
           logger.error(`下载文件失败: ${err}`);

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
 import { asyncHandler } from '../middleware/errorHandler';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 import logger from '../config/logger';
@@ -74,10 +74,28 @@ export const exportController = {
         });
 
         if (format === 'excel') {
-          const wb = XLSX.utils.book_new();
+          const wb = new ExcelJS.Workbook();
+          wb.creator = '绩效管理系统';
           
-          const ws1 = XLSX.utils.json_to_sheet(exportData);
-          XLSX.utils.book_append_sheet(wb, ws1, `${month}绩效数据`);
+          // 添加绩效数据工作表
+          const ws1 = wb.addWorksheet(`${month}绩效数据`);
+          
+          // 添加表头
+          if (exportData.length > 0) {
+            const headers = Object.keys(exportData[0]);
+            ws1.addRow(headers);
+            
+            // 添加数据行
+            exportData.forEach(item => {
+              ws1.addRow(Object.values(item));
+            });
+            
+            // 设置表头样式
+            const headerRow = ws1.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
 
           if (includeAnalysis === 'true') {
             const deptStats = new Map<string, any[]>();
@@ -106,8 +124,22 @@ export const exportController = {
               };
             });
 
-            const ws2 = XLSX.utils.json_to_sheet(analysisData);
-            XLSX.utils.book_append_sheet(wb, ws2, `${month}分析报告`);
+            // 添加分析报告工作表
+            const ws2 = wb.addWorksheet(`${month}分析报告`);
+            if (analysisData.length > 0) {
+              const analysisHeaders = Object.keys(analysisData[0]);
+              ws2.addRow(analysisHeaders);
+              
+              analysisData.forEach(item => {
+                ws2.addRow(Object.values(item));
+              });
+              
+              // 设置表头样式
+              const headerRow2 = ws2.getRow(1);
+              headerRow2.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+              headerRow2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+              headerRow2.alignment = { vertical: 'middle', horizontal: 'center' };
+            }
           }
 
           const fileName = `绩效数据导出_${month}.xlsx`;
@@ -118,7 +150,7 @@ export const exportController = {
             fs.mkdirSync(tempDir, { recursive: true });
           }
 
-          XLSX.writeFile(wb, filePath);
+          await wb.xlsx.writeFile(filePath);
 
           res.download(filePath, fileName, (err) => {
             if (err) {
@@ -233,9 +265,26 @@ export const exportController = {
         });
 
         if (format === 'excel') {
-          const wb = XLSX.utils.book_new();
-          const ws = XLSX.utils.json_to_sheet(finalData);
-          XLSX.utils.book_append_sheet(wb, ws, `${year}年度绩效汇总`);
+          const wb = new ExcelJS.Workbook();
+          wb.creator = '绩效管理系统';
+          
+          const ws = wb.addWorksheet(`${year}年度绩效汇总`);
+          
+          // 添加表头和数据
+          if (finalData.length > 0) {
+            const headers = Object.keys(finalData[0]);
+            ws.addRow(headers);
+            
+            finalData.forEach(item => {
+              ws.addRow(Object.values(item));
+            });
+            
+            // 设置表头样式
+            const headerRow = ws.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
           
           const fileName = `年度绩效汇总_${year}.xlsx`;
           const filePath = path.join(__dirname, '../../temp', fileName);
@@ -245,7 +294,7 @@ export const exportController = {
             fs.mkdirSync(tempDir, { recursive: true });
           }
 
-          XLSX.writeFile(wb, filePath);
+          await wb.xlsx.writeFile(filePath);
 
           res.download(filePath, fileName, (err) => {
             if (err) {
@@ -311,9 +360,26 @@ export const exportController = {
         }));
 
         if (format === 'excel') {
-          const wb = XLSX.utils.book_new();
-          const ws = XLSX.utils.json_to_sheet(exportData);
-          XLSX.utils.book_append_sheet(wb, ws, `员工信息_${new Date().toLocaleDateString('zh-CN')}`);
+          const wb = new ExcelJS.Workbook();
+          wb.creator = '绩效管理系统';
+          
+          const ws = wb.addWorksheet(`员工信息_${new Date().toLocaleDateString('zh-CN')}`);
+          
+          // 添加表头和数据
+          if (exportData.length > 0) {
+            const headers = Object.keys(exportData[0]);
+            ws.addRow(headers);
+            
+            exportData.forEach(item => {
+              ws.addRow(Object.values(item));
+            });
+            
+            // 设置表头样式
+            const headerRow = ws.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+          }
           
           const fileName = `员工信息_${new Date().toISOString().split('T')[0]}.xlsx`;
           const filePath = path.join(__dirname, '../../temp', fileName);
@@ -323,7 +389,7 @@ export const exportController = {
             fs.mkdirSync(tempDir, { recursive: true });
           }
 
-          XLSX.writeFile(wb, filePath);
+          await wb.xlsx.writeFile(filePath);
 
           res.download(filePath, fileName, (err) => {
             if (err) {
