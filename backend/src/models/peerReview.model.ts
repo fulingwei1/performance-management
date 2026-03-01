@@ -1,9 +1,6 @@
-import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
-import { v4 as uuidv4 } from 'uuid';
+import { query } from '../config/database';
 
-// ========================================
-// 类型定义
-// ========================================
+// 简化版本 - 只支持 PostgreSQL，后续可扩展 Memory DB
 
 export interface ReviewCycle {
   id?: number;
@@ -15,8 +12,6 @@ export interface ReviewCycle {
   review_type: 'peer' | 'upward' | 'cross';
   is_anonymous: boolean;
   created_by?: number;
-  created_at?: Date;
-  updated_at?: Date;
 }
 
 export interface ReviewRelationship {
@@ -28,8 +23,6 @@ export interface ReviewRelationship {
   department_id?: number;
   weight: number;
   status: 'pending' | 'completed';
-  created_at?: Date;
-  updated_at?: Date;
 }
 
 export interface PeerReview {
@@ -38,22 +31,17 @@ export interface PeerReview {
   cycle_id: number;
   reviewer_id: number;
   reviewee_id: number;
-  
   teamwork_score?: number;
   communication_score?: number;
   professional_score?: number;
   responsibility_score?: number;
   innovation_score?: number;
-  
   total_score?: number;
   strengths?: string;
   improvements?: string;
   overall_comment?: string;
-  
   is_anonymous: boolean;
   submitted_at?: Date;
-  created_at?: Date;
-  updated_at?: Date;
 }
 
 export interface ReviewStatistics {
@@ -68,77 +56,63 @@ export interface ReviewStatistics {
   avg_responsibility?: number;
   avg_innovation?: number;
   avg_total_score?: number;
-  last_calculated_at?: Date;
-  created_at?: Date;
-  updated_at?: Date;
 }
 
-// ========================================
-// ReviewCycle Model
-// ========================================
-
 export const ReviewCycleModel = {
-  async create(data: Omit<ReviewCycle, 'id' | 'created_at' | 'updated_at'>): Promise<ReviewCycle> {
-    const result = await query(
+  async create(data: Omit<ReviewCycle, 'id'>): Promise<ReviewCycle> {
+    const rows = await query(
       `INSERT INTO review_cycles (name, description, start_date, end_date, status, review_type, is_anonymous, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
       [data.name, data.description, data.start_date, data.end_date, data.status, data.review_type, data.is_anonymous, data.created_by]
     );
-    return result.rows[0];
+    return rows[0];
   },
 
   async findAll(filters?: { status?: string; review_type?: string }): Promise<ReviewCycle[]> {
     let sql = 'SELECT * FROM review_cycles WHERE 1=1';
     const params: any[] = [];
-    let paramIndex = 1;
     
     if (filters?.status) {
-      sql += ` AND status = $${paramIndex++}`;
       params.push(filters.status);
+      sql += ` AND status = $${params.length}`;
     }
     if (filters?.review_type) {
-      sql += ` AND review_type = $${paramIndex++}`;
       params.push(filters.review_type);
+      sql += ` AND review_type = $${params.length}`;
     }
     
     sql += ' ORDER BY created_at DESC';
-    
-    const result = await query(sql, params);
-    return result.rows;
+    return await query(sql, params);
   },
 
   async findById(id: number): Promise<ReviewCycle | null> {
-    const result = await query('SELECT * FROM review_cycles WHERE id = $1', [id]);
-    return result.rows[0] || null;
+    const rows = await query('SELECT * FROM review_cycles WHERE id = $1', [id]);
+    return rows[0] || null;
   },
 
   async update(id: number, data: Partial<ReviewCycle>): Promise<boolean> {
     const fields = Object.keys(data).filter(k => data[k as keyof typeof data] !== undefined);
-    const values = fields.map((k, i) => `${k} = $${i + 1}`).join(', ');
-    const params = fields.map(k => data[k as keyof typeof data]);
-    
     if (fields.length === 0) return false;
     
-    const result = await query(
-      `UPDATE review_cycles SET ${values}, updated_at = NOW() WHERE id = $${fields.length + 1}`,
-      [...params, id]
+    const setClause = fields.map((k, i) => `${k} = $${i + 1}`).join(', ');
+    const values = fields.map(k => data[k as keyof typeof data]);
+    
+    const result: any = await query(
+      `UPDATE review_cycles SET ${setClause}, updated_at = NOW() WHERE id = $${fields.length + 1}`,
+      [...values, id]
     );
-    return result.rowCount > 0;
+    return (result.affectedRows || 0) > 0;
   },
 
   async delete(id: number): Promise<boolean> {
-    const result = await query('DELETE FROM review_cycles WHERE id = $1', [id]);
-    return result.rowCount > 0;
+    const result: any = await query('DELETE FROM review_cycles WHERE id = $1', [id]);
+    return (result.affectedRows || 0) > 0;
   }
 };
 
-// ========================================
-// ReviewRelationship Model
-// ========================================
-
 export const ReviewRelationshipModel = {
-  async createBatch(relationships: Omit<ReviewRelationship, 'id' | 'created_at' | 'updated_at'>[]): Promise<number> {
+  async createBatch(relationships: Omit<ReviewRelationship, 'id'>[]): Promise<number> {
     if (relationships.length === 0) return 0;
     
     const values = relationships.map((r, i) => {
@@ -151,48 +125,42 @@ export const ReviewRelationshipModel = {
       r.department_id || null, r.weight, r.status
     ]);
     
-    const result = await query(
+    const result: any = await query(
       `INSERT INTO review_relationships (cycle_id, reviewer_id, reviewee_id, relationship_type, department_id, weight, status) 
        VALUES ${values}`,
       params
     );
-    return result.rowCount;
+    return result.affectedRows || 0;
   },
 
   async findByCycle(cycleId: number, filters?: { reviewer_id?: number; reviewee_id?: number }): Promise<ReviewRelationship[]> {
     let sql = 'SELECT * FROM review_relationships WHERE cycle_id = $1';
     const params: any[] = [cycleId];
-    let paramIndex = 2;
     
-    if (filters?.reviewer_id) {
-      sql += ` AND reviewer_id = $${paramIndex++}`;
+    if (filters?.reviewer_id !== undefined) {
       params.push(filters.reviewer_id);
+      sql += ` AND reviewer_id = $${params.length}`;
     }
-    if (filters?.reviewee_id) {
-      sql += ` AND reviewee_id = $${paramIndex++}`;
+    if (filters?.reviewee_id !== undefined) {
       params.push(filters.reviewee_id);
+      sql += ` AND reviewee_id = $${params.length}`;
     }
     
-    const result = await query(sql, params);
-    return result.rows;
+    return await query(sql, params);
   },
 
   async updateStatus(id: number, status: 'pending' | 'completed'): Promise<boolean> {
-    const result = await query(
+    const result: any = await query(
       'UPDATE review_relationships SET status = $1, updated_at = NOW() WHERE id = $2',
       [status, id]
     );
-    return result.rowCount > 0;
+    return (result.affectedRows || 0) > 0;
   }
 };
 
-// ========================================
-// PeerReview Model
-// ========================================
-
 export const PeerReviewModel = {
-  async create(data: Omit<PeerReview, 'id' | 'created_at' | 'updated_at'>): Promise<PeerReview> {
-    const result = await query(
+  async create(data: Omit<PeerReview, 'id'>): Promise<PeerReview> {
+    const rows = await query(
       `INSERT INTO peer_reviews (
         relationship_id, cycle_id, reviewer_id, reviewee_id,
         teamwork_score, communication_score, professional_score, responsibility_score, innovation_score,
@@ -207,47 +175,38 @@ export const PeerReviewModel = {
         data.overall_comment, data.is_anonymous, data.submitted_at
       ]
     );
-    return result.rows[0];
+    return rows[0];
   },
 
   async findByCycle(cycleId: number, filters?: { reviewer_id?: number; reviewee_id?: number }): Promise<PeerReview[]> {
     let sql = 'SELECT * FROM peer_reviews WHERE cycle_id = $1';
     const params: any[] = [cycleId];
-    let paramIndex = 2;
     
-    if (filters?.reviewer_id) {
-      sql += ` AND reviewer_id = $${paramIndex++}`;
+    if (filters?.reviewer_id !== undefined) {
       params.push(filters.reviewer_id);
+      sql += ` AND reviewer_id = $${params.length}`;
     }
-    if (filters?.reviewee_id) {
-      sql += ` AND reviewee_id = $${paramIndex++}`;
+    if (filters?.reviewee_id !== undefined) {
       params.push(filters.reviewee_id);
+      sql += ` AND reviewee_id = $${params.length}`;
     }
     
     sql += ' ORDER BY created_at DESC';
-    
-    const result = await query(sql, params);
-    return result.rows;
+    return await query(sql, params);
   }
 };
-
-// ========================================
-// ReviewStatistics Model
-// ========================================
 
 export const ReviewStatisticsModel = {
   async findByCycle(cycleId: number, revieweeId?: number): Promise<ReviewStatistics[]> {
     let sql = 'SELECT * FROM review_statistics WHERE cycle_id = $1';
     const params: any[] = [cycleId];
     
-    if (revieweeId) {
-      sql += ' AND reviewee_id = $2';
+    if (revieweeId !== undefined) {
       params.push(revieweeId);
+      sql += ` AND reviewee_id = $${params.length}`;
     }
     
     sql += ' ORDER BY avg_total_score DESC NULLS LAST';
-    
-    const result = await query(sql, params);
-    return result.rows;
+    return await query(sql, params);
   }
 };

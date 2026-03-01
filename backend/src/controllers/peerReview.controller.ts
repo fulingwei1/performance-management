@@ -94,7 +94,7 @@ export const PeerReviewCycleController = {
    */
   async getCycleById(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const cycle = await ReviewCycleModel.findById(id);
       
       if (!cycle) {
@@ -124,7 +124,7 @@ export const PeerReviewCycleController = {
    */
   async updateCycle(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const updates = req.body;
       
       const success = await ReviewCycleModel.update(id, updates);
@@ -156,7 +156,7 @@ export const PeerReviewCycleController = {
    */
   async deleteCycle(req: Request, res: Response) {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(String(req.params.id));
       const success = await ReviewCycleModel.delete(id);
       
       if (!success) {
@@ -243,7 +243,7 @@ export const ReviewRelationshipController = {
    */
   async getRelationships(req: Request, res: Response) {
     try {
-      const cycleId = parseInt(req.params.cycleId);
+      const cycleId = parseInt(String(req.params.cycleId));
       const { reviewer_id, reviewee_id } = req.query;
       
       const relationships = await ReviewRelationshipModel.findByCycle(cycleId, {
@@ -356,7 +356,7 @@ export const PeerReviewController = {
    */
   async getReviews(req: Request, res: Response) {
     try {
-      const cycleId = parseInt(req.params.cycleId);
+      const cycleId = parseInt(String(req.params.cycleId));
       const { reviewer_id, reviewee_id } = req.query;
       
       const reviews = await PeerReviewModel.findByCycle(cycleId, {
@@ -385,7 +385,7 @@ export const PeerReviewController = {
    */
   async getStatistics(req: Request, res: Response) {
     try {
-      const cycleId = parseInt(req.params.cycleId);
+      const cycleId = parseInt(String(req.params.cycleId));
       const { reviewee_id } = req.query;
       
       const statistics = await ReviewStatisticsModel.findByCycle(
