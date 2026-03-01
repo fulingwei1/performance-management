@@ -73,6 +73,12 @@ import ProgressDashboard from '@/pages/Dashboard/ProgressDashboard';
 // Notification page
 import Notifications from '@/pages/Notifications';
 
+// Mobile Demo page
+import { MobileDemo } from '@/pages/MobileDemo';
+
+// AI Insights page
+import { AIInsights } from '@/pages/ai/AIInsights';
+
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
   manager: '/manager/dashboard',
@@ -145,6 +151,15 @@ function App() {
       <Routes>
         {/* Login */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        
+        {/* Mobile Demo - accessible to all authenticated users */}
+        <Route path="/mobile-demo" element={
+          <ProtectedRoute>
+            <Layout>
+              <MobileDemo />
+            </Layout>
+          </ProtectedRoute>
+        } />
 
         {/* Employee routes */}
         <Route element={<ProtectedLayout allowedRole="employee" />}>
@@ -236,6 +251,7 @@ function App() {
           <Route path="/hr/goal-setting" element={<GoalSetting />} />
           <Route path="/hr/goal-progress" element={<GoalProgressPage />} />
           <Route path="/hr/progress-dashboard" element={<ProgressDashboard />} />
+          <Route path="/hr/ai-insights" element={<AIInsights />} />
         </Route>
 
         {/* Admin routes */}
