@@ -41,6 +41,9 @@ import { MyContract } from '@/pages/Employee/MyContract';
 import { TeamObjectives } from '@/pages/Manager/TeamObjectives';
 import { ReviewReports } from '@/pages/Manager/ReviewReports';
 import { InterviewSchedule } from '@/pages/Manager/InterviewSchedule';
+import { PeerReview } from '@/pages/Employee/PeerReview';
+import { InterviewPlans } from '@/pages/Manager/InterviewPlans';
+import { InterviewRecord } from '@/pages/Manager/InterviewRecord';
 import GoalApproval from '@/pages/Manager/GoalApproval';
 import GoalDashboard from '@/pages/Manager/GoalDashboard';
 import { AppealsReview } from '@/pages/Manager/AppealsReview';
@@ -190,6 +193,7 @@ function App() {
           <Route path="/employee/my-bonus" element={<MyBonus />} />
           <Route path="/employee/appeals" element={<EmployeePerformanceAppeals />} />
           <Route path="/employee/goal-confirmation" element={<GoalConfirmation />} />
+          <Route path="/employee/peer-review" element={<PeerReview />} />
           <Route path="/employee/goal-progress" element={<GoalProgressPage />} />
           <Route path="/employee/progress-dashboard" element={<ProgressDashboard />} />
         </Route>
@@ -213,6 +217,8 @@ function App() {
           <Route path="/manager/goal-dashboard" element={<GoalDashboard />} />
           <Route path="/manager/review-reports" element={<ReviewReports />} />
           <Route path="/manager/interviews" element={<InterviewSchedule />} />
+          <Route path="/manager/interview-plans" element={<InterviewPlans />} />
+          <Route path="/manager/interview-records" element={<InterviewRecord />} />
           <Route path="/manager/goal-setting" element={<GoalSetting />} />
           <Route path="/manager/goal-progress" element={<GoalProgressPage />} />
           <Route path="/manager/progress-dashboard" element={<ProgressDashboard />} />

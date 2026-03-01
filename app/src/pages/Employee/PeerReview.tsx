@@ -1,420 +1,443 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle, MessageSquare, Send, Users, Sparkles, Loader2 } from 'lucide-react';
+import { Users, Star, Send, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import api from '@/services/api';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { StarRating } from '@/components/score/StarRating';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
 
-interface ReviewState {
-  collaboration: number;
-  professionalism: number;
-  communication: number;
-  comment: string;
-}
-
-export function EmployeePeerReview() {
+// 员工互评页面
+export default function PeerReview() {
   const { user } = useAuthStore();
-  const [assignments, setAssignments] = useState<any[]>([]);
-  const [reviews, setReviews] = useState<Record<string, ReviewState>>({});
-  const [submitted, setSubmitted] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
-  
-  const currentMonth = format(new Date(), 'yyyy-MM');
-  
-  // 生成分配
+  const [activeCycles, setActiveCycles] = useState<any[]>([]);
+  const [myReviews, setMyReviews] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCycle, setSelectedCycle] = useState<any>(null);
+
   useEffect(() => {
-    const fetchAssignments = async () => {
-      if (user) {
-        try {
-          const response = await api.peerReview.getMyTasks(currentMonth);
-          console.log('获取到的待评价任务:', response);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
-          if (response.success && response.data) {
-            const tasks = response.data;
-            // 过滤出尚未提交的评价任务（协作度、专业度、沟通都为1表示未评分）
-            const pendingTasks = tasks.filter((t: any) =>
-              t.collaboration === 1 &&
-              t.professionalism === 1 &&
-              t.communication === 1
-            );
-
-            console.log('待评价任务:', pendingTasks);
-
-            setAssignments(pendingTasks.map((t: any) => ({
-              revieweeId: t.revieweeId,
-              revieweeName: t.revieweeName,
-              department: user.subDepartment,
-              recordId: t.id
-            })));
-          }
-        } catch (error) {
-          console.error('获取待评价任务失败:', error);
+  const fetchData = async () => {
+    try {
+      // 获取进行中的周期
+      const cyclesRes = await fetch('http://localhost:3001/api/peer-reviews/cycles?status=active');
+      const cyclesData = await cyclesRes.json();
+      
+      if (cyclesData.success) {
+        setActiveCycles(cyclesData.data || []);
+        
+        // 如果有周期，获取我需要评价的人
+        if (cyclesData.data && cyclesData.data.length > 0) {
+          const cycle = cyclesData.data[0];
+          setSelectedCycle(cycle);
+          await fetchMyReviews(cycle.id);
         }
       }
-    };
-
-    fetchAssignments();
-  }, [user, currentMonth]);
-  
-  const handleReviewChange = (revieweeId: string, field: keyof ReviewState, value: number | string) => {
-    setReviews(prev => ({
-      ...prev,
-      [revieweeId]: {
-        ...prev[revieweeId],
-        [field]: value
-      }
-    }));
-  };
-  
-  /**
-   * AI生成评价意见
-   */
-  const handleGenerateComment = async (revieweeId: string, revieweeName: string) => {
-    if (!user) return;
-
-    const review = reviews[revieweeId] || { collaboration: 0, professionalism: 0, communication: 0, comment: '' };
-    
-    if (!review.collaboration || !review.professionalism || !review.communication) {
-      return; // 评分未完成，不生成
+    } catch (error) {
+      console.error('获取数据失败:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setAiLoading(prev => ({ ...prev, [revieweeId]: true }));
+  const fetchMyReviews = async (cycleId: number) => {
+    try {
+      // 获取我作为评价人的关系
+      const res = await fetch(
+        `http://localhost:3001/api/peer-reviews/relationships/${cycleId}?reviewer_id=${user?.id}`
+      );
+      const data = await res.json();
+      
+      if (data.success) {
+        setMyReviews(data.data || []);
+      }
+    } catch (error) {
+      console.error('获取评价列表失败:', error);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    );
+  }
+
+  if (activeCycles.length === 0) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">暂无进行中的互评</h2>
+          <p className="text-gray-600">当前没有需要您参与的360度互评活动</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      {/* 页头 */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">360度互评</h1>
+        <p className="text-gray-600 mt-1">评价您的同事，帮助团队共同成长</p>
+      </div>
+
+      {/* 周期选择 */}
+      {activeCycles.length > 1 && (
+        <div className="bg-blue-50 rounded-lg p-4 mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            选择互评周期
+          </label>
+          <select
+            value={selectedCycle?.id || ''}
+            onChange={(e) => {
+              const cycle = activeCycles.find(c => c.id === parseInt(e.target.value));
+              setSelectedCycle(cycle);
+              if (cycle) fetchMyReviews(cycle.id);
+            }}
+            className="w-full max-w-md px-3 py-2 border border-gray-300 rounded-lg"
+          >
+            {activeCycles.map(cycle => (
+              <option key={cycle.id} value={cycle.id}>
+                {cycle.name} ({cycle.start_date} ~ {cycle.end_date})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* 进度统计 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <StatCard
+          icon={<Users className="w-5 h-5 text-blue-600" />}
+          label="需要评价"
+          value={myReviews.length}
+          color="blue"
+        />
+        <StatCard
+          icon={<CheckCircle className="w-5 h-5 text-green-600" />}
+          label="已完成"
+          value={myReviews.filter(r => r.status === 'completed').length}
+          color="green"
+        />
+        <StatCard
+          icon={<Clock className="w-5 h-5 text-orange-600" />}
+          label="待完成"
+          value={myReviews.filter(r => r.status === 'pending').length}
+          color="orange"
+        />
+      </div>
+
+      {/* 评价列表 */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">我需要评价的同事</h2>
+        </div>
+
+        {myReviews.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            暂无需要评价的同事
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {myReviews.map((review) => (
+              <ReviewCard
+                key={review.id}
+                review={review}
+                cycleId={selectedCycle?.id}
+                onComplete={() => fetchMyReviews(selectedCycle?.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// 统计卡片
+function StatCard({ icon, label, value, color }: any) {
+  const colorClasses = {
+    blue: 'bg-blue-50 text-blue-700',
+    green: 'bg-green-50 text-green-700',
+    orange: 'bg-orange-50 text-orange-700'
+  };
+
+  return (
+    <div className={`${colorClasses[color]} rounded-lg p-4`}>
+      <div className="flex items-center gap-3">
+        <div>{icon}</div>
+        <div>
+          <p className="text-sm opacity-80">{label}</p>
+          <p className="text-2xl font-bold">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 评价卡片
+function ReviewCard({ review, cycleId, onComplete }: any) {
+  const [showModal, setShowModal] = useState(false);
+  const isCompleted = review.status === 'completed';
+
+  return (
+    <>
+      <div className="p-4 hover:bg-gray-50 transition-colors">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <Users className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">
+                被评价人 #{review.reviewee_id}
+              </h3>
+              <p className="text-sm text-gray-600">
+                {review.relationship_type === 'peer' ? '同事关系' : 
+                 review.relationship_type === 'subordinate' ? '您的下属' : 
+                 review.relationship_type === 'cross_dept' ? '跨部门协作' : '其他'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isCompleted ? (
+              <span className="flex items-center gap-1 text-green-600 text-sm">
+                <CheckCircle className="w-4 h-4" />
+                已完成
+              </span>
+            ) : (
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Star className="w-4 h-4" />
+                开始评价
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {showModal && (
+        <ReviewModal
+          review={review}
+          cycleId={cycleId}
+          onClose={() => setShowModal(false)}
+          onSuccess={() => {
+            setShowModal(false);
+            onComplete();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+// 评价Modal
+function ReviewModal({ review, cycleId, onClose, onSuccess }: any) {
+  const { user } = useAuthStore();
+  const [formData, setFormData] = useState({
+    teamwork_score: 3.0,
+    communication_score: 3.0,
+    professional_score: 3.0,
+    responsibility_score: 3.0,
+    innovation_score: 3.0,
+    strengths: '',
+    improvements: '',
+    overall_comment: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const scoreLabels = ['较差', '一般', '良好', '优秀', '卓越'];
+  const scoreValues = [1.0, 2.0, 3.0, 4.0, 5.0];
+
+  const calculateTotal = () => {
+    const scores = [
+      formData.teamwork_score,
+      formData.communication_score,
+      formData.professional_score,
+      formData.responsibility_score,
+      formData.innovation_score
+    ];
+    return (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/peer-review-comment`, {
+      const response = await fetch('http://localhost:3001/api/peer-reviews/reviews', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          reviewerName: user.name,
-          revieweeName,
-          scores: {
-            collaboration: review.collaboration,
-            professionalism: review.professionalism,
-            communication: review.communication
-          }
+          relationship_id: review.id,
+          cycle_id: cycleId,
+          reviewer_id: user?.id,
+          reviewee_id: review.reviewee_id,
+          ...formData,
+          total_score: parseFloat(calculateTotal())
         })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
-        if (versions.length > 0) {
-          handleReviewChange(revieweeId, 'comment', versions[0]);
-        }
+      const data = await response.json();
+      if (data.success) {
+        onSuccess();
+      } else {
+        alert('提交失败: ' + data.message);
       }
     } catch (error) {
-      console.error('Error generating AI comment:', error);
-    } finally {
-      setAiLoading(prev => ({ ...prev, [revieweeId]: false }));
-    }
-  };
-  
-  const handleSubmit = async (revieweeId: string) => {
-    setSubmitting(true);
-    try {
-      const review = reviews[revieweeId];
-      const assignment = assignments.find(a => a.revieweeId === revieweeId);
-
-      const response = await api.peerReview.submitReview({
-        id: assignment?.recordId || revieweeId,
-        collaboration: review.collaboration,
-        professionalism: review.professionalism,
-        communication: review.communication,
-        comment: review.comment
-      });
-
-      if (response.success) {
-        setSubmitted(prev => [...prev, revieweeId]);
-      }
-    } catch (error) {
-      console.error('提交评价失败:', error);
+      console.error('提交失败:', error);
+      alert('提交失败');
     } finally {
       setSubmitting(false);
     }
   };
-  
-  const isReviewComplete = (revieweeId: string) => {
-    const review = reviews[revieweeId];
-    return review && 
-           review.collaboration > 0 && 
-           review.professionalism > 0 && 
-           review.communication > 0;
-  };
-  
-  // 统计
-  const totalReviews = assignments.length;
-  const completedReviews = submitted.length;
-  const completionRate = totalReviews > 0 ? (completedReviews / totalReviews) * 100 : 0;
-  
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
-  };
-  
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4">
+          <h2 className="text-xl font-bold text-gray-900">360度互评</h2>
+          <p className="text-sm text-gray-600 mt-1">被评价人 #{review.reviewee_id}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* 评分维度 */}
+          <div className="space-y-4">
+            <ScoreSlider
+              label="团队协作"
+              value={formData.teamwork_score}
+              onChange={(v) => setFormData({ ...formData, teamwork_score: v })}
+            />
+            <ScoreSlider
+              label="沟通能力"
+              value={formData.communication_score}
+              onChange={(v) => setFormData({ ...formData, communication_score: v })}
+            />
+            <ScoreSlider
+              label="专业能力"
+              value={formData.professional_score}
+              onChange={(v) => setFormData({ ...formData, professional_score: v })}
+            />
+            <ScoreSlider
+              label="责任心"
+              value={formData.responsibility_score}
+              onChange={(v) => setFormData({ ...formData, responsibility_score: v })}
+            />
+            <ScoreSlider
+              label="创新能力"
+              value={formData.innovation_score}
+              onChange={(v) => setFormData({ ...formData, innovation_score: v })}
+            />
+          </div>
+
+          {/* 总分 */}
+          <div className="bg-blue-50 rounded-lg p-4">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-gray-900">综合评分</span>
+              <span className="text-2xl font-bold text-blue-600">{calculateTotal()}</span>
+            </div>
+          </div>
+
+          {/* 文字评价 */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              优点/亮点 *
+            </label>
+            <textarea
+              required
+              value={formData.strengths}
+              onChange={(e) => setFormData({ ...formData, strengths: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="请写出同事的优点和值得学习的地方"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              改进建议
+            </label>
+            <textarea
+              value={formData.improvements}
+              onChange={(e) => setFormData({ ...formData, improvements: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="有什么可以改进的地方？"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              综合评价
+            </label>
+            <textarea
+              value={formData.overall_comment}
+              onChange={(e) => setFormData({ ...formData, overall_comment: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              rows={3}
+              placeholder="整体评价和其他想说的话"
+            />
+          </div>
+
+          {/* 按钮 */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              disabled={submitting}
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+              disabled={submitting}
+            >
+              <Send className="w-4 h-4" />
+              {submitting ? '提交中...' : '提交评价'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// 评分滑块
+function ScoreSlider({ label, value, onChange }: any) {
+  const scoreLabels = ['较差', '一般', '良好', '优秀', '卓越'];
+  const scoreValues = [1.0, 2.0, 3.0, 4.0, 5.0];
   
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="max-w-4xl mx-auto"
-    >
-      {/* Header */}
-      <motion.div variants={itemVariants} className="mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">360度评分</h1>
-          <p className="text-gray-500 mt-1">对部门内随机分配的协作同事进行多维度评价</p>
-        </div>
-      </motion.div>
-      
-      {/* Progress */}
-      <motion.div variants={itemVariants} className="mb-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">评分进度</p>
-                <p className="text-2xl font-bold mt-1">
-                  {completedReviews} / {totalReviews}
-                </p>
-              </div>
-              <div className="flex-1 mx-6">
-                <Progress value={completionRate} className="h-3" />
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-500">完成度</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {Math.round(completionRate)}%
-                </p>
-              </div>
-            </div>
-            
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-500" />
-              <p className="text-sm text-blue-700">
-                系统已为您随机分配 <strong>{totalReviews}</strong> 位同部门同事进行评分
-                {totalReviews < 3 && '（部门人数不足3人）'}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
-      {/* Reviewee List */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Users className="w-5 h-5" />
-          待评同事
-        </h3>
-        
-        {assignments.map((reviewee, index) => {
-          const isSubmitted = submitted.includes(reviewee.revieweeId);
-          const review = reviews[reviewee.revieweeId] || { collaboration: 0, professionalism: 0, communication: 0, comment: '' };
-          
-          return (
-            <Card 
-              key={reviewee.revieweeId}
-              className={cn(
-                "transition-all duration-200",
-                isSubmitted && "bg-green-50 border-green-200"
-              )}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold",
-                      isSubmitted ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                    )}>
-                      {isSubmitted ? <CheckCircle className="w-6 h-6" /> : reviewee.revieweeName.charAt(0)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{reviewee.revieweeName}</CardTitle>
-                      <CardDescription>{reviewee.department}</CardDescription>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline">评分 {index + 1}/{totalReviews}</Badge>
-                    
-                    {isSubmitted ? (
-                      <span className="inline-flex items-center gap-1 text-green-600 text-sm font-medium">
-                        <CheckCircle className="w-4 h-4" />
-                        已完成
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-500">
-                        {isReviewComplete(reviewee.revieweeId) ? '可提交' : '待评分'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className={cn("pt-0", isSubmitted && "opacity-60")}>
-                <div className="border-t pt-4 space-y-6">
-                  {/* Collaboration */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        协作态度
-                      </label>
-                      <span className="text-sm text-gray-500">
-                        {review.collaboration > 0 ? `${review.collaboration} 星` : '未评分'}
-                      </span>
-                    </div>
-                    <StarRating
-                      value={review.collaboration}
-                      onChange={(v) => handleReviewChange(reviewee.revieweeId, 'collaboration', v)}
-                      size="lg"
-                      readOnly={isSubmitted}
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      评估该同事在项目协作中的配合度和积极性
-                    </p>
-                  </div>
-                  
-                  {/* Professionalism */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        专业能力
-                      </label>
-                      <span className="text-sm text-gray-500">
-                        {review.professionalism > 0 ? `${review.professionalism} 星` : '未评分'}
-                      </span>
-                    </div>
-                    <StarRating
-                      value={review.professionalism}
-                      onChange={(v) => handleReviewChange(reviewee.revieweeId, 'professionalism', v)}
-                      size="lg"
-                      readOnly={isSubmitted}
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      评估该同事的专业技能水平和问题解决能力
-                    </p>
-                  </div>
-                  
-                  {/* Communication */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        沟通效率
-                      </label>
-                      <span className="text-sm text-gray-500">
-                        {review.communication > 0 ? `${review.communication} 星` : '未评分'}
-                      </span>
-                    </div>
-                    <StarRating
-                      value={review.communication}
-                      onChange={(v) => handleReviewChange(reviewee.revieweeId, 'communication', v)}
-                      size="lg"
-                      readOnly={isSubmitted}
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      评估该同事的沟通表达和信息传递效率
-                    </p>
-                  </div>
-                  
-                  {/* Comment */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-gray-700">
-                        评价建议（可选）
-                      </label>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleGenerateComment(reviewee.revieweeId, reviewee.revieweeName)}
-                        disabled={aiLoading[reviewee.revieweeId] || isSubmitted || !isReviewComplete(reviewee.revieweeId)}
-                        className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                      >
-                        {aiLoading[reviewee.revieweeId] ? (
-                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-4 h-4 mr-1" />
-                        )}
-                        AI 帮我写
-                      </Button>
-                    </div>
-                    <Textarea
-                      placeholder="请描述您对该同事的评价和建议..."
-                      value={review.comment}
-                      onChange={(e) => handleReviewChange(reviewee.revieweeId, 'comment', e.target.value)}
-                      className="min-h-[80px]"
-                      disabled={isSubmitted}
-                    />
-                  </div>
-                  
-                  {/* Submit */}
-                  {!isSubmitted && (
-                    <div className="flex justify-end">
-                      <Button
-                        onClick={() => handleSubmit(reviewee.revieweeId)}
-                        disabled={!isReviewComplete(reviewee.revieweeId) || submitting}
-                      >
-                        {submitting ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Send className="w-4 h-4 mr-2" />
-                        )}
-                        提交评分
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-        
-        {assignments.length === 0 && (
-          <Card className="p-8 text-center">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500">部门内暂无其他员工需要评分</p>
-          </Card>
-        )}
-      </motion.div>
-      
-      {/* Tips */}
-      <motion.div variants={itemVariants} className="mt-6">
-        <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="pt-6">
-            <h4 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              评分说明
-            </h4>
-            <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-              <li>系统每月随机分配2位同部门同事（自己不参与评价自己，不满2人则按实际人数）</li>
-              <li>请根据实际协作体验进行客观评价</li>
-              <li>评分采用5星制，1星最低，5星最高</li>
-              <li>评价建议为选填项，但有助于被评人改进</li>
-              <li>提交后评分不可修改</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </motion.div>
+    <div>
+      <div className="flex justify-between items-center mb-2">
+        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <span className="text-sm font-semibold text-blue-600">
+          {value.toFixed(1)} - {scoreLabels[scoreValues.indexOf(value)]}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        {scoreValues.map((score, index) => (
+          <button
+            key={score}
+            type="button"
+            onClick={() => onChange(score)}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+              value === score
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {scoreLabels[index]}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
