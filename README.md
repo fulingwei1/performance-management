@@ -3,6 +3,8 @@
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
+[![Backend CI](https://github.com/fulingwei1/performance-management/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/fulingwei1/performance-management/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/fulingwei1/performance-management/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/fulingwei1/performance-management/actions/workflows/frontend-ci.yml)
 [![TypeScript](https://img.shields.io/badge/typescript-5.0.0-blue.svg)](https://www.typescriptlang.org/)
 
 > 🎯 基于部门类型的智能化绩效考核系统 - 让评价更科学、更公平、更高效
