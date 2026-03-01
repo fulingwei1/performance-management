@@ -23,7 +23,7 @@ export const errorHandler = (
   if (err.code === '23505') {
     res.status(409).json({
       success: false,
-      error: '数据已存在'
+      message: '数据已存在'
     });
     return;
   }
@@ -31,7 +31,7 @@ export const errorHandler = (
   if (err.code === '23503') {
     res.status(400).json({
       success: false,
-      error: '引用的数据不存在'
+      message: '引用的数据不存在'
     });
     return;
   }
@@ -39,14 +39,15 @@ export const errorHandler = (
   if (err.code === '23502') {
     res.status(400).json({
       success: false,
-      error: '必填字段不能为空'
+      message: '必填字段不能为空'
     });
     return;
   }
   
   res.status(statusCode).json({
     success: false,
-    error: message
+    message,
+    code: err.code
   });
 };
 
@@ -54,7 +55,7 @@ export const errorHandler = (
 export const notFoundHandler = (req: Request, res: Response): void => {
   res.status(404).json({
     success: false,
-    error: '接口不存在'
+    message: '接口不存在'
   });
 };
 

@@ -15,7 +15,7 @@ export const settingsController = {
       const scope = getAssessmentScope();
       res.json({ success: true, data: scope });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
 
@@ -30,7 +30,7 @@ export const settingsController = {
       const updated = setAssessmentScope({ rootDepts, subDeptsByRoot });
       res.json({ success: true, data: updated, message: '考核范围已更新' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
 
@@ -39,7 +39,7 @@ export const settingsController = {
       const chain = await getPromotionApprovalChain();
       res.json({ success: true, data: { chain } });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
 
@@ -49,7 +49,7 @@ export const settingsController = {
       const updated = await setPromotionApprovalChain(chain);
       res.json({ success: true, data: { chain: updated }, message: '审批链已更新' });
     } catch (error: any) {
-      res.status(400).json({ success: false, error: error.message });
+      res.status(400).json({ success: false, message: error.message });
     }
   }
 };

@@ -21,7 +21,7 @@ const authenticateWithTokenParam = (req: Request, res: Response, next: NextFunct
     }
     
     if (!token) {
-      res.status(401).json({ success: false, error: '未提供认证令牌' });
+      res.status(401).json({ success: false, message: '未提供认证令牌' });
       return;
     }
     
@@ -29,7 +29,7 @@ const authenticateWithTokenParam = (req: Request, res: Response, next: NextFunct
     (req as any).user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ success: false, error: '认证令牌无效或已过期' });
+    res.status(401).json({ success: false, message: '认证令牌无效或已过期' });
   }
 };
 

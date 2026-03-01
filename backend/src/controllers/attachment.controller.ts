@@ -29,10 +29,10 @@ export const upload = multer({
 export const attachmentController = {
   upload: asyncHandler(async (req: Request, res: Response) => {
     if (!req.file) {
-      return res.status(400).json({ success: false, error: '未上传文件' });
+      return res.status(400).json({ success: false, message: '未上传文件' });
     }
     if (!req.user) {
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
 
     const { relatedType, relatedId } = req.body;
@@ -77,7 +77,7 @@ export const attachmentController = {
 
     if (USE_MEMORY_DB) {
       const att = memoryStore.attachments.get(id);
-      if (!att) return res.status(404).json({ success: false, error: '附件不存在' });
+      if (!att) return res.status(404).json({ success: false, message: '附件不存在' });
       // Delete file
       const filePath = path.join(uploadsDir, att.filename);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
@@ -85,14 +85,14 @@ export const attachmentController = {
       return res.json({ success: true, message: '删除成功' });
     }
 
-    res.status(404).json({ success: false, error: '附件不存在' });
+    res.status(404).json({ success: false, message: '附件不存在' });
   }),
 
   serveFile: (req: Request, res: Response) => {
     const filename = req.params.filename as string;
     const filePath = path.join(uploadsDir, filename);
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ success: false, error: '文件不存在' });
+      return res.status(404).json({ success: false, message: '文件不存在' });
     }
     res.sendFile(filePath);
   },

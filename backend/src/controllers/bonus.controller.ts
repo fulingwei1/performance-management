@@ -25,7 +25,7 @@ export const bonusController = {
   }),
 
   updateConfig: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { rules } = req.body;
 
     if (USE_MEMORY_DB) {
@@ -42,12 +42,12 @@ export const bonusController = {
   }),
 
   calculate: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { year, quarter } = req.body;
 
     if (USE_MEMORY_DB) {
       const config = memoryStore.bonusConfig.get('default');
-      if (!config) return res.status(400).json({ success: false, error: '未配置奖金规则' });
+      if (!config) return res.status(400).json({ success: false, message: '未配置奖金规则' });
 
       const employees = Array.from(memoryStore.employees.values());
       const results: BonusResult[] = [];
@@ -106,13 +106,13 @@ export const bonusController = {
   }),
 
   updateResult: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const id = req.params.id as string;
     const { bonus, baseSalary } = req.body;
 
     if (USE_MEMORY_DB) {
       const result = memoryStore.bonusResults.get(id);
-      if (!result) return res.status(404).json({ success: false, error: '记录不存在' });
+      if (!result) return res.status(404).json({ success: false, message: '记录不存在' });
       if (bonus !== undefined) result.bonus = bonus;
       if (baseSalary !== undefined) result.baseSalary = baseSalary;
       result.adjusted = true;
@@ -121,6 +121,6 @@ export const bonusController = {
       memoryStore.bonusResults.set(id, result);
       return res.json({ success: true, data: result });
     }
-    res.status(404).json({ success: false, error: '记录不存在' });
+    res.status(404).json({ success: false, message: '记录不存在' });
   }),
 };

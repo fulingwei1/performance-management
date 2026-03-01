@@ -36,7 +36,7 @@ export function DeleteRecordsDialog({ open, onOpenChange, currentMonth, realCurr
         onDeleted();
         onOpenChange(false);
       } else {
-        throw new Error(response.error || '删除失败');
+        throw new Error(response.message || '删除失败');
       }
     } catch (error: any) {
       alert('删除失败: ' + (error.message || '未知错误'));
@@ -57,7 +57,7 @@ export function DeleteRecordsDialog({ open, onOpenChange, currentMonth, realCurr
         onDeleted();
         onOpenChange(false);
       } else {
-        throw new Error(response.error || '删除失败');
+        throw new Error(response.message || '删除失败');
       }
     } catch (error: any) {
       alert('删除失败: ' + (error.message || '未知错误'));

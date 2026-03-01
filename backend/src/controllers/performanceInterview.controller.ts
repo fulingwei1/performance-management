@@ -14,7 +14,7 @@ export const performanceInterviewController = {
 
   getById: asyncHandler(async (req: Request, res: Response) => {
     const data = await PerformanceInterviewModel.findById(req.params.id as string);
-    if (!data) return res.status(404).json({ success: false, error: '面谈记录不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '面谈记录不存在' });
     res.json({ success: true, data });
   }),
 
@@ -25,7 +25,7 @@ export const performanceInterviewController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await PerformanceInterviewModel.update(req.params.id as string, req.body);
-    if (!data) return res.status(404).json({ success: false, error: '面谈记录不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '面谈记录不存在' });
     res.json({ success: true, data });
   })
 };

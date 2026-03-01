@@ -19,7 +19,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export const peerReviewCycleController = {
   createCycle: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { title, year, quarter, startDate, endDate, participants, reviewsPerPerson } = req.body;
     const id = uuidv4();
 
@@ -92,7 +92,7 @@ export const peerReviewCycleController = {
   }),
 
   getPending: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
 
     if (USE_MEMORY_DB) {
       const tasks = Array.from(memoryStore.peerReviewTasks.values())
@@ -115,14 +115,14 @@ export const peerReviewCycleController = {
   }),
 
   submit: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { cycleId, revieweeId, scores } = req.body;
 
     if (USE_MEMORY_DB) {
       const task = Array.from(memoryStore.peerReviewTasks.values())
         .find(t => t.cycleId === cycleId && t.reviewerId === req.user!.userId && t.revieweeId === revieweeId);
 
-      if (!task) return res.status(404).json({ success: false, error: '互评任务不存在' });
+      if (!task) return res.status(404).json({ success: false, message: '互评任务不存在' });
 
       task.scores = scores;
       task.status = 'submitted';
@@ -131,7 +131,7 @@ export const peerReviewCycleController = {
 
       return res.json({ success: true, data: task, message: '互评提交成功' });
     }
-    res.status(404).json({ success: false, error: '互评任务不存在' });
+    res.status(404).json({ success: false, message: '互评任务不存在' });
   }),
 
   getResults: asyncHandler(async (req: Request, res: Response) => {

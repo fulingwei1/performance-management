@@ -20,10 +20,10 @@ router.get('/my', appealController.getMyAppeals);
  * HR相关路由
  */
 // 查看所有申诉（需要HR或Admin权限）
-router.get('/', requireRole('hr', 'admin'), appealController.getAllAppeals);
+router.get('/', requireRole('hr', 'admin', 'manager'), appealController.getAllAppeals);
 
 // 处理申诉（需要HR或Admin权限）
-router.put('/:id/review', requireRole('hr', 'admin'), appealController.review);
+router.put('/:id/review', requireRole('hr', 'admin', 'manager'), appealController.review);
 
 /**
  * 通用路由

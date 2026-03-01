@@ -85,7 +85,7 @@ export function TaskFreezeManagement() {
         toast.success(`已解冻 ${employeeName} 的任务`);
         loadFrozenTasks(); // 刷新列表
       } else {
-        toast.error(data.message || data.error || '解冻失败');
+        toast.error(data.message || data.message || '解冻失败');
       }
     } catch (error: any) {
       toast.error(error.message || '网络错误');
@@ -115,7 +115,7 @@ export function TaskFreezeManagement() {
         toast.success(`已批量解冻 ${data.data?.unfrozen || 0} 条任务`);
         loadFrozenTasks();
       } else {
-        toast.error(data.message || data.error || '批量解冻失败');
+        toast.error(data.message || data.message || '批量解冻失败');
       }
     } catch (error: any) {
       toast.error(error.message || '网络错误');

@@ -45,7 +45,13 @@ import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
 import notificationRoutes from './routes/notification.routes';
 import appealRoutes from './routes/appeal.routes';
 import goalApprovalRoutes from './routes/goalApproval.routes';
+import goalDashboardRoutes from './routes/goalDashboard.routes';
 import auditLogRoutes from './routes/auditLog.routes';
+import todoRoutes from './routes/todo.routes';
+import dataImportRoutes from './routes/dataImport.routes';
+import dataExportRoutes from './routes/dataExport.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -156,7 +162,12 @@ app.use('/api/assessment-publications', assessmentPublicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/appeals', appealRoutes);
 app.use('/api/goal-approval', goalApprovalRoutes);
+app.use('/api/goal-dashboard', goalDashboardRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/todos', todoRoutes);
+app.use('/api/data-import', dataImportRoutes);
+app.use('/api/data-export', dataExportRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // 404处理
 app.use(notFoundHandler);
@@ -174,6 +185,7 @@ const initializeServer = async () => {
  await testConnection();
  await initializeData();
  logger.info('✅ Data initialization completed');
+    SchedulerService.init();
  } catch (error) {
  logger.error(`❌ Initialization failed: ${error}`);
  }

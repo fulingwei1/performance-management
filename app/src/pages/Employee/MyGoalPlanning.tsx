@@ -303,16 +303,12 @@ export function MyGoalPlanning() {
       
       for (const goal of goals) {
         // 调用提交审批API
-        await fetch(`${API_BASE_URL}/objectives/${goal.id}`, {
-          method: 'PUT',
+        await fetch(`${API_BASE_URL}/objectives/${goal.id}/submit`, {
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            status: 'pending_approval',
-            approverId: user.managerId
-          })
+          }
         });
       }
       

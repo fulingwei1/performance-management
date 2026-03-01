@@ -15,6 +15,8 @@ import { Analytics } from '@/pages/Manager/Analytics';
 import { QuarterlySummary } from '@/pages/Manager/QuarterlySummary';
 import { ManagerPromotionRequest } from '@/pages/Manager/PromotionRequest';
 import { GMAnalytics } from '@/pages/GM/Analytics';
+import { PerformanceAnalytics } from '@/pages/Analytics/PerformanceAnalytics';
+import { EmployeeTrend } from '@/pages/Analytics/EmployeeTrend';
 import { EmployeePerformanceHistory } from '@/pages/Manager/EmployeePerformanceHistory';
 import { TeamList } from '@/pages/Manager/TeamList';
 import { GMDashboard } from '@/pages/GM/Dashboard';
@@ -39,6 +41,8 @@ import { TeamObjectives } from '@/pages/Manager/TeamObjectives';
 import { ReviewReports } from '@/pages/Manager/ReviewReports';
 import { InterviewSchedule } from '@/pages/Manager/InterviewSchedule';
 import GoalApproval from '@/pages/Manager/GoalApproval';
+import GoalDashboard from '@/pages/Manager/GoalDashboard';
+import { AppealsReview } from '@/pages/Manager/AppealsReview';
 import { StrategicObjectives } from '@/pages/HR/StrategicObjectives';
 import { ContractManagement } from '@/pages/HR/ContractManagement';
 import { OKRDashboard } from '@/pages/HR/OKRDashboard';
@@ -50,6 +54,9 @@ import { RelatedOKR } from '@/pages/OKR/RelatedOKR';
 import { MyBonus } from '@/pages/Employee/MyBonus';
 import { BonusManagement } from '@/pages/HR/BonusManagement';
 import { DepartmentTree } from '@/pages/HR/DepartmentTree';
+import { OrganizationChart } from '@/pages/HR/OrganizationChart';
+import { DataImport } from '@/pages/HR/DataImport';
+import { DataExport } from '@/pages/HR/DataExport';
 import { PeerReviewManagement } from '@/pages/HR/PeerReviewManagement';
 import { TaskFreezeManagement } from '@/pages/HR/TaskFreezeManagement';
 import { SystemSettings } from '@/pages/Admin/SystemSettings';
@@ -169,16 +176,20 @@ function App() {
           <Route path="/manager/scoring" element={<ScoringManagement />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
+          <Route path="/manager/performance-analytics" element={<PerformanceAnalytics />} />
+          <Route path="/manager/employee-trend/:employeeId" element={<EmployeeTrend />} />
           <Route path="/manager/quarterly-summary" element={<QuarterlySummary />} />
           <Route path="/manager/promotion" element={<ManagerPromotionRequest />} />
           <Route path="/manager/objectives" element={<ObjectiveTree />} />
           <Route path="/manager/team-objectives" element={<TeamObjectives />} />
           <Route path="/manager/goal-approval" element={<GoalApproval />} />
+          <Route path="/manager/goal-dashboard" element={<GoalDashboard />} />
           <Route path="/manager/review-reports" element={<ReviewReports />} />
           <Route path="/manager/interviews" element={<InterviewSchedule />} />
           <Route path="/manager/goal-setting" element={<GoalSetting />} />
           <Route path="/manager/goal-progress" element={<GoalProgressPage />} />
           <Route path="/manager/progress-dashboard" element={<ProgressDashboard />} />
+          <Route path="/manager/appeals" element={<AppealsReview />} />
         </Route>
 
         {/* GM routes */}
@@ -188,6 +199,8 @@ function App() {
           <Route path="/gm/scoring" element={<GMScoring />} />
           <Route path="/gm/analytics" element={<GMAnalytics />} />
           <Route path="/gm/data-export" element={<GMDataExport />} />
+          <Route path="/gm/performance-analytics" element={<PerformanceAnalytics />} />
+          <Route path="/gm/employee-trend/:employeeId" element={<EmployeeTrend />} />
           <Route path="/gm/promotion-approvals" element={<GMPromotionApprovals />} />
           <Route path="/gm/strategic-overview" element={<StrategicOverview />} />
           <Route path="/gm/strategic-goals" element={<StrategicGoalsManagement />} />
@@ -207,6 +220,8 @@ function App() {
           <Route path="/hr/appeals" element={<HRAppealsManagement />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/strategic-objectives" element={<StrategicObjectives />} />
+          <Route path="/hr/performance-analytics" element={<PerformanceAnalytics />} />
+          <Route path="/hr/employee-trend/:employeeId" element={<EmployeeTrend />} />
           <Route path="/hr/contract-management" element={<ContractManagement />} />
           <Route path="/hr/okr-dashboard" element={<OKRDashboard />} />
           <Route path="/hr/objectives" element={<ObjectiveTree />} />
@@ -214,6 +229,9 @@ function App() {
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
+          <Route path="/hr/organization-chart" element={<OrganizationChart />} />
+          <Route path="/hr/data-import" element={<DataImport />} />
+          <Route path="/hr/data-export" element={<DataExport />} />
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
           <Route path="/hr/goal-setting" element={<GoalSetting />} />
           <Route path="/hr/goal-progress" element={<GoalProgressPage />} />

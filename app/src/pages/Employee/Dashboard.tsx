@@ -14,6 +14,8 @@ import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { TodoSection } from '@/components/dashboard/TodoSection';
+import { todoApi } from '@/services/api';
 
 export function EmployeeDashboard() {
   const { user } = useAuthStore();
@@ -78,6 +80,11 @@ export function EmployeeDashboard() {
         </p>
       </motion.div>
       
+      {/* 待办事项 */}
+      <motion.div variants={itemVariants}>
+        <TodoSection role="employee" fetchSummary={todoApi.getSummary} />
+      </motion.div>
+
       {/* 战略目标展示 */}
       <motion.div variants={itemVariants}>
         <StrategicGoalsDisplay showDepartment={true} />

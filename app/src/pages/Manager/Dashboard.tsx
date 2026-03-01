@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
 import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
+import { TodoSection } from '@/components/dashboard/TodoSection';
+import { todoApi } from '@/services/api';
 
 // 月份选项
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
@@ -154,6 +156,11 @@ export function ManagerDashboard() {
         </div>
       </motion.div>
       
+      {/* 待办事项 */}
+      <motion.div variants={itemVariants}>
+        <TodoSection role="manager" fetchSummary={todoApi.getSummary} />
+      </motion.div>
+
       {/* 战略目标展示 */}
       <motion.div variants={itemVariants}>
         <StrategicGoalsDisplay showDepartment={true} />

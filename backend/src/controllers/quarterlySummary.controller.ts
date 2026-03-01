@@ -23,17 +23,17 @@ export const quarterlySummaryController = {
       }
 
       if (!req.user) {
-        return res.status(401).json({ success: false, error: '未认证' });
+        return res.status(401).json({ success: false, message: '未认证' });
       }
 
       const { userId, role } = req.user;
       if (role !== 'manager') {
-        return res.status(403).json({ success: false, error: '权限不足' });
+        return res.status(403).json({ success: false, message: '权限不足' });
       }
 
       const employee = await EmployeeModel.findById(userId);
       if (!employee) {
-        return res.status(404).json({ success: false, error: '用户不存在' });
+        return res.status(404).json({ success: false, message: '用户不存在' });
       }
 
       const { quarter, summary, nextQuarterPlan } = req.body;
@@ -41,7 +41,7 @@ export const quarterlySummaryController = {
       const nextPlanValue = (nextQuarterPlan || '').toString();
 
       if (status !== 'draft' && !nextPlanValue.trim()) {
-        return res.status(400).json({ success: false, error: '下季度计划不能为空' });
+        return res.status(400).json({ success: false, message: '下季度计划不能为空' });
       }
 
       const saved = await QuarterlySummaryModel.upsert({
@@ -63,17 +63,17 @@ export const quarterlySummaryController = {
 
   getMySummaries: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
 
     const { userId, role } = req.user;
     if (role !== 'manager') {
-      return res.status(403).json({ success: false, error: '权限不足' });
+      return res.status(403).json({ success: false, message: '权限不足' });
     }
 
     const quarter = req.query.quarter as string | undefined;
     if (quarter && !QUARTER_REGEX.test(quarter)) {
-      return res.status(400).json({ success: false, error: '季度格式应为 YYYY-Q1' });
+      return res.status(400).json({ success: false, message: '季度格式应为 YYYY-Q1' });
     }
 
     const records = await QuarterlySummaryModel.findByManagerId(userId, quarter);

@@ -13,7 +13,7 @@ export const kpiAssignmentController = {
   }),
 
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const year = req.query.year ? parseInt(req.query.year as string) : undefined;
     const data = await KpiAssignmentModel.findAll({ employeeId: req.user.userId, year });
     res.json({ success: true, data });
@@ -26,7 +26,7 @@ export const kpiAssignmentController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await KpiAssignmentModel.update(req.params.id as string, req.body);
-    if (!data) return res.status(404).json({ success: false, error: 'KPI不存在' });
+    if (!data) return res.status(404).json({ success: false, message: 'KPI不存在' });
     res.json({ success: true, data });
   })
 };

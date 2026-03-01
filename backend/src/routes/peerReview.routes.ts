@@ -26,14 +26,14 @@ router.post('/allocate', authenticate, async (req: Request, res: Response, next:
     
     if (!user) {
       logger.info('[DEBUG] 用户未认证');
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
     
     logger.info(`[DEBUG] 用户角色: ${user.role}`);
     
     if (user.role !== 'hr' && user.role !== 'manager') {
       logger.info('[DEBUG] 权限检查失败，角色不是hr或manager');
-      return res.status(403).json({ success: false, error: '无权操作' });
+      return res.status(403).json({ success: false, message: '无权操作' });
     }
     
     logger.info('[DEBUG] 权限检查通过，开始分配...');
@@ -50,7 +50,7 @@ router.post('/allocate', authenticate, async (req: Request, res: Response, next:
     });
   } catch (error: any) {
     logger.error(`[ERROR] 分配360度评价任务失败: ${error}`);
-    return res.status(500).json({ success: false, error: error.message || '分配失败' });
+    return res.status(500).json({ success: false, message: error.message || '分配失败' });
   }
 });
 

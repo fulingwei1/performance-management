@@ -15,7 +15,7 @@ export const objectiveController = {
 
   getById: asyncHandler(async (req: Request, res: Response) => {
     const data = await ObjectiveModel.findById(req.params.id as string);
-    if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, data });
   }),
 
@@ -31,7 +31,7 @@ export const objectiveController = {
     
     // 如果是员工角色,只能创建自己的目标
     if (userRole === 'employee' && req.body.employeeId !== userId) {
-      return res.status(403).json({ success: false, error: '权限不足:员工只能创建自己的目标' });
+      return res.status(403).json({ success: false, message: '权限不足:员工只能创建自己的目标' });
     }
     
     const data = await ObjectiveModel.create({ id: uuidv4(), ...req.body, progress: 0, status: req.body.status || 'draft' });
@@ -40,27 +40,27 @@ export const objectiveController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await ObjectiveModel.update(req.params.id as string, req.body);
-    if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
     const ok = await ObjectiveModel.delete(req.params.id as string);
-    if (!ok) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!ok) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
 
   updateProgress: asyncHandler(async (req: Request, res: Response) => {
     const { progress } = req.body;
-    if (progress === undefined) return res.status(400).json({ success: false, error: '请提供进度值' });
+    if (progress === undefined) return res.status(400).json({ success: false, message: '请提供进度值' });
     const data = await ObjectiveModel.updateProgress(req.params.id as string, progress);
-    if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, data });
   }),
 
   addKeyResult: asyncHandler(async (req: Request, res: Response) => {
     const objective = await ObjectiveModel.findById(req.params.id as string);
-    if (!objective) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!objective) return res.status(404).json({ success: false, message: '目标不存在' });
     const kr = await ObjectiveModel.addKeyResult({ id: uuidv4(), objectiveId: req.params.id as string, ...req.body, currentValue: req.body.currentValue || 0, progress: 0, status: 'not_started' });
     res.status(201).json({ success: true, data: kr });
   }),
@@ -72,17 +72,17 @@ export const objectiveController = {
     const userId = (req as any).user?.userId;
 
     if (!userId) {
-      return res.status(401).json({ success: false, error: '未授权' });
+      return res.status(401).json({ success: false, message: '未授权' });
     }
 
     const objective = await ObjectiveModel.findById(id as string);
     if (!objective) {
-      return res.status(404).json({ success: false, error: '目标不存在' });
+      return res.status(404).json({ success: false, message: '目标不存在' });
     }
 
     // 检查是否是目标的所有者
     if (objective.ownerId !== userId) {
-      return res.status(403).json({ success: false, error: '只能确认自己的目标' });
+      return res.status(403).json({ success: false, message: '只能确认自己的目标' });
     }
 
     const data = await ObjectiveModel.update(id as string, {
@@ -99,7 +99,7 @@ export const objectiveController = {
     const { objectives } = req.body;
 
     if (!Array.isArray(objectives)) {
-      return res.status(400).json({ success: false, error: '请提供目标列表' });
+      return res.status(400).json({ success: false, message: '请提供目标列表' });
     }
 
     const totalWeight = objectives.reduce((sum, obj) => sum + (obj.weight || 0), 0);
@@ -115,3 +115,30 @@ export const objectiveController = {
     });
   }),
 };
+
+// 提交目标审批 - 独立导出
+
+export const submitObjectiveForApproval = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = (req as any).user?.userId;
+
+  if (!userId) {
+    return res.status(401).json({ success: false, message: '未授权' });
+  }
+
+  const objective = await ObjectiveModel.findById(id as string);
+  if (!objective) {
+    return res.status(404).json({ success: false, message: '目标不存在' });
+  }
+
+  if (objective.ownerId !== userId) {
+    return res.status(403).json({ success: false, message: '只能提交自己的目标' });
+  }
+
+  if (objective.status !== 'draft' && objective.status !== 'rejected') {
+    return res.status(400).json({ success: false, message: '只有草稿或被拒绝的目标可以提交审批' });
+  }
+
+  const data = await ObjectiveModel.submitForApproval(id as string, userId);
+  res.json({ success: true, data, message: '目标已提交审批' });
+});

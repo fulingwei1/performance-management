@@ -113,7 +113,7 @@ export const dashboardController = {
     const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
 
     if (!userId) {
-      return res.status(401).json({ success: false, error: '未授权' });
+      return res.status(401).json({ success: false, message: '未授权' });
     }
 
     // 获取我的目标（使用ownerId）

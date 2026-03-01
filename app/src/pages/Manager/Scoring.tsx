@@ -139,7 +139,7 @@ export function ScoringManagement() {
       try {
         const response = await performanceApi.createEmptyRecord({ employeeId: selectedRecord.employeeId, month: selectedRecord.month });
         if (response.success) { recordId = response.data.id; toast.success('已创建绩效记录'); }
-        else { toast.error(response.error || '创建记录失败'); return; }
+        else { toast.error(response.message || '创建记录失败'); return; }
       } catch (error: any) { toast.error(error.message || '创建记录失败'); return; }
     }
     

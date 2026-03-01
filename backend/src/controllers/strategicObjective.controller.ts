@@ -53,7 +53,7 @@ export const strategicObjectiveController = {
 
   getById: asyncHandler(async (req: Request, res: Response) => {
     const data = await StrategicObjectiveModel.findById(req.params.id as string);
-    if (!data) return res.status(404).json({ success: false, error: '战略目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '战略目标不存在' });
     res.json({ success: true, data });
   }),
 
@@ -67,22 +67,22 @@ export const strategicObjectiveController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await StrategicObjectiveModel.update(req.params.id as string, req.body);
-    if (!data) return res.status(404).json({ success: false, error: '战略目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '战略目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
     const ok = await StrategicObjectiveModel.delete(req.params.id as string);
-    if (!ok) return res.status(404).json({ success: false, error: '战略目标不存在' });
+    if (!ok) return res.status(404).json({ success: false, message: '战略目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
 
   decompose: asyncHandler(async (req: Request, res: Response) => {
     const strategic = await StrategicObjectiveModel.findById(req.params.id as string);
-    if (!strategic) return res.status(404).json({ success: false, error: '战略目标不存在' });
+    if (!strategic) return res.status(404).json({ success: false, message: '战略目标不存在' });
     const { departments } = req.body; // [{ department, title, ownerId }]
     if (!Array.isArray(departments) || departments.length === 0) {
-      return res.status(400).json({ success: false, error: '请提供部门目标列表' });
+      return res.status(400).json({ success: false, message: '请提供部门目标列表' });
     }
     const created = [];
     for (const dept of departments) {

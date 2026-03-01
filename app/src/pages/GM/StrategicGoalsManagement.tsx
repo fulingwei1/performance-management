@@ -132,7 +132,7 @@ export function StrategicGoalsManagement() {
           fetchGoals();
           setEditDialogOpen(false);
         } else {
-          const errorMsg = result.error || result.message || '更新失败';
+          const errorMsg = result.message || '更新失败';
           console.error('更新失败:', errorMsg, result);
           toast.error(`更新失败：${errorMsg}`);
         }
@@ -155,7 +155,7 @@ export function StrategicGoalsManagement() {
           fetchGoals();
           setEditDialogOpen(false);
         } else {
-          const errorMsg = result.error || result.message || '创建失败';
+          const errorMsg = result.message || '创建失败';
           console.error('创建失败:', errorMsg, result);
           toast.error(`创建失败：${errorMsg}`);
         }

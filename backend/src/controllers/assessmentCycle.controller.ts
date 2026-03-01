@@ -14,7 +14,7 @@ export const assessmentCycleController = {
       const cycles = await AssessmentCycleModel.findAll();
       res.json({ success: true, data: cycles });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -25,12 +25,12 @@ export const assessmentCycleController = {
       const cycle = await AssessmentCycleModel.findById(id);
       
       if (!cycle) {
-        return res.status(404).json({ success: false, error: '考核周期不存在' });
+        return res.status(404).json({ success: false, message: '考核周期不存在' });
       }
       
       res.json({ success: true, data: cycle });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -40,12 +40,12 @@ export const assessmentCycleController = {
       const cycle = await AssessmentCycleModel.findActive();
       
       if (!cycle) {
-        return res.status(404).json({ success: false, error: '当前没有激活的考核周期' });
+        return res.status(404).json({ success: false, message: '当前没有激活的考核周期' });
       }
       
       res.json({ success: true, data: cycle });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -97,7 +97,7 @@ export const assessmentCycleController = {
       const newCycle = await AssessmentCycleModel.create(cycle);
       res.status(201).json({ success: true, data: newCycle });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -110,12 +110,12 @@ export const assessmentCycleController = {
       const cycle = await AssessmentCycleModel.update(id, updates);
       
       if (!cycle) {
-        return res.status(404).json({ success: false, error: '考核周期不存在' });
+        return res.status(404).json({ success: false, message: '考核周期不存在' });
       }
       
       res.json({ success: true, data: cycle });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -126,12 +126,12 @@ export const assessmentCycleController = {
       const success = await AssessmentCycleModel.delete(id);
       
       if (!success) {
-        return res.status(404).json({ success: false, error: '考核周期不存在' });
+        return res.status(404).json({ success: false, message: '考核周期不存在' });
       }
       
       res.json({ success: true, message: '考核周期已删除' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -142,12 +142,12 @@ export const assessmentCycleController = {
       const cycle = await AssessmentCycleModel.update(id, { status: 'active' });
       
       if (!cycle) {
-        return res.status(404).json({ success: false, error: '考核周期不存在' });
+        return res.status(404).json({ success: false, message: '考核周期不存在' });
       }
       
       res.json({ success: true, data: cycle, message: '考核周期已激活' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -157,7 +157,7 @@ export const assessmentCycleController = {
       const { year } = req.body;
       
       if (!year) {
-        return res.status(400).json({ success: false, error: '年份不能为空' });
+        return res.status(400).json({ success: false, message: '年份不能为空' });
       }
       
       const cycles = await AssessmentCycleModel.generateMonthlyCycles(year);
@@ -167,7 +167,7 @@ export const assessmentCycleController = {
         message: `成功生成${cycles.length}个月度考核周期`
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -192,7 +192,7 @@ export const assessmentCycleController = {
         }
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -206,7 +206,7 @@ export const assessmentCycleController = {
       const holidays = await AssessmentCycleModel.findAllHolidays(year);
       res.json({ success: true, data: holidays });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -216,7 +216,7 @@ export const assessmentCycleController = {
       const { name, date, type = 'national' } = req.body;
       
       if (!name || !date) {
-        return res.status(400).json({ success: false, error: '节假日名称和日期不能为空' });
+        return res.status(400).json({ success: false, message: '节假日名称和日期不能为空' });
       }
       
       const holiday: Holiday = {
@@ -229,7 +229,7 @@ export const assessmentCycleController = {
       const newHoliday = await AssessmentCycleModel.createHoliday(holiday);
       res.status(201).json({ success: true, data: newHoliday });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -240,12 +240,12 @@ export const assessmentCycleController = {
       const success = await AssessmentCycleModel.deleteHoliday(id);
       
       if (!success) {
-        return res.status(404).json({ success: false, error: '节假日不存在' });
+        return res.status(404).json({ success: false, message: '节假日不存在' });
       }
       
       res.json({ success: true, message: '节假日已删除' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -255,7 +255,7 @@ export const assessmentCycleController = {
       const { holidays } = req.body;
       
       if (!holidays || !Array.isArray(holidays)) {
-        return res.status(400).json({ success: false, error: '节假日数据不能为空' });
+        return res.status(400).json({ success: false, message: '节假日数据不能为空' });
       }
       
       const createdHolidays: Holiday[] = [];
@@ -278,7 +278,7 @@ export const assessmentCycleController = {
         message: `成功导入${createdHolidays.length}个节假日`
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 };

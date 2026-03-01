@@ -58,3 +58,15 @@ CREATE INDEX IF NOT EXISTS idx_adjustments_created ON objective_adjustments(crea
 
 COMMENT ON TABLE objective_adjustments IS '目标调整历史记录';
 COMMENT ON COLUMN objective_adjustments.adjustment_type IS '调整类型: target_value, quarterly_targets, monthly_targets, weight, description';
+
+-- 为 objectives 表添加审批相关字段
+ALTER TABLE objectives
+  ADD COLUMN IF NOT EXISTS approver_id VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS approved_by VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS approval_comment TEXT,
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT,
+  ADD COLUMN IF NOT EXISTS adjustment_reason TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_objectives_status ON objectives(status);

@@ -4,6 +4,8 @@ import {
   LayoutDashboard,
   BarChart3,
   LogOut,
+  Upload,
+  Download,
   Award,
   FileText,
   TrendingUp,
@@ -54,10 +56,12 @@ const managerNavItems = [
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/manager/team-objectives', label: '团队目标', icon: Target },
   { path: '/manager/goal-approval', label: '目标审批', icon: ClipboardCheck },
+  { path: '/manager/goal-dashboard', label: '进度仪表板', icon: BarChart3 },
   { path: '/manager/review-reports', label: '月报审阅', icon: MessageSquare },
   { path: '/manager/interviews', label: '绩效面谈', icon: Calendar },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },
   { path: '/manager/promotion', label: '晋升加薪', icon: TrendingUp },
+  { path: '/manager/appeals', label: '申诉审核', icon: AlertCircle },
 ];
 
 const gmNavItems = [
@@ -84,6 +88,9 @@ const hrNavItems = [
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
   { path: '/hr/task-freeze-management', label: '任务冻结管理', icon: Lock },
   { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
+  { path: '/hr/organization-chart', label: '架构可视化', icon: Building2 },
+  { path: '/hr/data-import', label: '数据导入', icon: Upload },
+  { path: '/hr/data-export', label: '数据导出', icon: Download },
 ];
 
 const adminNavItems = [

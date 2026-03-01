@@ -22,4 +22,8 @@ router.post('/positions', authenticate, requireRole('hr'), organizationControlle
 router.put('/positions/:id', authenticate, requireRole('hr'), organizationController.updatePosition);
 router.delete('/positions/:id', authenticate, requireRole('hr'), organizationController.deletePosition);
 
+// 人员调动
+router.post('/transfer', authenticate, requireRole('hr'), organizationController.transferEmployee);
+router.get('/transfers', authenticate, organizationController.getTransferHistory);
+
 export default router;

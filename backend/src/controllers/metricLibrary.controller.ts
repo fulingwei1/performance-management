@@ -22,7 +22,7 @@ export const metricLibraryController = {
       
       res.json({ success: true, data: metrics });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -33,12 +33,12 @@ export const metricLibraryController = {
       const metric = await MetricLibraryModel.findMetricById(id);
       
       if (!metric) {
-        return res.status(404).json({ success: false, error: '指标不存在' });
+        return res.status(404).json({ success: false, message: '指标不存在' });
       }
       
       res.json({ success: true, data: metric });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -63,7 +63,7 @@ export const metricLibraryController = {
       // 检查编码是否已存在
       const existing = await MetricLibraryModel.findAllMetrics();
       if (existing.some(m => m.code === code)) {
-        return res.status(400).json({ success: false, error: '指标编码已存在' });
+        return res.status(400).json({ success: false, message: '指标编码已存在' });
       }
       
       const metric: Omit<PerformanceMetric, 'createdAt' | 'updatedAt'> = {
@@ -90,7 +90,7 @@ export const metricLibraryController = {
       const newMetric = await MetricLibraryModel.createMetric(metric);
       res.status(201).json({ success: true, data: newMetric });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -103,12 +103,12 @@ export const metricLibraryController = {
       const metric = await MetricLibraryModel.updateMetric(id, updates);
       
       if (!metric) {
-        return res.status(404).json({ success: false, error: '指标不存在' });
+        return res.status(404).json({ success: false, message: '指标不存在' });
       }
       
       res.json({ success: true, data: metric });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -119,12 +119,12 @@ export const metricLibraryController = {
       const success = await MetricLibraryModel.deleteMetric(id);
       
       if (!success) {
-        return res.status(404).json({ success: false, error: '指标不存在' });
+        return res.status(404).json({ success: false, message: '指标不存在' });
       }
       
       res.json({ success: true, message: '指标已删除' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -134,7 +134,7 @@ export const metricLibraryController = {
       const { metrics } = req.body;
       
       if (!metrics || !Array.isArray(metrics)) {
-        return res.status(400).json({ success: false, error: '指标数据不能为空' });
+        return res.status(400).json({ success: false, message: '指标数据不能为空' });
       }
       
       const results = {
@@ -176,7 +176,7 @@ export const metricLibraryController = {
         message: `导入完成：成功${results.success}个，失败${results.failed}个`
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -203,7 +203,7 @@ export const metricLibraryController = {
       res.setHeader('Content-Disposition', 'attachment; filename=metrics.csv');
       res.send(csv);
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -215,7 +215,7 @@ export const metricLibraryController = {
       const templates = await MetricLibraryModel.findAllTemplates();
       res.json({ success: true, data: templates });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -226,12 +226,12 @@ export const metricLibraryController = {
       const template = await MetricLibraryModel.findTemplateByPosition(positionId);
       
       if (!template) {
-        return res.status(404).json({ success: false, error: '该岗位暂无指标模板' });
+        return res.status(404).json({ success: false, message: '该岗位暂无指标模板' });
       }
       
       res.json({ success: true, data: template });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -268,7 +268,7 @@ export const metricLibraryController = {
       const newTemplate = await MetricLibraryModel.createTemplate(template);
       res.status(201).json({ success: true, data: newTemplate });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   },
   
@@ -278,7 +278,7 @@ export const metricLibraryController = {
       await MetricLibraryModel.initializeDefaultMetrics();
       res.json({ success: true, message: '默认指标初始化完成' });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   }
 };

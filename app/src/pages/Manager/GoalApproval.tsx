@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -45,7 +45,7 @@ interface PendingGoal {
 type ActionType = 'approve' | 'reject' | 'view';
 
 export default function GoalApproval() {
-  const { token } = useAuth();
+  const { token } = useAuthStore();
   const [goals, setGoals] = useState<PendingGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGoal, setSelectedGoal] = useState<PendingGoal | null>(null);

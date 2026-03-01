@@ -191,6 +191,34 @@ export const goalApi = {
       body: JSON.stringify(data)
     });
   },
+
+  // 提交目标审批
+  submitForApproval: (id: string) => {
+    return request(`/objectives/${id}/submit`, {
+      method: 'POST'
+    });
+  },
+
+  // 获取待审批目标
+  getPendingApprovals: () => {
+    return request('/goal-approval/pending');
+  },
+
+  // 批准目标
+  approve: (objectiveId: string, comment?: string) => {
+    return request('/goal-approval/approve', {
+      method: 'POST',
+      body: JSON.stringify({ objectiveId, comment })
+    });
+  },
+
+  // 拒绝目标
+  reject: (objectiveId: string, comment: string) => {
+    return request('/goal-approval/reject', {
+      method: 'POST',
+      body: JSON.stringify({ objectiveId, comment })
+    });
+  },
 };
 
 // 目标进度 API

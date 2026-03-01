@@ -53,12 +53,12 @@ export const promotionRequestController = {
   create: [
     asyncHandler(async (req: Request, res: Response) => {
       if (!req.user) {
-        return res.status(401).json({ success: false, error: '未认证' });
+        return res.status(401).json({ success: false, message: '未认证' });
       }
 
       const { userId, role } = req.user;
       if (role !== 'employee' && role !== 'manager') {
-        return res.status(403).json({ success: false, error: '权限不足' });
+        return res.status(403).json({ success: false, message: '权限不足' });
       }
 
       // 支持下划线和驼峰命名
@@ -73,39 +73,39 @@ export const promotionRequestController = {
       
       // 验证必填字段
       if (!targetLevel) {
-        return res.status(400).json({ success: false, error: '目标级别不能为空' });
+        return res.status(400).json({ success: false, message: '目标级别不能为空' });
       }
       if (!LEVELS.includes(targetLevel)) {
-        return res.status(400).json({ success: false, error: '目标职级无效' });
+        return res.status(400).json({ success: false, message: '目标职级无效' });
       }
       if (!targetPosition) {
-        return res.status(400).json({ success: false, error: '目标岗位不能为空' });
+        return res.status(400).json({ success: false, message: '目标岗位不能为空' });
       }
       if (!raisePercentage || isNaN(parseFloat(raisePercentage)) || parseFloat(raisePercentage) < 0.1 || parseFloat(raisePercentage) > 100) {
-        return res.status(400).json({ success: false, error: '调薪比例应在0.1-100之间' });
+        return res.status(400).json({ success: false, message: '调薪比例应在0.1-100之间' });
       }
       if (!performanceSummary) {
-        return res.status(400).json({ success: false, error: '请填写绩效考核数据' });
+        return res.status(400).json({ success: false, message: '请填写绩效考核数据' });
       }
       if (!skillSummary) {
-        return res.status(400).json({ success: false, error: '请填写技能水平总结' });
+        return res.status(400).json({ success: false, message: '请填写技能水平总结' });
       }
       if (!competencySummary) {
-        return res.status(400).json({ success: false, error: '请填写能力素质总结' });
+        return res.status(400).json({ success: false, message: '请填写能力素质总结' });
       }
       if (!workSummary) {
-        return res.status(400).json({ success: false, error: '请填写工作总结' });
+        return res.status(400).json({ success: false, message: '请填写工作总结' });
       }
 
       const employeeId = role === 'employee' ? userId : (inputEmployeeId || userId);
       const employee = await EmployeeModel.findById(employeeId);
       if (!employee) {
-        return res.status(404).json({ success: false, error: '员工不存在' });
+        return res.status(404).json({ success: false, message: '员工不存在' });
       }
 
       if (role === 'manager' && employeeId !== userId) {
         if (employee.managerId !== userId) {
-          return res.status(403).json({ success: false, error: '只能为直属下属发起申请' });
+          return res.status(403).json({ success: false, message: '只能为直属下属发起申请' });
         }
       }
 
@@ -152,7 +152,7 @@ export const promotionRequestController = {
   // 获取我的申请
   getMyRequests: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
     const records = await PromotionRequestModel.findMyRequests(req.user.userId);
     const chain = await getPromotionApprovalChain();
@@ -162,7 +162,7 @@ export const promotionRequestController = {
   // 获取待审批
   getPending: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
     const { role, userId } = req.user;
     const chain = await getPromotionApprovalChain();
@@ -181,7 +181,7 @@ export const promotionRequestController = {
       return res.json({ success: true, data: pending.map(record => attachNextRole(record, chain)) });
     }
 
-    return res.status(403).json({ success: false, error: '权限不足' });
+    return res.status(403).json({ success: false, message: '权限不足' });
   }),
 
   // 审批通过
@@ -192,10 +192,10 @@ export const promotionRequestController = {
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, error: errors.array()[0].msg });
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
       if (!req.user) {
-        return res.status(401).json({ success: false, error: '未认证' });
+        return res.status(401).json({ success: false, message: '未认证' });
       }
 
       const id = getParamValue(req.params.id);
@@ -204,23 +204,23 @@ export const promotionRequestController = {
 
       const record = await PromotionRequestModel.findById(id);
       if (!record) {
-        return res.status(404).json({ success: false, error: '记录不存在' });
+        return res.status(404).json({ success: false, message: '记录不存在' });
       }
 
       const chain = await getPromotionApprovalChain();
       const nextRole = getNextRole(chain, record.status);
       if (!nextRole || nextRole !== role) {
-        return res.status(400).json({ success: false, error: '当前状态无法审批' });
+        return res.status(400).json({ success: false, message: '当前状态无法审批' });
       }
 
       if (role === 'manager') {
         const employee = await EmployeeModel.findById(record.employeeId);
         if (!employee || employee.managerId !== userId) {
-          return res.status(403).json({ success: false, error: '只能审批直属下属' });
+          return res.status(403).json({ success: false, message: '只能审批直属下属' });
         }
       } else {
         if (role !== 'gm' && role !== 'hr') {
-          return res.status(403).json({ success: false, error: '权限不足' });
+          return res.status(403).json({ success: false, message: '权限不足' });
         }
       }
 
@@ -237,10 +237,10 @@ export const promotionRequestController = {
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, error: errors.array()[0].msg });
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
       if (!req.user) {
-        return res.status(401).json({ success: false, error: '未认证' });
+        return res.status(401).json({ success: false, message: '未认证' });
       }
 
       const id = getParamValue(req.params.id);
@@ -249,23 +249,23 @@ export const promotionRequestController = {
 
       const record = await PromotionRequestModel.findById(id);
       if (!record) {
-        return res.status(404).json({ success: false, error: '记录不存在' });
+        return res.status(404).json({ success: false, message: '记录不存在' });
       }
 
       const chain = await getPromotionApprovalChain();
       const nextRole = getNextRole(chain, record.status);
       if (!nextRole || nextRole !== role) {
-        return res.status(400).json({ success: false, error: '当前状态无法审批' });
+        return res.status(400).json({ success: false, message: '当前状态无法审批' });
       }
 
       if (role === 'manager') {
         const employee = await EmployeeModel.findById(record.employeeId);
         if (!employee || employee.managerId !== userId) {
-          return res.status(403).json({ success: false, error: '只能审批直属下属' });
+          return res.status(403).json({ success: false, message: '只能审批直属下属' });
         }
       } else {
         if (role !== 'gm' && role !== 'hr') {
-          return res.status(403).json({ success: false, error: '权限不足' });
+          return res.status(403).json({ success: false, message: '权限不足' });
         }
       }
 
@@ -277,11 +277,11 @@ export const promotionRequestController = {
   // 审批历史（分页）
   getHistory: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
     const { role, userId } = req.user;
     if (role !== 'manager' && role !== 'gm' && role !== 'hr') {
-      return res.status(403).json({ success: false, error: '权限不足' });
+      return res.status(403).json({ success: false, message: '权限不足' });
     }
     const page = Math.max(parseInt((req.query.page as string) || '1', 10), 1);
     const pageSize = Math.min(Math.max(parseInt((req.query.pageSize as string) || '10', 10), 1), 50);
@@ -302,11 +302,11 @@ export const promotionRequestController = {
   // 审批记录导出
   exportRecords: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
-      return res.status(401).json({ success: false, error: '未认证' });
+      return res.status(401).json({ success: false, message: '未认证' });
     }
     const { role, userId } = req.user;
     if (role !== 'manager' && role !== 'gm' && role !== 'hr') {
-      return res.status(403).json({ success: false, error: '权限不足' });
+      return res.status(403).json({ success: false, message: '权限不足' });
     }
 
     const format = (req.query.format as string) || 'excel';

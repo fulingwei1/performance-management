@@ -32,6 +32,8 @@ import { StatCards } from './Dashboard/StatCards';
 import { DeptPerformanceTable, type DeptRecord } from './Dashboard/DeptPerformanceTable';
 import { EmployeeDetailDrawer } from './Dashboard/EmployeeDetailDrawer';
 import { DeleteRecordsDialog } from './Dashboard/DeleteRecordsDialog';
+import { TodoSection } from '@/components/dashboard/TodoSection';
+import { todoApi } from '@/services/api';
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
 
@@ -127,7 +129,7 @@ export function HRDashboard() {
     setExporting(true);
     try {
       const response = await performanceApi.getStatsByMonth(currentMonth);
-      if (!response.success) throw new Error(response.error || '获取数据失败');
+      if (!response.success) throw new Error(response.message || '获取数据失败');
       const { summary, records } = response.data;
       
       const summaryHeaders = ['部门', '总人数', '已评分', '平均分', '优秀', '良好', '合格', '待改进'];
@@ -153,7 +155,7 @@ export function HRDashboard() {
     try {
       const response = await performanceApi.generateTasks(currentMonth);
       if (response.success) { alert(response.message); fetchAllPerformanceRecords(); }
-      else throw new Error(response.error || '生成失败');
+      else throw new Error(response.message || '生成失败');
     } catch (error: any) {
       alert('生成失败: ' + (error.message || '未知错误'));
     } finally {
@@ -169,6 +171,11 @@ export function HRDashboard() {
   
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+      {/* 待办事项 */}
+      <motion.div variants={itemVariants}>
+        <TodoSection role="hr" fetchSummary={todoApi.getSummary} />
+      </motion.div>
+
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center justify-between">
         <div>

@@ -423,7 +423,21 @@ export const organizationApi = {
   // 删除岗位
   deletePosition: (id: string) => request(`/organization/positions/${id}`, {
     method: 'DELETE'
-  })
+  }),
+
+  // 人员调动
+  transferEmployee: (data: { employeeId: string; toDepartment: string; toPosition?: string; reason?: string }) =>
+    request('/organization/transfer', { method: 'POST', body: JSON.stringify(data) }),
+
+  // 调动历史
+  getTransferHistory: (params?: { employeeId?: string; startDate?: string; endDate?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.employeeId) query.set('employeeId', params.employeeId);
+    if (params?.startDate) query.set('startDate', params.startDate);
+    if (params?.endDate) query.set('endDate', params.endDate);
+    const qs = query.toString();
+    return request(`/organization/transfers${qs ? '?' + qs : ''}`);
+  }
 };
 
 // 设置API（考核范围等，HR 可写）
@@ -729,4 +743,88 @@ export default {
   export: exportApi,
   notification: notificationApi,
   automation: automationApi
+};
+
+// 目标进度仪表板API
+export const goalDashboardApi = {
+  getTeamProgress: () => request('/goal-dashboard/team-progress'),
+  getProgressTrend: () => request('/goal-dashboard/progress-trend'),
+};
+
+// 待办事项API
+export const todoApi = {
+  getMyTodos: (status?: string) => request(`/todos/my${status ? `?status=${status}` : ''}`),
+  getStatistics: () => request('/todos/statistics'),
+  getSummary: () => request('/todos/summary'),
+  markCompleted: (id: string) => request(`/todos/${id}/complete`, { method: 'PUT' }),
+};
+
+// 绩效分析API
+export const analyticsApi = {
+  getPerformanceDistribution: (month?: string, department?: string) => {
+    const params = new URLSearchParams();
+    if (month) params.set('month', month);
+    if (department) params.set('department', department);
+    return request(`/analytics/performance-distribution?${params.toString()}`);
+  },
+  getDepartmentComparison: (startMonth?: string, endMonth?: string) => {
+    const params = new URLSearchParams();
+    if (startMonth) params.set('startMonth', startMonth);
+    if (endMonth) params.set('endMonth', endMonth);
+    return request(`/analytics/department-comparison?${params.toString()}`);
+  },
+  getPerformanceTrend: (employeeId?: string, months?: number) => {
+    const params = new URLSearchParams();
+    if (employeeId) params.set('employeeId', employeeId);
+    if (months) params.set('months', months.toString());
+    return request(`/analytics/performance-trend?${params.toString()}`);
+  },
+  detectAnomalies: (month?: string) => {
+    const params = new URLSearchParams();
+    if (month) params.set('month', month);
+    return request(`/analytics/anomaly-detection?${params.toString()}`);
+  },
+  exportReport: (month?: string) => {
+    const token = getToken();
+    const params = month ? `?month=${month}` : '';
+    return secureDownload(`${API_BASE_URL}/analytics/report/export${params}`, `绩效分析报告-${month || 'all'}.txt`);
+  }
+};
+
+// 数据导入 API
+export const dataImportApi = {
+  getEmployeeTemplate: () => {
+    return secureDownload(`${API_BASE_URL}/data-import/template/employees`, '员工导入模板.xlsx');
+  },
+  importEmployees: async (formData: FormData) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE_URL}/data-import/employees`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw { response: { data } };
+    return data;
+  },
+};
+
+// 增强数据导出 API
+export const dataExportApi = {
+  exportPerformance: (filters: { startMonth: string; endMonth: string; department?: string }) => {
+    const params = new URLSearchParams({ startMonth: filters.startMonth, endMonth: filters.endMonth });
+    if (filters.department) params.set('department', filters.department);
+    return secureDownload(
+      `${API_BASE_URL}/data-export/performance?${params.toString()}`,
+      `绩效数据_${filters.startMonth}_${filters.endMonth}.xlsx`
+    );
+  },
+  exportObjectives: (filters: { year: string; department?: string }) => {
+    const params = new URLSearchParams({ year: filters.year });
+    if (filters.department) params.set('department', filters.department);
+    return secureDownload(
+      `${API_BASE_URL}/data-export/objectives?${params.toString()}`,
+      `目标数据_${filters.year}.xlsx`
+    );
+  },
 };

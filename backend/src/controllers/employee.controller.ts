@@ -178,17 +178,17 @@ export const employeeController = {
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, error: errors.array()[0].msg });
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
 
       const employee = await EmployeeModel.findById(req.params.id as string);
       if (!employee) {
-        return res.status(404).json({ success: false, error: '员工不存在' });
+        return res.status(404).json({ success: false, message: '员工不存在' });
       }
 
       const success = await EmployeeModel.updatePassword(req.params.id as string, '123456');
       if (!success) {
-        return res.status(500).json({ success: false, error: '重置密码失败' });
+        return res.status(500).json({ success: false, message: '重置密码失败' });
       }
 
       res.json({ success: true, message: '密码已重置为默认密码(123456)' });
@@ -202,12 +202,12 @@ export const employeeController = {
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, error: errors.array()[0].msg });
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
 
       const employee = await EmployeeModel.findById(req.params.id as string);
       if (!employee) {
-        return res.status(404).json({ success: false, error: '员工不存在' });
+        return res.status(404).json({ success: false, message: '员工不存在' });
       }
 
       const currentStatus = (employee as any).status || 'active';
@@ -215,7 +215,7 @@ export const employeeController = {
       
       const updated = await EmployeeModel.update(req.params.id as string, { status: newStatus } as any);
       if (!updated) {
-        return res.status(500).json({ success: false, error: '状态更新失败' });
+        return res.status(500).json({ success: false, message: '状态更新失败' });
       }
 
       res.json({ success: true, data: updated, message: newStatus === 'active' ? '用户已启用' : '用户已禁用' });

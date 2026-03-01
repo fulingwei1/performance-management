@@ -33,13 +33,13 @@ export const strategicObjectiveController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await StrategicObjectiveModel.update(s(req.params.id), req.body);
-    if (!data) return res.status(404).json({ success: false, error: '战略目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '战略目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
     const ok = await StrategicObjectiveModel.delete(s(req.params.id));
-    if (!ok) return res.status(404).json({ success: false, error: '战略目标不存在' });
+    if (!ok) return res.status(404).json({ success: false, message: '战略目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
 };
@@ -57,7 +57,7 @@ export const objectiveController = {
   }),
 
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const data = await ObjectiveModel.findAll({ ownerId: req.user.userId });
     res.json({ success: true, data });
   }),
@@ -76,7 +76,7 @@ export const objectiveController = {
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { title, description, level, parentId, strategicObjectiveId, ownerId, department, startDate, endDate, feedbackCycle } = req.body;
     const data = await ObjectiveModel.create({
       id: uuidv4(), title, description,
@@ -91,19 +91,19 @@ export const objectiveController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await ObjectiveModel.update(s(req.params.id), req.body);
-    if (!data) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, data });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
     const ok = await ObjectiveModel.delete(s(req.params.id));
-    if (!ok) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!ok) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, message: '删除成功' });
   }),
 
   getKRs: asyncHandler(async (req: Request, res: Response) => {
     const obj = await ObjectiveModel.findById(s(req.params.id));
-    if (!obj) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!obj) return res.status(404).json({ success: false, message: '目标不存在' });
     res.json({ success: true, data: obj.keyResults || [] });
   }),
 
@@ -122,7 +122,7 @@ export const objectiveController = {
 export const krController = {
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await ObjectiveModel.updateKeyResult(s(req.params.id), req.body);
-    if (!data) return res.status(404).json({ success: false, error: 'KR不存在' });
+    if (!data) return res.status(404).json({ success: false, message: 'KR不存在' });
     res.json({ success: true, data });
   }),
 
@@ -136,7 +136,7 @@ export const krController = {
 // ============ KPI Assignments ============
 export const kpiController = {
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const data = await KpiAssignmentModel.findAll({ employeeId: req.user.userId });
     res.json({ success: true, data });
   }),
@@ -173,7 +173,7 @@ export const kpiController = {
   updateActual: asyncHandler(async (req: Request, res: Response) => {
     const { actualValue } = req.body;
     const data = await KpiAssignmentModel.update(s(req.params.id), { actualValue });
-    if (!data) return res.status(404).json({ success: false, error: 'KPI不存在' });
+    if (!data) return res.status(404).json({ success: false, message: 'KPI不存在' });
     res.json({ success: true, data });
   }),
 
@@ -190,7 +190,7 @@ export const kpiController = {
 // ============ Performance Contracts ============
 export const contractController = {
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const all = await PerformanceContractModel.findAll({ employeeId: req.user.userId });
     const data = all.length > 0 ? all[0] : null;
     res.json({ success: true, data });
@@ -210,12 +210,12 @@ export const contractController = {
 
   getById: asyncHandler(async (req: Request, res: Response) => {
     const data = await PerformanceContractModel.findById(s(req.params.id));
-    if (!data) return res.status(404).json({ success: false, error: '合约不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '合约不存在' });
     res.json({ success: true, data });
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { employeeId, period, kpiIds, objectives } = req.body;
     const year = period ? parseInt(period.split('-')[0]) : new Date().getFullYear();
     const data = await PerformanceContractModel.create({
@@ -226,9 +226,9 @@ export const contractController = {
   }),
 
   sign: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const contract = await PerformanceContractModel.findById(s(req.params.id));
-    if (!contract) return res.status(404).json({ success: false, error: '合约不存在' });
+    if (!contract) return res.status(404).json({ success: false, message: '合约不存在' });
     const role = contract.employeeId === req.user.userId ? 'employee' : 'manager';
     const data = await PerformanceContractModel.sign(s(req.params.id), role as 'employee' | 'manager');
     res.json({ success: true, data });
@@ -236,7 +236,7 @@ export const contractController = {
 
   approve: asyncHandler(async (req: Request, res: Response) => {
     const data = await PerformanceContractModel.update(s(req.params.id), { status: 'signed' });
-    if (!data) return res.status(404).json({ success: false, error: '合约不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '合约不存在' });
     res.json({ success: true, data });
   }),
 };
@@ -244,7 +244,7 @@ export const contractController = {
 // ============ Monthly Reports ============
 export const monthlyReportController = {
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const data = await MonthlyReportModel.findAll({ employeeId: req.user.userId });
     res.json({ success: true, data });
   }),
@@ -255,7 +255,7 @@ export const monthlyReportController = {
   }),
 
   getTeam: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     // Get subordinates
     const employees = await EmployeeModel.findAll();
     const subordinates = employees.filter((e: any) => e.managerId === req.user!.userId);
@@ -269,7 +269,7 @@ export const monthlyReportController = {
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { month, summary, achievements, challenges, nextPlan, krProgress } = req.body;
     const [yearStr, monthStr] = (month || '').split('-');
     const data = await MonthlyReportModel.create({
@@ -283,10 +283,10 @@ export const monthlyReportController = {
   }),
 
   review: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { comment, rating } = req.body;
     const data = await MonthlyReportModel.addComment(s(req.params.id), req.user.userId, comment);
-    if (!data) return res.status(404).json({ success: false, error: '报告不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '报告不存在' });
     res.json({ success: true, data });
   }),
 };
@@ -294,7 +294,7 @@ export const monthlyReportController = {
 // ============ Performance Interviews ============
 export const interviewController = {
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const data = await PerformanceInterviewModel.findAll({ employeeId: req.user.userId });
     // Enrich
     const employees = await EmployeeModel.findAll();
@@ -304,7 +304,7 @@ export const interviewController = {
   }),
 
   getTeam: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const data = await PerformanceInterviewModel.findAll({ interviewerId: req.user.userId });
     const employees = await EmployeeModel.findAll();
     const empMap = new Map(employees.map((e: any) => [e.id, e.name]));
@@ -313,7 +313,7 @@ export const interviewController = {
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const { employeeId, scheduledAt, type, topics } = req.body;
     const data = await PerformanceInterviewModel.create({
       id: uuidv4(), employeeId, interviewerId: req.user.userId,
@@ -325,7 +325,7 @@ export const interviewController = {
 
   update: asyncHandler(async (req: Request, res: Response) => {
     const data = await PerformanceInterviewModel.update(s(req.params.id), req.body);
-    if (!data) return res.status(404).json({ success: false, error: '面谈不存在' });
+    if (!data) return res.status(404).json({ success: false, message: '面谈不存在' });
     res.json({ success: true, data });
   }),
 };
@@ -333,7 +333,7 @@ export const interviewController = {
 // ============ OKR Assignments (分配拆解) ============
 export const assignmentController = {
   assign: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const objectiveId = s(req.params.id);
     const { assigneeId, deadline, message } = req.body;
     const assignment: OkrAssignment = {
@@ -347,7 +347,7 @@ export const assignmentController = {
   }),
 
   getMy: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     let assignments: OkrAssignment[] = [];
     if (USE_MEMORY_DB) {
       assignments = Array.from(memoryStore.okrAssignments.values())
@@ -365,19 +365,19 @@ export const assignmentController = {
     const id = s(req.params.id);
     if (USE_MEMORY_DB) {
       const existing = memoryStore.okrAssignments.get(id);
-      if (!existing) return res.status(404).json({ success: false, error: '任务不存在' });
+      if (!existing) return res.status(404).json({ success: false, message: '任务不存在' });
       existing.status = 'completed';
       memoryStore.okrAssignments.set(id, existing);
       return res.json({ success: true, data: existing });
     }
-    res.status(404).json({ success: false, error: '任务不存在' });
+    res.status(404).json({ success: false, message: '任务不存在' });
   }),
 };
 
 // ============ Related OKR (我的关联OKR) ============
 export const relatedOkrController = {
   getRelated: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ success: false, error: '未认证' });
+    if (!req.user) return res.status(401).json({ success: false, message: '未认证' });
     const userId = req.user.userId;
 
     // Get current user's employee info
@@ -426,7 +426,7 @@ export const feedbackController = {
   getByObjective: asyncHandler(async (req: Request, res: Response) => {
     const objectiveId = s(req.params.id);
     const obj = await ObjectiveModel.findById(objectiveId);
-    if (!obj) return res.status(404).json({ success: false, error: '目标不存在' });
+    if (!obj) return res.status(404).json({ success: false, message: '目标不存在' });
 
     const startDate = obj.startDate ? new Date(obj.startDate) : null;
     const endDate = obj.endDate ? new Date(obj.endDate) : null;

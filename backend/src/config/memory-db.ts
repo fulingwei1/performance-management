@@ -39,6 +39,7 @@ interface MemoryStore {
   appeals?: Map<string, Appeal>;
   notifications?: Map<string, Notification>;
   objectiveAdjustments?: Map<string, ObjectiveAdjustment>;
+  todos?: Map<string, any>;
 }
 
 export const memoryStore: MemoryStore = {
