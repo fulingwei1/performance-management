@@ -37,7 +37,6 @@ interface SidebarProps {
 
 const employeeNavItems = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/employee/scores', label: '我的绩效', icon: BarChart3 },
   { path: '/employee/my-objectives', label: '我的目标', icon: Target },
   { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
@@ -53,7 +52,6 @@ const employeeNavItems = [
 
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/manager/differentiated-scoring', label: '差异化评分', icon: Award },
   { path: '/manager/team-objectives', label: '团队目标', icon: Target },
@@ -69,7 +67,6 @@ const managerNavItems = [
 
 const gmNavItems = [
   { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/gm/strategic-goals', label: '战略目标管理', icon: FileText },
   { path: '/gm/scoring', label: '总经理评分', icon: Award },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
@@ -79,7 +76,6 @@ const gmNavItems = [
 
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/strategic-objectives', label: '战略目标', icon: Crosshair },
   { path: '/hr/contract-management', label: '合约管理', icon: FileSignature },
@@ -101,7 +97,6 @@ const hrNavItems = [
 
 const adminNavItems = [
   { path: '/admin/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/admin/user-management', label: '用户管理', icon: Users },
   { path: '/admin/system-settings', label: '系统设置', icon: Settings },
   { path: '/admin/analytics', label: '绩效看板', icon: BarChart3 },
