@@ -39,7 +39,7 @@ export function TaskFreezeManagement() {
     setLoading(true);
     try {
       // 获取所有绩效记录
-      const response = await performanceApi.getByMonth(selectedMonth);
+      const response = await performanceApi.getRecordsByMonth(selectedMonth);
       
       if (response.success && response.data) {
         const tasks = response.data as FrozenTask[];

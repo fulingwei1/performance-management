@@ -318,7 +318,7 @@ export function OrganizationChart() {
 
   const loadEmployees = useCallback(async () => {
     try {
-      const response = await employeeApi.getAllEmployees();
+      const response = await employeeApi.getAll();
       if (response.success) {
         setEmployees(response.data || []);
       }
