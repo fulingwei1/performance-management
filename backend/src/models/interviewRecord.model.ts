@@ -9,20 +9,20 @@ export interface InterviewPlan {
   scheduled_date: string;
   scheduled_time?: string;
   duration_minutes?: number;
-  manager_id: number;
-  employee_id: number;
-  department_id?: number;
+  manager_id: string;
+  employee_id: string;
+  department_id?: string;
   status: 'scheduled' | 'completed' | 'cancelled' | 'rescheduled';
   template_id?: number;
-  created_by?: number;
+  created_by?: string;
 }
 
 // 面谈记录
 export interface InterviewRecord {
   id?: number;
   plan_id?: number;
-  employee_id: number;
-  manager_id: number;
+  employee_id: string;
+  manager_id: string;
   interview_date: string;
   interview_time?: string;
   duration_minutes?: number;
@@ -46,8 +46,8 @@ export interface InterviewRecord {
 export interface ImprovementPlan {
   id?: number;
   interview_record_id: number;
-  employee_id: number;
-  manager_id: number;
+  employee_id: string;
+  manager_id: string;
   goal: string;
   description?: string;
   category?: 'skill' | 'behavior' | 'performance';
@@ -80,7 +80,7 @@ export const InterviewPlanModel = {
     return rows[0];
   },
 
-  async findAll(filters?: { manager_id?: number; employee_id?: number; status?: string }): Promise<InterviewPlan[]> {
+  async findAll(filters?: { manager_id?: string; employee_id?: string; status?: string }): Promise<InterviewPlan[]> {
     let sql = 'SELECT * FROM interview_plans WHERE 1=1';
     const params: any[] = [];
     
@@ -147,7 +147,7 @@ export const InterviewRecordModel = {
     return rows[0];
   },
 
-  async findAll(filters?: { employee_id?: number; manager_id?: number }): Promise<InterviewRecord[]> {
+  async findAll(filters?: { employee_id?: string; manager_id?: string }): Promise<InterviewRecord[]> {
     let sql = 'SELECT * FROM interview_records WHERE 1=1';
     const params: any[] = [];
     

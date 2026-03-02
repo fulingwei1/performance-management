@@ -63,8 +63,8 @@ export const InterviewPlanController = {
       const { manager_id, employee_id, status } = req.query;
       
       const plans = await InterviewPlanModel.findAll({
-        manager_id: manager_id && typeof manager_id === 'string' ? parseInt(manager_id) : undefined,
-        employee_id: employee_id && typeof employee_id === 'string' ? parseInt(employee_id) : undefined,
+        manager_id: typeof manager_id === 'string' ? manager_id : undefined,
+        employee_id: typeof employee_id === 'string' ? employee_id : undefined,
         status: typeof status === 'string' ? status : undefined
       });
       
@@ -184,8 +184,8 @@ export const InterviewRecordController = {
       const { employee_id, manager_id } = req.query;
       
       const records = await InterviewRecordModel.findAll({
-        employee_id: employee_id && typeof employee_id === 'string' ? parseInt(employee_id) : undefined,
-        manager_id: manager_id && typeof manager_id === 'string' ? parseInt(manager_id) : undefined
+        employee_id: typeof employee_id === 'string' ? employee_id : undefined,
+        manager_id: typeof manager_id === 'string' ? manager_id : undefined
       });
       
       res.json({
