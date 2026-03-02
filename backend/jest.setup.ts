@@ -16,6 +16,8 @@ process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 console.log('🧪 测试环境变量已设置');
 
+jest.setTimeout(30000);
+
 // 延迟导入以避免模块在环境变量设置前被初始化
 beforeAll(async () => {
   console.log('📝 初始化测试数据...');

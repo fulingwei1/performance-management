@@ -5,6 +5,15 @@ import {
   ImprovementPlanModel
 } from '../models/interviewRecord.model';
 
+const parseQueryNumber = (value: unknown): number | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isNaN(parsedValue) ? undefined : parsedValue;
+};
+
 export const InterviewPlanController = {
   /**
    * 创建面谈计划
@@ -61,10 +70,10 @@ export const InterviewPlanController = {
   async getPlans(req: Request, res: Response) {
     try {
       const { manager_id, employee_id, status } = req.query;
-      
+
       const plans = await InterviewPlanModel.findAll({
-        manager_id: typeof manager_id === 'string' ? manager_id : undefined,
-        employee_id: typeof employee_id === 'string' ? employee_id : undefined,
+        manager_id: parseQueryNumber(manager_id),
+        employee_id: parseQueryNumber(employee_id),
         status: typeof status === 'string' ? status : undefined
       });
       
@@ -182,10 +191,10 @@ export const InterviewRecordController = {
   async getRecords(req: Request, res: Response) {
     try {
       const { employee_id, manager_id } = req.query;
-      
+
       const records = await InterviewRecordModel.findAll({
-        employee_id: typeof employee_id === 'string' ? employee_id : undefined,
-        manager_id: typeof manager_id === 'string' ? manager_id : undefined
+        employee_id: parseQueryNumber(employee_id),
+        manager_id: parseQueryNumber(manager_id)
       });
       
       res.json({

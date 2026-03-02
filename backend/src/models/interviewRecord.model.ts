@@ -80,7 +80,7 @@ export const InterviewPlanModel = {
     return rows[0];
   },
 
-  async findAll(filters?: { manager_id?: string; employee_id?: string; status?: string }): Promise<InterviewPlan[]> {
+  async findAll(filters?: { manager_id?: number; employee_id?: number; status?: string }): Promise<InterviewPlan[]> {
     let sql = 'SELECT * FROM interview_plans WHERE 1=1';
     const params: any[] = [];
     
@@ -147,7 +147,7 @@ export const InterviewRecordModel = {
     return rows[0];
   },
 
-  async findAll(filters?: { employee_id?: string; manager_id?: string }): Promise<InterviewRecord[]> {
+  async findAll(filters?: { employee_id?: number; manager_id?: number }): Promise<InterviewRecord[]> {
     let sql = 'SELECT * FROM interview_records WHERE 1=1';
     const params: any[] = [];
     
