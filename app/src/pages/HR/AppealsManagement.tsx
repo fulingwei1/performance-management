@@ -67,7 +67,7 @@ export function HRAppealsManagement() {
       }
 
       // 获取考核记录（用于显示详情）
-      const recordsRes = await api.performance.getAll();
+      const recordsRes = await api.performance.getAllRecords();
       if (recordsRes.success) {
         setPerformanceRecords(recordsRes.data || []);
       }
