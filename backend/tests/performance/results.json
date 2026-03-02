@@ -1,0 +1,134 @@
+[
+  {
+    "name": "GET /peer-reviews/cycles",
+    "count": 300,
+    "concurrency": 20,
+    "elapsed": 108,
+    "rps": "2777.8",
+    "avg": "4.7",
+    "p95": 19,
+    "p99": 22,
+    "errors": 0
+  },
+  {
+    "name": "GET /peer-reviews/cycles/1",
+    "count": 300,
+    "concurrency": 20,
+    "elapsed": 26,
+    "rps": "11538.5",
+    "avg": "1.7",
+    "p95": 3,
+    "p99": 3,
+    "errors": 0
+  },
+  {
+    "name": "POST /peer-reviews/cycles",
+    "count": 50,
+    "concurrency": 5,
+    "elapsed": 15,
+    "rps": "3333.3",
+    "avg": "1.4",
+    "p95": 6,
+    "p99": 6,
+    "errors": 0
+  },
+  {
+    "name": "POST /peer-reviews/relationships",
+    "count": 50,
+    "concurrency": 5,
+    "elapsed": 8,
+    "rps": "6250.0",
+    "avg": "0.8",
+    "p95": 2,
+    "p99": 2,
+    "errors": 0
+  },
+  {
+    "name": "GET /peer-reviews/relationships/1",
+    "count": 300,
+    "concurrency": 20,
+    "elapsed": 20,
+    "rps": "15000.0",
+    "avg": "1.2",
+    "p95": 2,
+    "p99": 3,
+    "errors": 0
+  },
+  {
+    "name": "POST /peer-reviews/reviews",
+    "count": 100,
+    "concurrency": 10,
+    "elapsed": 18,
+    "rps": "5555.6",
+    "avg": "1.7",
+    "p95": 4,
+    "p99": 5,
+    "errors": 0
+  },
+  {
+    "name": "GET /peer-reviews/reviews/1",
+    "count": 300,
+    "concurrency": 20,
+    "elapsed": 18,
+    "rps": "16666.7",
+    "avg": "1.2",
+    "p95": 2,
+    "p99": 2,
+    "errors": 0
+  },
+  {
+    "name": "GET /peer-reviews/statistics/1",
+    "count": 200,
+    "concurrency": 10,
+    "elapsed": 13,
+    "rps": "15384.6",
+    "avg": "0.6",
+    "p95": 1,
+    "p99": 1,
+    "errors": 0
+  },
+  {
+    "name": "POST /interview-records/plans",
+    "count": 50,
+    "concurrency": 5,
+    "elapsed": 9,
+    "rps": "5555.6",
+    "avg": "0.9",
+    "p95": 2,
+    "p99": 3,
+    "errors": 0
+  },
+  {
+    "name": "GET /interview-records/plans",
+    "count": 300,
+    "concurrency": 20,
+    "elapsed": 18,
+    "rps": "16666.7",
+    "avg": "1.2",
+    "p95": 2,
+    "p99": 2,
+    "errors": 0
+  },
+  {
+    "name": "POST /interview-records/records",
+    "count": 50,
+    "concurrency": 5,
+    "elapsed": 8,
+    "rps": "6250.0",
+    "avg": "0.8",
+    "p95": 2,
+    "p99": 2,
+    "errors": 0
+  },
+  {
+    "name": "GET /interview-records/records",
+    "count": 300,
+    "concurrency": 20,
+    "elapsed": 19,
+    "rps": "15789.5",
+    "avg": "1.2",
+    "p95": 3,
+    "p99": 3,
+    "errors": 0
+  }
+]
