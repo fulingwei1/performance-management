@@ -74,10 +74,10 @@ const gmNavItems = [
 
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/hr/assessment-publication', label: '结果发布', icon: Send },
-  { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
+  { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
+  { path: '/hr/assessment-publication', label: '结果发布', icon: Send },
   { path: '/hr/assessment-templates', label: '考核模板', icon: FileText },
   { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
   { path: '/hr/data-import', label: '数据导入', icon: Upload },
