@@ -59,6 +59,7 @@ export function HRDashboard() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+  useEffect(() => { fetchAllPerformanceRecords(); }, [fetchAllPerformanceRecords]);
   
   useEffect(() => {
     settingsApi.getAssessmentScope().then((res) => {
