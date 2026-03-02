@@ -1,0 +1,461 @@
+-- ATE绩效管理系统数据库初始化脚本 (PostgreSQL版)
+-- 从 init-db.sql (MySQL) 转换而来
+
+-- 创建更新时间戳触发器函数
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- 员工表
+-- ============================================================
+DROP TABLE IF EXISTS promotion_approval_settings CASCADE;
+DROP TABLE IF EXISTS promotion_requests CASCADE;
+DROP TABLE IF EXISTS quarterly_summaries CASCADE;
+DROP TABLE IF EXISTS gm_manager_scores CASCADE;
+DROP TABLE IF EXISTS talent_developments CASCADE;
+DROP TABLE IF EXISTS temporary_works CASCADE;
+DROP TABLE IF EXISTS monthly_tasks CASCADE;
+DROP TABLE IF EXISTS peer_reviews CASCADE;
+DROP TABLE IF EXISTS performance_records CASCADE;
+DROP TABLE IF EXISTS employees CASCADE;
+
+CREATE TABLE employees (
+  id VARCHAR(20) PRIMARY KEY,
+  name VARCHAR(50) NOT NULL,
+  department VARCHAR(50) NOT NULL,
+  sub_department VARCHAR(50) NOT NULL,
+  role VARCHAR(10) NOT NULL DEFAULT 'employee'
+    CHECK (role IN ('employee', 'manager', 'gm', 'hr')),
+  level VARCHAR(15) NOT NULL DEFAULT 'junior'
+    CHECK (level IN ('senior', 'intermediate', 'junior', 'assistant')),
+  manager_id VARCHAR(20),
+  avatar VARCHAR(255),
+  password VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_employees_manager_id ON employees(manager_id);
+CREATE INDEX idx_employees_department ON employees(department);
+CREATE INDEX idx_employees_sub_department ON employees(sub_department);
+CREATE INDEX idx_employees_role ON employees(role);
+
+CREATE TRIGGER trg_employees_updated_at
+  BEFORE UPDATE ON employees
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 绩效记录表
+-- ============================================================
+CREATE TABLE performance_records (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(20) NOT NULL,
+  assessor_id VARCHAR(20) NOT NULL,
+  month VARCHAR(7) NOT NULL,
+  self_summary TEXT,
+  next_month_plan TEXT,
+  task_completion DECIMAL(3,2) DEFAULT 1.00,
+  initiative DECIMAL(3,2) DEFAULT 1.00,
+  project_feedback DECIMAL(3,2) DEFAULT 1.00,
+  quality_improvement DECIMAL(3,2) DEFAULT 1.00,
+  total_score DECIMAL(3,2) DEFAULT 0.00,
+  level VARCHAR(2) DEFAULT 'L3',
+  normalized_score DECIMAL(3,2),
+  manager_comment TEXT,
+  next_month_work_arrangement TEXT,
+  group_type VARCHAR(4) NOT NULL
+    CHECK (group_type IN ('high', 'low')),
+  group_rank INT DEFAULT 0,
+  cross_dept_rank INT DEFAULT 0,
+  department_rank INT DEFAULT 0,
+  company_rank INT DEFAULT 0,
+  status VARCHAR(10) DEFAULT 'draft'
+    CHECK (status IN ('draft', 'submitted', 'scored', 'completed')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_employee_month UNIQUE (employee_id, month),
+  FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (assessor_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_pr_assessor_id ON performance_records(assessor_id);
+CREATE INDEX idx_pr_month ON performance_records(month);
+CREATE INDEX idx_pr_status ON performance_records(status);
+CREATE INDEX idx_pr_group_type ON performance_records(group_type);
+
+CREATE TRIGGER trg_performance_records_updated_at
+  BEFORE UPDATE ON performance_records
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 360度评分表
+-- ============================================================
+CREATE TABLE peer_reviews (
+  id VARCHAR(50) PRIMARY KEY,
+  reviewer_id VARCHAR(20) NOT NULL,
+  reviewee_id VARCHAR(20) NOT NULL,
+  record_id VARCHAR(50) NOT NULL,
+  collaboration DECIMAL(3,2) DEFAULT 1.00,
+  professionalism DECIMAL(3,2) DEFAULT 1.00,
+  communication DECIMAL(3,2) DEFAULT 1.00,
+  comment TEXT,
+  month VARCHAR(7) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (reviewer_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewee_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (record_id) REFERENCES performance_records(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_peer_reviewer_id ON peer_reviews(reviewer_id);
+CREATE INDEX idx_peer_reviewee_id ON peer_reviews(reviewee_id);
+CREATE INDEX idx_peer_record_id ON peer_reviews(record_id);
+CREATE INDEX idx_peer_month ON peer_reviews(month);
+
+-- ============================================================
+-- 月度任务表
+-- ============================================================
+CREATE TABLE monthly_tasks (
+  id VARCHAR(50) PRIMARY KEY,
+  manager_id VARCHAR(20) NOT NULL,
+  month VARCHAR(7) NOT NULL,
+  tasks JSONB NOT NULL,
+  uploaded_by VARCHAR(20) NOT NULL,
+  uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_mt_manager_month UNIQUE (manager_id, month),
+  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (uploaded_by) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_mt_manager_id ON monthly_tasks(manager_id);
+CREATE INDEX idx_mt_month ON monthly_tasks(month);
+
+-- ============================================================
+-- 临时工作表
+-- ============================================================
+CREATE TABLE temporary_works (
+  id VARCHAR(50) PRIMARY KEY,
+  manager_id VARCHAR(20) NOT NULL,
+  month VARCHAR(7) NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  description TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  completion_rate INT DEFAULT 0,
+  added_by VARCHAR(20) NOT NULL,
+  added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (added_by) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_tw_manager_id ON temporary_works(manager_id);
+CREATE INDEX idx_tw_month ON temporary_works(month);
+
+-- ============================================================
+-- 部门人才培养指标表
+-- ============================================================
+CREATE TABLE talent_developments (
+  id VARCHAR(50) PRIMARY KEY,
+  manager_id VARCHAR(20) NOT NULL,
+  quarter VARCHAR(7) NOT NULL,
+  training_sessions INT DEFAULT 0,
+  employees_trained INT DEFAULT 0,
+  promotions INT DEFAULT 0,
+  new_hires INT DEFAULT 0,
+  turnover_rate DECIMAL(5,2) DEFAULT 0.00,
+  skill_assessments INT DEFAULT 0,
+  notes TEXT,
+  CONSTRAINT uk_td_manager_quarter UNIQUE (manager_id, quarter),
+  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+-- ============================================================
+-- 总经理评分表
+-- ============================================================
+CREATE TABLE gm_manager_scores (
+  id VARCHAR(50) PRIMARY KEY,
+  manager_id VARCHAR(20) NOT NULL,
+  quarter VARCHAR(7) NOT NULL,
+  monthly_task_completion DECIMAL(3,2) DEFAULT 0.00,
+  temporary_work_completion DECIMAL(3,2) DEFAULT 0.00,
+  workload DECIMAL(3,2) DEFAULT 0.00,
+  talent_development DECIMAL(3,2) DEFAULT 0.00,
+  total_score DECIMAL(3,2) DEFAULT 0.00,
+  gm_comment TEXT,
+  "rank" INT DEFAULT 0,
+  status VARCHAR(10) DEFAULT 'pending'
+    CHECK (status IN ('pending', 'scored', 'completed')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_gms_manager_quarter UNIQUE (manager_id, quarter),
+  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE TRIGGER trg_gm_manager_scores_updated_at
+  BEFORE UPDATE ON gm_manager_scores
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 经理季度工作总结
+-- ============================================================
+CREATE TABLE quarterly_summaries (
+  id VARCHAR(50) PRIMARY KEY,
+  manager_id VARCHAR(20) NOT NULL,
+  manager_name VARCHAR(50),
+  quarter VARCHAR(7) NOT NULL,
+  summary TEXT,
+  next_quarter_plan TEXT,
+  status VARCHAR(10) DEFAULT 'submitted'
+    CHECK (status IN ('draft', 'submitted')),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_qs_manager_quarter UNIQUE (manager_id, quarter),
+  FOREIGN KEY (manager_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_qs_manager_id ON quarterly_summaries(manager_id);
+
+CREATE TRIGGER trg_quarterly_summaries_updated_at
+  BEFORE UPDATE ON quarterly_summaries
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 晋升/加薪申请表
+-- ============================================================
+CREATE TABLE promotion_requests (
+  id VARCHAR(50) PRIMARY KEY,
+  employee_id VARCHAR(20) NOT NULL,
+  requester_id VARCHAR(20) NOT NULL,
+  requester_role VARCHAR(10) NOT NULL
+    CHECK (requester_role IN ('employee', 'manager')),
+  target_level VARCHAR(15) NOT NULL
+    CHECK (target_level IN ('senior', 'intermediate', 'junior', 'assistant')),
+  target_position VARCHAR(100) NOT NULL,
+  raise_percentage DECIMAL(5,2) NOT NULL,
+  performance_summary TEXT,
+  skill_summary TEXT,
+  competency_summary TEXT,
+  work_summary TEXT,
+  status VARCHAR(20) DEFAULT 'submitted'
+    CHECK (status IN ('draft', 'submitted', 'manager_approved', 'gm_approved', 'hr_approved', 'rejected')),
+  manager_comment TEXT,
+  manager_approver_id VARCHAR(20),
+  manager_approved_at TIMESTAMP NULL,
+  gm_comment TEXT,
+  gm_approver_id VARCHAR(20),
+  gm_approved_at TIMESTAMP NULL,
+  hr_comment TEXT,
+  hr_approver_id VARCHAR(20),
+  hr_approved_at TIMESTAMP NULL,
+  rejected_reason TEXT,
+  rejected_by_role VARCHAR(10)
+    CHECK (rejected_by_role IN ('manager', 'gm', 'hr')),
+  rejected_by_id VARCHAR(20),
+  rejected_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE,
+  FOREIGN KEY (requester_id) REFERENCES employees(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_prom_employee_id ON promotion_requests(employee_id);
+CREATE INDEX idx_prom_requester_id ON promotion_requests(requester_id);
+CREATE INDEX idx_prom_status ON promotion_requests(status);
+
+CREATE TRIGGER trg_promotion_requests_updated_at
+  BEFORE UPDATE ON promotion_requests
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 晋升审批链配置
+-- ============================================================
+CREATE TABLE promotion_approval_settings (
+  id VARCHAR(50) PRIMARY KEY,
+  chain TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER trg_promotion_approval_settings_updated_at
+  BEFORE UPDATE ON promotion_approval_settings
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 初始化数据：插入员工
+-- ============================================================
+INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, password) VALUES
+('e001', '姚洪', '营销中心', '销售部', 'employee', 'senior', 'm001', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e002', '叶桂锋', '工程技术中心', '测试部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e003', '管运志', '教育装备事业部', '教育装备事业部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e004', '黄富', '工程技术中心', 'PLC 部-PLC二组', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e005', '姬中华', '工程技术中心', '新能源技术部', 'employee', 'junior', 'm004', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e006', '黄鸿', '工程技术中心', '测试部', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e007', '黄亦卓', '制造中心', '客服部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e008', '李亮', '制造中心', '品质部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e009', '卢灿杰', '工程技术中心', 'PLC 部-PLC一组', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e010', '唐辰雨', '工程技术中心', '测试部', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e011', '程修强', '教育装备事业部', '/-/', 'employee', 'senior', 'm002', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e012', '王伟超', '工程技术中心', '技术开发部-/', 'employee', 'assistant', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e013', '刘佩锋', '工程技术中心', '测试部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e014', '劳忠桂', '工程技术中心', '测试部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e015', '冯万银', '工程技术中心', '新能源技术部-结构三组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e016', '刘志洪', '工程技术中心', '技术开发部-/', 'employee', 'assistant', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e017', '蒋开鹏', '工程技术中心', '测试部', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e018', '谭志伟', '工程技术中心', '测试部', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e019', '黄超', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e020', '陈云博', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e021', '黄亿豪', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'assistant', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e022', '钱颖萱', '营销中心', '商务部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e023', '黄佳根', '工程技术中心', '技术开发部-/', 'employee', 'junior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e024', '杨唐贤', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e025', '梁彪', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e026', '罗凯', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e027', '潘正井', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e028', '庄松滨', '工程技术中心', '测试部-/', 'employee', 'assistant', 'm015', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e029', '谭丽俊', '营销中心', '销售部-/', 'employee', 'junior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e030', '佘秋炎', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e031', '张建卿', '工程技术中心', '技术开发部-/', 'employee', 'senior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e032', '肖英明', '工程技术中心', '测试部-/', 'employee', 'assistant', 'm015', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e033', '罗畅', '工程技术中心', '售前技术部-/', 'employee', 'assistant', 'm003', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e034', '田求发', '工程技术中心', '技术开发部-/', 'employee', 'intermediate', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e035', '周欢欢', '工程技术中心', '测试部-/', 'employee', 'assistant', 'm015', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e036', '方小虎', '教育装备事业部', '销售部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e037', '周璐', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e038', '周向敬', '工程技术中心', '新能源技术部-结构二组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e039', '林宇寰', '工程技术中心', '技术开发部-/', 'employee', 'intermediate', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e040', '陈社海', '工程技术中心', '技术开发部-/', 'employee', 'assistant', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e041', '胡博勤', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e042', '袁强', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e043', '甘辉', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e044', '曾伟立', '工程技术中心', '新能源技术部-结构一组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e045', '陈泽顺', '工程技术中心', 'PLC 部-PLC一组', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e046', '房思琦', '工程技术中心', '新能源技术部-/', 'employee', 'assistant', 'm006', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e047', '李增欢', '工程技术中心', '测试部-/', 'employee', 'intermediate', 'm015', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e048', '梁建伟', '营销中心', '市场部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e049', '罗群旺', '制造中心', '生产部-机电装配组', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e050', '欧阳钰洁', '工程技术中心', '新能源技术部-/', 'employee', 'junior', 'm006', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e051', '丁盼', '工程技术中心', '测试部-白色家电组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e052', '廖伟梅', '营销中心', '商务部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e053', '席程', '工程技术中心', '技术开发部-/', 'employee', 'assistant', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e054', '高彦芳', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e055', '高军', '采购部', '采购组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e056', '覃安杰', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e057', '雷胜利', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e058', '黄光磊', '工程技术中心', '新能源技术部-结构三组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e059', '梁栋', '制造中心', '客服部-/', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e060', '胡远来', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e061', '龙光传', '营销中心', '销售部-/', 'employee', 'junior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e062', '谢俊', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e063', '张桥', '工程技术中心', '新能源技术部-结构二组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e064', '刘伟', '工程技术中心', '测试部-新能源组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e065', '杨明博', '工程技术中心', '测试部-新能源组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e066', '蔡柯炳', '工程技术中心', 'PLC 部-PLC三组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e067', '张浩', '工程技术中心', '测试部-新能源组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('hr001', '林作倩', '人力行政部', '人事组-/', 'hr', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e068', '潘自栖', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'intermediate', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e069', '刘万成', '工程技术中心', '新能源技术部-结构三组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e070', '曾杰', '工程技术中心', '新能源技术部-结构三组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e071', '何永志', '工程技术中心', '技术开发部-/', 'employee', 'senior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e072', '洪国安', '工程技术中心', '新能源技术部-结构一组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e073', '张海波', '工程技术中心', '测试部-现场支持', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e074', '蒋美琳', '财务部', '会计组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e075', '周定炫', '工程技术中心', '售前技术部-/', 'employee', 'senior', 'm003', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e076', '卢成桢', '工程技术中心', '测试部-半导体组', 'employee', 'assistant', 'm005', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e077', '罗伟军', '营销中心', '销售部-/', 'employee', 'junior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e078', '温日波', '工程技术中心', 'PLC 部-PLC一组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('m001', '张丙波', '工程技术中心', '新能源技术部', 'manager', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e079', '邱林涛', '营销中心', '销售部-/', 'employee', 'junior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e080', '崔长玉', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e081', '梁范聪', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e082', '李维', '工程技术中心', '新能源技术部-结构三组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e083', '刘亚强', '制造中心', '客服部-/', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e084', '陈世江', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'junior', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e085', '周星', '制造中心', '生产部-机加组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e086', '徐超', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e087', '蔡世河', '制造中心', '生产部-机加组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e088', '丘文华', '工程技术中心', '测试部-半导体组', 'employee', 'senior', 'm005', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e089', '陈东洲', '工程技术中心', 'PLC 部-PLC二组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e090', '符慰', '工程技术中心', '测试部-现场支持', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e091', '马伟伟', '工程技术中心', '售前技术部-/', 'employee', 'junior', 'm003', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e092', '李志文', '工程技术中心', '测试部-/', 'employee', 'junior', 'm015', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e093', '阳容', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e094', '朱文杰', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e095', '欧阳天华', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e096', '计建军', '项目管理部', 'PMC组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e097', '梁丕斌', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e098', '袁盛武', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e099', '廖云壮', '工程技术中心', '测试部-新能源组', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e100', '梁丽萍', '制造中心', '生产部-/', 'employee', 'junior', 'm013', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e101', '唐建安', '项目管理部', 'PMC组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e102', '张昌望', '工程技术中心', '新能源技术部-/', 'employee', 'senior', 'm006', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e103', '刘钊玲', '工程技术中心', 'PLC 部-PLC二组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e104', '唐乐兵', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e105', '王伟才', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e106', '尹杨飞', '营销中心', '销售部-/', 'employee', 'senior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e107', '李学伟', '工程技术中心', '新能源技术部-结构二组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e108', '林潇伟', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e109', '王玉梅', '工程技术中心', '新能源技术部-/', 'employee', 'junior', 'm006', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e110', '向兰兰', '财务部', '出纳组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e111', '王子豪', '工程技术中心', 'PLC 部-PLC一组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e112', '杜鹏', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'intermediate', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e113', '马伟', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'intermediate', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e114', '梁柱', '工程技术中心', '技术开发部-/', 'employee', 'senior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e115', '黄文华', '工程技术中心', '测试部-海尔治县', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e116', '李方', '制造中心', '仓储部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e117', '廖美霞', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e118', '黎佩锋', '工程技术中心', '技术开发部-/', 'employee', 'senior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e119', '张学松', '制造中心', '客服部-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e120', '李琴', '财务部', '会计组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e121', '谢欢', '财务部', '会计组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e122', '代亚平', '采购部', '采购组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e123', '刘启勇', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('gm001', '符凌维', '总经办', '/-/', 'gm', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e124', '卢俊宏', '制造中心', '生产部-机电装配组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e125', '陈思', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e126', '周志锐', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e127', '杨帮', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'senior', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e128', '王志红', '制造中心', '客服部-/', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e129', '常雄', '项目管理部', 'PMC组-/', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e130', '侬然科', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e131', '史昱东', '营销中心', '销售部-/', 'employee', 'junior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e132', '李磊', '工程技术中心', 'PLC 部-PLC三组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e133', '林少育', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e134', '黄平', '工程技术中心', '新能源技术部-结构二组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e135', '唐孝日', '工程技术中心', '技术开发部-/', 'employee', 'assistant', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e136', '邱彬', '制造中心', '生产部-机加组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e137', '周念', '制造中心', '仓储部-/', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('m002', '宋魁', '营销中心', '销售部-/', 'manager', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e138', '黄雷', '工程技术中心', 'PLC 部-PLC三组', 'employee', 'assistant', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('m003', '陈亮', '项目管理部', '项目管理组', 'manager', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e139', '刘真', '工程技术中心', 'PLC 部-PLC二组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e140', '陈昌冠', '工程技术中心', 'PLC 部-PLC一组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e141', '张小川', '工程技术中心', '测试部-白色家电组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e142', '左天亮', '制造中心', '生产部-机电装配组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e143', '蔡小龙', '工程技术中心', '新能源技术部-结构一组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e144', '郑琴', '营销中心', '销售部-/', 'employee', 'senior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e145', '黄云华', '工程技术中心', '测试部-现场支持', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e146', '伍金明', '工程技术中心', '测试部-白色家电组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e147', '邓志斌', '营销中心', '销售部-/', 'employee', 'senior', 'm007', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e148', '王永锋', '工程技术中心', '新能源技术部-结构一组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e149', '王琼瑶', '制造中心', '生产部-机加组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e150', '王静', '采购部', '采购组-/', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e151', '王俊', '工程技术中心', 'PLC 部-/', 'employee', 'senior', 'm012', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e152', '林海', '工程技术中心', '测试部-新能源组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e153', '方康敬', '制造中心', '生产部-机电装配组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e154', '颜耀松', '工程技术中心', '测试部-白色家电组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e155', '邱钧海', '制造中心', '生产部-机加组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e156', '刘达红', '工程技术中心', '测试部-海尔治县', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('m004', '高勇', '制造中心', '生产部-/', 'manager', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e157', '梁昭', '工程技术中心', '测试部-汽车电子组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e158', '卢北凤', '制造中心', '生产部-电子接线组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('gm002', '郑汝才', '总经办', '/-/', 'gm', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e159', '骆奕兴', '制造中心', '/-/', 'employee', 'senior', 'm014', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e160', '于振华', '工程技术中心', '测试部-/', 'employee', 'senior', 'm015', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e161', '张志锋', '工程技术中心', '测试部', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e162', '刘孙伟', '工程技术中心', '测试部-现场支持', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e163', '谭章斌', '项目管理部', '项目管理组-/', 'employee', 'senior', 'm016', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('e164', '谢朝良', '制造中心', '生产部-电子接线组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('hr002', '张小保', '人力行政部', '行政组-/', 'hr', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+ON CONFLICT (id) DO UPDATE SET updated_at = CURRENT_TIMESTAMP;
