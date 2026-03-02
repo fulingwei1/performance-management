@@ -6,7 +6,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 export const notificationController = {
   // 获取我的消息列表
   getMyNotifications: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     
     if (!userId) {
       return res.status(401).json({
@@ -34,7 +34,7 @@ export const notificationController = {
 
   // 获取未读数量
   getUnreadCount: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     
     if (!userId) {
       return res.status(401).json({
@@ -64,7 +64,7 @@ export const notificationController = {
         });
       }
 
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId || (req as any).user?.id;
       
       if (!userId) {
         return res.status(401).json({
@@ -103,7 +103,7 @@ export const notificationController = {
 
   // 全部标记为已读
   markAllAsRead: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     
     if (!userId) {
       return res.status(401).json({
@@ -134,7 +134,7 @@ export const notificationController = {
         });
       }
 
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId || (req as any).user?.id;
       
       if (!userId) {
         return res.status(401).json({

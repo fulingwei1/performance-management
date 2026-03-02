@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 
 export const todoController = {
   getMyTodos: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     if (!userId) return res.status(401).json({ success: false, error: '未授权' });
 
     const status = typeof req.query.status === 'string' ? req.query.status as TodoStatus : undefined;
@@ -21,7 +21,7 @@ export const todoController = {
         return res.status(400).json({ success: false, error: errors.array()[0].msg });
       }
 
-      const userId = (req as any).user?.id;
+      const userId = (req as any).user?.userId || (req as any).user?.id;
       if (!userId) return res.status(401).json({ success: false, error: '未授权' });
 
       const todo = await TodoModel.findById(req.params.id as string);
@@ -34,7 +34,7 @@ export const todoController = {
   ],
 
   getStatistics: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     if (!userId) return res.status(401).json({ success: false, error: '未授权' });
 
     const stats = await TodoModel.getStatistics(userId);
@@ -44,7 +44,7 @@ export const todoController = {
 
   // 待办摘要（按类型分组，含数量、最近截止日期、状态）
   getSummary: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.id;
+    const userId = (req as any).user?.userId || (req as any).user?.id;
     if (!userId) return res.status(401).json({ success: false, error: '未授权' });
 
     const todos = await TodoModel.findByEmployeeId(userId);
