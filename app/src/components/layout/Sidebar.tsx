@@ -122,29 +122,29 @@ export function Sidebar({ role }: SidebarProps) {
   };
   
   return (
-    <aside className="w-64 bg-gray-900 text-white flex flex-col h-screen fixed left-0 top-0 z-50">
+    <aside className="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-white/[0.06] bg-[#09090b] text-white">
       {/* Logo */}
-      <div className="p-6 border-b border-gray-800">
+      <div className="border-b border-white/[0.06] p-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25">
             <BarChart3 className="w-6 h-6 text-white" />
           </div>
           <div>
             <h1 className="text-lg font-bold">ATE绩效</h1>
-            <p className="text-xs text-gray-400">Performance Mgmt</p>
+            <p className="text-xs text-slate-400">Performance Mgmt</p>
           </div>
         </div>
       </div>
       
       {/* User Info */}
-      <div className="p-4 border-b border-gray-800">
+      <div className="border-b border-white/[0.06] p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-sm font-semibold">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-sm font-semibold">
             {user?.name.charAt(0)}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-xs text-gray-400 truncate">{getRoleLabel()}</p>
+            <p className="truncate text-xs text-slate-400">{getRoleLabel()}</p>
           </div>
           <NotificationBell />
         </div>
@@ -161,10 +161,10 @@ export function Sidebar({ role }: SidebarProps) {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive 
-                  ? "bg-blue-600 text-white" 
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
               )}
             >
               <Icon className="w-5 h-5" />
@@ -172,7 +172,7 @@ export function Sidebar({ role }: SidebarProps) {
               {isActive && (
                 <motion.div
                   layoutId="activeIndicator"
-                  className="w-1.5 h-1.5 bg-white rounded-full"
+                  className="h-1.5 w-1.5 rounded-full bg-primary"
                 />
               )}
             </NavLink>
@@ -181,10 +181,10 @@ export function Sidebar({ role }: SidebarProps) {
       </nav>
       
       {/* Logout */}
-      <div className="p-4 border-t border-gray-800">
+      <div className="border-t border-white/[0.06] p-4">
         <button
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-all duration-200 w-full"
+          className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-white/[0.05] hover:text-white"
         >
           <LogOut className="w-5 h-5" />
           <span>退出登录</span>
