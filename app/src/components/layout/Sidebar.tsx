@@ -75,7 +75,6 @@ const gmNavItems = [
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/hr/contract-management', label: '合约管理', icon: FileSignature },
   { path: '/hr/assessment-templates', label: '考核模板管理', icon: FileText },
   { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
   { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
@@ -92,7 +91,6 @@ const adminNavItems = [
   { path: '/admin/user-management', label: '用户管理', icon: Users },
   { path: '/admin/system-settings', label: '系统设置', icon: Settings },
   { path: '/admin/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/admin/contract-management', label: '合约管理', icon: FileSignature },
   { path: '/admin/assessment-publication', label: '考核结果发布', icon: Send },
   { path: '/admin/peer-review-management', label: '360互评管理', icon: ShieldCheck },
   { path: '/admin/department-tree', label: '组织架构', icon: Building2 },
