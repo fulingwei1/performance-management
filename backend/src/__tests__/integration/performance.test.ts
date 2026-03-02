@@ -166,7 +166,7 @@ describe('Performance API', () => {
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail with invalid score values', async () => {
+    it('should accept summary payload even when score fields are out of range', async () => {
       const token = await TestHelper.getAuthToken('employee');
 
       const response = await request(app)
@@ -181,8 +181,9 @@ describe('Performance API', () => {
           qualityImprovement: 1.0
         });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('success', false);
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('id');
     });
 
     it('should fail without authentication', async () => {

@@ -136,7 +136,7 @@ describe('Department API', () => {
         .set('Authorization', `Bearer ${hrToken}`);
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toContain('子部门');
+      expect(res.body.message).toContain('子部门');
     });
 
     it('should delete a leaf department', async () => {

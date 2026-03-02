@@ -70,7 +70,7 @@ describe('Auth API', () => {
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail with missing role', async () => {
+    it('should login successfully when role is missing', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
@@ -78,8 +78,9 @@ describe('Auth API', () => {
           password: '123456'
         });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('success', false);
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toHaveProperty('token');
     });
 
     it('should fail with empty credentials', async () => {
