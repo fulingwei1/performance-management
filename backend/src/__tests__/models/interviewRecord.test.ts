@@ -26,12 +26,12 @@ describe('InterviewRecord Model', () => {
       scheduled_date: '2026-03-15',
       scheduled_time: '14:00',
       duration_minutes: 60,
-      manager_id: 1,
-      employee_id: 10,
-      department_id: 2,
+      manager_id: 'm001',
+      employee_id: 'e010',
+      department_id: 'd002',
       status: 'scheduled' as const,
       template_id: 1,
-      created_by: 1,
+      created_by: 'hr001',
     };
 
     it('should create an interview plan', async () => {
@@ -144,8 +144,8 @@ describe('InterviewRecord Model', () => {
     const sampleRecord = {
       id: 1,
       plan_id: 1,
-      employee_id: 10,
-      manager_id: 1,
+      employee_id: 'e010',
+      manager_id: 'm001',
       interview_date: '2026-03-15',
       interview_time: '14:00',
       duration_minutes: 55,
@@ -236,8 +236,8 @@ describe('InterviewRecord Model', () => {
     const sampleImprovement = {
       id: 1,
       interview_record_id: 1,
-      employee_id: 10,
-      manager_id: 1,
+      employee_id: 'e010',
+      manager_id: 'm001',
       goal: '提升沟通能力',
       description: '参加沟通培训课程',
       category: 'skill' as const,
