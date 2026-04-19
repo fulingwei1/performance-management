@@ -26,7 +26,7 @@ export class AIPredictionService {
    * 预测未来绩效（线性回归）
    */
   async predictPerformance(
-    employeeId: number,
+    employeeId: string,
     monthsToPredict: number = 3
   ): Promise<PredictionResult> {
     // 获取历史数据（过去 12 个月）
@@ -132,7 +132,7 @@ export class AIPredictionService {
    * 获取历史绩效数据
    */
   private async getHistoricalData(
-    employeeId: number,
+    employeeId: string,
     months: number
   ): Promise<PerformanceRecord[]> {
     const { query } = await import('../config/database');
@@ -159,7 +159,7 @@ export class AIPredictionService {
    * 移动平均预测（备选方法）
    */
   async predictWithMovingAverage(
-    employeeId: number,
+    employeeId: string,
     monthsToPredict: number = 3,
     windowSize: number = 3
   ): Promise<PredictionResult> {

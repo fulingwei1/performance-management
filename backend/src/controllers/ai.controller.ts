@@ -14,9 +14,14 @@ export const predictPerformance = async (req: Request, res: Response) => {
       return res.status(400).json({ message: '缺少员工ID' });
     }
 
+    const parsedMonths = Number(months);
+    if (!Number.isFinite(parsedMonths) || parsedMonths < 1) {
+      return res.status(400).json({ message: '预测月份必须是大于 0 的数字' });
+    }
+
     const result = await aiPredictionService.predictPerformance(
-      parseInt(employeeId),
-      parseInt(months)
+      String(employeeId),
+      parsedMonths
     );
 
     res.json({
