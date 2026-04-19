@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
 import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 import { TodoSection } from '@/components/dashboard/TodoSection';
+import { AIPredictionAlertsCard } from '@/components/dashboard/AIPredictionAlertsCard';
 import { todoApi } from '@/services/api';
 
 // 月份选项
@@ -204,6 +205,16 @@ export function ManagerDashboard() {
           subtitle="本月"
           icon={TrendingUp}
           color="purple"
+        />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <AIPredictionAlertsCard
+          title="团队 AI 绩效预警"
+          months={3}
+          limit={5}
+          emptyText="团队当前没有明显下滑风险。"
+          detailPathBuilder={(employeeId) => `/manager/employee/${employeeId}`}
         />
       </motion.div>
       

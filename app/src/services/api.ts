@@ -828,3 +828,14 @@ export const dataExportApi = {
     );
   },
 };
+
+// AI 洞察 API
+export const aiApi = {
+  getRiskAlerts: (params?: { months?: number; limit?: number }) => {
+    const search = new URLSearchParams();
+    if (params?.months) search.set('months', String(params.months));
+    if (params?.limit) search.set('limit', String(params.limit));
+    const query = search.toString();
+    return request(`/ai/risk-alerts${query ? `?${query}` : ''}`);
+  }
+};

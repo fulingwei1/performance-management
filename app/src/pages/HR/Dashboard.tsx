@@ -33,6 +33,7 @@ import { DeptPerformanceTable, type DeptRecord } from './Dashboard/DeptPerforman
 import { EmployeeDetailDrawer } from './Dashboard/EmployeeDetailDrawer';
 import { DeleteRecordsDialog } from './Dashboard/DeleteRecordsDialog';
 import { TodoSection } from '@/components/dashboard/TodoSection';
+import { AIPredictionAlertsCard } from '@/components/dashboard/AIPredictionAlertsCard';
 import { todoApi } from '@/services/api';
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
@@ -224,6 +225,15 @@ export function HRDashboard() {
       {/* Stat Cards */}
       <motion.div variants={itemVariants}>
         <StatCards stats={stats} onFilterChange={setStatusFilter} />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <AIPredictionAlertsCard
+          title="全公司 AI 绩效预警"
+          months={3}
+          limit={8}
+          emptyText="当前没有识别到明显下滑风险。"
+        />
       </motion.div>
       
       {/* Department Performance Table */}

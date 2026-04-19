@@ -21,6 +21,20 @@ interface PredictionResult {
   confidence: number;
 }
 
+export interface PredictionAlert {
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  position?: string;
+  currentScore: number;
+  predictedScore: number;
+  predictedMonth: string;
+  drop: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  confidence: number;
+  riskLevel: 'high' | 'medium';
+}
+
 export class AIPredictionService {
   /**
    * 预测未来绩效（线性回归）
@@ -41,7 +55,7 @@ export class AIPredictionService {
 
     // 生成预测
     const predictions = [];
-    const lastMonth = new Date(historicalData[historicalData.length - 1].month);
+    const lastMonth = this.parseMonth(historicalData[historicalData.length - 1].month);
 
     for (let i = 1; i <= monthsToPredict; i++) {
       const futureMonth = new Date(lastMonth);
@@ -74,7 +88,7 @@ export class AIPredictionService {
       : 'stable';
 
     // 置信度（基于 R²）
-    const confidence = Math.round(regression.rSquared * 100);
+    const confidence = Math.max(0, Math.min(100, Math.round(regression.rSquared * 100)));
 
     return {
       predictions,
@@ -120,12 +134,16 @@ export class AIPredictionService {
       ssResidual += Math.pow(record.score - yPredicted, 2);
     });
 
-    const rSquared = 1 - (ssResidual / ssTotal);
+    const rSquared = ssTotal === 0 ? 1 : 1 - (ssResidual / ssTotal);
 
     // 计算标准误差
-    const stdError = Math.sqrt(ssResidual / (n - 2));
+    const stdError = n <= 2 ? 0 : Math.sqrt(ssResidual / (n - 2));
 
     return { slope, intercept, rSquared, stdError };
+  }
+
+  private parseMonth(month: string): Date {
+    return new Date(`${month}-01T00:00:00`);
   }
 
   /**
@@ -139,15 +157,15 @@ export class AIPredictionService {
     
     const sql = `
       SELECT 
-        TO_CHAR(month, 'YYYY-MM') as month,
+        month,
         total_score as score
       FROM monthly_assessments
       WHERE employee_id = $1
-        AND month >= NOW() - INTERVAL '${months} months'
-      ORDER BY month ASC
+        AND TO_DATE(month || '-01', 'YYYY-MM-DD') >= DATE_TRUNC('month', CURRENT_DATE) - (($2::int - 1) * INTERVAL '1 month')
+      ORDER BY TO_DATE(month || '-01', 'YYYY-MM-DD') ASC
     `;
 
-    const result = await query(sql, [employeeId]);
+    const result = await query(sql, [employeeId, months]);
 
     return result.map((row: any) => ({
       month: row.month,
@@ -170,7 +188,7 @@ export class AIPredictionService {
     }
 
     const predictions = [];
-    const lastMonth = new Date(historicalData[historicalData.length - 1].month);
+    const lastMonth = this.parseMonth(historicalData[historicalData.length - 1].month);
 
     // 计算最近 N 个月的平均值
     const recentScores = historicalData.slice(-windowSize).map(r => r.score);
@@ -207,6 +225,80 @@ export class AIPredictionService {
       trend: trendDirection,
       confidence: 75 // 移动平均法置信度较低
     };
+  }
+
+  async getPredictionAlerts(options: {
+    viewerRole: string;
+    viewerId: string;
+    monthsToPredict?: number;
+    limit?: number;
+  }): Promise<PredictionAlert[]> {
+    const { query: dbQuery } = await import('../config/database');
+    const monthsToPredict = options.monthsToPredict ?? 3;
+    const limit = options.limit ?? 5;
+
+    const params: any[] = [];
+    const scopeConditions = ["e.role NOT IN ('hr', 'admin', 'gm')"];
+
+    if (options.viewerRole === 'manager') {
+      params.push(options.viewerId);
+      scopeConditions.push(`e.manager_id = $${params.length}`);
+    }
+
+    const sql = `
+      SELECT
+        e.id,
+        e.name,
+        e.department,
+        COUNT(ma.id) AS assessment_count
+      FROM employees e
+      JOIN monthly_assessments ma ON ma.employee_id = e.id
+      WHERE ${scopeConditions.join(' AND ')}
+      GROUP BY e.id, e.name, e.department
+      HAVING COUNT(ma.id) >= 3
+      ORDER BY e.department, e.name
+    `;
+
+    const employees = await dbQuery(sql, params);
+    const alerts: PredictionAlert[] = [];
+
+    for (const employee of employees) {
+      const historicalData = await this.getHistoricalData(employee.id, 12);
+      if (historicalData.length < 3) continue;
+
+      const prediction = await this.predictPerformance(employee.id, monthsToPredict);
+      const latestScore = historicalData[historicalData.length - 1]?.score ?? 0;
+      const latestPrediction = prediction.predictions[prediction.predictions.length - 1];
+      if (!latestPrediction) continue;
+
+      const drop = Math.round((latestScore - latestPrediction.predictedScore) * 10) / 10;
+      const isRisk = prediction.trend === 'decreasing' || drop >= 5 || latestPrediction.predictedScore < 70;
+
+      if (!isRisk) continue;
+
+      const riskLevel = drop >= 10 || latestPrediction.predictedScore < 60 ? 'high' : 'medium';
+
+      alerts.push({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        department: employee.department,
+        currentScore: Math.round(latestScore * 10) / 10,
+        predictedScore: latestPrediction.predictedScore,
+        predictedMonth: latestPrediction.month,
+        drop,
+        trend: prediction.trend,
+        confidence: prediction.confidence,
+        riskLevel
+      });
+    }
+
+    return alerts
+      .sort((a, b) => {
+        if (a.riskLevel !== b.riskLevel) return a.riskLevel === 'high' ? -1 : 1;
+        if (b.drop !== a.drop) return b.drop - a.drop;
+        return b.confidence - a.confidence;
+      })
+      .slice(0, limit);
   }
 
   /**

@@ -4,8 +4,10 @@ import {
   getPromotionCandidates,
   getDepartmentPromotionStats,
   getPerformanceAnomalies,
-  getAnomalyStats
+  getAnomalyStats,
+  getPredictionAlerts
 } from '../controllers/ai.controller';
+import { authenticate, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -19,5 +21,8 @@ router.get('/department/:departmentId/promotion-stats', getDepartmentPromotionSt
 // 异常检测
 router.get('/performance-anomalies', getPerformanceAnomalies);
 router.get('/anomaly-stats', getAnomalyStats);
+
+// 预测预警
+router.get('/risk-alerts', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), getPredictionAlerts);
 
 export default router;

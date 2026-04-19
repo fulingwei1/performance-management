@@ -132,3 +132,42 @@ export const getAnomalyStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * 获取预测风险预警
+ */
+export const getPredictionAlerts = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: '未认证' });
+    }
+
+    const parsedMonths = Number(req.query.months ?? 3);
+    const parsedLimit = Number(req.query.limit ?? 5);
+
+    if (!Number.isFinite(parsedMonths) || parsedMonths < 1) {
+      return res.status(400).json({ success: false, message: '预测月份必须是大于 0 的数字' });
+    }
+
+    if (!Number.isFinite(parsedLimit) || parsedLimit < 1) {
+      return res.status(400).json({ success: false, message: '返回数量必须是大于 0 的数字' });
+    }
+
+    const alerts = await aiPredictionService.getPredictionAlerts({
+      viewerRole: req.user.role,
+      viewerId: req.user.userId,
+      monthsToPredict: parsedMonths,
+      limit: parsedLimit
+    });
+
+    res.json({
+      success: true,
+      data: alerts
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || '获取预测风险失败'
+    });
+  }
+};
