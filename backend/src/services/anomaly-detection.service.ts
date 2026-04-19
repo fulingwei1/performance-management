@@ -10,7 +10,7 @@ export enum AnomalyLevel {
 }
 
 export interface PerformanceAnomaly {
-  employeeId: number;
+  employeeId: string;
   employeeName: string;
   department: string;
   anomalyType: string;
@@ -66,19 +66,26 @@ export class AnomalyDetectionService {
       WITH monthly_scores AS (
         SELECT 
           ma.employee_id,
-          e.username as employee_name,
+          e.name as employee_name,
           e.department,
-          TO_CHAR(ma.month, 'YYYY-MM') as month,
+          ma.month,
           ma.total_score as score,
-          LAG(ma.total_score, 1) OVER (PARTITION BY ma.employee_id ORDER BY ma.month) as prev_score_1,
-          LAG(ma.total_score, 2) OVER (PARTITION BY ma.employee_id ORDER BY ma.month) as prev_score_2
+          LAG(ma.total_score, 1) OVER (
+            PARTITION BY ma.employee_id
+            ORDER BY TO_DATE(ma.month || '-01', 'YYYY-MM-DD')
+          ) as prev_score_1,
+          LAG(ma.total_score, 2) OVER (
+            PARTITION BY ma.employee_id
+            ORDER BY TO_DATE(ma.month || '-01', 'YYYY-MM-DD')
+          ) as prev_score_2
         FROM monthly_assessments ma
         JOIN employees e ON ma.employee_id = e.id
-        WHERE TO_CHAR(ma.month, 'YYYY-MM') = $1
+        WHERE ma.month <= $1
       )
       SELECT *
       FROM monthly_scores
-      WHERE prev_score_1 IS NOT NULL 
+      WHERE month = $1
+        AND prev_score_1 IS NOT NULL 
         AND prev_score_2 IS NOT NULL
         AND (prev_score_1 - score) >= 15
         AND (prev_score_2 - prev_score_1) >= 15
@@ -114,18 +121,22 @@ export class AnomalyDetectionService {
       WITH monthly_scores AS (
         SELECT 
           ma.employee_id,
-          e.username as employee_name,
+          e.name as employee_name,
           e.department,
-          TO_CHAR(ma.month, 'YYYY-MM') as month,
+          ma.month,
           ma.total_score as score,
-          LAG(ma.total_score, 1) OVER (PARTITION BY ma.employee_id ORDER BY ma.month) as prev_score
+          LAG(ma.total_score, 1) OVER (
+            PARTITION BY ma.employee_id
+            ORDER BY TO_DATE(ma.month || '-01', 'YYYY-MM-DD')
+          ) as prev_score
         FROM monthly_assessments ma
         JOIN employees e ON ma.employee_id = e.id
-        WHERE TO_CHAR(ma.month, 'YYYY-MM') = $1
+        WHERE ma.month <= $1
       )
       SELECT *
       FROM monthly_scores
-      WHERE prev_score IS NOT NULL 
+      WHERE month = $1
+        AND prev_score IS NOT NULL 
         AND (prev_score - score) >= 25
     `;
 
@@ -163,19 +174,19 @@ export class AnomalyDetectionService {
           AVG(ma.total_score) as avg_score
         FROM monthly_assessments ma
         JOIN employees e ON ma.employee_id = e.id
-        WHERE TO_CHAR(ma.month, 'YYYY-MM') = $1
+        WHERE ma.month = $1
         GROUP BY e.department
       )
       SELECT 
         ma.employee_id,
-        e.username as employee_name,
+        e.name as employee_name,
         e.department,
         ma.total_score as score,
         da.avg_score as team_avg
       FROM monthly_assessments ma
       JOIN employees e ON ma.employee_id = e.id
       JOIN department_avg da ON e.department = da.department
-      WHERE TO_CHAR(ma.month, 'YYYY-MM') = $1
+      WHERE ma.month = $1
         AND ma.total_score < (da.avg_score * 0.7)
     `;
 
@@ -208,12 +219,12 @@ export class AnomalyDetectionService {
     const sql = `
       SELECT 
         ma.employee_id,
-        e.username as employee_name,
+        e.name as employee_name,
         e.department,
         ma.total_score as score
       FROM monthly_assessments ma
       JOIN employees e ON ma.employee_id = e.id
-      WHERE TO_CHAR(ma.month, 'YYYY-MM') = $1
+      WHERE ma.month = $1
         AND ma.total_score > 95
     `;
 

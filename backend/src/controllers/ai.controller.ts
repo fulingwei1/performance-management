@@ -44,7 +44,7 @@ export const getPromotionCandidates = async (req: Request, res: Response) => {
     const { departmentId, limit = 10 } = req.query;
 
     const candidates = await promotionRecommenderService.getPromotionCandidates(
-      departmentId ? parseInt(departmentId as string) : undefined,
+      typeof departmentId === 'string' ? departmentId : undefined,
       parseInt(limit as string)
     );
 
@@ -72,7 +72,7 @@ export const getDepartmentPromotionStats = async (req: Request, res: Response) =
     }
 
     const stats = await promotionRecommenderService.getDepartmentPromotionStats(
-      parseInt(departmentId, 10)
+      departmentId
     );
 
     res.json({

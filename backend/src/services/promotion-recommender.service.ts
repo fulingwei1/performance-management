@@ -4,7 +4,7 @@
  */
 
 interface PromotionCandidate {
-  employeeId: number;
+  employeeId: string;
   employeeName: string;
   department: string;
   currentPosition: string;
@@ -39,7 +39,7 @@ export class PromotionRecommenderService {
    * 获取晋升候选人列表
    */
   async getPromotionCandidates(
-    departmentId?: number,
+    department?: string,
     limit: number = 10,
     weights: WeightConfig = DEFAULT_WEIGHTS
   ): Promise<PromotionCandidate[]> {
@@ -52,30 +52,29 @@ export class PromotionRecommenderService {
           employee_id,
           AVG(total_score) as avg_performance
         FROM monthly_assessments
-        WHERE month >= NOW() - INTERVAL '6 months'
+        WHERE TO_DATE(month || '-01', 'YYYY-MM-DD') >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
         GROUP BY employee_id
       ),
       goal_completion AS (
         SELECT 
-          employee_id,
+          owner_id as employee_id,
           COUNT(CASE WHEN progress >= 100 THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100 as completion_rate
         FROM objectives
         WHERE year = EXTRACT(YEAR FROM CURRENT_DATE)
-        GROUP BY employee_id
+        GROUP BY owner_id
       ),
       peer_reviews AS (
         SELECT 
           reviewee_id as employee_id,
-          AVG(rating) as avg_peer_score
+          AVG(total_score) as avg_peer_score
         FROM peer_reviews
         WHERE created_at >= NOW() - INTERVAL '6 months'
         GROUP BY reviewee_id
       )
       SELECT 
         e.id,
-        e.username as name,
+        e.name,
         e.department,
-        e.position,
         e.created_at,
         COALESCE(p.avg_performance, 0) as performance_score,
         COALESCE(g.completion_rate, 0) as goal_completion_rate,
@@ -86,13 +85,54 @@ export class PromotionRecommenderService {
       LEFT JOIN goal_completion g ON e.id = g.employee_id
       LEFT JOIN peer_reviews pr ON e.id = pr.employee_id
       WHERE e.role != 'gm' AND e.role != 'hr'
-        ${departmentId ? 'AND e.department_id = $1' : ''}
+        ${department ? 'AND e.department = $1' : ''}
       ORDER BY COALESCE(p.avg_performance, 0) DESC
       LIMIT ${limit * 2}
     `;
 
-    const params = departmentId ? [departmentId] : [];
-    const result = await dbQuery(sql, params);
+    const params = department ? [department] : [];
+    let result;
+
+    try {
+      result = await dbQuery(sql, params);
+    } catch (error: any) {
+      const fallbackSql = `
+        WITH performance_avg AS (
+          SELECT 
+            employee_id,
+            AVG(total_score) as avg_performance
+          FROM monthly_assessments
+          WHERE TO_DATE(month || '-01', 'YYYY-MM-DD') >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months'
+          GROUP BY employee_id
+        ),
+        goal_completion AS (
+          SELECT 
+            owner_id as employee_id,
+            COUNT(CASE WHEN progress >= 100 THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100 as completion_rate
+          FROM objectives
+          WHERE year = EXTRACT(YEAR FROM CURRENT_DATE)
+          GROUP BY owner_id
+        )
+        SELECT 
+          e.id,
+          e.name,
+          e.department,
+          e.created_at,
+          COALESCE(p.avg_performance, 0) as performance_score,
+          COALESCE(g.completion_rate, 0) as goal_completion_rate,
+          0 as peer_review_score,
+          EXTRACT(MONTH FROM AGE(CURRENT_DATE, e.created_at)) as tenure_months
+        FROM employees e
+        LEFT JOIN performance_avg p ON e.id = p.employee_id
+        LEFT JOIN goal_completion g ON e.id = g.employee_id
+        WHERE e.role != 'gm' AND e.role != 'hr'
+          ${department ? 'AND e.department = $1' : ''}
+        ORDER BY COALESCE(p.avg_performance, 0) DESC
+        LIMIT ${limit * 2}
+      `;
+
+      result = await dbQuery(fallbackSql, params);
+    }
 
     // 计算综合得分
     const candidates = result.map((row: any) => {
@@ -117,7 +157,7 @@ export class PromotionRecommenderService {
         employeeId: row.id,
         employeeName: row.name,
         department: row.department,
-        currentPosition: row.position,
+        currentPosition: row.department || '岗位待补充',
         score: Math.round(score * 10) / 10,
         metrics,
         recommendation,
@@ -191,14 +231,14 @@ export class PromotionRecommenderService {
   /**
    * 获取部门晋升候选人统计
    */
-  async getDepartmentPromotionStats(departmentId: number): Promise<{
+  async getDepartmentPromotionStats(department: string): Promise<{
     totalCandidates: number;
     stronglyRecommended: number;
     recommended: number;
     underConsideration: number;
     avgScore: number;
   }> {
-    const candidates = await this.getPromotionCandidates(departmentId, 100);
+    const candidates = await this.getPromotionCandidates(department, 100);
 
     const stronglyRecommended = candidates.filter(c => c.score >= 85).length;
     const recommended = candidates.filter(c => c.score >= 75 && c.score < 85).length;
