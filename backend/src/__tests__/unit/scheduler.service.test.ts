@@ -83,6 +83,8 @@ describe('SchedulerService monthly performance task generation', () => {
     expect((SchedulerService as any).getTodoLink('manager_review')).toBe('/manager/scoring');
     expect((SchedulerService as any).getTodoLink('hr_review')).toBe('/hr/assessment-publication');
     expect((SchedulerService as any).getTodoLink('appeal_review')).toBe('/hr/appeals');
+    expect((SchedulerService as any).getTodoLink('goal_approval')).toBe('/manager/goal-approval');
+    expect((SchedulerService as any).getTodoLink('unknown_type')).toBe('/employee/dashboard');
   });
 
   it('should be idempotent for an already generated previous-month task batch', async () => {

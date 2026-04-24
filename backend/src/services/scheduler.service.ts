@@ -351,8 +351,8 @@ export class SchedulerService {
       manager_review: '/manager/scoring',
       hr_review: '/hr/assessment-publication',
       appeal_review: '/hr/appeals',
-      goal_approval: '/objectives',
+      goal_approval: '/manager/goal-approval',
     };
-    return map[type] || '/dashboard';
+    return map[type] || '/employee/dashboard';
   }
 }
