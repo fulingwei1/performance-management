@@ -7,7 +7,7 @@ echo "=== 详细调试各项功能 ===" && echo
 # 获取各角色 token
 ADMIN_TOKEN=$(curl -s -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"admin123"}' | jq -r '.data.token')
+    -d '{"username":"admin","password":"123456"}' | jq -r '.data.token')
 
 EMPLOYEE_TOKEN=$(curl -s -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \

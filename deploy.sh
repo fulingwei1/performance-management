@@ -101,7 +101,7 @@ echo -e "  后端:  ${GREEN}http://localhost:3001/api${NC}"
 echo -e "  MySQL: ${GREEN}localhost:3306${NC}"
 
 echo -e "\n🔑 测试账号:"
-echo -e "  管理员: admin / admin123 / admin"
+echo -e "  管理员: admin / 123456 / admin"
 echo -e "  员工:   姚洪 / 123456 / employee"
 echo -e "  经理:   宋魁 / 123456 / manager"
 echo -e "  总经理: 郑汝才 / 123456 / gm"

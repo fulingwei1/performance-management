@@ -7,7 +7,7 @@ echo ""
 echo "1. 登录（会记录登录日志）"
 TOKEN=$(curl -s -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"admin123"}' | jq -r '.data.token')
+  -d '{"username":"admin","password":"123456"}' | jq -r '.data.token')
 
 if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
   echo "❌ 登录失败"

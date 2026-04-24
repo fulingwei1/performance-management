@@ -126,7 +126,7 @@ echo "## 第二部分：用户认证与权限" >> $TEST_LOG
 echo "" >> $TEST_LOG
 
 # 2.1 各角色登录测试
-ADMIN_TOKEN=$(login_user "admin" "admin123" "admin")
+ADMIN_TOKEN=$(login_user "admin" "123456" "admin")
 GM_TOKEN=$(login_user "gm001" "123456" "gm")
 MANAGER_TOKEN=$(login_user "m006" "123456" "manager")
 EMPLOYEE_TOKEN=$(login_user "e001" "123456" "employee")

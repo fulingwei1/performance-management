@@ -96,7 +96,7 @@ docker-compose up -d
 
 | 角色 | 用户名 | 密码 |
 |------|--------|------|
-| Admin/GM | admin | admin123 |
+| Admin/GM | admin | 123456 |
 | 经理 | manager1 | 123456 |
 | 员工 | employee1 | 123456 |
 | HR | hr1 | 123456 |

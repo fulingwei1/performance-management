@@ -15,7 +15,7 @@ IMPORT_URL = f"{BASE_URL}/api/employees/import"
 
 # 登录凭据（使用超级管理员账号）
 USERNAME = "admin"
-PASSWORD = "admin123"
+PASSWORD = "123456"
 
 def login():
     """登录获取token（使用HR角色）"""

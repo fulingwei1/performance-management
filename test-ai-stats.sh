@@ -31,7 +31,7 @@ echo ""
 echo "📝 步骤 2: 管理员登录 (系统管理员)"
 ADMIN_LOGIN=$(curl -s -X POST "$BASE_URL/api/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"username": "系统管理员", "password": "admin123"}')
+  -d '{"username": "系统管理员", "password": "123456"}')
 
 ADMIN_TOKEN=$(echo $ADMIN_LOGIN | grep -o '"token":"[^"]*' | sed 's/"token":"//')
 

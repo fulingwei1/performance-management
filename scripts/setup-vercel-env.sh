@@ -96,7 +96,7 @@ setup_backend_env() {
     # 服务器配置
     set_env_var "$backend_dir" "NODE_ENV" "production"
     set_env_var "$backend_dir" "USE_MEMORY_DB" "false"
-    set_env_var "$backend_dir" "ADMIN_DEFAULT_PASSWORD" "admin123"
+    set_env_var "$backend_dir" "ADMIN_DEFAULT_PASSWORD" "123456"
 
     success "后端环境变量配置完成!"
 }

@@ -35,7 +35,7 @@ echo -e "${YELLOW}=== 1. 用户认证测试 ===${NC}\n"
 
 ADMIN_TOKEN=$(curl -s -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"admin123"}' | jq -r '.data.token // empty')
+    -d '{"username":"admin","password":"123456"}' | jq -r '.data.token // empty')
 
 if [ ! -z "$ADMIN_TOKEN" ]; then
     log_test "管理员登录" "PASS"

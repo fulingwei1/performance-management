@@ -90,7 +90,7 @@ echo -e "${YELLOW}━━━ 第二部分：用户认证 ━━━${NC}\n"
 # 2.1 管理员登录
 ADMIN_RESULT=$(curl -s -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"username":"admin","password":"admin123"}')
+    -d '{"username":"admin","password":"123456"}')
 ADMIN_TOKEN=$(echo $ADMIN_RESULT | jq -r '.data.token // empty')
 if [ ! -z "$ADMIN_TOKEN" ]; then
     log_test "管理员登录 (admin)" "PASS" "Token: ${ADMIN_TOKEN:0:20}..."

@@ -63,7 +63,7 @@ docker-compose ps
 
 默认管理员账号:
 - 用户名: `admin`
-- 密码: `admin123`
+- 密码: `123456`
 - 角色: `admin`
 
 测试账号:
