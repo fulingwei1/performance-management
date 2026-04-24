@@ -5,6 +5,7 @@
 
 import { MonthlyAssessmentModel } from '../models/monthlyAssessment.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
+import { scoreToLevel } from '../utils/helpers';
 import logger from '../config/logger';
 
 interface DepartmentStats {
@@ -80,16 +81,44 @@ export async function getDepartmentTypeStats(): Promise<DepartmentStats[]> {
 /**
  * 获取月度统计
  */
-export async function getMonthlyStats(month: string): Promise<MonthlyStats | null> {
+export async function getMonthlyStats(month: string): Promise<MonthlyStats> {
   try {
-    // 这里需要实现获取指定月份所有评分的逻辑
-    // 由于当前 MonthlyAssessmentModel 没有 findByMonth 方法，
-    // 这里预留接口，实际使用时需要扩展 Model
-    
     logger.info(`Getting monthly stats for ${month}`);
-    
-    // 临时返回 null，待实现
-    return null;
+
+    const assessments = await MonthlyAssessmentModel.findByMonth(month);
+    const scores = assessments.map(a => a.totalScore).filter(score => Number.isFinite(score));
+
+    const stats: MonthlyStats = {
+      month,
+      totalAssessments: scores.length,
+      avgScore: 0,
+      maxScore: 0,
+      minScore: 0,
+      l5Count: 0,
+      l4Count: 0,
+      l3Count: 0,
+      l2Count: 0,
+      l1Count: 0
+    };
+
+    if (scores.length === 0) {
+      return stats;
+    }
+
+    stats.avgScore = parseFloat((scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(2));
+    stats.maxScore = Math.max(...scores);
+    stats.minScore = Math.min(...scores);
+
+    scores.forEach(score => {
+      const level = scoreToLevel(score);
+      if (level === 'L5') stats.l5Count++;
+      else if (level === 'L4') stats.l4Count++;
+      else if (level === 'L3') stats.l3Count++;
+      else if (level === 'L2') stats.l2Count++;
+      else stats.l1Count++;
+    });
+
+    return stats;
   } catch (error) {
     logger.error('Failed to get monthly stats: ' + (error instanceof Error ? error.message : String(error)));
     throw error;
@@ -140,16 +169,26 @@ export async function getEmployeePerformanceTrend(employeeId: string): Promise<E
  */
 export async function getScoreDistribution(month?: string): Promise<Record<string, number>> {
   try {
-    // 预留接口，需要扩展 Model 支持批量查询
     logger.info(`Getting score distribution for ${month || 'all months'}`);
-    
-    return {
+
+    const assessments = month
+      ? await MonthlyAssessmentModel.findByMonth(month)
+      : await MonthlyAssessmentModel.findAll();
+
+    const distribution = {
       l5: 0,
       l4: 0,
       l3: 0,
       l2: 0,
       l1: 0
     };
+
+    assessments.forEach(assessment => {
+      const level = scoreToLevel(assessment.totalScore).toLowerCase() as keyof typeof distribution;
+      distribution[level]++;
+    });
+
+    return distribution;
   } catch (error) {
     logger.error('Failed to get score distribution: ' + (error instanceof Error ? error.message : String(error)));
     throw error;

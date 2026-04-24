@@ -12,6 +12,9 @@ router.get('/department-types', statsController.getDepartmentStats);
 // 员工绩效趋势
 router.get('/employee-trend/:employeeId', statsController.getEmployeeTrend);
 
+// 月度绩效统计
+router.get('/monthly/:month', statsController.getMonthlyStats);
+
 // 评分分布
 router.get('/score-distribution', statsController.getScoreDistribution);
 

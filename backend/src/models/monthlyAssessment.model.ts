@@ -174,7 +174,9 @@ export class MonthlyAssessmentModel {
         if (!memoryStore.monthlyAssessments) return [];
         
         const assessments = Array.from(memoryStore.monthlyAssessments.values());
-        return assessments.filter((a: any) => a.employeeId === employeeId);
+        return assessments
+          .filter((a: any) => a.employeeId === employeeId)
+          .map((a: any) => this.mapAssessment(a));
       }
       
       const sql = `
@@ -187,6 +189,59 @@ export class MonthlyAssessmentModel {
       return results.map(this.mapAssessment);
     } catch (error) {
       logger.error('Failed to find assessments: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  }
+
+  /**
+   * 获取指定月份的所有评分记录
+   */
+  static async findByMonth(month: string): Promise<MonthlyAssessment[]> {
+    try {
+      if (USE_MEMORY_DB) {
+        if (!memoryStore.monthlyAssessments) return [];
+
+        const assessments = Array.from(memoryStore.monthlyAssessments.values());
+        return assessments
+          .filter((a: any) => a.month === month)
+          .map((a: any) => this.mapAssessment(a));
+      }
+
+      const sql = `
+        SELECT * FROM monthly_assessments
+        WHERE month = $1
+        ORDER BY total_score DESC, created_at DESC
+      `;
+
+      const results = await query(sql, [month]);
+      return results.map(this.mapAssessment);
+    } catch (error) {
+      logger.error('Failed to find assessments by month: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  }
+
+  /**
+   * 获取所有评分记录
+   */
+  static async findAll(): Promise<MonthlyAssessment[]> {
+    try {
+      if (USE_MEMORY_DB) {
+        if (!memoryStore.monthlyAssessments) return [];
+
+        return Array.from(memoryStore.monthlyAssessments.values())
+          .map((a: any) => this.mapAssessment(a));
+      }
+
+      const sql = `
+        SELECT * FROM monthly_assessments
+        ORDER BY month DESC, total_score DESC, created_at DESC
+      `;
+
+      const results = await query(sql, []);
+      return results.map(this.mapAssessment);
+    } catch (error) {
+      logger.error('Failed to find all assessments: ' + (error instanceof Error ? error.message : String(error)));
       throw error;
     }
   }
