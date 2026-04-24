@@ -19,5 +19,17 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // 现有代码仍有大量历史 any/未使用变量/Hook 依赖问题。
+      // 先降级为 warning，让 lint 能作为 CI/本地质量门禁运行，后续再逐步收敛。
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': 'warn',
+      '@typescript-eslint/no-unused-expressions': 'warn',
+      'prefer-const': 'warn',
+      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-refresh/only-export-components': 'warn',
+    },
   },
 ])

@@ -37,24 +37,24 @@ export function BonusManagement() {
   const [year] = useState(new Date().getFullYear());
   const [quarter] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
 
-  useEffect(() => {
-    loadConfig();
-    loadResults();
-  }, []);
-
-  const loadConfig = async () => {
+  async function loadConfig() {
     try {
       const res = await bonusApi.getConfig();
       if (res.success && res.data) setRules(res.data.rules || []);
     } catch { /* ignore */ }
-  };
+  }
 
-  const loadResults = async () => {
+  async function loadResults() {
     try {
       const res = await bonusApi.getResults();
       if (res.success) setResults(res.data || []);
     } catch { /* ignore */ }
-  };
+  }
+
+  useEffect(() => {
+    loadConfig();
+    loadResults();
+  }, []);
 
   const handleSaveConfig = async () => {
     try {
