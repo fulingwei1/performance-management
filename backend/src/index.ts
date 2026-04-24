@@ -11,8 +11,10 @@ import { validateEnv } from './config/env';
 validateEnv();
 
 import { testConnection, USE_MEMORY_DB } from './config/database';
+import { ensureLocalPostgresSchema } from './config/local-schema';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { auditLogMiddleware } from './middleware/auditLog';
+import { disabledFeatureMiddleware } from './middleware/disabledFeatures';
 
 // 导入路由（auth.ts会检查JWT_SECRET）
 import authRoutes from './routes/auth.routes';
@@ -57,12 +59,38 @@ import assessmentTemplateRoutes from './routes/assessmentTemplate.routes';
 import monthlyAssessmentRoutes from './routes/monthlyAssessment.routes';
 import assessmentExportRoutes from './routes/assessmentExport.routes';
 import assessmentStatsRoutes from './routes/assessmentStats.routes';
+import salaryIntegrationRoutes from './routes/salaryIntegration.routes';
+import performanceConfigRoutes from './routes/performanceConfig.routes';
 import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 export default app;
+
+const expandLoopbackOrigins = (origins: Array<string | undefined>) => {
+  const expanded = new Set<string>();
+  const loopbackHosts = ['localhost', '127.0.0.1', '[::1]'];
+
+  for (const origin of origins.filter(Boolean) as string[]) {
+    expanded.add(origin);
+
+    try {
+      const url = new URL(origin);
+      if (loopbackHosts.includes(url.hostname)) {
+        for (const host of loopbackHosts) {
+          const variant = new URL(origin);
+          variant.hostname = host;
+          expanded.add(variant.origin);
+        }
+      }
+    } catch {
+      expanded.add(origin);
+    }
+  }
+
+  return Array.from(expanded);
+};
 
 // 安全中间件
 app.use(helmet());
@@ -94,13 +122,13 @@ app.use(cors({
  origin: (origin, callback) => {
   if (!origin) return callback(null, true);
 
-  const allowedOrigins = [
+  const allowedOrigins = expandLoopbackOrigins([
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
     'https://performance-management-api-three.vercel.app',
     process.env.FRONTEND_URL
-  ].filter(Boolean) as string[];
+  ]);
 
   if (allowedOrigins.includes(origin)) {
     callback(null, true);
@@ -121,6 +149,9 @@ app.use((req, res, next) => {
 
 // 审计日志中间件（在路由之前，记录所有操作）
 app.use(auditLogMiddleware);
+
+// 已下线的二期/非核心模块统一拦截，避免只隐藏前端入口但后端仍可访问
+app.use(disabledFeatureMiddleware);
 
 // 健康检查 - Support both /health and /api/health
 const healthHandler = (req: express.Request, res: express.Response) => {
@@ -180,6 +211,8 @@ app.use('/api/assessment-templates', assessmentTemplateRoutes);
 app.use('/api/performance', monthlyAssessmentRoutes);
 app.use('/api/export', assessmentExportRoutes);
 app.use('/api/stats', assessmentStatsRoutes);
+app.use('/api/integrations/salary', salaryIntegrationRoutes);
+app.use('/api/performance-config', performanceConfigRoutes);
 
 // 404处理
 app.use(notFoundHandler);
@@ -195,25 +228,32 @@ app.use(errorHandler);
 // 初始化数据（所有环境都需要）
 const initializeServer = async () => {
  try {
- await testConnection();
+ const connected = await testConnection();
+ if (!connected) {
+  throw new Error('数据库连接失败');
+ }
+ await ensureLocalPostgresSchema();
  await initializeData();
  updateDepartmentTypes();
  initializeDefaultTemplates();
  logger.info('✅ Data initialization completed');
-    SchedulerService.init();
+    // 测试环境不要启动定时任务，避免 Jest 句柄泄露导致无法退出
+    if (process.env.NODE_ENV !== 'test') {
+      SchedulerService.init();
+    }
  } catch (error) {
  logger.error(`❌ Initialization failed: ${error}`);
  }
 };
 
 // 只有在非 Vercel 环境下（本地开发）才直接监听端口
-if (process.env.VERCEL !== '1') {
+if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
  const PORT = process.env.PORT || 3000;
  app.listen(PORT, async () => {
   await initializeServer();
  logger.info(`Server is running on port ${PORT}`);
  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
  });
-} else {
+} else if (process.env.VERCEL === '1') {
  initializeServer();
 }

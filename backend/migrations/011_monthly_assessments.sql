@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS monthly_assessments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employee_id VARCHAR(50) NOT NULL,
     month VARCHAR(7) NOT NULL,  -- YYYY-MM
-    template_id UUID NOT NULL,
+    template_id VARCHAR(36) NOT NULL,
     template_name VARCHAR(100) NOT NULL,
     department_type VARCHAR(50) NOT NULL,
     scores JSONB NOT NULL,  -- [{metricName, metricCode, weight, level, score, comment}]
@@ -28,6 +28,21 @@ CREATE INDEX IF NOT EXISTS idx_monthly_assessments_month ON monthly_assessments(
 CREATE INDEX IF NOT EXISTS idx_monthly_assessments_dept_type ON monthly_assessments(department_type);
 CREATE INDEX IF NOT EXISTS idx_monthly_assessments_template ON monthly_assessments(template_id);
 CREATE INDEX IF NOT EXISTS idx_monthly_assessments_evaluator ON monthly_assessments(evaluator_id);
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'monthly_assessments'
+      AND column_name = 'template_id'
+      AND data_type = 'uuid'
+  ) THEN
+    ALTER TABLE monthly_assessments
+      ALTER COLUMN template_id TYPE VARCHAR(36)
+      USING template_id::text;
+  END IF;
+END $$;
 
 -- 添加注释
 COMMENT ON TABLE monthly_assessments IS '月度差异化考核评分记录';

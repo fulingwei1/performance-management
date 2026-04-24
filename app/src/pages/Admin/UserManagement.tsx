@@ -15,6 +15,8 @@ import { EmployeeForm } from '@/pages/HR/EmployeeManagement/EmployeeForm';
 
 export function UserManagement() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -27,13 +29,28 @@ export function UserManagement() {
   const [employeeForm, setEmployeeForm] = useState<{
     id: string; name: string; department: string; subDepartment: string;
     role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin'; level: EmployeeLevel; managerId: string;
-  }>({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '' });
+    idCardLast6: string;
+  }>({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '', idCardLast6: '' });
 
   const fetchEmployees = async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const res = await employeeApi.getAll();
-      if (res.success) setEmployees(res.data);
-    } catch (e) { console.error(e); }
+      if (res.success && Array.isArray(res.data)) {
+        setEmployees(res.data);
+        return;
+      }
+
+      setEmployees([]);
+      setLoadError(res?.message || '用户数据加载失败');
+    } catch (e: any) {
+      console.error(e);
+      setEmployees([]);
+      setLoadError(e?.message || '用户数据加载失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchEmployees(); }, []);
@@ -63,7 +80,7 @@ export function UserManagement() {
 
   const handleEdit = (emp: Employee) => {
     setEditingEmployee(emp);
-    setEmployeeForm({ id: emp.id, name: emp.name, department: emp.department, subDepartment: emp.subDepartment, role: emp.role, level: emp.level, managerId: emp.managerId || '' });
+    setEmployeeForm({ id: emp.id, name: emp.name, department: emp.department, subDepartment: emp.subDepartment, role: emp.role, level: emp.level, managerId: emp.managerId || '', idCardLast6: '' });
     setShowAddDialog(true);
   };
 
@@ -112,7 +129,7 @@ export function UserManagement() {
     setShowDetailDialog(true);
   };
 
-  const resetForm = () => setEmployeeForm({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '' });
+  const resetForm = () => setEmployeeForm({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '', idCardLast6: '' });
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -216,45 +233,59 @@ export function UserManagement() {
       <Card>
         <CardHeader><CardTitle>用户列表 ({filteredEmployees.length})</CardTitle></CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>姓名</TableHead>
-                <TableHead>部门</TableHead>
-                <TableHead>角色</TableHead>
-                <TableHead>级别</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredEmployees.slice(0, 50).map((emp) => (
-                <TableRow key={emp.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleShowDetail(emp)}>
-                  <TableCell className="text-xs text-gray-400">{emp.id}</TableCell>
-                  <TableCell className="font-medium">{emp.name}</TableCell>
-                  <TableCell>{emp.department}</TableCell>
-                  <TableCell>{getRoleBadge(emp.role)}</TableCell>
-                  <TableCell>{emp.level}</TableCell>
-                  <TableCell>
-                    <Badge variant={(emp as any).status === 'disabled' ? 'destructive' : 'outline'}>
-                      {(emp as any).status === 'disabled' ? '已禁用' : '正常'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex justify-end gap-1">
-                      <Button size="sm" variant="ghost" title="编辑" onClick={() => handleEdit(emp)}><Edit className="w-4 h-4" /></Button>
-                      <Button size="sm" variant="ghost" title="重置密码" onClick={() => handleResetPassword(emp.id, emp.name)}><KeyRound className="w-4 h-4" /></Button>
-                      <Button size="sm" variant="ghost" title={(emp as any).status === 'disabled' ? '启用' : '禁用'} onClick={() => handleToggleStatus(emp.id)}>
-                        {(emp as any).status === 'disabled' ? <ShieldCheck className="w-4 h-4 text-green-500" /> : <ShieldOff className="w-4 h-4 text-orange-500" />}
-                      </Button>
-                      <Button size="sm" variant="ghost" title="删除" onClick={() => handleDelete(emp.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {loading ? (
+            <div className="py-12 text-center text-sm text-gray-500">正在加载用户数据...</div>
+          ) : loadError ? (
+            <div className="py-12 text-center space-y-3">
+              <p className="text-sm text-red-600">{loadError}</p>
+              <Button type="button" variant="outline" onClick={fetchEmployees}>重新加载</Button>
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>姓名</TableHead>
+                    <TableHead>部门</TableHead>
+                    <TableHead>角色</TableHead>
+                    <TableHead>级别</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.slice(0, 50).map((emp) => (
+                    <TableRow key={emp.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleShowDetail(emp)}>
+                      <TableCell className="text-xs text-gray-400">{emp.id}</TableCell>
+                      <TableCell className="font-medium">{emp.name}</TableCell>
+                      <TableCell>{emp.department}</TableCell>
+                      <TableCell>{getRoleBadge(emp.role)}</TableCell>
+                      <TableCell>{emp.level}</TableCell>
+                      <TableCell>
+                        <Badge variant={(emp as any).status === 'disabled' ? 'destructive' : 'outline'}>
+                          {(emp as any).status === 'disabled' ? '已禁用' : '正常'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          <Button size="sm" variant="ghost" title="编辑" onClick={() => handleEdit(emp)}><Edit className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" title="重置密码" onClick={() => handleResetPassword(emp.id, emp.name)}><KeyRound className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" title={(emp as any).status === 'disabled' ? '启用' : '禁用'} onClick={() => handleToggleStatus(emp.id)}>
+                            {(emp as any).status === 'disabled' ? <ShieldCheck className="w-4 h-4 text-green-500" /> : <ShieldOff className="w-4 h-4 text-orange-500" />}
+                          </Button>
+                          <Button size="sm" variant="ghost" title="删除" onClick={() => handleDelete(emp.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredEmployees.length === 0 && (
+                <div className="py-8 text-center text-sm text-gray-500">当前筛选条件下没有匹配的用户。</div>
+              )}
+            </>
+          )}
           {filteredEmployees.length > 50 && (
             <p className="text-sm text-gray-400 mt-2 text-center">显示前50条，共{filteredEmployees.length}条</p>
           )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, Target, AlertCircle, Award, ClipboardCheck, MessageSquare, Send, TrendingUp } from 'lucide-react';
+import { FileText, Target, AlertCircle, Award, ClipboardCheck, MessageSquare, Send } from 'lucide-react';
 import { TodoCard } from './TodoCard';
 
 interface TodoGroup {
@@ -34,7 +34,6 @@ const managerTodoConfigs: TodoConfig[] = [
 const hrTodoConfigs: TodoConfig[] = [
   { type: 'hr_review', title: '待处理申诉', link: '/hr/appeals', icon: <AlertCircle className="h-4 w-4 text-red-500" /> },
   { type: 'appeal_review', title: '待发布考核', link: '/hr/assessment-publication', icon: <Send className="h-4 w-4 text-blue-500" /> },
-  { type: 'performance_review', title: '待审批晋升', link: '/hr/promotion-approvals', icon: <TrendingUp className="h-4 w-4 text-green-500" /> },
 ];
 
 const configMap: Record<string, TodoConfig[]> = {

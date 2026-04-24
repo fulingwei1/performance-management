@@ -3,11 +3,16 @@ import jwt from 'jsonwebtoken';
 import { JWTPayload, EmployeeRole } from '../types';
 import logger from '../config/logger';
 
+type AuthenticatedUser = JWTPayload & {
+  id: string;
+};
+
 // 扩展Express的Request类型
 declare global {
   namespace Express {
     interface Request {
-      user?: JWTPayload;
+      user?: AuthenticatedUser;
+      userId?: string;
     }
   }
 }
@@ -52,7 +57,11 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
     
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      id: decoded.userId
+    };
+    req.userId = decoded.userId;
     next();
   } catch (error) {
     res.status(401).json({ success: false, message: '认证令牌无效或已过期' });
@@ -84,7 +93,11 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction): v
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const decoded = verifyToken(token);
-      req.user = decoded;
+      req.user = {
+        ...decoded,
+        id: decoded.userId
+      };
+      req.userId = decoded.userId;
     }
     
     next();

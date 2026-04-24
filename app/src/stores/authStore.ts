@@ -33,8 +33,7 @@ export const useAuthStore = create<AuthState>()(
           // 调用后端API登录
           const response = await authApi.login(
             credentials.username,
-            credentials.password,
-            credentials.role
+            credentials.idCardLast6
           );
           
           if (response.success) {
@@ -66,6 +65,7 @@ export const useAuthStore = create<AuthState>()(
 
       logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('auth-storage');
         set({ 
           user: null, 
           token: null,

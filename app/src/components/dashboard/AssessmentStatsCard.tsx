@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 interface Stats {
   totalTemplates: number;
@@ -27,7 +26,7 @@ export function AssessmentStatsCard() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/assessment-templates?includeMetrics=true`, {
+      const response = await fetch(buildApiUrl('/assessment-templates?includeMetrics=true'), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       

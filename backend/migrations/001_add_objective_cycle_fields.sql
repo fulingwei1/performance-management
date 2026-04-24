@@ -1,6 +1,6 @@
-ALTER TABLE objectives ADD COLUMN start_date DATE;
-ALTER TABLE objectives ADD COLUMN end_date DATE;
-ALTER TABLE objectives ADD COLUMN feedback_cycle VARCHAR(20) DEFAULT 'monthly';
+ALTER TABLE objectives ADD COLUMN IF NOT EXISTS start_date DATE;
+ALTER TABLE objectives ADD COLUMN IF NOT EXISTS end_date DATE;
+ALTER TABLE objectives ADD COLUMN IF NOT EXISTS feedback_cycle VARCHAR(20) DEFAULT 'monthly';
 
 CREATE TABLE IF NOT EXISTS okr_assignments (
   id VARCHAR(36) PRIMARY KEY,

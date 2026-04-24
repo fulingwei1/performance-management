@@ -156,6 +156,10 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
 
   // 重写 res.json 方法以捕获响应
   res.json = function (body: any): Response {
+    if (process.env.NODE_ENV === 'test') {
+      return originalJson(body);
+    }
+
     // 异步写入审计日志（不阻塞响应）
     setImmediate(async () => {
       try {

@@ -8,28 +8,21 @@ import {
   Download,
   Award,
   FileText,
-  TrendingUp,
   Target,
   Crosshair,
-  FileSignature,
   Calendar,
   MessageSquare,
   Users,
-  ClipboardList,
-  Link2,
-  DollarSign,
   Building2,
   Settings,
   ShieldCheck,
   Lock,
   Send,
-  Bell,
   AlertCircle,
   ClipboardCheck
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
-import { NotificationBell } from '../NotificationBell';
 
 interface SidebarProps {
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
@@ -37,23 +30,16 @@ interface SidebarProps {
 
 const employeeNavItems = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/employee/scores', label: '我的绩效', icon: BarChart3 },
   { path: '/employee/my-objectives', label: '我的目标', icon: Target },
   { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
   { path: '/employee/monthly-report', label: '月度汇报', icon: FileText },
-  { path: '/employee/contract', label: '绩效合约', icon: FileSignature },
-  { path: '/employee/assignments', label: '待拆解任务', icon: ClipboardList },
-  { path: '/employee/related-okr', label: '关联OKR', icon: Link2 },
   { path: '/employee/peer-review', label: '360度互评', icon: Users },
   { path: '/employee/appeals', label: '绩效申诉', icon: AlertCircle },
-  { path: '/employee/promotion', label: '晋升加薪', icon: TrendingUp },
-  { path: '/employee/my-bonus', label: '我的奖金', icon: DollarSign },
 ];
 
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/manager/differentiated-scoring', label: '差异化评分', icon: Award },
   { path: '/manager/team-objectives', label: '团队目标', icon: Target },
@@ -63,34 +49,25 @@ const managerNavItems = [
   { path: '/manager/interview-plans', label: '面谈计划', icon: Calendar },
   { path: '/manager/interview-records', label: '面谈记录', icon: FileText },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },
-  { path: '/manager/promotion', label: '晋升加薪', icon: TrendingUp },
   { path: '/manager/appeals', label: '申诉审核', icon: AlertCircle },
 ];
 
 const gmNavItems = [
   { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
-  { path: '/gm/strategic-goals', label: '战略目标管理', icon: FileText },
   { path: '/gm/scoring', label: '总经理评分', icon: Award },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/gm/data-export', label: '数据导出', icon: LogOut },
-  { path: '/gm/promotion-approvals', label: '晋升审批', icon: TrendingUp },
 ];
 
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/hr/strategic-objectives', label: '战略目标', icon: Crosshair },
-  { path: '/hr/contract-management', label: '合约管理', icon: FileSignature },
-  { path: '/hr/okr-dashboard', label: 'OKR总览', icon: Target },
+  { path: '/hr/performance-ranking-config', label: '绩效范围/排名', icon: Settings },
   { path: '/hr/assessment-templates', label: '考核模板管理', icon: FileText },
   { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
   { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
   { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
   { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
-  { path: '/hr/promotion-approvals', label: '晋升审批', icon: TrendingUp },
-  { path: '/hr/bonus-management', label: '奖金管理', icon: DollarSign },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
   { path: '/hr/task-freeze-management', label: '任务冻结管理', icon: Lock },
   { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
@@ -101,16 +78,11 @@ const hrNavItems = [
 
 const adminNavItems = [
   { path: '/admin/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/notifications', label: '消息中心', icon: Bell },
   { path: '/admin/user-management', label: '用户管理', icon: Users },
   { path: '/admin/system-settings', label: '系统设置', icon: Settings },
+  { path: '/admin/performance-ranking-config', label: '绩效范围/排名', icon: Settings },
   { path: '/admin/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/admin/strategic-objectives', label: '战略目标', icon: Crosshair },
-  { path: '/admin/contract-management', label: '合约管理', icon: FileSignature },
-  { path: '/admin/okr-dashboard', label: 'OKR总览', icon: Target },
   { path: '/admin/assessment-publication', label: '考核结果发布', icon: Send },
-  { path: '/admin/promotion-approvals', label: '晋升审批', icon: TrendingUp },
-  { path: '/admin/bonus-management', label: '奖金管理', icon: DollarSign },
   { path: '/admin/peer-review-management', label: '360互评管理', icon: ShieldCheck },
   { path: '/admin/task-freeze-management', label: '任务冻结管理', icon: Lock },
   { path: '/admin/department-tree', label: '组织架构', icon: Building2 },
@@ -168,7 +140,6 @@ export function Sidebar({ role }: SidebarProps) {
             <p className="text-sm font-medium truncate">{user?.name}</p>
             <p className="text-xs text-gray-400 truncate">{getRoleLabel()}</p>
           </div>
-          <NotificationBell />
         </div>
       </div>
       

@@ -4,6 +4,8 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { memoryStore } from '../config/memory-db';
 import { USE_MEMORY_DB } from '../config/database';
 import { Department } from '../types';
+import { OrganizationModel } from '../models/organization.model';
+import { EmployeeModel } from '../models/employee.model';
 
 function buildTree(departments: Department[]): Department[] {
   const map = new Map<string, Department>();
@@ -30,7 +32,8 @@ export const departmentController = {
       const tree = buildTree(all);
       return res.json({ success: true, data: tree });
     }
-    res.json({ success: true, data: [] });
+    const tree = await OrganizationModel.getDepartmentTree();
+    res.json({ success: true, data: tree });
   }),
 
   create: asyncHandler(async (req: Request, res: Response) => {
@@ -48,7 +51,8 @@ export const departmentController = {
       memoryStore.departments.set(id, dept);
       return res.status(201).json({ success: true, data: dept });
     }
-    res.status(201).json({ success: true, data: dept });
+    const created = await OrganizationModel.createDepartment(dept);
+    res.status(201).json({ success: true, data: created });
   }),
 
   update: asyncHandler(async (req: Request, res: Response) => {
@@ -60,7 +64,9 @@ export const departmentController = {
       memoryStore.departments.set(id, updated);
       return res.json({ success: true, data: updated });
     }
-    res.status(404).json({ success: false, message: '部门不存在' });
+    const updated = await OrganizationModel.updateDepartment(id, req.body);
+    if (!updated) return res.status(404).json({ success: false, message: '部门不存在' });
+    res.json({ success: true, data: updated });
   }),
 
   delete: asyncHandler(async (req: Request, res: Response) => {
@@ -73,7 +79,9 @@ export const departmentController = {
       memoryStore.departments.delete(id);
       return res.json({ success: true, message: '删除成功' });
     }
-    res.status(404).json({ success: false, message: '部门不存在' });
+    const deleted = await OrganizationModel.deleteDepartment(id);
+    if (!deleted) return res.status(404).json({ success: false, message: '部门不存在' });
+    res.json({ success: true, message: '删除成功' });
   }),
 
   getMembers: asyncHandler(async (req: Request, res: Response) => {
@@ -85,7 +93,10 @@ export const departmentController = {
         .filter(e => e.department === dept.name || e.department === id);
       return res.json({ success: true, data: members });
     }
-    res.json({ success: true, data: [] });
+    const dept = await OrganizationModel.findDepartmentById(id);
+    if (!dept) return res.status(404).json({ success: false, message: '部门不存在' });
+    const members = await EmployeeModel.findByDepartment(dept.name);
+    res.json({ success: true, data: members });
   }),
 
   setManager: asyncHandler(async (req: Request, res: Response) => {
@@ -101,6 +112,8 @@ export const departmentController = {
       memoryStore.departments.set(id, dept);
       return res.json({ success: true, data: dept });
     }
-    res.status(404).json({ success: false, message: '部门不存在' });
+    const updated = await OrganizationModel.updateDepartment(id, { managerId } as Partial<Department>);
+    if (!updated) return res.status(404).json({ success: false, message: '部门不存在' });
+    res.json({ success: true, data: updated });
   }),
 };

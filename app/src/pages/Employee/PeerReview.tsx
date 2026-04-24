@@ -3,7 +3,7 @@ import { Users, Star, Send, CheckCircle, Clock, AlertCircle } from 'lucide-react
 import { useAuthStore } from '@/stores/authStore';
 
 // 员工互评页面
-export default function PeerReview() {
+export function PeerReview() {
   const { user } = useAuthStore();
   const [activeCycles, setActiveCycles] = useState<any[]>([]);
   const [myReviews, setMyReviews] = useState<any[]>([]);
@@ -441,3 +441,5 @@ function ScoreSlider({ label, value, onChange }: any) {
     </div>
   );
 }
+
+export default PeerReview;

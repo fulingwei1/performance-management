@@ -5,6 +5,7 @@ import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { getGroupType, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
+import { getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
 
 export const performanceController = {
   // 获取当前用户的绩效记录
@@ -157,6 +158,38 @@ export const performanceController = {
         });
       }
 
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          error: '未认证'
+        });
+      }
+
+      // 记录级权限边界：HR/GM/Admin 可查看全部；员工/经理仅可查看自己或下属相关记录
+      const role = req.user.role;
+      const userId = req.user.userId;
+      const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+      if (!isPrivileged) {
+        const isSelf = record.employeeId === userId;
+        let isManagerAllowed = false;
+
+        if (role === 'manager') {
+          if (record.assessorId === userId) {
+            isManagerAllowed = true;
+          } else {
+            const employee = await EmployeeModel.findById(record.employeeId);
+            isManagerAllowed = Boolean(employee && employee.managerId === userId);
+          }
+        }
+
+        if (!isSelf && !isManagerAllowed) {
+          return res.status(403).json({
+            success: false,
+            error: '无权访问该绩效记录'
+          });
+        }
+      }
+
       res.json({
         success: true,
         data: record
@@ -299,6 +332,14 @@ export const performanceController = {
         });
       }
 
+      // 权限边界：只能给“自己的下属”创建空记录
+      if (employee.managerId !== req.user.userId) {
+        return res.status(403).json({
+          success: false,
+          error: '只能为自己的下属创建空记录'
+        });
+      }
+
       // 确定分组
       const groupType = getGroupType(employee.level);
 
@@ -309,7 +350,7 @@ export const performanceController = {
       const record = await PerformanceModel.saveSummary({
         id: recordId,
         employeeId: employee.id,
-        assessorId: employee.managerId || '',
+        assessorId: req.user.userId,
         month,
         selfSummary: '',
         nextMonthPlan: '',
@@ -360,6 +401,21 @@ export const performanceController = {
         nextMonthWorkArrangement
       } = req.body;
 
+      // 权限边界：只能评分自己负责的记录
+      const existing = await PerformanceModel.findById(id);
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          error: '记录不存在'
+        });
+      }
+      if (existing.assessorId !== req.user.userId) {
+        return res.status(403).json({
+          success: false,
+          error: '只能评分自己负责的员工'
+        });
+      }
+
       // 计算总分
       const totalScore = 
         taskCompletion * 0.4 + 
@@ -380,10 +436,7 @@ export const performanceController = {
       });
 
       if (!record) {
-        return res.status(404).json({
-          success: false,
-          error: '记录不存在'
-        });
+        return res.status(404).json({ success: false, error: '记录不存在' });
       }
 
       // 更新排名
@@ -519,9 +572,10 @@ export const performanceController = {
       
       // 获取所有需要考评的员工（员工+经理，排除总经理和HR）
       const allEmployees = await EmployeeModel.findAll();
-      const assessableEmployees = allEmployees.filter(
-        (e: any) => e.role === 'employee' || e.role === 'manager'
-      );
+      const rankingConfig = await getPerformanceRankingConfig();
+      const assessableEmployees = allEmployees
+        .filter((e: any) => e.role === 'employee' || e.role === 'manager')
+        .filter((e: any) => isParticipatingRecord(e, rankingConfig));
 
       const validIds = new Set<string>(allEmployees.map((e: any) => e.id));
       

@@ -1,5 +1,6 @@
 import { query } from '../config/database';
 import logger from '../config/logger';
+import { USE_MEMORY_DB, memoryStore } from '../config/database';
 
 export interface SystemSetting {
   id: number;
@@ -19,6 +20,16 @@ export class SystemSettingsModel {
    * 获取所有系统配置
    */
   static async getAll(includePrivate = false): Promise<SystemSetting[]> {
+    if (USE_MEMORY_DB) {
+      const items = Array.from((memoryStore as any).systemSettings?.values?.() || []) as SystemSetting[];
+      const filtered = includePrivate ? items : items.filter((s) => s.isPublic);
+      return filtered.sort((a, b) => {
+        const ca = a.category || '';
+        const cb = b.category || '';
+        if (ca !== cb) return ca.localeCompare(cb);
+        return a.settingKey.localeCompare(b.settingKey);
+      });
+    }
     try {
       let sql = 'SELECT * FROM system_settings';
       if (!includePrivate) {
@@ -38,6 +49,10 @@ export class SystemSettingsModel {
    * 根据键获取配置
    */
   static async getByKey(key: string): Promise<SystemSetting | null> {
+    if (USE_MEMORY_DB) {
+      const found = (memoryStore as any).systemSettings?.get?.(key) as SystemSetting | undefined;
+      return found || null;
+    }
     try {
       const rows = await query(
         'SELECT * FROM system_settings WHERE setting_key = $1',
@@ -54,6 +69,12 @@ export class SystemSettingsModel {
    * 根据分类获取配置
    */
   static async getByCategory(category: string): Promise<SystemSetting[]> {
+    if (USE_MEMORY_DB) {
+      const items = Array.from((memoryStore as any).systemSettings?.values?.() || []) as SystemSetting[];
+      return items
+        .filter((s) => (s.category || '') === category)
+        .sort((a, b) => a.settingKey.localeCompare(b.settingKey));
+    }
     try {
       const rows = await query(
         'SELECT * FROM system_settings WHERE category = $1 ORDER BY setting_key',
@@ -84,6 +105,21 @@ export class SystemSettingsModel {
     value: string,
     updatedBy?: string
   ): Promise<SystemSetting | null> {
+    if (USE_MEMORY_DB) {
+      const existing = (memoryStore as any).systemSettings?.get?.(key) as SystemSetting | undefined;
+      if (!existing) {
+        logger.warn(`Setting ${key} not found for update (memory)`);
+        return null;
+      }
+      const updated: SystemSetting = {
+        ...existing,
+        settingValue: value,
+        updatedBy,
+        updatedAt: new Date(),
+      };
+      (memoryStore as any).systemSettings.set(key, updated);
+      return updated;
+    }
     try {
       const rows = await query(
         `UPDATE system_settings 
@@ -133,6 +169,29 @@ export class SystemSettingsModel {
     isPublic?: boolean;
     updatedBy?: string;
   }): Promise<SystemSetting> {
+    if (USE_MEMORY_DB) {
+      const systemSettings = (memoryStore as any).systemSettings as Map<string, SystemSetting>;
+      if (systemSettings.has(data.settingKey)) {
+        throw new Error(`Setting ${data.settingKey} already exists`);
+      }
+      const now = new Date();
+      const ids = Array.from(systemSettings.values()).map((s) => s.id || 0);
+      const nextId = (ids.length > 0 ? Math.max(...ids) : 0) + 1;
+      const created: SystemSetting = {
+        id: nextId,
+        settingKey: data.settingKey,
+        settingValue: data.settingValue,
+        settingType: data.settingType || 'string',
+        category: data.category,
+        description: data.description,
+        isPublic: data.isPublic || false,
+        updatedBy: data.updatedBy,
+        createdAt: now,
+        updatedAt: now,
+      };
+      systemSettings.set(data.settingKey, created);
+      return created;
+    }
     try {
       const rows = await query(
         `INSERT INTO system_settings 
@@ -162,6 +221,10 @@ export class SystemSettingsModel {
    * 删除配置
    */
   static async delete(key: string): Promise<boolean> {
+    if (USE_MEMORY_DB) {
+      const systemSettings = (memoryStore as any).systemSettings as Map<string, SystemSetting>;
+      return systemSettings.delete(key);
+    }
     try {
       const rows = await query(
         'DELETE FROM system_settings WHERE setting_key = $1 RETURNING id',

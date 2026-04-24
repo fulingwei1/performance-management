@@ -23,11 +23,13 @@ INSERT INTO system_settings (setting_key, setting_value, setting_type, category,
 ('360_review_frequency', 'quarterly', 'string', 'performance', '360评价频率: monthly/quarterly/yearly', FALSE),
 ('auto_assign_360_tasks', 'true', 'boolean', 'performance', '自动分配360评价任务', FALSE),
 ('notification_enabled', 'true', 'boolean', 'notification', '启用系统通知', TRUE),
-('assessment_publication_enabled', 'true', 'boolean', 'performance', '启用考核结果发布功能', FALSE);
+('assessment_publication_enabled', 'true', 'boolean', 'performance', '启用考核结果发布功能', FALSE),
+('performance_ranking_config', '{"version":1,"participation":{"enabledUnitKeys":[]},"groupRank":{"defaultStrategy":{"type":"by_high_low"},"perUnit":{}},"mergeRankGroups":[]}', 'json', 'performance', '绩效参与范围与排名规则配置', FALSE)
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- 创建索引
-CREATE INDEX idx_system_settings_key ON system_settings(setting_key);
-CREATE INDEX idx_system_settings_category ON system_settings(category);
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON system_settings(setting_key);
+CREATE INDEX IF NOT EXISTS idx_system_settings_category ON system_settings(category);
 
 -- 添加更新时间自动更新触发器
 CREATE OR REPLACE FUNCTION update_system_settings_updated_at()
@@ -38,6 +40,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS system_settings_updated_at ON system_settings;
 CREATE TRIGGER system_settings_updated_at
 BEFORE UPDATE ON system_settings
 FOR EACH ROW

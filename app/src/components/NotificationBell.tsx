@@ -21,7 +21,6 @@ export const NotificationBell: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
   // 获取未读数量
   const fetchUnreadCount = async () => {
     try {
@@ -97,10 +96,9 @@ export const NotificationBell: React.FC = () => {
     }
   };
 
-  // 查看全部
-  const handleViewAll = () => {
+  // 关闭下拉
+  const handleCloseDropdown = () => {
     setShowDropdown(false);
-    navigate('/notifications');
   };
 
   // 点击外部关闭下拉菜单
@@ -214,10 +212,10 @@ export const NotificationBell: React.FC = () => {
 
           <div className="p-3 border-t border-gray-200">
             <button
-              onClick={handleViewAll}
-              className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+              onClick={handleCloseDropdown}
+              className="w-full text-center text-sm text-gray-600 hover:text-gray-800 font-medium"
             >
-              查看全部
+              收起
             </button>
           </div>
         </div>

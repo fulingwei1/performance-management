@@ -23,8 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { CheckCircle2, XCircle, Eye, Loader2 } from 'lucide-react';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 interface PendingGoal {
   id: string;
@@ -61,7 +60,7 @@ export default function GoalApproval() {
   const fetchPendingGoals = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/goal-approval/pending`, {
+      const response = await axios.get(buildApiUrl('/goal-approval/pending'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -96,7 +95,7 @@ export default function GoalApproval() {
       const endpoint = actionType === 'approve' ? 'approve' : 'reject';
       
       await axios.post(
-        `${API_URL}/api/goal-approval/${endpoint}`,
+        buildApiUrl(`/goal-approval/${endpoint}`),
         {
           objectiveId: selectedGoal.id,
           comment: comment.trim() || undefined

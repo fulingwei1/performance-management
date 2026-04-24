@@ -21,8 +21,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 interface PredictionData {
   predictions: Array<{
@@ -79,14 +78,14 @@ export const AIInsights: React.FC = () => {
       setLoading(true);
 
       // 加载晋升候选人
-      const candidatesRes = await fetch(`${API_URL}/api/ai/promotion-candidates?limit=10`);
+      const candidatesRes = await fetch(buildApiUrl('/ai/promotion-candidates?limit=10'));
       const candidatesData = await candidatesRes.json();
       if (candidatesData.success) {
         setCandidates(candidatesData.data);
       }
 
       // 加载异常检测
-      const anomaliesRes = await fetch(`${API_URL}/api/ai/performance-anomalies`);
+      const anomaliesRes = await fetch(buildApiUrl('/ai/performance-anomalies'));
       const anomaliesData = await anomaliesRes.json();
       if (anomaliesData.success) {
         setAnomalies(anomaliesData.data);

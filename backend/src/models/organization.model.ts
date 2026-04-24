@@ -3,19 +3,19 @@ import { Department, Position } from '../types';
 
 export class OrganizationModel {
   // ============ 部门管理 ============
-  
+
   // 获取所有部门（树形结构）
   static async getDepartmentTree(): Promise<Department[]> {
     if (USE_MEMORY_DB) {
       const depts = Array.from(memoryStore.departments?.values() || []);
       return this.buildTree(depts as Department[]);
     }
-    
+
     const sql = `
-      SELECT 
-        id, name, code, parent_id as parentId, 
-        manager_id as managerId, sort_order as sortOrder,
-        status, created_at as createdAt, updated_at as updatedAt
+      SELECT
+        id, name, code, parent_id as "parentId",
+        manager_id as "managerId", sort_order as "sortOrder",
+        status, created_at as "createdAt", updated_at as "updatedAt"
       FROM departments
       WHERE status = 'active'
       ORDER BY sort_order, name
@@ -23,36 +23,36 @@ export class OrganizationModel {
     const depts = await query(sql);
     return this.buildTree(depts.map(this.formatDepartment));
   }
-  
+
   // 获取所有部门（扁平列表）
   static async findAllDepartments(): Promise<Department[]> {
     if (USE_MEMORY_DB) {
       return Array.from(memoryStore.departments?.values() || []) as Department[];
     }
-    
+
     const sql = `
-      SELECT 
-        id, name, code, parent_id as parentId, 
-        manager_id as managerId, sort_order as sortOrder,
-        status, created_at as createdAt, updated_at as updatedAt
+      SELECT
+        id, name, code, parent_id as "parentId",
+        manager_id as "managerId", sort_order as "sortOrder",
+        status, created_at as "createdAt", updated_at as "updatedAt"
       FROM departments
       ORDER BY sort_order, name
     `;
     const results = await query(sql);
     return results.map(this.formatDepartment);
   }
-  
+
   // 根据ID获取部门
   static async findDepartmentById(id: string): Promise<Department | null> {
     if (USE_MEMORY_DB) {
       return memoryStore.departments?.get(id) as Department || null;
     }
-    
+
     const sql = `
-      SELECT 
-        id, name, code, parent_id as parentId, 
-        manager_id as managerId, sort_order as sortOrder,
-        status, created_at as createdAt, updated_at as updatedAt
+      SELECT
+        id, name, code, parent_id as "parentId",
+        manager_id as "managerId", sort_order as "sortOrder",
+        status, created_at as "createdAt", updated_at as "updatedAt"
       FROM departments
       WHERE id = ?
     `;
@@ -141,7 +141,7 @@ export class OrganizationModel {
     const sql = `
       SELECT 
         p.*,
-        d.name as departmentName
+        d.name as "departmentName"
       FROM positions p
       LEFT JOIN departments d ON p.department_id = d.id
       ORDER BY p.department_id, p.sort_order
@@ -160,7 +160,7 @@ export class OrganizationModel {
     const sql = `
       SELECT 
         p.*,
-        d.name as departmentName
+        d.name as "departmentName"
       FROM positions p
       LEFT JOIN departments d ON p.department_id = d.id
       WHERE p.department_id = ?
@@ -234,7 +234,7 @@ export class OrganizationModel {
     const sql = `
       SELECT 
         p.*,
-        d.name as departmentName
+        d.name as "departmentName"
       FROM positions p
       LEFT JOIN departments d ON p.department_id = d.id
       WHERE p.id = ?
@@ -283,13 +283,13 @@ export class OrganizationModel {
       id: row.id,
       name: row.name,
       code: row.code,
-      parentId: row.parentId || row.parent_id,
-      managerId: row.managerId || row.manager_id,
-      managerName: row.managerName,
-      sortOrder: row.sortOrder || row.sort_order || 0,
+      parentId: row.parentId || row.parentid || row.parent_id,
+      managerId: row.managerId || row.managerid || row.manager_id,
+      managerName: row.managerName || row.managername || row.manager_name,
+      sortOrder: row.sortOrder || row.sortorder || row.sort_order || 0,
       status: row.status,
-      createdAt: row.createdAt || row.created_at,
-      updatedAt: row.updatedAt || row.updated_at
+      createdAt: row.createdAt || row.createdat || row.created_at,
+      updatedAt: row.updatedAt || row.updatedat || row.updated_at
     };
   }
   
@@ -298,8 +298,8 @@ export class OrganizationModel {
       id: row.id,
       name: row.name,
       code: row.code,
-      departmentId: row.departmentId || row.department_id,
-      departmentName: row.departmentName || row.department_name,
+      departmentId: row.departmentId || row.departmentid || row.department_id,
+      departmentName: row.departmentName || row.departmentname || row.department_name,
       level: row.level,
       category: row.category,
       description: row.description,

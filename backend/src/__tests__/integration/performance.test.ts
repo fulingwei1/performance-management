@@ -61,7 +61,7 @@ describe('Performance API', () => {
 
   describe('GET /api/performance/month/:month', () => {
     it('should return records by month', async () => {
-      const token = await TestHelper.getAuthToken('manager');
+      const token = await TestHelper.getAuthToken('hr');
 
       const response = await request(app)
         .get('/api/performance/month/2024-01')
@@ -89,7 +89,7 @@ describe('Performance API', () => {
         .post('/api/performance/create-empty-record')
         .set('Authorization', `Bearer ${token}`)
         .send({
-          employeeId: 'e001',
+          employeeId: 'e034',
           month: '2024-01'
         });
 
@@ -166,19 +166,16 @@ describe('Performance API', () => {
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail with invalid score values', async () => {
+    it('should fail with invalid month format', async () => {
       const token = await TestHelper.getAuthToken('employee');
 
       const response = await request(app)
         .post('/api/performance/summary')
         .set('Authorization', `Bearer ${token}`)
         .send({
-          month: '2024-04',
-          summary: '测试总结',
-          taskCompletion: 2.0,
-          initiative: 1.0,
-          projectFeedback: 1.0,
-          qualityImprovement: 1.0
+          month: '2024-4',
+          selfSummary: '测试总结',
+          nextMonthPlan: '测试计划'
         });
 
       expect(response.status).toBe(400);

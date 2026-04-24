@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { buildApiUrl } from '@/lib/api-config';
 import { TemplateEditor } from './TemplateEditor';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const DEPARTMENT_TYPES = [
   { value: 'sales', label: '销售类', color: 'bg-green-100 text-green-700', icon: '💰' },
@@ -56,7 +55,7 @@ export function AssessmentTemplates() {
       if (filterType !== 'all') params.append('departmentType', filterType);
       params.append('includeMetrics', 'true');
       
-      const response = await fetch(`${API_URL}/api/assessment-templates?${params}`, {
+      const response = await fetch(buildApiUrl(`/assessment-templates?${params.toString()}`), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -78,7 +77,7 @@ export function AssessmentTemplates() {
     if (!confirm('确定要删除这个模板吗？')) return;
 
     try {
-      const response = await fetch(`${API_URL}/api/assessment-templates/${id}`, {
+      const response = await fetch(buildApiUrl(`/assessment-templates/${id}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });

@@ -117,12 +117,12 @@ describe('Employee API', () => {
       const token = await TestHelper.getAuthToken('manager');
 
       const response = await request(app)
-        .get('/api/employees/e001')
+        .get('/api/employees/e034')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
-      expect(response.body.data).toHaveProperty('id', 'e001');
+      expect(response.body.data).toHaveProperty('id', 'e034');
       expect(response.body.data).not.toHaveProperty('password');
     });
 

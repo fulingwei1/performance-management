@@ -13,6 +13,5 @@ CREATE TABLE IF NOT EXISTS employee_transfers (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_employee_transfers_employee ON employee_transfers(employee_id);
-CREATE INDEX idx_employee_transfers_date ON employee_transfers(transfer_date);
-
+CREATE INDEX IF NOT EXISTS idx_employee_transfers_employee ON employee_transfers(employee_id);
+CREATE INDEX IF NOT EXISTS idx_employee_transfers_date ON employee_transfers(transfer_date);

@@ -1,7 +1,10 @@
 import express from 'express';
 import * as exportController from '../controllers/assessmentExport.controller';
+import { authenticate, requireRole } from '../middleware/auth';
 
 const router = express.Router();
+
+router.use(authenticate, requireRole('hr', 'gm', 'admin'));
 
 // 导出月度评分记录
 router.get('/monthly-assessments', exportController.exportMonthlyAssessments);

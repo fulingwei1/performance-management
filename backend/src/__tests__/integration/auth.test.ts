@@ -29,7 +29,7 @@ describe('Auth API', () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或密码错误');
+      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
     });
 
     it('should fail with invalid password', async () => {
@@ -43,7 +43,7 @@ describe('Auth API', () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或密码错误');
+      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
     });
 
     it('should fail with missing username', async () => {
@@ -70,7 +70,7 @@ describe('Auth API', () => {
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail with missing role', async () => {
+    it('should login successfully without role (server derives role)', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
@@ -78,8 +78,9 @@ describe('Auth API', () => {
           password: '123456'
         });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('success', false);
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data.user).toHaveProperty('role');
     });
 
     it('should fail with empty credentials', async () => {
@@ -103,7 +104,7 @@ describe('Auth API', () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或密码错误');
+      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
     });
 
     it('should fail with invalid password', async () => {
@@ -117,7 +118,7 @@ describe('Auth API', () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或密码错误');
+      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
     });
 
     it('should fail with missing username', async () => {

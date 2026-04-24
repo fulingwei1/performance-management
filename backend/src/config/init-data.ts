@@ -1,5 +1,6 @@
 import { EmployeeModel } from '../models/employee.model';
 import { query, USE_MEMORY_DB, memoryDB } from './database';
+import { syncDepartmentsFromEmployees } from './local-schema';
 import bcrypt from 'bcryptjs';
 import logger from './logger';
 
@@ -209,8 +210,9 @@ export const initializeData = async (): Promise<void> => {
       const allEmployees = memoryDB.employees.findAll();
       logger.info(`  📊 内存数据库中共有 ${allEmployees.length} 名员工`);
     } else {
-      // MySQL模式：使用原有batchInsert逻辑
+      // PostgreSQL 模式：使用 batchInsert 做幂等同步
       await EmployeeModel.batchInsert(initialEmployees);
+      await syncDepartmentsFromEmployees();
     }
 
     isInitialized = true;

@@ -1,22 +1,22 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, User, Shield, Crown, Users, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
+import { BarChart3, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function Login() {
-  const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuthStore();
+  const envLabel = useMemo(() => {
+    if (!import.meta.env.DEV || typeof window === 'undefined') return '';
+    return `本地开发版 · ${window.location.host}`;
+  }, []);
   
-  const [activeTab, setActiveTab] = useState<'employee' | 'manager' | 'gm' | 'hr' | 'admin'>('employee');
   const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [idCardLast6, setIdCardLast6] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,19 +24,19 @@ export function Login() {
     
     const success = await login({
       username,
-      password,
-      role: activeTab
+      idCardLast6
     });
     
     if (success) {
+      const role = useAuthStore.getState().user?.role || 'employee';
       const redirectMap: Record<string, string> = {
-        'employee': '/employee/dashboard',
-        'manager': '/manager/dashboard',
-        'gm': '/gm/dashboard',
-        'hr': '/hr/dashboard',
-        'admin': '/admin/dashboard'
+        employee: '/employee/dashboard',
+        manager: '/manager/dashboard',
+        gm: '/gm/dashboard',
+        hr: '/hr/dashboard',
+        admin: '/admin/dashboard',
       };
-      navigate(redirectMap[activeTab]);
+      window.location.replace(redirectMap[role] || '/employee/dashboard');
     }
   };
   
@@ -60,6 +60,9 @@ export function Login() {
           </motion.div>
           <h1 className="text-2xl font-bold text-gray-900">ATE绩效管理平台</h1>
           <p className="text-gray-500 mt-1">Performance Management System</p>
+          {envLabel && (
+            <p className="text-xs text-gray-400 mt-2">{envLabel}</p>
+          )}
         </div>
         
         {/* Login Card */}
@@ -69,103 +72,78 @@ export function Login() {
           transition={{ delay: 0.3, duration: 0.4 }}
           className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
         >
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="grid w-full grid-cols-5 rounded-none h-14">
-              <TabsTrigger value="employee" className="gap-1 text-xs">
-                <User className="w-4 h-4" />
-                员工
-              </TabsTrigger>
-              <TabsTrigger value="manager" className="gap-1 text-xs">
-                <Shield className="w-4 h-4" />
-                经理
-              </TabsTrigger>
-              <TabsTrigger value="gm" className="gap-1 text-xs">
-                <Crown className="w-4 h-4" />
-                总经理
-              </TabsTrigger>
-              <TabsTrigger value="hr" className="gap-1 text-xs">
-                <Users className="w-4 h-4" />
-                HR
-              </TabsTrigger>
-              <TabsTrigger value="admin" className="gap-1 text-xs">
-                <ShieldCheck className="w-4 h-4" />
-                管理员
-              </TabsTrigger>
-            </TabsList>
+          <div className="p-6">
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4"
+              >
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
             
-            <div className="p-6">
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-4"
-                >
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                </motion.div>
-              )}
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">用户名</Label>
-                  <Input
-                    id="username"
-                    placeholder="请输入姓名"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="password">密码</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="请输入密码"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={isLoading}
-                      className="h-11 pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-400">默认密码: 123456</p>
-                </div>
-                
-                <Button
-                  type="submit"
-                  disabled={isLoading || !username || !password}
-                  className="w-full h-11 text-base"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      登录中...
-                    </>
-                  ) : (
-                    '登录'
-                  )}
-                </Button>
-              </form>
-              
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-400 text-center">
-                  登录即表示您同意我们的服务条款和隐私政策
-                </p>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">用户名（工号/姓名）</Label>
+                <Input
+                  id="username"
+                  placeholder="请输入工号或姓名"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  disabled={isLoading}
+                  className="h-11"
+                />
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="secret">身份证后六位（管理员可填密码）</Label>
+                <div className="relative">
+                  <Input
+                    id="secret"
+                    type={showSecret ? 'text' : 'password'}
+                    placeholder="请输入身份证后六位"
+                    value={idCardLast6}
+                    onChange={(e) => setIdCardLast6(e.target.value)}
+                    disabled={isLoading}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecret(!showSecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">演示环境默认后六位：123456</p>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isLoading || !username || !idCardLast6}
+                className="w-full h-11 text-base"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    登录中...
+                  </>
+                ) : (
+                  '登录'
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <p className="text-xs text-gray-400 text-center">
+                登录即表示您同意我们的服务条款和隐私政策
+              </p>
             </div>
-          </Tabs>
+          </div>
         </motion.div>
         
         {/* Footer */}

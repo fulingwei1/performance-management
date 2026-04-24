@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 const DEPARTMENT_TYPES = [
   { value: 'sales', label: '销售类', color: 'bg-green-100 text-green-700', icon: '💰' },
@@ -36,7 +35,7 @@ export function DepartmentClassification() {
 
   const loadDepartments = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/departments/tree`, {
+      const response = await fetch(buildApiUrl('/departments/tree'), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -94,7 +93,7 @@ export function DepartmentClassification() {
 
     for (const [deptId, type] of changes.entries()) {
       try {
-        const response = await fetch(`${API_URL}/api/departments/${deptId}`, {
+        const response = await fetch(buildApiUrl(`/departments/${deptId}`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { buildApiUrl } from '@/lib/api-config';
 import { performanceApi } from '@/services/api';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -72,7 +73,7 @@ export function TaskFreezeManagement() {
     setUnfreezing(recordId);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/automation/unfreeze/${recordId}`, {
+      const response = await fetch(buildApiUrl(`/automation/unfreeze/${recordId}`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -100,7 +101,7 @@ export function TaskFreezeManagement() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/automation/batch-unfreeze', {
+      const response = await fetch(buildApiUrl('/automation/batch-unfreeze'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

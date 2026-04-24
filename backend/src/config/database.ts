@@ -17,7 +17,7 @@ const createPool = () => {
     return null;
   }
 
-  // Supabase/PostgreSQL 配置
+  // PostgreSQL 配置（本地开发默认使用 docker-compose 里的 PostgreSQL；也兼容云端 PostgreSQL）
   if (!process.env.DATABASE_URL) {
     logger.error('❌ DATABASE_URL is missing!');
     // 即使缺少配置，也不要直接抛错导致 crash，而是让 testConnection 返回 false
@@ -68,7 +68,7 @@ export const testConnection = async (): Promise<boolean> => {
   while (retries > 0) {
     try {
       const client = await pool.connect();
-      logger.info('✅ Supabase Postgres 数据库连接成功');
+      logger.info('✅ PostgreSQL 数据库连接成功');
       client.release();
       return true;
     } catch (error: any) {

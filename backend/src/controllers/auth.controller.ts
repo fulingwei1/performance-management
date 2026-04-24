@@ -8,7 +8,19 @@ export const authController = {
   // 登录
   login: [
     body('username').notEmpty().withMessage('用户名不能为空'),
-    body('password').notEmpty().withMessage('密码不能为空'),
+    // 兼容两种字段：idCardLast6（推荐）或 password（旧版）
+    body('idCardLast6')
+      .optional()
+      .isString()
+      .matches(/^[0-9Xx]{6}$/)
+      .withMessage('身份证后六位格式错误'),
+    body('password').optional().isString(),
+    body().custom((_, { req }) => {
+      if (!req.body.idCardLast6 && !req.body.password) {
+        throw new Error('身份证后六位不能为空');
+      }
+      return true;
+    }),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -19,31 +31,47 @@ export const authController = {
         });
       }
 
-      const { username, password } = req.body;
+      const { username } = req.body as { username: string };
+      const idCardLast6 = (req.body.idCardLast6 ?? '').toString();
+      const password = (req.body.password ?? '').toString();
 
-      // 查找员工（先尝试ID，再尝试姓名）
+      // 查找员工（先尝试工号/ID，再尝试姓名；若同名则要求使用工号登录）
       let employee = await EmployeeModel.findById(username);
       if (!employee) {
-        employee = await EmployeeModel.findByName(username);
+        const matches = await EmployeeModel.findAllByName(username);
+        if (matches.length > 1) {
+          return res.status(409).json({
+            success: false,
+            message: '存在同名用户，请使用工号登录'
+          });
+        }
+        employee = matches.length === 1 ? matches[0] : null;
       }
 
       if (!employee) {
         return res.status(401).json({
           success: false,
-          message: '用户名或密码错误'
+          message: '用户名或登录口令错误'
         });
       }
 
-      // 验证密码 - 统一使用 bcrypt 比较
+      const loginSecret = (idCardLast6 || password || '').trim();
+
+      // 验证登录口令 - 优先身份证后六位（若已配置），管理员可回退到密码
       let isValidPassword = false;
-      if (employee.password) {
-        isValidPassword = await EmployeeModel.verifyPassword(password, employee.password);
+      if (employee.idCardLast6Hash) {
+        isValidPassword = await EmployeeModel.verifyPassword(loginSecret.toUpperCase(), employee.idCardLast6Hash);
+      } else if (employee.password) {
+        isValidPassword = await EmployeeModel.verifyPassword(loginSecret, employee.password);
+      }
+      if (!isValidPassword && employee.role === 'admin' && employee.password) {
+        isValidPassword = await EmployeeModel.verifyPassword(loginSecret, employee.password);
       }
 
       if (!isValidPassword) {
         return res.status(401).json({
           success: false,
-          message: '用户名或密码错误'
+          message: '用户名或登录口令错误'
         });
       }
 
@@ -94,7 +122,7 @@ export const authController = {
       });
     }
 
-    const { password: _, ...userInfo } = employee;
+    const { password: _, idCardLast6Hash: __, ...userInfo } = employee as any;
     res.json({
       success: true,
       data: userInfo

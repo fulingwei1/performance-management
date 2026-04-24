@@ -1,20 +1,39 @@
+import { API_BASE_URL } from '@/lib/api-config';
+
 // API服务 - 连接后端
-const isProd = import.meta.env.PROD;
-let API_BASE_URL = import.meta.env.VITE_API_URL;
-
-// 智能修正：如果是生产环境但配置了 localhost，强制回退到 /api (走代理)
-if (isProd && API_BASE_URL && API_BASE_URL.includes('localhost')) {
-  console.warn('Production build detected localhost API URL, falling back to /api proxy');
-  API_BASE_URL = '/api';
-}
-
-// 默认值
-if (!API_BASE_URL) {
-  API_BASE_URL = isProd ? '/api' : 'http://localhost:3001/api';
-}
 
 // 获取Token
 const getToken = () => localStorage.getItem('token');
+
+const clearAuthState = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('auth-storage');
+};
+
+const redirectToLogin = () => {
+  if (typeof window === 'undefined') return;
+
+  if (window.location.pathname !== '/login') {
+    window.location.replace('/login');
+  }
+};
+
+const readErrorPayload = async (response: Response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return response.json().catch(() => ({}));
+  }
+
+  const text = await response.text().catch(() => '');
+  return text ? { message: text } : {};
+};
+
+const handleUnauthorized = (message?: string) => {
+  clearAuthState();
+  redirectToLogin();
+  throw new Error(message || '登录已过期，请重新登录');
+};
 
 // 安全下载：通过 Authorization header 传递 token，避免 URL 泄露
 const secureDownload = async (url: string, filename: string) => {
@@ -23,7 +42,10 @@ const secureDownload = async (url: string, filename: string) => {
     headers: { Authorization: `Bearer ${token}` }
   });
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: '下载失败' }));
+    const errorData = await readErrorPayload(res);
+    if (res.status === 401) {
+      handleUnauthorized(errorData.message);
+    }
     throw new Error(errorData.message || '下载失败');
   }
   const blob = await res.blob();
@@ -52,11 +74,14 @@ const request = async (url: string, options: RequestInit = {}) => {
       ...options,
       headers
     });
-    
-    const data = await response.json();
+
+    const data = await readErrorPayload(response);
     
     if (!response.ok) {
       const message = data.message ?? data.error ?? '请求失败';
+      if (response.status === 401 && url !== '/auth/login') {
+        handleUnauthorized(message);
+      }
       throw new Error(message);
     }
     
@@ -70,10 +95,14 @@ const request = async (url: string, options: RequestInit = {}) => {
 // 认证相关API
 export const authApi = {
   // 登录
-  login: (username: string, password: string, role: string) => 
+  login: (username: string, idCardLast6: string) =>
     request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password, role })
+      body: JSON.stringify(
+        /^[0-9Xx]{6}$/.test((idCardLast6 || '').trim())
+          ? { username, idCardLast6: (idCardLast6 || '').trim() }
+          : { username, password: idCardLast6 }
+      )
     }),
   
   // 获取当前用户
@@ -217,6 +246,23 @@ export const performanceApi = {
 
   // 获取员工绩效历史
   getEmployeeHistory: (employeeId: string) => request(`/performance/employee/${employeeId}/history`)
+};
+
+// 绩效参与范围/排名配置（HR/Admin）
+export const performanceConfigApi = {
+  getRankingConfig: () => request('/performance-config/ranking'),
+  updateRankingConfig: (config: any) =>
+    request('/performance-config/ranking', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    }),
+  previewRanking: (month: string) =>
+    request(`/performance-config/ranking/preview?month=${encodeURIComponent(month)}`),
+  recalculateMonthRanks: (month: string) =>
+    request('/performance-config/ranking/recalculate', {
+      method: 'POST',
+      body: JSON.stringify({ month }),
+    }),
 };
 
 // 经理季度总结API

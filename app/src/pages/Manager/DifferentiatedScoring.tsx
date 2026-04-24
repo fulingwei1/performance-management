@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { buildApiUrl } from '@/lib/api-config';
 import { useAuthStore } from '@/stores/authStore';
 import { DifferentiatedScoringHelp } from '@/components/help/DifferentiatedScoringHelp';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const DEPARTMENT_TYPES = {
   sales: { label: '销售类', icon: '💰', color: 'bg-green-100 text-green-700' },
@@ -78,7 +77,7 @@ export function DifferentiatedScoring() {
   const loadEmployees = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/employees`, {
+      const response = await fetch(buildApiUrl('/employees'), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -106,7 +105,7 @@ export function DifferentiatedScoring() {
       setLoading(true);
       
       // 获取员工部门信息
-      const deptResponse = await fetch(`${API_URL}/api/departments/tree`, {
+      const deptResponse = await fetch(buildApiUrl('/departments/tree'), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -132,7 +131,7 @@ export function DifferentiatedScoring() {
       }
       
       // 加载对应模板
-      const templateResponse = await fetch(`${API_URL}/api/assessment-templates/default/${deptType}`, {
+      const templateResponse = await fetch(buildApiUrl(`/assessment-templates/default/${deptType}`), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -233,7 +232,7 @@ export function DifferentiatedScoring() {
         evaluatorName: user?.name
       };
       
-      const response = await fetch(`${API_URL}/api/performance/monthly`, {
+      const response = await fetch(buildApiUrl('/performance/monthly'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -7,10 +7,31 @@ import { EmployeeRole, EmployeeLevel } from '../types';
 export const employeeController = {
   // 获取所有员工
   getAllEmployees: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
     const employees = await EmployeeModel.findAll();
+    const role = req.user.role;
+    const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+
+    // 非特权用户仅返回“通讯录字段”（避免暴露直属关系、状态等管理字段）
+    const toDirectory = (e: any) => ({
+      id: e.id,
+      name: e.name,
+      department: e.department,
+      subDepartment: e.subDepartment,
+      role: e.role,
+      level: e.level,
+      avatar: e.avatar,
+    });
+
+    const sanitized = (employees as any[]).map((e) => {
+      const { password, idCardLast6Hash, ...rest } = e || {};
+      return isPrivileged ? rest : toDirectory(rest);
+    });
     res.json({
       success: true,
-      data: employees
+      data: sanitized
     });
   }),
 
@@ -36,12 +57,24 @@ export const employeeController = {
         });
       }
 
-      // 移除密码字段
-      const { password, ...employeeWithoutPassword } = employee as any;
+      if (!req.user) {
+        return res.status(401).json({ success: false, error: '未认证' });
+      }
+
+      const role = req.user.role;
+      const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+      const isSelf = req.user.userId === employee.id;
+      const isManagerViewingSubordinate = role === 'manager' && employee.managerId === req.user.userId;
+      if (!isPrivileged && !isSelf && !isManagerViewingSubordinate) {
+        return res.status(403).json({ success: false, error: '无权访问该员工信息' });
+      }
+
+      // 移除敏感字段
+      const { password, idCardLast6Hash, ...employeeWithoutSensitive } = employee as any;
 
       res.json({
         success: true,
-        data: employeeWithoutPassword
+        data: employeeWithoutSensitive
       });
     })
   ],
@@ -58,7 +91,10 @@ export const employeeController = {
     const subordinates = await EmployeeModel.findByManagerId(req.user.userId);
     res.json({
       success: true,
-      data: subordinates
+      data: (subordinates as any[]).map((e) => {
+        const { password, idCardLast6Hash, ...rest } = e || {};
+        return rest;
+      })
     });
   }),
 
@@ -76,9 +112,23 @@ export const employeeController = {
       }
 
       const employees = await EmployeeModel.findByRole(req.params.role as EmployeeRole);
+      const role = req.user?.role;
+      const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+      const toDirectory = (e: any) => ({
+        id: e.id,
+        name: e.name,
+        department: e.department,
+        subDepartment: e.subDepartment,
+        role: e.role,
+        level: e.level,
+        avatar: e.avatar,
+      });
       res.json({
         success: true,
-        data: employees
+        data: (employees as any[]).map((e) => {
+          const { password, idCardLast6Hash, ...rest } = e || {};
+          return isPrivileged ? rest : toDirectory(rest);
+        })
       });
     })
   ],
@@ -86,9 +136,23 @@ export const employeeController = {
   // 获取所有经理
   getAllManagers: asyncHandler(async (req: Request, res: Response) => {
     const managers = await EmployeeModel.findByRole('manager');
+    const role = req.user?.role;
+    const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+    const toDirectory = (e: any) => ({
+      id: e.id,
+      name: e.name,
+      department: e.department,
+      subDepartment: e.subDepartment,
+      role: e.role,
+      level: e.level,
+      avatar: e.avatar,
+    });
     res.json({
       success: true,
-      data: managers
+      data: (managers as any[]).map((e) => {
+        const { password, idCardLast6Hash, ...rest } = e || {};
+        return isPrivileged ? rest : toDirectory(rest);
+      })
     });
   }),
 
@@ -100,7 +164,12 @@ export const employeeController = {
     body('subDepartment').notEmpty().withMessage('子部门不能为空'),
     body('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
     body('level').isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别错误'),
-    body('password').isLength({ min: 6 }).withMessage('密码至少6位'),
+    body('password').optional().isLength({ min: 6 }).withMessage('密码至少6位'),
+    body('idCardLast6')
+      .optional()
+      .isString()
+      .matches(/^[0-9Xx]{6}$/)
+      .withMessage('身份证后六位格式错误'),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -111,7 +180,7 @@ export const employeeController = {
         });
       }
 
-      const { id, name, department, subDepartment, role, level, managerId, password } = req.body;
+      const { id, name, department, subDepartment, role, level, managerId, password, idCardLast6 } = req.body;
 
       // 检查ID是否已存在
       const existing = await EmployeeModel.findById(id);
@@ -130,12 +199,16 @@ export const employeeController = {
         role,
         level,
         managerId,
-        password
+        password: password || '123456',
+        idCardLast6
       });
 
       res.status(201).json({
         success: true,
-        data: employee,
+        data: (() => {
+          const { password: _, idCardLast6Hash: __, ...rest } = employee as any;
+          return rest;
+        })(),
         message: '员工创建成功'
       });
     })
@@ -154,7 +227,12 @@ export const employeeController = {
         });
       }
 
-      const employee = await EmployeeModel.update(req.params.id as string, req.body);
+      const { idCardLast6, ...restUpdates } = (req.body || {}) as any;
+      if (idCardLast6) {
+        await EmployeeModel.updateIdCardLast6(req.params.id as string, String(idCardLast6));
+      }
+
+      const employee = await EmployeeModel.update(req.params.id as string, restUpdates);
       
       if (!employee) {
         return res.status(404).json({
@@ -165,7 +243,10 @@ export const employeeController = {
 
       res.json({
         success: true,
-        data: employee,
+        data: (() => {
+          const { password: _, idCardLast6Hash: __, ...rest } = employee as any;
+          return rest;
+        })(),
         message: '员工更新成功'
       });
     })

@@ -7,6 +7,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).optional().default('development'),
   FRONTEND_URL: z.string().url().optional(),
   USE_MEMORY_DB: z.string().optional(),
+  // 薪资系统推送集成（可选，仅在调用推送接口时需要）
+  SALARY_SYSTEM_BASE_URL: z.string().optional(),
+  SALARY_SYSTEM_PUSH_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

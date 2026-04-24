@@ -3,7 +3,7 @@ import { FileText, Plus, User, Calendar, TrendingUp, Target } from 'lucide-react
 import { useAuthStore } from '@/stores/authStore';
 
 // 面谈记录页面（经理视图）
-export default function InterviewRecord() {
+export function InterviewRecord() {
   const { user } = useAuthStore();
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -508,3 +508,5 @@ function calculateAverage(records: any[]): number {
   if (validScores.length === 0) return 0;
   return validScores.reduce((a, b) => a + b, 0) / validScores.length;
 }
+
+export default InterviewRecord;

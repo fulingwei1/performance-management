@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 const DEPARTMENT_TYPES = [
   { value: 'all', label: '全部类型' },
@@ -33,7 +32,7 @@ export function AssessmentExport() {
       if (month) params.append('month', month);
       if (departmentType !== 'all') params.append('departmentType', departmentType);
       
-      const response = await fetch(`${API_URL}/api/export/monthly-assessments?${params}`, {
+      const response = await fetch(buildApiUrl(`/export/monthly-assessments?${params.toString()}`), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -64,7 +63,7 @@ export function AssessmentExport() {
     try {
       setLoading(true);
       
-      const response = await fetch(`${API_URL}/api/export/department-stats`, {
+      const response = await fetch(buildApiUrl('/export/department-stats'), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
@@ -100,7 +99,7 @@ export function AssessmentExport() {
     try {
       setLoading(true);
       
-      const response = await fetch(`${API_URL}/api/export/score-trend/${employeeId}`, {
+      const response = await fetch(buildApiUrl(`/export/score-trend/${employeeId}`), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       

@@ -3,7 +3,7 @@ import { Calendar, Plus, Users, Clock, CheckCircle, XCircle, Edit } from 'lucide
 import { useAuthStore } from '@/stores/authStore';
 
 // 面谈计划管理（经理/HR视图）
-export default function InterviewPlans() {
+export function InterviewPlans() {
   const { user } = useAuthStore();
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -420,3 +420,5 @@ function isThisWeek(dateString: string): boolean {
   
   return date >= startOfWeek && date <= endOfWeek;
 }
+
+export default InterviewPlans;

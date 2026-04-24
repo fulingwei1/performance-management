@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Users, Calendar, TrendingUp, Filter } from 'lucide-react';
 
 // 360度互评管理（HR视图）
-export default function PeerReviewManagement() {
+export function PeerReviewManagement() {
   const [cycles, setCycles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -315,3 +315,5 @@ function CreateCycleModal({ onClose, onSuccess }: any) {
     </div>
   );
 }
+
+export default PeerReviewManagement;

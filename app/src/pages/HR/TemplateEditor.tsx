@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 const DEPARTMENT_TYPES = [
   { value: 'sales', label: '销售类', icon: '💰' },
@@ -170,8 +169,8 @@ export function TemplateEditor({ template, viewMode, onSave, onCancel }: Templat
     
     try {
       const url = template?.id 
-        ? `${API_URL}/api/assessment-templates/${template.id}`
-        : `${API_URL}/api/assessment-templates`;
+        ? buildApiUrl(`/assessment-templates/${template.id}`)
+        : buildApiUrl('/assessment-templates');
       
       const method = template?.id ? 'PUT' : 'POST';
       

@@ -2,88 +2,70 @@ const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
 
+require('dotenv').config();
+
+const localDatabaseUrl = 'postgresql://performance_user:performance123@localhost:5432/performance_db';
+
+const migrationFiles = [
+  '../postgres-init/01-init.sql',
+  '../postgres-init/02-appeals.sql',
+  '../postgres-init/03-goal-approval.sql',
+  '../postgres-init/04-todos.sql',
+  '../postgres-init/05-employee-transfers.sql',
+  '../postgres-init/06-local-current-schema.sql',
+  'migrations/001_add_objective_cycle_fields.sql',
+  'migrations/002_attachments.sql',
+  'migrations/003_peer_reviews.sql',
+  'migrations/004_bonus.sql',
+  'migrations/009_system_settings.sql',
+  'migrations/011_monthly_assessments.sql',
+];
+
 async function runMigrations() {
-  // 读取DATABASE_URL
-  require('dotenv').config();
-  
-  // 强制转换为PostgreSQL URL（如果是mysql://）
-  let dbUrl = process.env.DATABASE_URL;
-  if (dbUrl && dbUrl.startsWith('mysql://')) {
-    // 转换mysql://为postgresql://
-    dbUrl = dbUrl.replace('mysql://', 'postgresql://').replace(':3306', ':5432');
-    console.log('⚠️  检测到MySQL URL，已转换为PostgreSQL:', dbUrl);
-  }
-  
+  const databaseUrl = process.env.DATABASE_URL || localDatabaseUrl;
   const pool = new Pool({
-    connectionString: dbUrl || 'postgresql://performance_user:performance123@localhost:5432/performance_db',
+    connectionString: databaseUrl,
     max: 1,
-    connectionTimeoutMillis: 5000
+    connectionTimeoutMillis: 5000,
   });
 
   try {
-    // 测试连接
     await pool.query('SELECT 1');
-    console.log('✅ 已连接到PostgreSQL数据库\n');
+    console.log('✅ 已连接到本地 PostgreSQL 数据库\n');
   } catch (error) {
     console.error('❌ 数据库连接失败:', error.message);
-    console.log('\n💡 提示: 请确保PostgreSQL已启动');
-    console.log('   如果使用Memory DB，请设置 USE_MEMORY_DB=true\n');
+    console.log('\n💡 先在项目根目录启动本地数据库:');
+    console.log('   docker compose up -d postgres\n');
     process.exit(1);
   }
 
-  // 读取PostgreSQL迁移文件
-  const migrations = [
-    'src/migrations/012_peer_review_system.sql',
-    'src/migrations/013_performance_interview_enhanced.sql'
-  ];
+  for (const migrationFile of migrationFiles) {
+    const filePath = path.resolve(__dirname, migrationFile);
 
-  for (const migrationFile of migrations) {
-    const filePath = path.join(__dirname, migrationFile);
-    
     if (!fs.existsSync(filePath)) {
       console.log(`⚠️  跳过: ${migrationFile} (文件不存在)`);
       continue;
     }
 
-    console.log(`🔨 执行迁移: ${migrationFile}`);
-    
-    let sql = fs.readFileSync(filePath, 'utf8');
-    
-    // PostgreSQL不支持multipleStatements，需要分割SQL
-    // 移除触发器部分（MySQL语法）
-    sql = sql.replace(/DELIMITER \/\/.+?DELIMITER ;/gs, '');
-    
-    // 移除注释行
-    const statements = sql
-      .split('\n')
-      .filter(line => !line.trim().startsWith('--') && line.trim())
-      .join('\n')
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
+    const sql = fs.readFileSync(filePath, 'utf8').trim();
+    if (!sql) continue;
 
-    for (const statement of statements) {
-      if (!statement || statement.length < 10) continue;
-      
-      try {
-        await pool.query(statement + ';');
-      } catch (error) {
-        if (error.message.includes('already exists')) {
-          console.log(`   ⏭️  表已存在，跳过`);
-        } else {
-          console.error(`   ❌ 执行失败:`, error.message.split('\n')[0]);
-        }
-      }
+    try {
+      console.log(`🔨 执行迁移: ${migrationFile}`);
+      await pool.query(sql);
+      console.log(`✅ ${migrationFile} 完成\n`);
+    } catch (error) {
+      console.error(`❌ ${migrationFile} 执行失败:`, error.message.split('\n')[0]);
+      await pool.end();
+      process.exit(1);
     }
-    
-    console.log(`✅ ${migrationFile} 完成\n`);
   }
 
   await pool.end();
-  console.log('✅ 所有迁移完成！');
+  console.log('✅ 本地 PostgreSQL 迁移全部完成');
 }
 
-runMigrations().catch(error => {
+runMigrations().catch(async (error) => {
   console.error('❌ 迁移失败:', error);
   process.exit(1);
 });

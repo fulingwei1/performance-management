@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { buildApiUrl } from '@/lib/api-config';
 import { employeeApi } from '@/services/api';
 
 interface DepartmentNode {
@@ -54,7 +55,7 @@ export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOption
     }).catch(() => {});
 
     // Try to fetch department tree
-    fetch('/api/departments/tree', {
+    fetch(buildApiUrl('/departments/tree'), {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     }).then(r => r.json()).then(res => {
       if (res.success && res.data && res.data.length > 0) {
@@ -77,6 +78,16 @@ export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOption
       <div>
         <Label>姓名 *</Label>
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="请输入员工姓名" />
+      </div>
+      <div>
+        <Label>身份证后六位（用于登录）</Label>
+        <Input
+          type="password"
+          value={form.idCardLast6 || ''}
+          onChange={(e) => setForm({ ...form, idCardLast6: e.target.value })}
+          placeholder="可选：用于登录验证"
+        />
+        <p className="mt-1 text-xs text-gray-400">仅保存加密值；留空不会修改原登录口令</p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>

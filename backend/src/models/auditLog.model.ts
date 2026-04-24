@@ -50,8 +50,7 @@ export class AuditLogModel {
   static async create(log: AuditLog): Promise<void> {
     try {
       if (USE_MEMORY_DB) {
-        // 内存模式下暂不记录审计日志（可选实现）
-        console.log('[AuditLog Memory]', log);
+        // 内存模式下不落审计日志，避免测试/本地演示被异步日志干扰
         return;
       }
 

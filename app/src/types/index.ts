@@ -307,8 +307,8 @@ export interface Filters {
 // 用户登录信息
 export interface LoginCredentials {
   username: string;
-  password: string;
-  role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
+  // 身份证后六位（演示环境也可兼容旧密码）
+  idCardLast6: string;
 }
 
 // 分组配置

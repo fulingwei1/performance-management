@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Settings, Shield, Users, Crown, User, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+import { buildApiUrl } from '@/lib/api-config';
 
 const ROLES = [
   { key: 'admin', label: '系统管理员', icon: ShieldCheck, color: 'bg-red-100 text-red-700', desc: '拥有所有权限，可管理用户和系统设置' },
@@ -43,7 +42,7 @@ export function SystemSettings() {
 
   const loadSettings = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/system-settings/`, {
+      const response = await fetch(buildApiUrl('/system-settings/'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -78,7 +77,7 @@ export function SystemSettings() {
   const handleSaveSetting = async (key: string, value: any) => {
     try {
       setSaving(true);
-      const response = await fetch(`${API_URL}/api/system-settings/${key}`, {
+      const response = await fetch(buildApiUrl(`/system-settings/${key}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

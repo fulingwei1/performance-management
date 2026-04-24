@@ -18,11 +18,12 @@ export class EmployeeModel {
     if (cached) return cached;
 
     const sql = `
-      SELECT 
-        id, name, department, sub_department as "subDepartment", 
+      SELECT
+        id, name, department, sub_department as "subDepartment",
         role, level, manager_id as "managerId", avatar, password,
+        id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
-      FROM employees 
+      FROM employees
       WHERE id = ?
     `;
     const results = (await query(sql, [id])) as (Employee & { password?: string })[];
@@ -41,11 +42,12 @@ export class EmployeeModel {
     if (cached) return cached;
 
     const sql = `
-      SELECT 
-        id, name, department, sub_department as subDepartment, 
-        role, level, manager_id as managerId, avatar, password,
-        created_at as createdAt, updated_at as updatedAt
-      FROM employees 
+      SELECT
+        id, name, department, sub_department as "subDepartment",
+        role, level, manager_id as "managerId", avatar, password,
+        id_card_last6_hash as "idCardLast6Hash",
+        created_at as "createdAt", updated_at as "updatedAt"
+      FROM employees
       WHERE name = ?
     `;
     const results = (await query(sql, [name])) as (Employee & { password?: string })[];
@@ -54,17 +56,34 @@ export class EmployeeModel {
     return row;
   }
 
+  // 根据姓名查找员工（可能同名）
+  static async findAllByName(name: string): Promise<Array<Employee & { password?: string }>> {
+    if (USE_MEMORY_DB) {
+      return memoryDB.employees.findAll().filter((e: any) => e.name === name) as Array<Employee & { password?: string }>;
+    }
+    const sql = `
+      SELECT
+        id, name, department, sub_department as "subDepartment",
+        role, level, manager_id as "managerId", avatar, password,
+        id_card_last6_hash as "idCardLast6Hash",
+        created_at as "createdAt", updated_at as "updatedAt"
+      FROM employees
+      WHERE name = ?
+    `;
+    return (await query(sql, [name])) as Array<Employee & { password?: string }>;
+  }
+
   // 获取所有员工
   static async findAll(): Promise<Employee[]> {
     if (USE_MEMORY_DB) {
       return memoryDB.employees.findAll();
     }
-    
+
     const sql = `
-      SELECT 
-        id, name, department, sub_department as subDepartment, 
-        role, level, manager_id as managerId, avatar,
-        created_at as createdAt, updated_at as updatedAt
+      SELECT
+        id, name, department, sub_department as "subDepartment",
+        role, level, manager_id as "managerId", avatar,
+        created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
       ORDER BY department, sub_department, role, name
     `;
@@ -76,13 +95,13 @@ export class EmployeeModel {
     if (USE_MEMORY_DB) {
       return memoryDB.employees.findByRole(role);
     }
-    
+
     const sql = `
-      SELECT 
-        id, name, department, sub_department as subDepartment, 
-        role, level, manager_id as managerId, avatar,
-        created_at as createdAt, updated_at as updatedAt
-      FROM employees 
+      SELECT
+        id, name, department, sub_department as "subDepartment",
+        role, level, manager_id as "managerId", avatar,
+        created_at as "createdAt", updated_at as "updatedAt"
+      FROM employees
       WHERE role = ?
       ORDER BY name
     `;
@@ -94,13 +113,13 @@ export class EmployeeModel {
     if (USE_MEMORY_DB) {
       return memoryDB.employees.findByManagerId(managerId);
     }
-    
+
     const sql = `
-      SELECT 
-        id, name, department, sub_department as subDepartment, 
-        role, level, manager_id as managerId, avatar,
-        created_at as createdAt, updated_at as updatedAt
-      FROM employees 
+      SELECT
+        id, name, department, sub_department as "subDepartment",
+        role, level, manager_id as "managerId", avatar,
+        created_at as "createdAt", updated_at as "updatedAt"
+      FROM employees
       WHERE manager_id = ?
       ORDER BY name
     `;
@@ -117,9 +136,9 @@ export class EmployeeModel {
 
     const sql = `
       SELECT
-        id, name, department, sub_department as subDepartment,
-        role, level, manager_id as managerId, avatar,
-        created_at as createdAt, updated_at as updatedAt
+        id, name, department, sub_department as "subDepartment",
+        role, level, manager_id as "managerId", avatar,
+        created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
       WHERE department = ? OR sub_department = ?
       ORDER BY name
@@ -128,18 +147,28 @@ export class EmployeeModel {
   }
 
   // 创建员工
-  static async create(employee: Omit<Employee, 'createdAt' | 'updatedAt'> & { password: string }): Promise<Employee> {
+  static async create(
+    employee: Omit<Employee, 'createdAt' | 'updatedAt'> & { password: string; idCardLast6?: string }
+  ): Promise<Employee> {
     if (USE_MEMORY_DB) {
-      return memoryDB.employees.create(employee);
+      const { idCardLast6, ...rest } = employee as any;
+      const hashedPassword = await bcrypt.hash(employee.password, 10);
+      const idCardLast6Hash = idCardLast6 ? await bcrypt.hash(String(idCardLast6), 10) : undefined;
+      return memoryDB.employees.create({
+        ...rest,
+        password: hashedPassword,
+        ...(idCardLast6Hash ? { idCardLast6Hash } : {}),
+      } as any);
     }
     
     const sql = `
-      INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, avatar, password)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, avatar, password, id_card_last6_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     // 加密密码
     const hashedPassword = await bcrypt.hash(employee.password, 10);
+    const idCardLast6Hash = employee.idCardLast6 ? await bcrypt.hash(employee.idCardLast6, 10) : null;
     
     await query(sql, [
       employee.id,
@@ -150,7 +179,8 @@ export class EmployeeModel {
       employee.level,
       employee.managerId || null,
       employee.avatar || null,
-      hashedPassword
+      hashedPassword,
+      idCardLast6Hash
     ]);
     invalidateEmployeeCache();
     return this.findById(employee.id) as Promise<Employee>;
@@ -213,6 +243,24 @@ export class EmployeeModel {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     const sql = 'UPDATE employees SET password = ? WHERE id = ?';
     const result = (await query(sql, [hashedPassword, id])) as { affectedRows?: number };
+    if ((result?.affectedRows ?? 0) > 0) invalidateEmployeeCache();
+    return (result?.affectedRows ?? 0) > 0;
+  }
+
+  // 更新身份证后六位（用于登录，存 bcrypt hash）
+  static async updateIdCardLast6(id: string, idCardLast6: string): Promise<boolean> {
+    const normalized = idCardLast6.trim().toUpperCase();
+    const hashed = await bcrypt.hash(normalized, 10);
+
+    if (USE_MEMORY_DB) {
+      const emp = memoryDB.employees.findById(id);
+      if (!emp) return false;
+      memoryDB.employees.update(id, { idCardLast6Hash: hashed } as any);
+      return true;
+    }
+
+    const sql = 'UPDATE employees SET id_card_last6_hash = ? WHERE id = ?';
+    const result = (await query(sql, [hashed, id])) as { affectedRows?: number };
     if ((result?.affectedRows ?? 0) > 0) invalidateEmployeeCache();
     return (result?.affectedRows ?? 0) > 0;
   }

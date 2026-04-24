@@ -1,4 +1,5 @@
 import express from 'express';
+import { authenticate, requireRole } from '../middleware/auth';
 import {
   getPublicSettings,
   getAllSettings,
@@ -15,9 +16,10 @@ const router = express.Router();
 
 // 公开接口（所有登录用户可访问）
 router.get('/public', getPublicSettings);
-router.get('/360-review-config', get360ReviewConfig);
+router.get('/360-review-config', authenticate, get360ReviewConfig);
 
 // 管理员接口（需要 HR/Admin 权限）
+router.use(authenticate, requireRole('hr', 'admin'));
 router.get('/', getAllSettings);
 router.get('/category/:category', getSettingsByCategory);
 router.get('/:key', getSetting);

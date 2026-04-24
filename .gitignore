@@ -24,6 +24,9 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 *.log
+*.out
+*.pid
+.run/
 
 # Editor
 .vscode/

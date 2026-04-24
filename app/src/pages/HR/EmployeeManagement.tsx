@@ -39,7 +39,8 @@ export function EmployeeManagement() {
   const [employeeForm, setEmployeeForm] = useState<{
     id: string; name: string; department: string; subDepartment: string;
     role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin'; level: EmployeeLevel; managerId: string;
-  }>({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '' });
+    idCardLast6: string;
+  }>({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '', idCardLast6: '' });
   
   useEffect(() => { fetchEmployees(); fetchMetrics(); fetchOrganization(); }, []);
   useEffect(() => { setMetrics(metricsList); }, [metricsList]);
@@ -98,12 +99,12 @@ export function EmployeeManagement() {
 
   const handleEdit = (emp: Employee) => {
     setEditingEmployee(emp);
-    setEmployeeForm({ id: emp.id, name: emp.name, department: emp.department, subDepartment: emp.subDepartment, role: emp.role, level: emp.level, managerId: emp.managerId || '' });
+    setEmployeeForm({ id: emp.id, name: emp.name, department: emp.department, subDepartment: emp.subDepartment, role: emp.role, level: emp.level, managerId: emp.managerId || '', idCardLast6: '' });
     setShowAddDialog(true);
   };
   
   const handleDelete = async (id: string) => { if (confirm('确定要删除该员工吗？')) { const success = await deleteEmp(id); if (!success) alert('删除失败'); } };
-  const resetForm = () => setEmployeeForm({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '' });
+  const resetForm = () => setEmployeeForm({ id: '', name: '', department: '', subDepartment: '', role: 'employee', level: 'intermediate', managerId: '', idCardLast6: '' });
   
   const handleSaveMetrics = async () => {
     const totalWeight = metrics.reduce((sum, m) => sum + m.weight, 0);

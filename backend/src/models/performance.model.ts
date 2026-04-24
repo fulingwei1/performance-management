@@ -1,6 +1,13 @@
 import { query, transaction, memoryDB, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { PerformanceRecord, RecordStatus } from '../types';
 import { EmployeeModel } from './employee.model';
+import {
+  getPerformanceRankingConfig,
+  getOrgUnitKey,
+  isParticipatingRecord,
+  matchMergeRankGroup,
+  resolveGroupKey,
+} from '../services/performanceRankingConfig.service';
 
 export class PerformanceModel {
   // 根据ID查找记录
@@ -345,103 +352,71 @@ export class PerformanceModel {
 
   // 更新排名
   static async updateRanks(month: string): Promise<void> {
-    if (USE_MEMORY_DB) {
-      const allRecords = Array.from(memoryStore.performanceRecords.values()) as PerformanceRecord[];
-      const records = allRecords.filter(r => r.month === month && r.status === 'completed');
-      
-      // 按部门+分组计算组内排名
-      const deptGroups = [...new Set(records.map(r => `${r.subDepartment}-${r.groupType}`))];
-      
-      for (const groupKey of deptGroups) {
-        const [subDept, groupType] = groupKey.split('-');
-        const groupRecords = records
-          .filter(r => r.subDepartment === subDept && r.groupType === groupType as 'high' | 'low')
-          .sort((a, b) => b.totalScore - a.totalScore);
-        
-        groupRecords.forEach((record, index) => {
-          const r = memoryStore.performanceRecords.get(record.id) as PerformanceRecord;
-          if (r) {
-            r.groupRank = index + 1;
-            memoryStore.performanceRecords.set(record.id, r);
-          }
-        });
-      }
-      
-      // 跨部门同级别排名
-      for (const groupType of ['high', 'low']) {
-        const crossDeptRecords = records
-          .filter(r => r.groupType === groupType && ['机械部', '测试部', 'PLC'].includes(r.subDepartment || ''))
-          .sort((a, b) => b.totalScore - a.totalScore);
-        
-        crossDeptRecords.forEach((record, index) => {
-          const r = memoryStore.performanceRecords.get(record.id) as PerformanceRecord;
-          if (r) {
-            r.crossDeptRank = index + 1;
-            memoryStore.performanceRecords.set(record.id, r);
-          }
-        });
-      }
-      
-      // 公司排名
-      const sortedRecords = records.sort((a, b) => b.totalScore - a.totalScore);
-      sortedRecords.forEach((record, index) => {
-        const r = memoryStore.performanceRecords.get(record.id) as PerformanceRecord;
-        if (r) {
-          r.companyRank = index + 1;
-          memoryStore.performanceRecords.set(record.id, r);
-        }
-      });
-      
-      return;
+    const config = await getPerformanceRankingConfig();
+    const records = await this.findByMonth(month);
+    const completed = records.filter((r) => r.status === 'completed');
+
+    // 仅参与部门纳入排名
+    const participating = completed.filter((r) => isParticipatingRecord(r, config));
+
+    const sortByScore = (a: PerformanceRecord, b: PerformanceRecord): number => {
+      const scoreDiff = (b.totalScore || 0) - (a.totalScore || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return String(a.employeeId || a.id).localeCompare(String(b.employeeId || b.id));
+    };
+
+    // 公司排名
+    const companySorted = [...participating].sort(sortByScore);
+    const companyRankMap = new Map<string, number>();
+    companySorted.forEach((r, idx) => companyRankMap.set(r.id, idx + 1));
+
+    // 部门排名（按“组织单元”统计：优先 department/subDepartment）
+    const unitGroups = new Map<string, PerformanceRecord[]>();
+    for (const r of participating) {
+      const unitKey = getOrgUnitKey(r);
+      if (!unitGroups.has(unitKey)) unitGroups.set(unitKey, []);
+      unitGroups.get(unitKey)!.push(r);
     }
-    
-    // Postgres版本
-    await transaction(async (connection: any) => {
-      // 1. 按部门+分组计算组内排名
-      await connection.execute(`
-        UPDATE performance_records r
-        SET group_rank = s.rn
-        FROM (
-          SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY sub_department, group_type 
-            ORDER BY total_score DESC
-          ) as rn
-          FROM performance_records
-          WHERE month = ? AND status = 'completed'
-        ) s
-        WHERE r.id = s.id
-      `, [month]);
-      
-      // 2. 跨部门同级别排名 (机械部, 测试部, PLC)
-      await connection.execute(`
-        UPDATE performance_records r
-        SET cross_dept_rank = s.rn
-        FROM (
-          SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY group_type 
-            ORDER BY total_score DESC
-          ) as rn
-          FROM performance_records
-          WHERE month = ? AND status = 'completed'
-            AND sub_department IN ('机械部', '测试部', 'PLC')
-        ) s
-        WHERE r.id = s.id
-      `, [month]);
-      
-      // 3. 公司排名
-      await connection.execute(`
-        UPDATE performance_records r
-        SET company_rank = s.rn
-        FROM (
-          SELECT id, ROW_NUMBER() OVER (
-            ORDER BY total_score DESC
-          ) as rn
-          FROM performance_records
-          WHERE month = ? AND status = 'completed'
-        ) s
-        WHERE r.id = s.id
-      `, [month]);
-    });
+    const departmentRankMap = new Map<string, number>();
+    for (const groupRecords of unitGroups.values()) {
+      groupRecords.sort(sortByScore).forEach((r, idx) => departmentRankMap.set(r.id, idx + 1));
+    }
+
+    // 组内排名（单位 + 可配置等级分组）
+    const rankGroups = new Map<string, PerformanceRecord[]>();
+    for (const r of participating) {
+      const groupKey = resolveGroupKey(r, config);
+      if (!rankGroups.has(groupKey)) rankGroups.set(groupKey, []);
+      rankGroups.get(groupKey)!.push(r);
+    }
+    const groupRankMap = new Map<string, number>();
+    for (const groupRecords of rankGroups.values()) {
+      groupRecords.sort(sortByScore).forEach((r, idx) => groupRankMap.set(r.id, idx + 1));
+    }
+
+    // 合并排名（跨部门/等级可选）
+    const mergeGroups = new Map<string, PerformanceRecord[]>();
+    for (const r of participating) {
+      const merge = matchMergeRankGroup(r, config);
+      if (!merge) continue;
+      if (!mergeGroups.has(merge.id)) mergeGroups.set(merge.id, []);
+      mergeGroups.get(merge.id)!.push(r);
+    }
+    const crossDeptRankMap = new Map<string, number>();
+    for (const groupRecords of mergeGroups.values()) {
+      groupRecords.sort(sortByScore).forEach((r, idx) => crossDeptRankMap.set(r.id, idx + 1));
+    }
+
+    // 将排名结果写回（未参与部门/未命中合并分组 => rank=0）
+    for (const r of completed) {
+      const isIncluded = companyRankMap.has(r.id);
+      await this.update(r.id, {
+        companyRank: isIncluded ? (companyRankMap.get(r.id) || 0) : 0,
+        departmentRank: isIncluded ? (departmentRankMap.get(r.id) || 0) : 0,
+        groupRank: isIncluded ? (groupRankMap.get(r.id) || 0) : 0,
+        crossDeptRank: isIncluded ? (crossDeptRankMap.get(r.id) || 0) : 0,
+      });
+    }
   }
 
   // 删除记录

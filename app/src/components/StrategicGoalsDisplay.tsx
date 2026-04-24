@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/authStore';
 
+const STRATEGIC_GOALS_ENABLED = false;
+
 interface StrategicGoal {
   id: string;
   title: string;
@@ -33,8 +35,17 @@ export function StrategicGoalsDisplay({ compact = false, showDepartment = true }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!STRATEGIC_GOALS_ENABLED) {
+      setLoading(false);
+      return;
+    }
+
     fetchStrategicGoals();
   }, [user]);
+
+  if (!STRATEGIC_GOALS_ENABLED) {
+    return null;
+  }
 
   const fetchStrategicGoals = async () => {
     try {
