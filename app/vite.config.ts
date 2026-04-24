@@ -26,8 +26,16 @@ export default defineConfig({
             return 'vendor-ui';
           }
 
-          if (id.includes('/recharts/') || id.includes('/reactflow/') || id.includes('/dagre/')) {
-            return 'vendor-charts';
+          if (id.includes('/recharts/')) {
+            return 'vendor-recharts';
+          }
+
+          if (id.includes('/reactflow/') || id.includes('/@reactflow/')) {
+            return 'vendor-reactflow';
+          }
+
+          if (id.includes('/dagre/')) {
+            return 'vendor-dagre';
           }
 
           if (id.includes('/framer-motion/') || id.includes('/lucide-react/') || id.includes('/@heroicons/')) {
