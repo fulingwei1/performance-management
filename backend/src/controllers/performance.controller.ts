@@ -340,6 +340,15 @@ export const performanceController = {
         });
       }
 
+      const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
+      if (existing) {
+        return res.json({
+          success: true,
+          data: existing,
+          message: '绩效记录已存在'
+        });
+      }
+
       // 确定分组
       const groupType = getGroupType(employee.level);
 

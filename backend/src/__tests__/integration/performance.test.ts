@@ -81,6 +81,43 @@ describe('Performance API', () => {
     });
   });
 
+  describe('POST /api/performance/create-empty-record', () => {
+    it('should not overwrite an existing submitted summary when creating empty record', async () => {
+      const employeeToken = await TestHelper.getAuthToken('employee');
+      const managerToken = await TestHelper.getAuthToken('manager');
+      const month = '2024-11';
+
+      const summaryResponse = await request(app)
+        .post('/api/performance/summary')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({
+          month,
+          selfSummary: '这是一条不能被空记录覆盖的工作总结',
+          nextMonthPlan: '下月继续推进重点任务'
+        });
+
+      expect(summaryResponse.status).toBe(201);
+      expect(summaryResponse.body.data).toHaveProperty('status', 'submitted');
+
+      const createResponse = await request(app)
+        .post('/api/performance/create-empty-record')
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          employeeId: summaryResponse.body.data.employeeId,
+          month
+        });
+
+      expect(createResponse.status).toBe(200);
+      expect(createResponse.body).toHaveProperty('success', true);
+      expect(createResponse.body.data).toMatchObject({
+        id: summaryResponse.body.data.id,
+        selfSummary: '这是一条不能被空记录覆盖的工作总结',
+        nextMonthPlan: '下月继续推进重点任务',
+        status: 'submitted'
+      });
+    });
+  });
+
   describe('GET /api/performance/:id', () => {
     it('should return record by id', async () => {
       const token = await TestHelper.getAuthToken('manager');
