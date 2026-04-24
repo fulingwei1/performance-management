@@ -134,12 +134,13 @@ export function ScoringManagement() {
   const handleSubmit = async () => {
     if (!selectedRecord) return;
     let recordId = selectedRecord.id;
+    const needsCreateRecord = isNoSummary && (!recordId || String(recordId).startsWith('temp-'));
     
-    if (isNoSummary) {
+    if (needsCreateRecord) {
       try {
         const response = await performanceApi.createEmptyRecord({ employeeId: selectedRecord.employeeId, month: selectedRecord.month });
         if (response.success) { recordId = response.data.id; toast.success('已创建绩效记录'); }
-        else { toast.error(response.message || '创建记录失败'); return; }
+        else { toast.error(response.message || response.error || '创建记录失败'); return; }
       } catch (error: any) { toast.error(error.message || '创建记录失败'); return; }
     }
     
@@ -148,6 +149,8 @@ export function ScoringManagement() {
       setIsDrawerOpen(false); setSelectedRecord(null); setIsNoSummary(false);
       toast.success('评分提交成功');
       if (user) await fetchTeamRecords(user.id, selectedMonth);
+    } else {
+      toast.error(usePerformanceStore.getState().error || '评分提交失败');
     }
   };
   
