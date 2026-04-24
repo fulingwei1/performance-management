@@ -202,7 +202,7 @@ export function StrategicGoalsManagement() {
       const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
       let endpoint = '';
-      let payload: any = { year: currentYear };
+      const payload: any = { year: currentYear };
 
       // 根据类型选择不同的AI生成接口
       if (formData.type === 'company-strategy') {

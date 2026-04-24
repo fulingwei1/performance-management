@@ -89,7 +89,7 @@ export function ScoringManagement() {
   const filteredAllRecords = useMemo(() => {
     return allEmployeeRecords.filter(record => {
       const matchesSearch = record.employeeName.toLowerCase().includes(searchQuery.toLowerCase());
-      let matchesStatus = statusFilter === 'all' ||
+      const matchesStatus = statusFilter === 'all' ||
         (statusFilter === 'pending' && (record.status === 'submitted' || record.status === 'draft' || record.status === 'not_submitted')) ||
         (statusFilter === 'scored' && (record.status === 'scored' || record.status === 'completed'));
       const matchesGroup = groupFilter === 'all' || record.groupType === groupFilter;
