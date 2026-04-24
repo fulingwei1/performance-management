@@ -57,7 +57,11 @@ export const TestHelper = {
   },
 
   generateRandomString(length: number = 10): string {
-    return Math.random().toString(36).substring(2, 2 + length);
+    let value = '';
+    while (value.length < length) {
+      value += Math.random().toString(36).slice(2);
+    }
+    return value.slice(0, length);
   },
 
   async cleanupDatabase() {

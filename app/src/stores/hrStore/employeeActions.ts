@@ -1,10 +1,10 @@
 import type { Employee } from '@/types';
+import { hrApi } from '@/services/api';
 
 export const createEmployeeActions = (set: any, get: any) => ({
   fetchEmployees: async () => {
     set({ loading: true, error: null });
     try {
-      const { hrApi } = await import('@/services/api');
       const response = await hrApi.getAllEmployees();
       console.log('[hrStore] fetchEmployees响应:', response);
       if (response.success) {
@@ -25,7 +25,6 @@ export const createEmployeeActions = (set: any, get: any) => ({
   addEmployee: async (data: any) => {
     set({ loading: true, error: null });
     try {
-      const { hrApi } = await import('@/services/api');
       const response = await hrApi.addEmployee(data);
       if (response.success) { get().fetchEmployees(); set({ loading: false }); return true; }
       else { set({ error: response.error || '添加失败', loading: false }); return false; }
@@ -35,7 +34,6 @@ export const createEmployeeActions = (set: any, get: any) => ({
   updateEmployee: async (id: string, data: any) => {
     set({ loading: true, error: null });
     try {
-      const { hrApi } = await import('@/services/api');
       const response = await hrApi.updateEmployee(id, data);
       if (response.success) { get().fetchEmployees(); set({ loading: false }); return true; }
       else { set({ error: response.error || '更新失败', loading: false }); return false; }
@@ -45,7 +43,6 @@ export const createEmployeeActions = (set: any, get: any) => ({
   deleteEmployee: async (id: string) => {
     set({ loading: true, error: null });
     try {
-      const { hrApi } = await import('@/services/api');
       const response = await hrApi.deleteEmployee(id);
       if (response.success) { get().fetchEmployees(); set({ loading: false }); return true; }
       else { set({ error: response.error || '删除失败', loading: false }); return false; }
@@ -55,7 +52,6 @@ export const createEmployeeActions = (set: any, get: any) => ({
   importEmployees: async (employees: any[]) => {
     set({ loading: true, error: null });
     try {
-      const { hrApi } = await import('@/services/api');
       const response = await hrApi.importEmployees(employees);
       if (response.success) { get().fetchEmployees(); set({ loading: false }); return response.data; }
       else { set({ error: response.error || '导入失败', loading: false }); return null; }

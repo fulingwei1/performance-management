@@ -1,74 +1,65 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { employeeApi } from '@/services/api';
 import { Layout } from '@/components/layout/Layout';
-import { Login } from '@/pages/Login';
-import { EmployeeDashboard } from '@/pages/Employee/Dashboard';
-import { WorkSummary } from '@/pages/Employee/WorkSummary';
-import { MyScores } from '@/pages/Employee/MyScores';
-import { EmployeePerformanceAppeals } from '@/pages/Employee/PerformanceAppeals';
-import { ManagerDashboard } from '@/pages/Manager/Dashboard';
-import { ScoringManagement } from '@/pages/Manager/Scoring';
-import { DifferentiatedScoring } from '@/pages/Manager/DifferentiatedScoring';
-import { Analytics } from '@/pages/Manager/Analytics';
-import { QuarterlySummary } from '@/pages/Manager/QuarterlySummary';
-import { GMAnalytics } from '@/pages/GM/Analytics';
-import { PerformanceAnalytics } from '@/pages/Analytics/PerformanceAnalytics';
-import { EmployeeTrend } from '@/pages/Analytics/EmployeeTrend';
-import { EmployeePerformanceHistory } from '@/pages/Manager/EmployeePerformanceHistory';
-import { TeamList } from '@/pages/Manager/TeamList';
-import { GMDashboard } from '@/pages/GM/Dashboard';
-import { GMScoring } from '@/pages/GM/Scoring';
-import { GMDataExport } from '@/pages/GM/GMDataExport';
-import { HRDashboard } from '@/pages/HR/Dashboard';
-import { EmployeeInfo } from '@/pages/HR/EmployeeInfo';
-import { DataManagement } from '@/pages/HR/DataManagement';
-import { HRAppealsManagement } from '@/pages/HR/AppealsManagement';
-import { AssessmentPublication } from '@/pages/HR/AssessmentPublication';
 import { Toaster } from '@/components/ui/sonner';
 
-// OKR/KPI pages
-import { ObjectiveTree } from '@/pages/OKR/ObjectiveTree';
-import { MyObjectives } from '@/pages/OKR/MyObjectives';
-import { MyKPI } from '@/pages/Employee/MyKPI';
-import { MonthlyReport } from '@/pages/Employee/MonthlyReport';
-import { TeamObjectives } from '@/pages/Manager/TeamObjectives';
-import { ReviewReports } from '@/pages/Manager/ReviewReports';
-import { InterviewSchedule } from '@/pages/Manager/InterviewSchedule';
-import { PeerReview } from '@/pages/Employee/PeerReview';
-import { InterviewPlans } from '@/pages/Manager/InterviewPlans';
-import { InterviewRecord } from '@/pages/Manager/InterviewRecord';
-import GoalApproval from '@/pages/Manager/GoalApproval';
-import GoalDashboard from '@/pages/Manager/GoalDashboard';
-import { AppealsReview } from '@/pages/Manager/AppealsReview';
-import { MyGoalPlanning } from '@/pages/Employee/MyGoalPlanning';
-import { DepartmentTree } from '@/pages/HR/DepartmentTree';
-import { DepartmentClassification } from '@/pages/HR/DepartmentClassification';
-import { AssessmentTemplates } from '@/pages/HR/AssessmentTemplates';
-import { AssessmentExport } from '@/pages/HR/AssessmentExport';
-import { OrganizationChart } from '@/pages/HR/OrganizationChart';
-import { DataImport } from '@/pages/HR/DataImport';
-import { DataExport } from '@/pages/HR/DataExport';
-import { PeerReviewManagement } from '@/pages/HR/PeerReviewManagement';
-import { TaskFreezeManagement } from '@/pages/HR/TaskFreezeManagement';
-import { PerformanceRankingConfig } from '@/pages/HR/PerformanceRankingConfig';
-import { SystemSettings } from '@/pages/Admin/SystemSettings';
-import { UserManagement } from '@/pages/Admin/UserManagement';
-
-// Goal Management pages
-import { GoalSetting } from '@/pages/Goals/GoalSetting';
-import { GoalConfirmation } from '@/pages/Goals/GoalConfirmation';
-import { GoalProgressPage } from '@/pages/Goals/GoalProgress';
-
-// Dashboard pages
-import ProgressDashboard from '@/pages/Dashboard/ProgressDashboard';
-
-// Mobile Demo page
-import { MobileDemo } from '@/pages/MobileDemo';
-
-// AI Insights page
-import { AIInsights } from '@/pages/ai/AIInsights';
+const Login = lazy(() => import('@/pages/Login').then((module) => ({ default: module.Login })));
+const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((module) => ({ default: module.EmployeeDashboard })));
+const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
+const MyScores = lazy(() => import('@/pages/Employee/MyScores').then((module) => ({ default: module.MyScores })));
+const EmployeePerformanceAppeals = lazy(() => import('@/pages/Employee/PerformanceAppeals').then((module) => ({ default: module.EmployeePerformanceAppeals })));
+const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
+const ScoringManagement = lazy(() => import('@/pages/Manager/Scoring').then((module) => ({ default: module.ScoringManagement })));
+const DifferentiatedScoring = lazy(() => import('@/pages/Manager/DifferentiatedScoring').then((module) => ({ default: module.DifferentiatedScoring })));
+const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
+const QuarterlySummary = lazy(() => import('@/pages/Manager/QuarterlySummary').then((module) => ({ default: module.QuarterlySummary })));
+const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
+const PerformanceAnalytics = lazy(() => import('@/pages/Analytics/PerformanceAnalytics').then((module) => ({ default: module.PerformanceAnalytics })));
+const EmployeeTrend = lazy(() => import('@/pages/Analytics/EmployeeTrend').then((module) => ({ default: module.EmployeeTrend })));
+const EmployeePerformanceHistory = lazy(() => import('@/pages/Manager/EmployeePerformanceHistory').then((module) => ({ default: module.EmployeePerformanceHistory })));
+const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => ({ default: module.TeamList })));
+const GMDashboard = lazy(() => import('@/pages/GM/Dashboard').then((module) => ({ default: module.GMDashboard })));
+const GMScoring = lazy(() => import('@/pages/GM/Scoring').then((module) => ({ default: module.GMScoring })));
+const GMDataExport = lazy(() => import('@/pages/GM/GMDataExport').then((module) => ({ default: module.GMDataExport })));
+const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
+const EmployeeInfo = lazy(() => import('@/pages/HR/EmployeeInfo').then((module) => ({ default: module.EmployeeInfo })));
+const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((module) => ({ default: module.DataManagement })));
+const HRAppealsManagement = lazy(() => import('@/pages/HR/AppealsManagement').then((module) => ({ default: module.HRAppealsManagement })));
+const AssessmentPublication = lazy(() => import('@/pages/HR/AssessmentPublication').then((module) => ({ default: module.AssessmentPublication })));
+const ObjectiveTree = lazy(() => import('@/pages/OKR/ObjectiveTree').then((module) => ({ default: module.ObjectiveTree })));
+const MyObjectives = lazy(() => import('@/pages/OKR/MyObjectives').then((module) => ({ default: module.MyObjectives })));
+const MyKPI = lazy(() => import('@/pages/Employee/MyKPI').then((module) => ({ default: module.MyKPI })));
+const MonthlyReport = lazy(() => import('@/pages/Employee/MonthlyReport').then((module) => ({ default: module.MonthlyReport })));
+const TeamObjectives = lazy(() => import('@/pages/Manager/TeamObjectives').then((module) => ({ default: module.TeamObjectives })));
+const ReviewReports = lazy(() => import('@/pages/Manager/ReviewReports').then((module) => ({ default: module.ReviewReports })));
+const InterviewSchedule = lazy(() => import('@/pages/Manager/InterviewSchedule').then((module) => ({ default: module.InterviewSchedule })));
+const PeerReview = lazy(() => import('@/pages/Employee/PeerReview').then((module) => ({ default: module.PeerReview })));
+const InterviewPlans = lazy(() => import('@/pages/Manager/InterviewPlans').then((module) => ({ default: module.InterviewPlans })));
+const InterviewRecord = lazy(() => import('@/pages/Manager/InterviewRecord').then((module) => ({ default: module.InterviewRecord })));
+const GoalApproval = lazy(() => import('@/pages/Manager/GoalApproval'));
+const GoalDashboard = lazy(() => import('@/pages/Manager/GoalDashboard'));
+const AppealsReview = lazy(() => import('@/pages/Manager/AppealsReview').then((module) => ({ default: module.AppealsReview })));
+const MyGoalPlanning = lazy(() => import('@/pages/Employee/MyGoalPlanning').then((module) => ({ default: module.MyGoalPlanning })));
+const DepartmentTree = lazy(() => import('@/pages/HR/DepartmentTree').then((module) => ({ default: module.DepartmentTree })));
+const DepartmentClassification = lazy(() => import('@/pages/HR/DepartmentClassification').then((module) => ({ default: module.DepartmentClassification })));
+const AssessmentTemplates = lazy(() => import('@/pages/HR/AssessmentTemplates').then((module) => ({ default: module.AssessmentTemplates })));
+const AssessmentExport = lazy(() => import('@/pages/HR/AssessmentExport').then((module) => ({ default: module.AssessmentExport })));
+const OrganizationChart = lazy(() => import('@/pages/HR/OrganizationChart').then((module) => ({ default: module.OrganizationChart })));
+const DataImport = lazy(() => import('@/pages/HR/DataImport').then((module) => ({ default: module.DataImport })));
+const DataExport = lazy(() => import('@/pages/HR/DataExport').then((module) => ({ default: module.DataExport })));
+const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement').then((module) => ({ default: module.PeerReviewManagement })));
+const TaskFreezeManagement = lazy(() => import('@/pages/HR/TaskFreezeManagement').then((module) => ({ default: module.TaskFreezeManagement })));
+const PerformanceRankingConfig = lazy(() => import('@/pages/HR/PerformanceRankingConfig').then((module) => ({ default: module.PerformanceRankingConfig })));
+const SystemSettings = lazy(() => import('@/pages/Admin/SystemSettings').then((module) => ({ default: module.SystemSettings })));
+const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
+const GoalSetting = lazy(() => import('@/pages/Goals/GoalSetting').then((module) => ({ default: module.GoalSetting })));
+const GoalConfirmation = lazy(() => import('@/pages/Goals/GoalConfirmation').then((module) => ({ default: module.GoalConfirmation })));
+const GoalProgressPage = lazy(() => import('@/pages/Goals/GoalProgress').then((module) => ({ default: module.GoalProgressPage })));
+const ProgressDashboard = lazy(() => import('@/pages/Dashboard/ProgressDashboard'));
+const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
+const AIInsights = lazy(() => import('@/pages/ai/AIInsights').then((module) => ({ default: module.AIInsights })));
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
@@ -179,6 +170,7 @@ function EmployeePerformanceHistoryWrapper() {
 function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={<div className="p-4 text-center text-gray-500">页面加载中...</div>}>
       <Routes>
         {/* Login */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -309,6 +301,7 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </Suspense>
       <Toaster position="top-right" />
     </BrowserRouter>
   );

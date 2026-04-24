@@ -1,4 +1,5 @@
 import type { MonthlyTask, TemporaryWork, TalentDevelopment, GMManagerScore, QuarterlySummary } from '@/types';
+import { peerReviewApi, quarterlySummaryApi } from '@/services/api';
 
 const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -69,7 +70,6 @@ export const createTaskActions = (set: any, get: any) => ({
   saveQuarterlySummary: async (data: Omit<QuarterlySummary, 'id' | 'createdAt' | 'updatedAt'>) => {
     set({ loading: true, error: null });
     try {
-      const { quarterlySummaryApi } = await import('@/services/api');
       const response = await quarterlySummaryApi.save({ quarter: data.quarter, summary: data.summary, nextQuarterPlan: data.nextQuarterPlan, status: data.status });
       const saved = response.data as QuarterlySummary;
       set((state: any) => {
@@ -93,7 +93,6 @@ export const createTaskActions = (set: any, get: any) => ({
   fetchQuarterlySummary: async (quarter: string) => {
     set({ loading: true, error: null });
     try {
-      const { quarterlySummaryApi } = await import('@/services/api');
       const response = await quarterlySummaryApi.getMySummaries(quarter);
       const records = (response.data || []) as QuarterlySummary[];
       set((state: any) => {
@@ -116,7 +115,6 @@ export const createTaskActions = (set: any, get: any) => ({
     get().quarterlySummaries.find((s: QuarterlySummary) => s.managerId === managerId && s.quarter === quarter),
 
   generateMonthlyTasks: async (month: string) => {
-    const { peerReviewApi } = await import('@/services/api');
     const managers = get().employeesList.filter((e: any) => e.role === 'manager');
     managers.forEach((manager: any) => {
       const defaultTasks = [

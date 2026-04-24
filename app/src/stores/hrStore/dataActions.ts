@@ -1,11 +1,11 @@
 import type { PerformanceRecord, ReportData } from '@/types';
 import { generateNormalizationReport } from '@/lib/scoreNormalization';
+import { exportApi, metricLibraryApi, organizationApi, performanceApi } from '@/services/api';
 
 export const createDataActions = (set: any, get: any) => ({
   fetchAllPerformanceRecords: async () => {
     set({ loading: true, error: null });
     try {
-      const { performanceApi } = await import('@/services/api');
       const response = await performanceApi.getAllRecords(12);
       if (response.success) set({ allPerformanceRecords: response.data, loading: false });
       else set({ error: response.error || '获取绩效记录失败', loading: false });
@@ -49,24 +49,20 @@ export const createDataActions = (set: any, get: any) => ({
   getNormalizationReport: () => generateNormalizationReport(get().allPerformanceRecords),
 
   exportMonthlyPerformance: async (month: string, options = {}) => {
-    const { exportApi } = await import('@/services/api');
     exportApi.exportMonthlyPerformance(month, options);
   },
 
   exportAnnualPerformance: async (year: string, options = {}) => {
-    const { exportApi } = await import('@/services/api');
     exportApi.exportAnnualPerformance(year, options);
   },
 
   exportEmployeesFromDB: async (options = {}) => {
-    const { exportApi } = await import('@/services/api');
     exportApi.exportEmployees(options);
   },
 
   fetchMetrics: async () => {
     set({ loading: true, error: null });
     try {
-      const { metricLibraryApi } = await import('@/services/api');
       const response = await metricLibraryApi.getAllMetrics();
       if (response.success) set({ metricsList: response.data, loading: false });
       else set({ error: response.error || '获取指标失败', loading: false });
@@ -76,7 +72,6 @@ export const createDataActions = (set: any, get: any) => ({
   updateMetrics: async (metrics: any[]) => {
     set({ loading: true, error: null });
     try {
-      const { metricLibraryApi } = await import('@/services/api');
       const results = await Promise.all(metrics.map((m: any) => m.id ? metricLibraryApi.updateMetric(m.id, m) : metricLibraryApi.createMetric(m)));
       if (results.every((r: any) => r.success)) { await get().fetchMetrics(); set({ loading: false }); return true; }
       else { set({ error: '部分指标更新失败', loading: false }); return false; }
@@ -86,7 +81,6 @@ export const createDataActions = (set: any, get: any) => ({
   fetchOrganization: async () => {
     set({ loading: true, error: null });
     try {
-      const { organizationApi } = await import('@/services/api');
       const response = await organizationApi.getDepartmentTree();
       if (response.success) set({ organizationList: response.data, loading: false });
       else set({ error: response.error || '获取组织架构失败', loading: false });
@@ -96,7 +90,6 @@ export const createDataActions = (set: any, get: any) => ({
   updateOrganization: async (organization: any[]) => {
     set({ loading: true, error: null });
     try {
-      const { organizationApi } = await import('@/services/api');
       const results = await Promise.all(organization.map((dept: any) => dept.id ? organizationApi.updateDepartment(dept.id, dept) : organizationApi.createDepartment(dept)));
       if (results.every((r: any) => r.success)) { await get().fetchOrganization(); set({ loading: false }); return true; }
       else { set({ error: '部分组织架构更新失败', loading: false }); return false; }
