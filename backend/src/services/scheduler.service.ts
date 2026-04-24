@@ -2,6 +2,10 @@ import cron from 'node-cron';
 import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { NotificationModel, CreateNotificationInput } from '../models/notification.model';
 import { TodoModel } from '../models/todo.model';
+import { EmployeeModel } from '../models/employee.model';
+import { PerformanceModel } from '../models/performance.model';
+import { getGroupType } from '../utils/helpers';
+import { getPerformanceRankingConfig, isParticipatingRecord } from './performanceRankingConfig.service';
 import logger from '../config/logger';
 
 export class SchedulerService {
@@ -10,6 +14,17 @@ export class SchedulerService {
   static init() {
     if (this.initialized) return;
     this.initialized = true;
+
+    // 每月 1 日早上 8:00 自动生成上月绩效任务，并提醒员工提交工作总结
+    cron.schedule('0 8 1 * *', async () => {
+      logger.info('[Scheduler] 执行月初绩效任务生成...');
+      try {
+        const result = await this.generatePreviousMonthPerformanceTasks();
+        logger.info(`[Scheduler] 月初绩效任务生成完成: ${JSON.stringify(result)}`);
+      } catch (err) {
+        logger.error(`[Scheduler] 月初绩效任务生成出错: ${err}`);
+      }
+    });
 
     // 每天早上 8:00 检查截止日期和过期待办
     cron.schedule('0 8 * * *', async () => {
@@ -33,6 +48,94 @@ export class SchedulerService {
     });
 
     logger.info('✅ 定时任务已启动');
+  }
+
+  /**
+   * 每月 1 日生成上月绩效任务，并通知员工/经理提交上月工作总结。
+   */
+  static async generatePreviousMonthPerformanceTasks(referenceDate: Date = new Date()): Promise<{
+    month: string;
+    createdCount: number;
+    skippedCount: number;
+    notificationCount: number;
+    todoCount: number;
+    total: number;
+  }> {
+    const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+    const targetMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    const todoRelatedId = `performance-summary-${targetMonth}`;
+    const summaryLink = `/employee/summary?month=${targetMonth}`;
+
+    const allEmployees = await EmployeeModel.findAll();
+    const validIds = new Set<string>(allEmployees.map((employee: any) => employee.id));
+    const rankingConfig = await getPerformanceRankingConfig();
+    const assessableEmployees = allEmployees
+      .filter((employee: any) => employee.role === 'employee' || employee.role === 'manager')
+      .filter((employee: any) => !employee.status || employee.status === 'active')
+      .filter((employee: any) => isParticipatingRecord(employee, rankingConfig));
+
+    let createdCount = 0;
+    let skippedCount = 0;
+    let todoCount = 0;
+    const notifications: CreateNotificationInput[] = [];
+
+    for (const employee of assessableEmployees) {
+      const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, targetMonth);
+      if (existing) {
+        skippedCount++;
+        continue;
+      }
+
+      const groupType = getGroupType(employee.level);
+      let assessorId = 'gm001';
+      if (employee.role === 'employee' && employee.managerId && validIds.has(employee.managerId)) {
+        assessorId = employee.managerId;
+      }
+
+      await PerformanceModel.saveSummary({
+        id: `rec-${employee.id}-${targetMonth}`,
+        employeeId: employee.id,
+        assessorId,
+        month: targetMonth,
+        selfSummary: '',
+        nextMonthPlan: '',
+        groupType
+      });
+      createdCount++;
+
+      notifications.push({
+        userId: employee.id,
+        type: 'reminder',
+        title: `请提交${targetMonth}月度工作总结`,
+        content: `系统已生成${targetMonth}绩效考核任务，请尽快填写上月工作总结和本月计划。`,
+        link: summaryLink
+      });
+
+      const existingTodo = await TodoModel.findExisting(employee.id, 'work_summary', todoRelatedId);
+      if (!existingTodo) {
+        await TodoModel.create({
+          employeeId: employee.id,
+          type: 'work_summary',
+          title: `提交${targetMonth}月度工作总结`,
+          description: `请填写${targetMonth}工作总结和下月计划，供经理评分。`,
+          dueDate: new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 7),
+          link: summaryLink,
+          relatedId: todoRelatedId
+        });
+        todoCount++;
+      }
+    }
+
+    const notificationCount = await NotificationModel.createBatch(notifications);
+
+    return {
+      month: targetMonth,
+      createdCount,
+      skippedCount,
+      notificationCount,
+      todoCount,
+      total: assessableEmployees.length
+    };
   }
 
   /**
@@ -244,10 +347,10 @@ export class SchedulerService {
 
   private static getTodoLink(type: string): string {
     const map: Record<string, string> = {
-      work_summary: '/monthly-report',
-      manager_review: '/performance/review',
-      hr_review: '/performance/review',
-      appeal_review: '/appeals',
+      work_summary: '/employee/summary',
+      manager_review: '/manager/scoring',
+      hr_review: '/hr/performance-publication',
+      appeal_review: '/employee/appeals',
       goal_approval: '/objectives',
     };
     return map[type] || '/dashboard';

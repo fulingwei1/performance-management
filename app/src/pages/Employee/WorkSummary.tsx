@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -21,10 +21,16 @@ import { cn } from '@/lib/utils';
 
 export function WorkSummary() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
   const { saveSummary, loading, error } = usePerformanceStore();
+
+  const monthParam = searchParams.get('month');
+  const initialMonth = monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam)
+    ? new Date(`${monthParam}-01T00:00:00`)
+    : new Date();
   
-  const [month, setMonth] = useState<Date>(new Date());
+  const [month, setMonth] = useState<Date>(initialMonth);
   const [selfSummary, setSelfSummary] = useState('');
   const [nextMonthPlan, setNextMonthPlan] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,9 +60,9 @@ export function WorkSummary() {
           setFrozen(record.frozen || false);
           setDeadline(record.deadline);
           
-          // 如果记录已存在，加载已保存的内容
-          if (record.selfSummary) setSelfSummary(record.selfSummary);
-          if (record.nextMonthPlan) setNextMonthPlan(record.nextMonthPlan);
+          // 如果记录已存在，加载已保存的内容；空草稿要清空旧月份遗留输入
+          setSelfSummary(record.selfSummary || '');
+          setNextMonthPlan(record.nextMonthPlan || '');
         } else {
           // 该月份无记录，清空状态
           setRecordId(null);

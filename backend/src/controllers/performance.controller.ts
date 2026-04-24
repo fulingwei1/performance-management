@@ -267,12 +267,18 @@ export const performanceController = {
         });
       }
 
-      // 检查是否已经提交过该月份 - 重复提交返回 400
+      // 检查是否已经提交过该月份；若是系统预生成的空草稿，允许员工补充总结
       const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
-      if (existing) {
+      if (existing && existing.status !== 'draft') {
         return res.status(400).json({
           success: false,
           error: '该月份已提交过工作总结，不可重复提交'
+        });
+      }
+      if (existing && (existing.selfSummary || existing.nextMonthPlan)) {
+        return res.status(400).json({
+          success: false,
+          error: '该月份已存在工作总结草稿，请勿重复提交'
         });
       }
 

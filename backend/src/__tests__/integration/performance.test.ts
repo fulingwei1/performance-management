@@ -162,6 +162,38 @@ describe('Performance API', () => {
   });
 
   describe('POST /api/performance/summary', () => {
+    it('should submit summary into an existing generated draft task', async () => {
+      const managerToken = await TestHelper.getAuthToken('manager');
+      const employeeToken = await TestHelper.getAuthToken('employee');
+      const month = '2024-12';
+
+      const createResponse = await request(app)
+        .post('/api/performance/create-empty-record')
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({ employeeId: 'e034', month });
+
+      expect(createResponse.status).toBe(200);
+      expect(createResponse.body.data).toHaveProperty('status', 'draft');
+
+      const response = await request(app)
+        .post('/api/performance/summary')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({
+          month,
+          selfSummary: '补充上月工作总结',
+          nextMonthPlan: '继续完成重点任务'
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toMatchObject({
+        id: createResponse.body.data.id,
+        selfSummary: '补充上月工作总结',
+        nextMonthPlan: '继续完成重点任务',
+        status: 'submitted'
+      });
+    });
+
     it('should submit work summary', async () => {
       const token = await TestHelper.getAuthToken('employee');
       const summary = {
