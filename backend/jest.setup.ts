@@ -6,6 +6,8 @@
 // 设置测试环境变量（必须在任何导入之前）
 process.env.NODE_ENV = 'test';
 process.env.USE_MEMORY_DB = 'true';
+process.env.DOTENV_CONFIG_QUIET = 'true';
+process.env.LOG_LEVEL = process.env.LOG_LEVEL || 'silent';
 process.env.DB_HOST = process.env.DB_HOST || 'localhost';
 process.env.DB_PORT = process.env.DB_PORT || '3306';
 process.env.DB_USER = process.env.DB_USER || 'root';
