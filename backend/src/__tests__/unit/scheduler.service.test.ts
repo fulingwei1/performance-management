@@ -78,6 +78,13 @@ describe('SchedulerService monthly performance task generation', () => {
     ]));
   });
 
+  it('should map deadline reminder todos to existing front-end routes', () => {
+    expect((SchedulerService as any).getTodoLink('work_summary')).toBe('/employee/summary');
+    expect((SchedulerService as any).getTodoLink('manager_review')).toBe('/manager/scoring');
+    expect((SchedulerService as any).getTodoLink('hr_review')).toBe('/hr/assessment-publication');
+    expect((SchedulerService as any).getTodoLink('appeal_review')).toBe('/hr/appeals');
+  });
+
   it('should be idempotent for an already generated previous-month task batch', async () => {
     memoryStore.employees.set('m001', {
       id: 'm001',

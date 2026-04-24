@@ -319,6 +319,33 @@ export const memoryDB = {
 export const memoryQuery = async (sql: string, params?: any[]): Promise<any[]> => {
   logger.info(`📦 Memory DB query: ${sql} ${params}`);
   
+  if (sql.includes('SELECT') && sql.includes('performance_records')) {
+    const records = Array.from(memoryStore.performanceRecords.values()) as any[];
+
+    if (sql.includes('JOIN employees')) {
+      const [startDate, endDate] = params || [];
+      return records
+        .filter(record => record.frozen === false)
+        .filter(record => ['draft'].includes(record.status))
+        .filter(record => !startDate || record.deadline >= startDate)
+        .filter(record => !endDate || record.deadline <= endDate)
+        .map(record => {
+          const employeeId = record.employee_id || record.employeeId;
+          const employee = memoryStore.employees.get(employeeId);
+          return {
+            id: record.id,
+            employee_id: employeeId,
+            month: record.month,
+            deadline: record.deadline,
+            status: record.status,
+            employee_name: employee?.name || record.employee_name,
+          };
+        });
+    }
+
+    return records;
+  }
+
   if (sql.includes('SELECT') && sql.includes('employees')) {
     if (sql.includes('WHERE id = ?')) {
       const employee = memoryStore.employees.get(params?.[0]);

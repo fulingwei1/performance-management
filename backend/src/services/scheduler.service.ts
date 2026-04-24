@@ -349,8 +349,8 @@ export class SchedulerService {
     const map: Record<string, string> = {
       work_summary: '/employee/summary',
       manager_review: '/manager/scoring',
-      hr_review: '/hr/performance-publication',
-      appeal_review: '/employee/appeals',
+      hr_review: '/hr/assessment-publication',
+      appeal_review: '/hr/appeals',
       goal_approval: '/objectives',
     };
     return map[type] || '/dashboard';

@@ -271,7 +271,7 @@ export const automationController = {
         type: 'reminder' as const,
         title: `绩效任务即将到期`,
         content: `您的 ${task.month} 月度绩效任务还有 ${daysLeft} 天到期（截止日期：${task.deadline}），请尽快完成提交。`,
-        link: `/performance/my-tasks`
+        link: `/employee/summary?month=${task.month}`
       };
     });
     
