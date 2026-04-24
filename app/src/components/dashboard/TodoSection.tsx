@@ -2,11 +2,18 @@ import { useEffect, useState } from 'react';
 import { FileText, Target, AlertCircle, Award, ClipboardCheck, MessageSquare, Send } from 'lucide-react';
 import { TodoCard } from './TodoCard';
 
+interface TodoItem {
+  id: string;
+  title: string;
+  link?: string | null;
+  dueDate?: string | null;
+}
+
 interface TodoGroup {
   count: number;
   dueDate: string | null;
   status: 'pending' | 'warning' | 'overdue';
-  items: any[];
+  items: TodoItem[];
 }
 
 type TodoSummary = Record<string, TodoGroup>;
@@ -19,7 +26,7 @@ interface TodoConfig {
 }
 
 const employeeTodoConfigs: TodoConfig[] = [
-  { type: 'work_summary', title: '待填写工作总结', link: '/employee/work-summary', icon: <FileText className="h-4 w-4 text-blue-500" /> },
+  { type: 'work_summary', title: '待填写工作总结', link: '/employee/summary', icon: <FileText className="h-4 w-4 text-blue-500" /> },
   { type: 'goal_approval', title: '待确认目标', link: '/employee/goal-planning', icon: <Target className="h-4 w-4 text-green-500" /> },
   { type: 'appeal_review', title: '申诉结果', link: '/employee/appeals', icon: <AlertCircle className="h-4 w-4 text-orange-500" /> },
 ];
@@ -27,7 +34,7 @@ const employeeTodoConfigs: TodoConfig[] = [
 const managerTodoConfigs: TodoConfig[] = [
   { type: 'performance_review', title: '待打分员工', link: '/manager/scoring', icon: <Award className="h-4 w-4 text-purple-500" /> },
   { type: 'goal_approval', title: '待审批目标', link: '/manager/goal-approval', icon: <ClipboardCheck className="h-4 w-4 text-blue-500" /> },
-  { type: 'appeal_review', title: '待审核申诉', link: '/manager/appeals-review', icon: <AlertCircle className="h-4 w-4 text-red-500" /> },
+  { type: 'appeal_review', title: '待审核申诉', link: '/manager/appeals', icon: <AlertCircle className="h-4 w-4 text-red-500" /> },
   { type: 'manager_review', title: '待审阅报告', link: '/manager/review-reports', icon: <MessageSquare className="h-4 w-4 text-green-500" /> },
 ];
 
@@ -69,6 +76,9 @@ export function TodoSection({ role, fetchSummary }: TodoSectionProps) {
     <div className={`grid grid-cols-1 ${gridCols} gap-4 mb-6`}>
       {configs.map(config => {
         const group = summary[config.type];
+        const todoLink = group?.items?.find(item => typeof item.link === 'string' && item.link.trim())?.link;
+        const link = todoLink || config.link;
+
         return (
           <TodoCard
             key={config.type}
@@ -76,7 +86,7 @@ export function TodoSection({ role, fetchSummary }: TodoSectionProps) {
             count={group?.count || 0}
             dueDate={group?.dueDate}
             status={group?.status || 'pending'}
-            link={config.link}
+            link={link}
             icon={config.icon}
           />
         );
