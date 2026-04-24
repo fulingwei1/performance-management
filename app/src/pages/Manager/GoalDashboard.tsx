@@ -180,7 +180,7 @@ export default function GoalDashboard() {
                     </div>
                     <p className="text-xs text-gray-500">完成进度</p>
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => navigate(`/manager/objectives/${obj.id}`)}>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/manager/team-objectives')}>
                     查看详情
                   </Button>
                 </div>
