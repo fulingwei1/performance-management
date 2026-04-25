@@ -4,13 +4,17 @@ import {
   getPromotionCandidates,
   getDepartmentPromotionStats,
   getPerformanceAnomalies,
-  getAnomalyStats
+  getAnomalyStats,
+  generateQuarterlySummary
 } from '../controllers/ai.controller';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
 router.use(authenticate);
+
+// AI 季度总结生成
+router.post('/quarterly-summary', requireRole('manager', 'gm', 'hr', 'admin'), generateQuarterlySummary);
 
 // AI 绩效预测
 router.post('/predict-performance', requireRole('manager', 'gm', 'hr', 'admin'), predictPerformance);

@@ -281,6 +281,22 @@ export const quarterlySummaryApi = {
   }
 };
 
+// AI相关API
+export const aiApi = {
+  generateQuarterlySummary: (data: {
+    managerName: string;
+    department: string;
+    quarter: string;
+    teamSize: number;
+    avgScore?: number;
+    topPerformers?: string[];
+    keyProjects?: string[];
+  }) => request('/ai/quarterly-summary', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+};
+
 // HR管理API
 export const hrApi = {
   // 获取所有员工
@@ -797,6 +813,7 @@ export default {
   employee: employeeApi,
   performance: performanceApi,
   quarterlySummary: quarterlySummaryApi,
+  ai: aiApi,
   promotion: promotionApi,
   peerReview: peerReviewApi,
   assessmentPublication: assessmentPublicationApi,

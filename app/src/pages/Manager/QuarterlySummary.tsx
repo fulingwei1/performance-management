@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useHRStore } from '@/stores/hrStore';
+import { aiApi, employeeApi } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -71,28 +72,21 @@ export function QuarterlySummary() {
     setAiLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const subordinatesResponse = await employeeApi.getSubordinates();
+      const subordinates = Array.isArray(subordinatesResponse?.data) ? subordinatesResponse.data : [];
 
-      // 调用AI生成接口
-      const response = await fetch(`${API_BASE_URL}/ai/quarterly-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          quarter: quarterKey,
-          teamSize: 10, // TODO: 从实际数据获取
-          avgScore: undefined,
-          topPerformers: [],
-          keyProjects: []
-        })
+      const result = await aiApi.generateQuarterlySummary({
+        managerName: user.name,
+        department: user.department || user.subDepartment || '未分配部门',
+        quarter: quarterKey,
+        teamSize: subordinates.length,
+        avgScore: undefined,
+        topPerformers: [],
+        keyProjects: []
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
+      if (result.success) {
+        const versions = result.data?.versions || [];
         
         // 自动采用第一个版本
         if (versions.length > 0) {

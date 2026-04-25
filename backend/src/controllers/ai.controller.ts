@@ -2,6 +2,96 @@ import { Request, Response } from 'express';
 import { aiPredictionService } from '../services/ai-prediction.service';
 import { promotionRecommenderService } from '../services/promotion-recommender.service';
 import { anomalyDetectionService } from '../services/anomaly-detection.service';
+import { generateAISuggestion, prompts } from '../services/ai.service';
+
+const parseQuarterlySummaryVersions = (content?: string): string[] => {
+  if (!content) return [];
+
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed?.versions)) {
+      return parsed.versions.filter((version: unknown): version is string => typeof version === 'string');
+    }
+  } catch {
+    // AI 可能返回非严格 JSON，下面尝试从文本中提取 JSON 对象。
+  }
+
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsed?.versions)) {
+        return parsed.versions.filter((version: unknown): version is string => typeof version === 'string');
+      }
+    } catch {
+      // 保底返回原文。
+    }
+  }
+
+  return [content];
+};
+
+/**
+ * AI 生成经理季度总结
+ */
+export const generateQuarterlySummary = async (req: Request, res: Response) => {
+  try {
+    const {
+      managerName,
+      department,
+      quarter,
+      teamSize,
+      avgScore,
+      topPerformers = [],
+      keyProjects = []
+    } = req.body;
+
+    if (!managerName || !department || !quarter || typeof teamSize !== 'number') {
+      return res.status(400).json({
+        success: false,
+        message: '缺少季度总结生成所需参数'
+      });
+    }
+
+    const promptRequest = prompts.quarterlySummary({
+      managerName,
+      department,
+      quarter,
+      teamSize,
+      avgScore,
+      topPerformers,
+      keyProjects
+    });
+
+    const aiResult = await generateAISuggestion({
+      prompt: promptRequest.prompt,
+      systemPrompt: promptRequest.systemPrompt,
+      maxTokens: 2000,
+      temperature: 0.7
+    });
+
+    if (!aiResult.success) {
+      return res.status(502).json({
+        success: false,
+        message: aiResult.error || 'AI季度总结生成失败'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        versions: parseQuarterlySummaryVersions(aiResult.content)
+      },
+      provider: aiResult.provider,
+      usage: aiResult.usage
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'AI季度总结生成失败'
+    });
+  }
+};
 
 /**
  * AI 预测控制器
