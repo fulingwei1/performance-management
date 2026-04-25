@@ -1,5 +1,5 @@
 # 阶段1: 构建
-FROM node:20-alpine AS builder
+FROM docker.m.daocloud.io/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -14,13 +14,15 @@ COPY . .
 
 # 构建参数
 ARG VITE_API_URL
+ARG VITE_BASE_PATH=/
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 
 # 构建应用
 RUN npm run build
 
 # 阶段2: 生产
-FROM nginx:alpine
+FROM docker.m.daocloud.io/nginx:alpine
 
 # 复制构建产物到nginx
 COPY --from=builder /app/dist /usr/share/nginx/html

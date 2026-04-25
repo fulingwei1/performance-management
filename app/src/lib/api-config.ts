@@ -1,16 +1,23 @@
 const isProd = import.meta.env.PROD;
 const isTest = import.meta.env.MODE === 'test';
 
+const getDefaultApiBaseUrl = () => {
+  if (!isProd && !isTest) return 'http://localhost:3001/api';
+
+  const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+  return `${basePath}/api`.replace(/^\/\//, '/');
+};
+
 const normalizeApiBaseUrl = (value?: string) => {
   const trimmed = (value || '').trim().replace(/\/+$/, '');
 
   if (isProd && trimmed && trimmed.includes('localhost')) {
-    console.warn('Production build detected localhost API URL, falling back to /api proxy');
-    return '/api';
+    console.warn('Production build detected localhost API URL, falling back to same-origin API proxy');
+    return getDefaultApiBaseUrl();
   }
 
   if (!trimmed) {
-    return isProd || isTest ? '/api' : 'http://localhost:3001/api';
+    return getDefaultApiBaseUrl();
   }
 
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;

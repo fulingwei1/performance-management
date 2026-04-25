@@ -171,7 +171,7 @@ function EmployeePerformanceHistoryWrapper() {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Suspense fallback={<div className="p-4 text-center text-gray-500">页面加载中...</div>}>
       <Routes>
         {/* Login */}
