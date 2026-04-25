@@ -1001,6 +1001,17 @@ export const automationApi = {
   checkReminders: () => 
     request('/automation/check-reminders', {
       method: 'POST'
+    }),
+  // 解冻单个任务
+  unfreezeTask: (recordId: string) =>
+    request(`/automation/unfreeze/${recordId}`, {
+      method: 'POST'
+    }),
+  // 批量解冻
+  batchUnfreeze: (month: string) =>
+    request('/automation/batch-unfreeze', {
+      method: 'POST',
+      body: JSON.stringify({ month })
     })
 };
 

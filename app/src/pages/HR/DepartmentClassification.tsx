@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { organizationApi } from '@/services/api';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
 
 const DEPARTMENT_TYPES = [
   { value: 'sales', label: '销售类', color: 'bg-green-100 text-green-700', icon: '💰' },
@@ -35,17 +35,12 @@ export function DepartmentClassification() {
 
   const loadDepartments = async () => {
     try {
-      const response = await fetch(buildApiUrl('/departments/tree'), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const result = await organizationApi.getDepartmentTree();
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // 扁平化部门树
-          const flatDepts = flattenDepartments(result.data || []);
-          setDepartments(flatDepts);
-        }
+      if (result?.success) {
+        // 扁平化部门树
+        const flatDepts = flattenDepartments(result.data || []);
+        setDepartments(flatDepts);
       }
     } catch (error) {
       console.error('加载部门失败:', error);
@@ -93,16 +88,9 @@ export function DepartmentClassification() {
 
     for (const [deptId, type] of changes.entries()) {
       try {
-        const response = await fetch(buildApiUrl(`/departments/${deptId}`), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ department_type: type })
-        });
+        const result = await organizationApi.updateDepartment(deptId, { department_type: type });
 
-        if (response.ok) {
+        if (result?.success) {
           successCount++;
         } else {
           errorCount++;

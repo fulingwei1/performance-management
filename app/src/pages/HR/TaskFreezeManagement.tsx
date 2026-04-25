@@ -9,8 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
-import { performanceApi } from '@/services/api';
+import { performanceApi, automationApi } from '@/services/api';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
@@ -72,21 +71,13 @@ export function TaskFreezeManagement() {
     
     setUnfreezing(recordId);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(buildApiUrl(`/automation/unfreeze/${recordId}`), {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const result = await automationApi.unfreezeTask(recordId);
       
-      const data = await response.json();
-      
-      if (data.success) {
+      if (result?.success) {
         toast.success(`已解冻 ${employeeName} 的任务`);
         loadFrozenTasks(); // 刷新列表
       } else {
-        toast.error(data.message || data.message || '解冻失败');
+        toast.error(result?.message || '解冻失败');
       }
     } catch (error: any) {
       toast.error(error.message || '网络错误');
@@ -100,23 +91,13 @@ export function TaskFreezeManagement() {
     
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(buildApiUrl('/automation/batch-unfreeze'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ month: selectedMonth })
-      });
+      const result = await automationApi.batchUnfreeze(selectedMonth);
       
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success(`已批量解冻 ${data.data?.unfrozen || 0} 条任务`);
+      if (result?.success) {
+        toast.success(`已批量解冻 ${result.data?.unfrozen || 0} 条任务`);
         loadFrozenTasks();
       } else {
-        toast.error(data.message || data.message || '批量解冻失败');
+        toast.error(result?.message || '批量解冻失败');
       }
     } catch (error: any) {
       toast.error(error.message || '网络错误');
