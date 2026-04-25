@@ -470,7 +470,17 @@ export const exportApi = {
       params.append('department', options.department);
     }
     return secureDownload(`${API_BASE_URL}/export/employees?${params.toString()}`, 'employees.xlsx');
-  }
+  },
+
+  // 考核数据导出
+  exportMonthlyAssessments: (params: URLSearchParams) =>
+    secureDownload(`/export/monthly-assessments?${params.toString()}`, `月度评分记录_${Date.now()}.xlsx`),
+
+  exportDepartmentStats: () =>
+    secureDownload('/export/department-stats', `部门类型统计_${Date.now()}.xlsx`),
+
+  exportScoreTrend: (employeeId: string) =>
+    secureDownload(`/export/score-trend/${employeeId}`, `评分趋势_${employeeId}_${Date.now()}.xlsx`)
 };
 
 // 晋升/加薪申请

@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { exportApi } from '@/services/api';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
 
 const DEPARTMENT_TYPES = [
   { value: 'all', label: '全部类型' },
@@ -32,25 +32,18 @@ export function AssessmentExport() {
       if (month) params.append('month', month);
       if (departmentType !== 'all') params.append('departmentType', departmentType);
       
-      const response = await fetch(buildApiUrl(`/export/monthly-assessments?${params.toString()}`), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const blob = await exportApi.exportMonthlyAssessments(params);
       
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `月度评分记录_${month || '全部'}_${new Date().getTime()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        toast.success('导出成功');
-      } else {
-        toast.error('导出失败');
-      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `月度评分记录_${month || '全部'}_${new Date().getTime()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('导出成功');
     } catch (error) {
       console.error('导出失败:', error);
       toast.error('导出失败');
@@ -63,25 +56,18 @@ export function AssessmentExport() {
     try {
       setLoading(true);
       
-      const response = await fetch(buildApiUrl('/export/department-stats'), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const blob = await exportApi.exportDepartmentStats();
       
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `部门类型统计_${new Date().getTime()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        toast.success('导出成功');
-      } else {
-        toast.error('导出失败');
-      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `部门类型统计_${new Date().getTime()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('导出成功');
     } catch (error) {
       console.error('导出失败:', error);
       toast.error('导出失败');
@@ -99,25 +85,18 @@ export function AssessmentExport() {
     try {
       setLoading(true);
       
-      const response = await fetch(buildApiUrl(`/export/score-trend/${employeeId}`), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const blob = await exportApi.exportScoreTrend(employeeId);
       
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `评分趋势_${employeeId}_${new Date().getTime()}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        toast.success('导出成功');
-      } else {
-        toast.error('导出失败');
-      }
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `评分趋势_${employeeId}_${new Date().getTime()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('导出成功');
     } catch (error) {
       console.error('导出失败:', error);
       toast.error('导出失败');
