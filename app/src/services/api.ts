@@ -245,7 +245,7 @@ export const performanceApi = {
   }),
 
   // 获取员工绩效历史
-  getEmployeeHistory: (employeeId: string) => request(`/performance/employee/${employeeId}/history`)
+  getEmployeeHistory: (employeeId: string) => request(`/performance/employee/${employeeId}`)
 };
 
 // 月度差异化评分API
