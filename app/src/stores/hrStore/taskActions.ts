@@ -1,5 +1,5 @@
 import type { MonthlyTask, TemporaryWork, TalentDevelopment, GMManagerScore, QuarterlySummary } from '@/types';
-import { peerReviewApi, quarterlySummaryApi } from '@/services/api';
+import { quarterlySummaryApi } from '@/services/api';
 
 const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -126,11 +126,8 @@ export const createTaskActions = (set: any, get: any) => ({
       ];
       get().uploadMonthlyTasks(manager.id, month, defaultTasks);
     });
-    const departments = [...new Set(get().employeesList.map((e: any) => e.department))];
-    for (const dept of departments) {
-      try { await peerReviewApi.allocateReviews({ month, department: dept as string }); }
-      catch (error) { console.error(`为部门 ${dept} 分配360度互评任务失败:`, error); }
-    }
+    // 360度互评已切换为“周期 + 评价关系”模型；月度任务生成不再调用旧的自动分配接口。
+    // HR/Admin 可在互评管理中创建周期和评价关系。
   },
 
   generateGMTasks: (quarter: string) => {

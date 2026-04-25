@@ -25,55 +25,60 @@ export function PeerReviewManage() {
   const { user } = useAuthStore();
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [isAllocating, setIsAllocating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [peerReviewData, setPeerReviewData] = useState<any[]>([]);
 
-  // 获取360度评价数据
+  const normalizeStatistics = (items: any[] = []) => items.map((item) => {
+    const totalReviews = item.totalReviews ?? item.total_reviews ?? 0;
+    const completedReviews = item.completedReviews ?? item.completed_reviews ?? 0;
+    const completionRate = item.completionRate ?? (totalReviews > 0 ? (completedReviews / totalReviews) * 100 : 0);
+    const revieweeId = item.revieweeId ?? item.reviewee_id;
+
+    return {
+      revieweeId,
+      revieweeName: item.revieweeName ?? item.reviewee_name ?? `员工 #${revieweeId}`,
+      department: item.department ?? item.reviewee_department ?? '未分配',
+      totalReviews,
+      completedReviews,
+      completionRate,
+      averageScore: item.averageScore ?? item.avg_total_score ?? item.average_score ?? 0,
+    };
+  });
+
+  // 获取360度评价数据：后端互评接口以 cycle 为中心，不再调用旧的 month/department endpoint
   useEffect(() => {
     const fetchPeerReviewData = async () => {
       if (!user) return;
 
+      setIsLoading(true);
       try {
-        const response = await api.peerReview.getDepartmentStats(selectedMonth);
-        console.log('获取到的360度评价数据:', response);
+        const cyclesResponse = await api.peerReview.getCycles({ status: 'active' });
+        const cycles = cyclesResponse.success ? (cyclesResponse.data || []) : [];
+        const activeCycle = cycles[0];
 
-        if (response.success) {
-          setPeerReviewData(response.data);
+        if (!activeCycle) {
+          setPeerReviewData([]);
+          return;
+        }
+
+        const statsResponse = await api.peerReview.getStatistics(activeCycle.id);
+        if (statsResponse.success) {
+          setPeerReviewData(normalizeStatistics(statsResponse.data || []));
         }
       } catch (error) {
         console.error('获取360度评价数据失败:', error);
+        setPeerReviewData([]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     fetchPeerReviewData();
   }, [user, selectedMonth]);
 
-  // 分配360度评价任务
-  const handleAllocateReviews = async () => {
-    if (!user) return;
-
-    setIsAllocating(true);
-    try {
-      const response = await api.peerReview.allocateReviews({
-        month: selectedMonth,
-        department: user.subDepartment
-      });
-
-      if (response.success) {
-        alert(`成功分配${response.data.allocated}个360度评价任务`);
-
-        // 重新获取数据
-        const statsResponse = await api.peerReview.getDepartmentStats(selectedMonth);
-        if (statsResponse.success) {
-          setPeerReviewData(statsResponse.data);
-        }
-      }
-    } catch (error) {
-      console.error('分配360度评价任务失败:', error);
-      alert('分配失败，请重试');
-    } finally {
-      setIsAllocating(false);
-    }
+  // 自动分配涉及评价周期、评价关系和权限规则，当前应由 HR/Admin 在互评管理中创建
+  const handleAllocateReviews = () => {
+    alert('360度互评关系请由 HR/Admin 在互评管理中创建，经理端仅查看统计结果。');
   };
 
   // 使用真实数据
@@ -128,14 +133,10 @@ export function PeerReviewManage() {
             </Select>
             <Button
               onClick={handleAllocateReviews}
-              disabled={isAllocating}
+              variant="outline"
             >
-              {isAllocating ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              分配360度评价
+              <RefreshCw className="w-4 h-4 mr-2" />
+              创建互评关系
             </Button>
           </div>
         </div>
@@ -251,7 +252,14 @@ export function PeerReviewManage() {
                       </div>
                     )}
 
-                    <Button variant="ghost" size="sm">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setSelectedEmployee(employee);
+                      }}
+                    >
                       详情
                       <ChevronRight className="w-4 h-4 ml-1" />
                     </Button>

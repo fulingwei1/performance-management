@@ -691,39 +691,6 @@ export const peerReviewApi = {
     if (query?.reviewee_id) params.set('reviewee_id', query.reviewee_id);
     const search = params.toString();
     return request(`/peer-reviews/statistics/${cycleId}${search ? `?${search}` : ''}`);
-  },
-
-  getMyReviews: (month: string) => 
-    request('/peer-reviews/my-reviews?month=' + month),
-  
-  getMyTasks: (month: string) => 
-    request('/peer-reviews/my-tasks?month=' + month),
-  
-  submitReview: (data: {
-    id: string;
-    collaboration: number;
-    professionalism: number;
-    communication: number;
-    comment: string;
-  }) => request('/peer-reviews/submit', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  
-  allocateReviews: (data: {
-    month: string;
-    department: string;
-  }) => request('/peer-reviews/allocate', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  
-  getDepartmentStats: (month: string) => 
-    request('/peer-reviews/department-stats?month=' + month),
-  
-  getDepartmentReviews: (month: string, revieweeId?: string) => {
-    const url = '/peer-reviews/department-reviews?month=' + month;
-    return request(revieweeId ? url + '&revieweeId=' + revieweeId : url);
   }
 };
 

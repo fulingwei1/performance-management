@@ -46,6 +46,7 @@ const managerNavItems = [
   { path: '/manager/goal-approval', label: '目标审批', icon: ClipboardCheck },
   { path: '/manager/goal-dashboard', label: '进度仪表板', icon: BarChart3 },
   { path: '/manager/review-reports', label: '月报审阅', icon: MessageSquare },
+  { path: '/manager/peer-review-management', label: '360互评统计', icon: Users },
   { path: '/manager/interview-plans', label: '面谈计划', icon: Calendar },
   { path: '/manager/interview-records', label: '面谈记录', icon: FileText },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },

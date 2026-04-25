@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PerformanceRecord, Filters } from '@/types';
-import { performanceApi } from '@/services/api';
+import { performanceApi, peerReviewApi } from '@/services/api';
 
 interface PerformanceState {
   records: PerformanceRecord[];
@@ -182,11 +182,11 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
   submitPeerReview: async (data: Partial<PerformanceRecord>) => {
     set({ loading: true, error: null });
     try {
-      const response = await performanceApi.peerReview.submitReview({
-        id: data.id as string,
-        collaboration: (data as any).collaboration ?? 0,
-        professionalism: (data as any).professionalism ?? 0,
-        communication: (data as any).communication ?? 0,
+      const response = await peerReviewApi.submitPeerReview({
+        relationship_id: data.id as string,
+        collaboration_score: (data as any).collaboration ?? 0,
+        professionalism_score: (data as any).professionalism ?? 0,
+        communication_score: (data as any).communication ?? 0,
         comment: (data as any).comment ?? '',
       });
       if (response.success) {

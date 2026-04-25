@@ -50,6 +50,7 @@ const OrganizationChart = lazy(() => import('@/pages/HR/OrganizationChart').then
 const DataImport = lazy(() => import('@/pages/HR/DataImport').then((module) => ({ default: module.DataImport })));
 const DataExport = lazy(() => import('@/pages/HR/DataExport').then((module) => ({ default: module.DataExport })));
 const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement').then((module) => ({ default: module.PeerReviewManagement })));
+const PeerReviewManage = lazy(() => import('@/pages/Manager/PeerReviewManage').then((module) => ({ default: module.PeerReviewManage })));
 const TaskFreezeManagement = lazy(() => import('@/pages/HR/TaskFreezeManagement').then((module) => ({ default: module.TaskFreezeManagement })));
 const PerformanceRankingConfig = lazy(() => import('@/pages/HR/PerformanceRankingConfig').then((module) => ({ default: module.PerformanceRankingConfig })));
 const SystemSettings = lazy(() => import('@/pages/Admin/SystemSettings').then((module) => ({ default: module.SystemSettings })));
@@ -229,6 +230,7 @@ function App() {
           <Route path="/manager/goal-approval" element={<GoalApproval />} />
           <Route path="/manager/goal-dashboard" element={<GoalDashboard />} />
           <Route path="/manager/review-reports" element={<ReviewReports />} />
+          <Route path="/manager/peer-review-management" element={<PeerReviewManage />} />
           <Route path="/manager/interviews" element={<InterviewSchedule />} />
           <Route path="/manager/interview-plans" element={<InterviewPlans />} />
           <Route path="/manager/interview-records" element={<InterviewRecord />} />
