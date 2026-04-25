@@ -47,7 +47,19 @@ export function MetricLibraryManagement() {
 
   // 指标表单
   const [showMetricDialog, setShowMetricDialog] = useState(false);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [editingMetric, setEditingMetric] = useState<PerformanceMetric | null>(null);
+  const [templateForm, setTemplateForm] = useState<{
+    name: string;
+    description: string;
+    positionId: string;
+    metrics: { metricId: string; weight: number; required: boolean }[];
+  }>({
+    name: '',
+    description: '',
+    positionId: '',
+    metrics: []
+  });
   const [metricForm, setMetricForm] = useState<{
     name: string;
     code: string;
@@ -141,6 +153,60 @@ export function MetricLibraryManagement() {
       fetchData();
     } catch (error: any) {
       toast.error('初始化失败: ' + error.message);
+    }
+  };
+
+  const handleOpenTemplateDialog = () => {
+    setTemplateForm({ name: '', description: '', positionId: '', metrics: [] });
+    setShowTemplateDialog(true);
+  };
+
+  const toggleTemplateMetric = (metricId: string) => {
+    const exists = templateForm.metrics.some((item) => item.metricId === metricId);
+    setTemplateForm({
+      ...templateForm,
+      metrics: exists
+        ? templateForm.metrics.filter((item) => item.metricId !== metricId)
+        : [...templateForm.metrics, { metricId, weight: 0, required: true }]
+    });
+  };
+
+  const updateTemplateMetricWeight = (metricId: string, weight: number) => {
+    setTemplateForm({
+      ...templateForm,
+      metrics: templateForm.metrics.map((item) =>
+        item.metricId === metricId ? { ...item, weight } : item
+      )
+    });
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateForm.name.trim()) {
+      toast.error('请输入模板名称');
+      return;
+    }
+    if (templateForm.metrics.length === 0) {
+      toast.error('请至少选择一个指标');
+      return;
+    }
+    const totalWeight = templateForm.metrics.reduce((sum, item) => sum + item.weight, 0);
+    if (totalWeight !== 100) {
+      toast.error(`指标权重总和必须等于100%，当前为${totalWeight}%`);
+      return;
+    }
+
+    try {
+      await metricLibraryApi.createTemplate({
+        name: templateForm.name,
+        description: templateForm.description || undefined,
+        positionId: templateForm.positionId || undefined,
+        metrics: templateForm.metrics
+      });
+      toast.success('岗位模板创建成功');
+      setShowTemplateDialog(false);
+      fetchData();
+    } catch (error: any) {
+      toast.error('创建模板失败: ' + error.message);
     }
   };
   
@@ -323,7 +389,7 @@ export function MetricLibraryManagement() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>岗位指标模板</CardTitle>
-              <Button onClick={() => toast.info('功能开发中')}>
+              <Button onClick={handleOpenTemplateDialog}>
                 <Plus className="w-4 h-4 mr-2" />
                 新建模板
               </Button>
@@ -546,6 +612,100 @@ export function MetricLibraryManagement() {
                 保存
               </Button>
               <Button variant="outline" onClick={() => setShowMetricDialog(false)}>
+                <X className="w-4 h-4 mr-2" />
+                取消
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 模板表单对话框 */}
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>新建岗位模板</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>模板名称 *</Label>
+                <Input
+                  value={templateForm.name}
+                  onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                  placeholder="例如：销售岗位月度考核模板"
+                />
+              </div>
+              <div>
+                <Label>岗位ID</Label>
+                <Input
+                  value={templateForm.positionId}
+                  onChange={(e) => setTemplateForm({ ...templateForm, positionId: e.target.value })}
+                  placeholder="选填，例如：sales"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>模板说明</Label>
+              <textarea
+                className="w-full p-2 border rounded-md"
+                rows={2}
+                value={templateForm.description}
+                onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                placeholder="请输入模板适用范围和说明"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-base font-semibold">选择指标与权重</Label>
+                <span className="text-sm text-gray-500">
+                  当前合计 {templateForm.metrics.reduce((sum, item) => sum + item.weight, 0)}%
+                </span>
+              </div>
+              <div className="space-y-2 max-h-72 overflow-y-auto border rounded-md p-3">
+                {metrics.map((metric) => {
+                  const selected = templateForm.metrics.find((item) => item.metricId === metric.id);
+                  return (
+                    <div key={metric.id} className="flex items-center gap-3 rounded-md border p-3">
+                      <input
+                        type="checkbox"
+                        checked={!!selected}
+                        onChange={() => toggleTemplateMetric(metric.id)}
+                        className="h-4 w-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">{metric.name}</div>
+                        <div className="text-xs text-gray-500">{metric.code} · {getCategoryLabel(metric.category)}</div>
+                      </div>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        className="w-24"
+                        disabled={!selected}
+                        value={selected?.weight ?? 0}
+                        onChange={(e) => updateTemplateMetricWeight(metric.id, parseFloat(e.target.value) || 0)}
+                      />
+                      <span className="text-sm text-gray-500">%</span>
+                    </div>
+                  );
+                })}
+                {metrics.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    暂无可选指标，请先初始化默认指标或新建指标
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button onClick={handleSaveTemplate} className="flex-1">
+                <Save className="w-4 h-4 mr-2" />
+                保存模板
+              </Button>
+              <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
                 <X className="w-4 h-4 mr-2" />
                 取消
               </Button>

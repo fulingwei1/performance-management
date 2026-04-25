@@ -65,6 +65,7 @@ const hrNavItems = [
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/performance-ranking-config', label: '绩效范围/排名', icon: Settings },
   { path: '/hr/assessment-templates', label: '考核模板管理', icon: FileText },
+  { path: '/hr/metric-library', label: '指标库管理', icon: Target },
   { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
   { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
   { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },

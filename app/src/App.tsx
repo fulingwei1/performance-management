@@ -45,6 +45,7 @@ const MyGoalPlanning = lazy(() => import('@/pages/Employee/MyGoalPlanning').then
 const DepartmentTree = lazy(() => import('@/pages/HR/DepartmentTree').then((module) => ({ default: module.DepartmentTree })));
 const DepartmentClassification = lazy(() => import('@/pages/HR/DepartmentClassification').then((module) => ({ default: module.DepartmentClassification })));
 const AssessmentTemplates = lazy(() => import('@/pages/HR/AssessmentTemplates').then((module) => ({ default: module.AssessmentTemplates })));
+const MetricLibraryManagement = lazy(() => import('@/pages/HR/MetricLibraryManagement').then((module) => ({ default: module.MetricLibraryManagement })));
 const AssessmentExport = lazy(() => import('@/pages/HR/AssessmentExport').then((module) => ({ default: module.AssessmentExport })));
 const OrganizationChart = lazy(() => import('@/pages/HR/OrganizationChart').then((module) => ({ default: module.OrganizationChart })));
 const DataImport = lazy(() => import('@/pages/HR/DataImport').then((module) => ({ default: module.DataImport })));
@@ -270,6 +271,7 @@ function App() {
           <Route path="/hr/department-tree" element={<DepartmentTree />} />
           <Route path="/hr/department-classification" element={<DepartmentClassification />} />
           <Route path="/hr/assessment-templates" element={<AssessmentTemplates />} />
+          <Route path="/hr/metric-library" element={<MetricLibraryManagement />} />
           <Route path="/hr/assessment-export" element={<AssessmentExport />} />
           <Route path="/hr/organization-chart" element={<OrganizationChart />} />
           <Route path="/hr/data-import" element={<DataImport />} />
