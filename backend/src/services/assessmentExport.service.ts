@@ -46,8 +46,22 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
     };
     detailSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     
-    // TODO: 从数据库加载数据
-    // 这里先预留接口，实际使用时需要根据 options 筛选
+    const assessments = await loadMonthlyAssessments(options);
+
+    assessments.forEach(assessment => {
+      detailSheet.addRow({
+        id: assessment.id,
+        employeeName: assessment.employeeName || assessment.employeeId,
+        department: (assessment as any).department || '',
+        position: (assessment as any).position || '',
+        month: assessment.month,
+        departmentType: assessment.departmentType,
+        templateName: assessment.templateName,
+        totalScore: assessment.totalScore,
+        evaluatorName: assessment.evaluatorName,
+        createdAt: new Date(assessment.createdAt).toLocaleString('zh-CN')
+      });
+    });
     
     // Sheet 2: 指标评分详情
     const metricsSheet = workbook.addWorksheet('指标评分详情', {
@@ -73,6 +87,22 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
       fgColor: { argb: 'FF70AD47' }
     };
     metricsSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+    assessments.forEach(assessment => {
+      assessment.scores.forEach(score => {
+        metricsSheet.addRow({
+          employeeName: assessment.employeeName || assessment.employeeId,
+          month: assessment.month,
+          metricName: score.metricName,
+          metricCode: score.metricCode,
+          weight: score.weight,
+          level: score.level,
+          score: score.score,
+          weightedScore: Number((score.score * score.weight / 100).toFixed(2)),
+          comment: score.comment || ''
+        });
+      });
+    });
     
     // Sheet 3: 统计汇总
     const summarySheet = workbook.addWorksheet('统计汇总');
@@ -87,6 +117,13 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
     
     summarySheet.getCell('A4').value = '统计月份:';
     summarySheet.getCell('B4').value = options.month || '全部';
+    summarySheet.getCell('A5').value = '评分记录数:';
+    summarySheet.getCell('B5').value = assessments.length;
+    if (assessments.length > 0) {
+      const avgScore = assessments.reduce((sum, item) => sum + item.totalScore, 0) / assessments.length;
+      summarySheet.getCell('A6').value = '平均总分:';
+      summarySheet.getCell('B6').value = Number(avgScore.toFixed(2));
+    }
     
     summarySheet.columns = [
       { width: 20 },
@@ -102,6 +139,22 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
     logger.error('Failed to export assessments: ' + (error instanceof Error ? error.message : String(error)));
     throw error;
   }
+}
+
+async function loadMonthlyAssessments(options: ExportOptions) {
+  const assessments = options.month
+    ? await MonthlyAssessmentModel.findByMonth(options.month)
+    : await MonthlyAssessmentModel.findAll();
+
+  return assessments.filter(assessment => {
+    if (options.departmentType && assessment.departmentType !== options.departmentType) {
+      return false;
+    }
+    if (options.employeeIds?.length && !options.employeeIds.includes(assessment.employeeId)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
