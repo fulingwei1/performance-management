@@ -1,0 +1,642 @@
+[
+  {
+    "kind": "login",
+    "username": "admin",
+    "status": 200,
+    "ok": true,
+    "role": "admin",
+    "err": "登录成功"
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/auth/me",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/dashboard/stats",
+    "status": 404,
+    "ok": false,
+    "err": "接口不存在"
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 410,
+    "ok": false,
+    "err": "消息中心模块已停用"
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/todos/summary",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/employees",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/organization/departments/tree",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/assessment-templates?includeMetrics=true",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/metrics/templates",
+    "status": 500,
+    "ok": false,
+    "err": "relation \"metric_templates\" does not exist"
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/performance/monthly?month=2026-04",
+    "status": 404,
+    "ok": false,
+    "err": "记录不存在"
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/appeals",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/peer-reviews/cycles",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "admin",
+    "role": "admin",
+    "method": "GET",
+    "path": "/interview-records/plans",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "login",
+    "username": "hr001",
+    "status": 200,
+    "ok": true,
+    "role": "hr",
+    "err": "登录成功"
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/auth/me",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/dashboard/stats",
+    "status": 404,
+    "ok": false,
+    "err": "接口不存在"
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 410,
+    "ok": false,
+    "err": "消息中心模块已停用"
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/todos/summary",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/employees",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/organization/departments/tree",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/assessment-templates?includeMetrics=true",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/metrics/templates",
+    "status": 500,
+    "ok": false,
+    "err": "relation \"metric_templates\" does not exist"
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/performance/monthly?month=2026-04",
+    "status": 404,
+    "ok": false,
+    "err": "记录不存在"
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/appeals",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/peer-reviews/cycles",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "hr001",
+    "role": "hr",
+    "method": "GET",
+    "path": "/interview-records/plans",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "login",
+    "username": "gm001",
+    "status": 200,
+    "ok": true,
+    "role": "gm",
+    "err": "登录成功"
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/auth/me",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/dashboard/stats",
+    "status": 404,
+    "ok": false,
+    "err": "接口不存在"
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 410,
+    "ok": false,
+    "err": "消息中心模块已停用"
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/todos/summary",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/employees",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/organization/departments/tree",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/assessment-templates?includeMetrics=true",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/metrics/templates",
+    "status": 500,
+    "ok": false,
+    "err": "relation \"metric_templates\" does not exist"
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/performance/monthly?month=2026-04",
+    "status": 404,
+    "ok": false,
+    "err": "记录不存在"
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/appeals",
+    "status": 403,
+    "ok": false,
+    "err": "权限不足"
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/peer-reviews/cycles",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "gm001",
+    "role": "gm",
+    "method": "GET",
+    "path": "/interview-records/plans",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "login",
+    "username": "m011",
+    "status": 200,
+    "ok": true,
+    "role": "manager",
+    "err": "登录成功"
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/auth/me",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/dashboard/stats",
+    "status": 404,
+    "ok": false,
+    "err": "接口不存在"
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 410,
+    "ok": false,
+    "err": "消息中心模块已停用"
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/todos/summary",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/employees",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/organization/departments/tree",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/assessment-templates?includeMetrics=true",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/metrics/templates",
+    "status": 500,
+    "ok": false,
+    "err": "relation \"metric_templates\" does not exist"
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/performance/monthly?month=2026-04",
+    "status": 404,
+    "ok": false,
+    "err": "记录不存在"
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/appeals",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/peer-reviews/cycles",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "m011",
+    "role": "manager",
+    "method": "GET",
+    "path": "/interview-records/plans",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "login",
+    "username": "e002",
+    "status": 200,
+    "ok": true,
+    "role": "employee",
+    "err": "登录成功"
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/auth/me",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/dashboard/stats",
+    "status": 404,
+    "ok": false,
+    "err": "接口不存在"
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/notifications",
+    "status": 410,
+    "ok": false,
+    "err": "消息中心模块已停用"
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/todos/summary",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/employees",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/organization/departments/tree",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/assessment-templates?includeMetrics=true",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/metrics/templates",
+    "status": 500,
+    "ok": false,
+    "err": "relation \"metric_templates\" does not exist"
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/performance/monthly?month=2026-04",
+    "status": 404,
+    "ok": false,
+    "err": "记录不存在"
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/appeals",
+    "status": 403,
+    "ok": false,
+    "err": "权限不足"
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/peer-reviews/cycles",
+    "status": 200,
+    "ok": true,
+    "err": null
+  },
+  {
+    "kind": "api",
+    "as": "e002",
+    "role": "employee",
+    "method": "GET",
+    "path": "/interview-records/plans",
+    "status": 403,
+    "ok": false,
+    "err": "权限不足"
+  }
+]

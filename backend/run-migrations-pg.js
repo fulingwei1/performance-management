@@ -19,6 +19,7 @@ const migrationFiles = [
   'migrations/004_bonus.sql',
   'migrations/009_system_settings.sql',
   'migrations/011_monthly_assessments.sql',
+  'migrations/012_metric_library.sql',
 ];
 
 async function runMigrations() {
