@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 import { useAuthStore } from '@/stores/authStore';
+import { aiApi, objectiveApi, strategicObjectiveApi } from '@/services/api';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -65,18 +66,9 @@ export function MyGoalPlanning() {
     if (!user) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const result = await objectiveApi.getAll({ year: currentYear, ownerId: String(user.id) });
 
-      const response = await fetch(
-        `${API_BASE_URL}/objectives?year=${currentYear}&ownerId=${user.id}`,
-        {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }
-      );
-
-      if (response.ok) {
-        const result = await response.json();
+      if (result?.success) {
         const existingGoals = result.data || [];
         
         // 转换为PersonalGoal格式
@@ -125,21 +117,14 @@ export function MyGoalPlanning() {
     setAiExplanation('');
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
       // 获取公司战略和重点工作
-      const strategicResponse = await fetch(
-        `${API_BASE_URL}/strategic-objectives?year=${currentYear}`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
+      const strategicResult = await strategicObjectiveApi.getAll({ year: currentYear });
 
       let companyStrategy = '';
       let companyKeyWorks: string[] = [];
       let departmentKeyWorks: string[] = [];
 
-      if (strategicResponse.ok) {
-        const strategicResult = await strategicResponse.json();
+      if (strategicResult?.success) {
         const strategicGoals = strategicResult.data || [];
 
         const strategy = strategicGoals.find((g: any) => g.type === 'company-strategy');
@@ -155,23 +140,15 @@ export function MyGoalPlanning() {
       }
 
       // 调用AI生成接口
-      const response = await fetch(`${API_BASE_URL}/ai/goal-decomposition`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          companyStrategy,
-          companyKeyWorks,
-          departmentKeyWorks
-        })
+      const result = await aiApi.generateGoalDecomposition({
+        goalName: `${user.department}年度目标`,
+        goalDescription: `公司战略：${companyStrategy}`,
+        targetValue: 100,
+        unit: '%'
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const generatedGoals = result.data.goals || [];
+      if (result?.success) {
+        const generatedGoals = result.data?.goals || [];
         
         // 自动采用AI生成的目标
         if (generatedGoals.length > 0) {
@@ -298,18 +275,8 @@ export function MyGoalPlanning() {
       await saveGoalsToBackend('draft');
       
       // 然后提交审批
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      
       for (const goal of goals) {
-        // 调用提交审批API
-        await fetch(`${API_BASE_URL}/objectives/${goal.id}/submit`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        await objectiveApi.submitForApproval(goal.id);
       }
       
       setStatus('pending_approval');
@@ -323,9 +290,6 @@ export function MyGoalPlanning() {
   };
 
   const saveGoalsToBackend = async (submitStatus: 'draft' | 'pending_approval') => {
-    const token = localStorage.getItem('token');
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
     // 逐个保存目标
     for (const goal of goals) {
       const payload = {
@@ -343,16 +307,9 @@ export function MyGoalPlanning() {
         status: submitStatus
       };
 
-      const response = await fetch(`${API_BASE_URL}/objectives`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const result = await objectiveApi.create(payload);
 
-      if (!response.ok) {
+      if (!result?.success) {
         throw new Error('保存失败');
       }
     }

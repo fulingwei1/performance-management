@@ -333,7 +333,52 @@ export const aiApi = {
   }) => request('/ai/quarterly-summary', {
     method: 'POST',
     body: JSON.stringify(data)
+  }),
+  generateGoalDecomposition: (data: {
+    goalName: string;
+    goalDescription: string;
+    targetValue: number;
+    unit: string;
+  }) => request('/ai/goal-decomposition', {
+    method: 'POST',
+    body: JSON.stringify(data)
   })
+};
+
+// 目标管理API
+export const objectiveApi = {
+  getAll: (params?: { year?: number; ownerId?: string; level?: string; department?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.year) query.set('year', String(params.year));
+    if (params?.ownerId) query.set('ownerId', params.ownerId);
+    if (params?.level) query.set('level', params.level);
+    if (params?.department) query.set('department', params.department);
+    const search = query.toString();
+    return request(`/objectives${search ? `?${search}` : ''}`);
+  },
+  getById: (id: string) => request(`/objectives/${id}`),
+  create: (data: Record<string, unknown>) => request('/objectives', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id: string, data: Record<string, unknown>) => request(`/objectives/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id: string) => request(`/objectives/${id}`, { method: 'DELETE' }),
+  submitForApproval: (id: string) => request(`/objectives/${id}/submit`, { method: 'POST' }),
+  getTree: (year?: number) => {
+    const query = year ? `?year=${year}` : '';
+    return request(`/objectives/tree${query}`);
+  }
+};
+
+// 战略目标API
+export const strategicObjectiveApi = {
+  getAll: (params?: { year?: number }) => {
+    const query = params?.year ? `?year=${params.year}` : '';
+    return request(`/strategic-objectives${query}`);
+  }
 };
 
 // HR管理API
@@ -946,6 +991,8 @@ export default {
   performance: performanceApi,
   quarterlySummary: quarterlySummaryApi,
   ai: aiApi,
+  objective: objectiveApi,
+  strategicObjective: strategicObjectiveApi,
   assessmentTemplate: assessmentTemplateApi,
   monthlyAssessment: monthlyAssessmentApi,
   promotion: promotionApi,
