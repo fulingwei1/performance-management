@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Users, Calendar, TrendingUp, Filter } from 'lucide-react';
+import { peerReviewApi } from '@/services/api';
 
 // 360度互评管理（HR视图）
 export function PeerReviewManagement() {
@@ -13,8 +14,7 @@ export function PeerReviewManagement() {
 
   const fetchCycles = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/peer-reviews/cycles');
-      const data = await response.json();
+      const data = await peerReviewApi.getCycles();
       if (data.success) {
         setCycles(data.data || []);
       }
@@ -186,13 +186,7 @@ function CreateCycleModal({ onClose, onSuccess }: any) {
     setSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/peer-reviews/cycles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
+      const data = await peerReviewApi.createCycle(formData);
       if (data.success) {
         onSuccess();
       } else {

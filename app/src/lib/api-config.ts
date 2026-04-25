@@ -1,4 +1,5 @@
 const isProd = import.meta.env.PROD;
+const isTest = import.meta.env.MODE === 'test';
 
 const normalizeApiBaseUrl = (value?: string) => {
   const trimmed = (value || '').trim().replace(/\/+$/, '');
@@ -9,7 +10,7 @@ const normalizeApiBaseUrl = (value?: string) => {
   }
 
   if (!trimmed) {
-    return isProd ? '/api' : 'http://localhost:3001/api';
+    return isProd || isTest ? '/api' : 'http://localhost:3001/api';
   }
 
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;

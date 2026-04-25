@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Star, Send, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { peerReviewApi } from '@/services/api';
 
 // 员工互评页面
 export function PeerReview() {
@@ -19,8 +20,7 @@ export function PeerReview() {
   const fetchData = async () => {
     try {
       // 获取进行中的周期
-      const cyclesRes = await fetch('http://localhost:3001/api/peer-reviews/cycles?status=active');
-      const cyclesData = await cyclesRes.json();
+      const cyclesData = await peerReviewApi.getCycles({ status: 'active' });
       
       if (cyclesData.success) {
         setActiveCycles(cyclesData.data || []);
@@ -41,11 +41,10 @@ export function PeerReview() {
 
   const fetchMyReviews = async (cycleId: number) => {
     try {
+      if (!user?.id) return;
+
       // 获取我作为评价人的关系
-      const res = await fetch(
-        `http://localhost:3001/api/peer-reviews/relationships/${cycleId}?reviewer_id=${user?.id}`
-      );
-      const data = await res.json();
+      const data = await peerReviewApi.getRelationships(cycleId, { reviewer_id: user.id });
       
       if (data.success) {
         setMyReviews(data.data || []);
@@ -270,20 +269,15 @@ function ReviewModal({ review, cycleId, onClose, onSuccess }: any) {
     setSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/peer-reviews/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          relationship_id: review.id,
-          cycle_id: cycleId,
-          reviewer_id: user?.id,
-          reviewee_id: review.reviewee_id,
-          ...formData,
-          total_score: parseFloat(calculateTotal())
-        })
+      const data = await peerReviewApi.submitPeerReview({
+        relationship_id: review.id,
+        cycle_id: cycleId,
+        reviewer_id: user?.id,
+        reviewee_id: review.reviewee_id,
+        ...formData,
+        total_score: parseFloat(calculateTotal())
       });
 
-      const data = await response.json();
       if (data.success) {
         onSuccess();
       } else {

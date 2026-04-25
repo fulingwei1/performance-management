@@ -645,6 +645,54 @@ export const metricLibraryApi = {
 
 
 export const peerReviewApi = {
+  getCycles: (query?: { status?: string; review_type?: string }) => {
+    const params = new URLSearchParams();
+    if (query?.status) params.set('status', query.status);
+    if (query?.review_type) params.set('review_type', query.review_type);
+    const search = params.toString();
+    return request(`/peer-reviews/cycles${search ? `?${search}` : ''}`);
+  },
+
+  createCycle: (data: {
+    name: string;
+    description?: string;
+    start_date: string;
+    end_date: string;
+    review_type?: string;
+    is_anonymous?: boolean;
+  }) => request('/peer-reviews/cycles', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  getRelationships: (cycleId: number | string, query?: { reviewer_id?: string; reviewee_id?: string }) => {
+    const params = new URLSearchParams();
+    if (query?.reviewer_id) params.set('reviewer_id', query.reviewer_id);
+    if (query?.reviewee_id) params.set('reviewee_id', query.reviewee_id);
+    const search = params.toString();
+    return request(`/peer-reviews/relationships/${cycleId}${search ? `?${search}` : ''}`);
+  },
+
+  submitPeerReview: (data: Record<string, unknown>) => request('/peer-reviews/reviews', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  getReviews: (cycleId: number | string, query?: { reviewer_id?: string; reviewee_id?: string }) => {
+    const params = new URLSearchParams();
+    if (query?.reviewer_id) params.set('reviewer_id', query.reviewer_id);
+    if (query?.reviewee_id) params.set('reviewee_id', query.reviewee_id);
+    const search = params.toString();
+    return request(`/peer-reviews/reviews/${cycleId}${search ? `?${search}` : ''}`);
+  },
+
+  getStatistics: (cycleId: number | string, query?: { reviewee_id?: string }) => {
+    const params = new URLSearchParams();
+    if (query?.reviewee_id) params.set('reviewee_id', query.reviewee_id);
+    const search = params.toString();
+    return request(`/peer-reviews/statistics/${cycleId}${search ? `?${search}` : ''}`);
+  },
+
   getMyReviews: (month: string) => 
     request('/peer-reviews/my-reviews?month=' + month),
   
