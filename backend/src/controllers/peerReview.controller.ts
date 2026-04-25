@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { body, param, validationResult } from 'express-validator';
 import {
   ReviewCycleModel,
   ReviewRelationshipModel,
@@ -16,15 +17,17 @@ export const PeerReviewCycleController = {
    */
   async createCycle(req: Request, res: Response) {
     try {
-      const { name, description, start_date, end_date, review_type, is_anonymous } = req.body;
-      
       // 验证必填字段
-      if (!name || !start_date || !end_date) {
-        return res.status(400).json({
-          success: false,
-          message: '缺少必填字段：name, start_date, end_date'
-        });
+      await body('name').notEmpty().withMessage('周期名称不能为空').run(req);
+      await body('start_date').isISO8601().withMessage('开始日期格式错误').run(req);
+      await body('end_date').isISO8601().withMessage('结束日期格式错误').run(req);
+      
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
       }
+      
+      const { name, description, start_date, end_date, review_type, is_anonymous } = req.body;
       
       // 验证日期
       if (new Date(start_date) >= new Date(end_date)) {
@@ -277,6 +280,24 @@ export const PeerReviewController = {
    */
   async submitReview(req: Request, res: Response) {
     try {
+      // 验证必填字段
+      await body('relationship_id').notEmpty().withMessage('关系ID不能为空').run(req);
+      await body('cycle_id').notEmpty().withMessage('周期ID不能为空').run(req);
+      await body('reviewer_id').notEmpty().withMessage('评价人ID不能为空').run(req);
+      await body('reviewee_id').notEmpty().withMessage('被评价人ID不能为空').run(req);
+      
+      // 验证分数范围
+      await body('teamwork_score').optional().isFloat({ min: 0, max: 5 }).withMessage('团队协作分数范围0-5').run(req);
+      await body('communication_score').optional().isFloat({ min: 0, max: 5 }).withMessage('沟通能力分数范围0-5').run(req);
+      await body('professional_score').optional().isFloat({ min: 0, max: 5 }).withMessage('专业水平分数范围0-5').run(req);
+      await body('responsibility_score').optional().isFloat({ min: 0, max: 5 }).withMessage('责任心分数范围0-5').run(req);
+      await body('innovation_score').optional().isFloat({ min: 0, max: 5 }).withMessage('创新能力分数范围0-5').run(req);
+      
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      
       const {
         relationship_id,
         cycle_id,
@@ -292,14 +313,6 @@ export const PeerReviewController = {
         overall_comment,
         is_anonymous
       } = req.body;
-      
-      // 验证必填字段
-      if (!relationship_id || !cycle_id || !reviewer_id || !reviewee_id) {
-        return res.status(400).json({
-          success: false,
-          message: '缺少必填字段'
-        });
-      }
       
       // 计算总分
       const scores = [

@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { body, param, validationResult } from 'express-validator';
 import { AssessmentCycleModel } from '../models/assessmentCycle.model';
 import { AssessmentCycle, AssessmentCycleType, Holiday } from '../types';
 
@@ -19,20 +20,29 @@ export const assessmentCycleController = {
   },
   
   // 根据ID获取考核周期
-  getCycleById: async (req: Request, res: Response) => {
-    try {
-      const id = req.params.id as string;
-      const cycle = await AssessmentCycleModel.findById(id);
-      
-      if (!cycle) {
-        return res.status(404).json({ success: false, message: '考核周期不存在' });
+  getCycleById: [
+    param('id').notEmpty().withMessage('考核周期ID不能为空'),
+    
+    async (req: Request, res: Response) => {
+      try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ success: false, message: errors.array()[0].msg });
+        }
+        
+        const id = req.params.id as string;
+        const cycle = await AssessmentCycleModel.findById(id);
+        
+        if (!cycle) {
+          return res.status(404).json({ success: false, message: '考核周期不存在' });
+        }
+        
+        res.json({ success: true, data: cycle });
+      } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
       }
-      
-      res.json({ success: true, data: cycle });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
     }
-  },
+  ],
   
   // 获取当前激活的考核周期
   getActiveCycle: async (_req: Request, res: Response) => {
@@ -50,15 +60,28 @@ export const assessmentCycleController = {
   },
   
   // 创建考核周期
-  createCycle: async (req: Request, res: Response) => {
-    try {
-      const {
-        name, type, year, startDate, endDate,
-        selfAssessmentDeadline, managerReviewDeadline,
-        hrReviewDeadline, appealDeadline,
-        reminderDays = 3, autoSubmit = false,
-        excludeHolidays = true, description
-      } = req.body;
+  createCycle: [
+    body('name').notEmpty().withMessage('周期名称不能为空'),
+    body('type').isIn(['monthly', 'quarterly', 'annual']).withMessage('周期类型错误'),
+    body('year').isInt({ min: 2020, max: 2099 }).withMessage('年份必须是有效整数'),
+    body('startDate').isISO8601().withMessage('开始日期格式错误'),
+    body('endDate').isISO8601().withMessage('结束日期格式错误'),
+    body('reminderDays').optional().isInt({ min: 1, max: 30 }).withMessage('提醒天数范围1-30'),
+    
+    async (req: Request, res: Response) => {
+      try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ success: false, message: errors.array()[0].msg });
+        }
+        
+        const {
+          name, type, year, startDate, endDate,
+          selfAssessmentDeadline, managerReviewDeadline,
+          hrReviewDeadline, appealDeadline,
+          reminderDays = 3, autoSubmit = false,
+          excludeHolidays = true, description
+        } = req.body;
       
       if (!name || !type || !year || !startDate || !endDate) {
         return res.status(400).json({ 
@@ -96,65 +119,106 @@ export const assessmentCycleController = {
       
       const newCycle = await AssessmentCycleModel.create(cycle);
       res.status(201).json({ success: true, data: newCycle });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
+      } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+      }
     }
-  },
+  ],
   
   // 更新考核周期
-  updateCycle: async (req: Request, res: Response) => {
-    try {
-      const id = req.params.id as string;
-      const updates = req.body;
-      
-      const cycle = await AssessmentCycleModel.update(id, updates);
-      
-      if (!cycle) {
-        return res.status(404).json({ success: false, message: '考核周期不存在' });
+  updateCycle: [
+    param('id').notEmpty().withMessage('考核周期ID不能为空'),
+    body('name').optional().notEmpty().withMessage('周期名称不能为空'),
+    body('type').optional().isIn(['monthly', 'quarterly', 'annual']).withMessage('周期类型错误'),
+    body('year').optional().isInt({ min: 2020, max: 2099 }).withMessage('年份必须是有效整数'),
+    body('startDate').optional().isISO8601().withMessage('开始日期格式错误'),
+    body('endDate').optional().isISO8601().withMessage('结束日期格式错误'),
+    
+    async (req: Request, res: Response) => {
+      try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ success: false, message: errors.array()[0].msg });
+        }
+        
+        const id = req.params.id as string;
+        const updates = req.body;
+        
+        const cycle = await AssessmentCycleModel.update(id, updates);
+        
+        if (!cycle) {
+          return res.status(404).json({ success: false, message: '考核周期不存在' });
+        }
+        
+        res.json({ success: true, data: cycle });
+      } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
       }
-      
-      res.json({ success: true, data: cycle });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
     }
-  },
+  ],
   
   // 删除考核周期
-  deleteCycle: async (req: Request, res: Response) => {
-    try {
-      const id = req.params.id as string;
-      const success = await AssessmentCycleModel.delete(id);
-      
-      if (!success) {
-        return res.status(404).json({ success: false, message: '考核周期不存在' });
+  deleteCycle: [
+    param('id').notEmpty().withMessage('考核周期ID不能为空'),
+    
+    async (req: Request, res: Response) => {
+      try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ success: false, message: errors.array()[0].msg });
+        }
+        
+        const id = req.params.id as string;
+        const success = await AssessmentCycleModel.delete(id);
+        
+        if (!success) {
+          return res.status(404).json({ success: false, message: '考核周期不存在' });
+        }
+        
+        res.json({ success: true, message: '考核周期已删除' });
+      } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
       }
-      
-      res.json({ success: true, message: '考核周期已删除' });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
     }
-  },
+  ],
   
   // 激活考核周期
-  activateCycle: async (req: Request, res: Response) => {
-    try {
-      const id = req.params.id as string;
-      const cycle = await AssessmentCycleModel.update(id, { status: 'active' });
-      
-      if (!cycle) {
-        return res.status(404).json({ success: false, message: '考核周期不存在' });
+  activateCycle: [
+    param('id').notEmpty().withMessage('考核周期ID不能为空'),
+    
+    async (req: Request, res: Response) => {
+      try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ success: false, message: errors.array()[0].msg });
+        }
+        
+        const id = req.params.id as string;
+        const cycle = await AssessmentCycleModel.update(id, { status: 'active' });
+        
+        if (!cycle) {
+          return res.status(404).json({ success: false, message: '考核周期不存在' });
+        }
+        
+        res.json({ success: true, data: cycle, message: '考核周期已激活' });
+      } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
       }
-      
-      res.json({ success: true, data: cycle, message: '考核周期已激活' });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
     }
-  },
+  ],
   
   // 批量生成年度的月度考核周期
-  generateMonthlyCycles: async (req: Request, res: Response) => {
-    try {
-      const { year } = req.body;
+  generateMonthlyCycles: [
+    body('year').isInt({ min: 2020, max: 2099 }).withMessage('年份必须是有效整数'),
+    
+    async (req: Request, res: Response) => {
+      try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+          return res.status(400).json({ success: false, message: errors.array()[0].msg });
+        }
+        
+        const { year } = req.body;
       
       if (!year) {
         return res.status(400).json({ success: false, message: '年份不能为空' });
@@ -166,10 +230,11 @@ export const assessmentCycleController = {
         data: cycles,
         message: `成功生成${cycles.length}个月度考核周期`
       });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message });
+      } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+      }
     }
-  },
+  ],
   
   // ============ 考核日历 ============
   

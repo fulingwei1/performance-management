@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { body, param, validationResult } from 'express-validator';
 import { ObjectiveModel } from '../models/objective.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,11 +14,19 @@ export const objectiveController = {
     res.json({ success: true, data });
   }),
 
-  getById: asyncHandler(async (req: Request, res: Response) => {
-    const data = await ObjectiveModel.findById(req.params.id as string);
-    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
-    res.json({ success: true, data });
-  }),
+  getById: [
+    param('id').notEmpty().withMessage('目标ID不能为空'),
+    
+    asyncHandler(async (req: Request, res: Response) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      const data = await ObjectiveModel.findById(req.params.id as string);
+      if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
+      res.json({ success: true, data });
+    })
+  ],
 
   getTree: asyncHandler(async (req: Request, res: Response) => {
     const year = parseInt(req.query.year as string) || new Date().getFullYear();
@@ -25,45 +34,97 @@ export const objectiveController = {
     res.json({ success: true, data });
   }),
 
-  create: asyncHandler(async (req: Request, res: Response) => {
-    const userId = (req as any).user?.userId;
-    const userRole = (req as any).user?.role;
+  create: [
+    body('title').notEmpty().withMessage('目标标题不能为空'),
+    body('ownerId').notEmpty().withMessage('负责人不能为空'),
+    body('year').isInt({ min: 2020, max: 2099 }).withMessage('年份必须是有效整数'),
+    body('category').optional().isIn(['company', 'department', 'personal']).withMessage('类别类型错误'),
+    body('priority').optional().isIn(['high', 'medium', 'low']).withMessage('优先级类型错误'),
+    body('weight').optional().isFloat({ min: 0, max: 100 }).withMessage('权重范围0-100'),
     
-    // 如果是员工角色,只能创建自己的目标
-    if (userRole === 'employee' && req.body.employeeId !== userId) {
-      return res.status(403).json({ success: false, message: '权限不足:员工只能创建自己的目标' });
-    }
+    asyncHandler(async (req: Request, res: Response) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      
+      const userId = (req as any).user?.userId;
+      const userRole = (req as any).user?.role;
+      
+      // 如果是员工角色，只能创建自己的目标
+      if (userRole === 'employee' && req.body.employeeId !== userId) {
+        return res.status(403).json({ success: false, message: '权限不足：员工只能创建自己的目标' });
+      }
+      
+      const data = await ObjectiveModel.create({ id: uuidv4(), ...req.body, progress: 0, status: req.body.status || 'draft' });
+      res.status(201).json({ success: true, data });
+    })
+  ],
+
+  update: [
+    param('id').notEmpty().withMessage('目标ID不能为空'),
+    body('title').optional().notEmpty().withMessage('目标标题不能为空'),
+    body('year').optional().isInt({ min: 2020, max: 2099 }).withMessage('年份必须是有效整数'),
+    body('weight').optional().isFloat({ min: 0, max: 100 }).withMessage('权重范围0-100'),
     
-    const data = await ObjectiveModel.create({ id: uuidv4(), ...req.body, progress: 0, status: req.body.status || 'draft' });
-    res.status(201).json({ success: true, data });
-  }),
+    asyncHandler(async (req: Request, res: Response) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      const data = await ObjectiveModel.update(req.params.id as string, req.body);
+      if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
+      res.json({ success: true, data });
+    })
+  ],
 
-  update: asyncHandler(async (req: Request, res: Response) => {
-    const data = await ObjectiveModel.update(req.params.id as string, req.body);
-    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
-    res.json({ success: true, data });
-  }),
+  delete: [
+    param('id').notEmpty().withMessage('目标ID不能为空'),
+    
+    asyncHandler(async (req: Request, res: Response) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      const ok = await ObjectiveModel.delete(req.params.id as string);
+      if (!ok) return res.status(404).json({ success: false, message: '目标不存在' });
+      res.json({ success: true, message: '删除成功' });
+    })
+  ],
 
-  delete: asyncHandler(async (req: Request, res: Response) => {
-    const ok = await ObjectiveModel.delete(req.params.id as string);
-    if (!ok) return res.status(404).json({ success: false, message: '目标不存在' });
-    res.json({ success: true, message: '删除成功' });
-  }),
+  updateProgress: [
+    param('id').notEmpty().withMessage('目标ID不能为空'),
+    body('progress').isFloat({ min: 0, max: 100 }).withMessage('进度范围0-100'),
+    
+    asyncHandler(async (req: Request, res: Response) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      const { progress } = req.body;
+      if (progress === undefined) return res.status(400).json({ success: false, message: '请提供进度值' });
+      const data = await ObjectiveModel.updateProgress(req.params.id as string, progress);
+      if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
+      res.json({ success: true, data });
+    })
+  ],
 
-  updateProgress: asyncHandler(async (req: Request, res: Response) => {
-    const { progress } = req.body;
-    if (progress === undefined) return res.status(400).json({ success: false, message: '请提供进度值' });
-    const data = await ObjectiveModel.updateProgress(req.params.id as string, progress);
-    if (!data) return res.status(404).json({ success: false, message: '目标不存在' });
-    res.json({ success: true, data });
-  }),
-
-  addKeyResult: asyncHandler(async (req: Request, res: Response) => {
-    const objective = await ObjectiveModel.findById(req.params.id as string);
-    if (!objective) return res.status(404).json({ success: false, message: '目标不存在' });
-    const kr = await ObjectiveModel.addKeyResult({ id: uuidv4(), objectiveId: req.params.id as string, ...req.body, currentValue: req.body.currentValue || 0, progress: 0, status: 'not_started' });
-    res.status(201).json({ success: true, data: kr });
-  }),
+  addKeyResult: [
+    param('id').notEmpty().withMessage('目标ID不能为空'),
+    body('description').notEmpty().withMessage('关键结果描述不能为空'),
+    body('weight').optional().isFloat({ min: 0, max: 100 }).withMessage('权重范围0-100'),
+    
+    asyncHandler(async (req: Request, res: Response) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ success: false, message: errors.array()[0].msg });
+      }
+      const objective = await ObjectiveModel.findById(req.params.id as string);
+      if (!objective) return res.status(404).json({ success: false, message: '目标不存在' });
+      const kr = await ObjectiveModel.addKeyResult({ id: uuidv4(), objectiveId: req.params.id as string, ...req.body, currentValue: req.body.currentValue || 0, progress: 0, status: 'not_started' });
+      res.status(201).json({ success: true, data: kr });
+    })
+  ],
 
   // 员工确认目标
   confirmObjective: asyncHandler(async (req: Request, res: Response) => {

@@ -21,10 +21,6 @@ export async function createAdjustment(data: {
   const { objectiveId, adjustedBy, adjustmentType, oldValue, newValue, reason } = data;
 
   if (USE_MEMORY_DB) {
-    if (!memoryStore.objectiveAdjustments) {
-      memoryStore.objectiveAdjustments = new Map();
-    }
-    
     const adjustment: ObjectiveAdjustment = {
       id: adjustmentIdCounter++,
       objectiveId,
@@ -36,7 +32,11 @@ export async function createAdjustment(data: {
       createdAt: new Date()
     };
 
-    memoryStore.objectiveAdjustments.set(adjustment.id.toString(), adjustment);
+    // 内存数据库中没有 objectiveAdjustments，暂时存储在临时 Map 中
+    if (!memoryStore.objectiveAdjustments) {
+      (memoryStore as any).objectiveAdjustments = new Map<string, ObjectiveAdjustment>();
+    }
+    (memoryStore as any).objectiveAdjustments.set(adjustment.id.toString(), adjustment);
     
     return adjustment;
   }
@@ -66,11 +66,11 @@ export async function createAdjustment(data: {
  */
 export async function getAdjustmentsByObjective(objectiveId: number): Promise<ObjectiveAdjustment[]> {
   if (USE_MEMORY_DB) {
-    if (!memoryStore.objectiveAdjustments) {
+    if (!(memoryStore as any).objectiveAdjustments) {
       return [];
     }
-    const adjustments = Array.from(memoryStore.objectiveAdjustments.values());
-    return adjustments.filter(adj => adj.objectiveId === objectiveId);
+    const adjustments = Array.from((memoryStore as any).objectiveAdjustments.values()) as ObjectiveAdjustment[];
+    return adjustments.filter((adj: ObjectiveAdjustment) => adj.objectiveId === objectiveId);
   }
 
   const result = await pool!.query(
@@ -97,13 +97,13 @@ export async function getAdjustmentsByObjective(objectiveId: number): Promise<Ob
  */
 export async function getAdjustmentsByManager(managerId: number, limit = 50): Promise<ObjectiveAdjustment[]> {
   if (USE_MEMORY_DB) {
-    if (!memoryStore.objectiveAdjustments) {
+    if (!(memoryStore as any).objectiveAdjustments) {
       return [];
     }
-    const adjustments = Array.from(memoryStore.objectiveAdjustments.values());
+    const adjustments = Array.from((memoryStore as any).objectiveAdjustments.values()) as ObjectiveAdjustment[];
     return adjustments
-      .filter(adj => adj.adjustedBy === managerId)
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .filter((adj: ObjectiveAdjustment) => adj.adjustedBy === managerId)
+      .sort((a: ObjectiveAdjustment, b: ObjectiveAdjustment) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
   }
 
