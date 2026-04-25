@@ -13,9 +13,9 @@ export class MetricLibraryModel {
     const sql = `
       SELECT 
         m.*,
-        GROUP_CONCAT(DISTINCT md.department_id) as departmentIds,
-        GROUP_CONCAT(DISTINCT mp.position_id) as positionIds,
-        GROUP_CONCAT(DISTINCT ml.level) as applicableLevels
+        STRING_AGG(DISTINCT md.department_id::text, ',') as "departmentIds",
+        STRING_AGG(DISTINCT mp.position_id::text, ',') as "positionIds",
+        STRING_AGG(DISTINCT ml.level::text, ',') as "applicableLevels"
       FROM performance_metrics m
       LEFT JOIN metric_departments md ON m.id = md.metric_id
       LEFT JOIN metric_positions mp ON m.id = mp.metric_id
@@ -36,9 +36,9 @@ export class MetricLibraryModel {
     const sql = `
       SELECT 
         m.*,
-        GROUP_CONCAT(DISTINCT md.department_id) as departmentIds,
-        GROUP_CONCAT(DISTINCT mp.position_id) as positionIds,
-        GROUP_CONCAT(DISTINCT ml.level) as applicableLevels
+        STRING_AGG(DISTINCT md.department_id::text, ',') as "departmentIds",
+        STRING_AGG(DISTINCT mp.position_id::text, ',') as "positionIds",
+        STRING_AGG(DISTINCT ml.level::text, ',') as "applicableLevels"
       FROM performance_metrics m
       LEFT JOIN metric_departments md ON m.id = md.metric_id
       LEFT JOIN metric_positions mp ON m.id = mp.metric_id
@@ -60,9 +60,9 @@ export class MetricLibraryModel {
     const sql = `
       SELECT 
         m.*,
-        GROUP_CONCAT(DISTINCT md.department_id) as departmentIds,
-        GROUP_CONCAT(DISTINCT mp.position_id) as positionIds,
-        GROUP_CONCAT(DISTINCT ml.level) as applicableLevels
+        STRING_AGG(DISTINCT md.department_id::text, ',') as "departmentIds",
+        STRING_AGG(DISTINCT mp.position_id::text, ',') as "positionIds",
+        STRING_AGG(DISTINCT ml.level::text, ',') as "applicableLevels"
       FROM performance_metrics m
       LEFT JOIN metric_departments md ON m.id = md.metric_id
       LEFT JOIN metric_positions mp ON m.id = mp.metric_id
@@ -229,12 +229,12 @@ export class MetricLibraryModel {
     const sql = `
       SELECT 
         t.*,
-        p.name as positionName,
+        p.name as "positionName",
         STRING_AGG(CONCAT(tm.metric_id, ':', tm.weight, ':', tm.required), ',') as metrics
       FROM metric_templates t
       LEFT JOIN positions p ON t.position_id = p.id
-      LEFT JOIN template_metrics tm ON t.id = tm.template_id
-      GROUP BY t.id
+      LEFT JOIN metric_template_metrics tm ON t.id = tm.template_id
+      GROUP BY t.id, p.name
       ORDER BY t.name
     `;
     const results = await query(sql);
@@ -251,13 +251,13 @@ export class MetricLibraryModel {
     const sql = `
       SELECT 
         t.*,
-        p.name as positionName,
-        GROUP_CONCAT(CONCAT(tm.metric_id, ':', tm.weight, ':', tm.required)) as metrics
+        p.name as "positionName",
+        STRING_AGG(CONCAT(tm.metric_id, ':', tm.weight, ':', tm.required), ',') as metrics
       FROM metric_templates t
       LEFT JOIN positions p ON t.position_id = p.id
-      LEFT JOIN template_metrics tm ON t.id = tm.template_id
+      LEFT JOIN metric_template_metrics tm ON t.id = tm.template_id
       WHERE t.position_id = ?
-      GROUP BY t.id
+      GROUP BY t.id, p.name
     `;
     const results = await query(sql, [positionId]);
     return results.length > 0 ? this.formatTemplate(results[0]) : null;
@@ -287,7 +287,7 @@ export class MetricLibraryModel {
     if (template.metrics && template.metrics.length > 0) {
       for (const metric of template.metrics) {
         await query(
-          'INSERT INTO template_metrics (template_id, metric_id, weight, required) VALUES (?, ?, ?, ?)',
+          'INSERT INTO metric_template_metrics (template_id, metric_id, weight, required) VALUES (?, ?, ?, ?)',
           [template.id, metric.metricId, metric.weight, metric.required]
         );
       }
@@ -328,7 +328,7 @@ export class MetricLibraryModel {
     if (row.metrics) {
       row.metrics.split(',').forEach((m: string) => {
         const [metricId, weight, required] = m.split(':');
-        metrics.push({ metricId, weight: parseFloat(weight), required: required === '1' });
+        metrics.push({ metricId, weight: parseFloat(weight), required: required === '1' || required === 'true' || required === 't' });
       });
     }
     

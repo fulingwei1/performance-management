@@ -164,6 +164,94 @@ VALUES
   ('metric-sup-009', 'template-support-001', '跨部门协作', 'CROSS_DEPT_COLLABORATION', 'collaboration', 5.00, '跨部门配合', 'qualitative', 9)
 ON CONFLICT (id) DO NOTHING;
 
+
+-- Metric library tables used by /api/metrics endpoints.
+-- Keep these separate from assessment_templates/template_metrics above.
+CREATE TABLE IF NOT EXISTS performance_metrics (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  code VARCHAR(50) UNIQUE NOT NULL,
+  category VARCHAR(50) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  description TEXT,
+  weight DECIMAL(5,2) NOT NULL DEFAULT 0,
+  formula TEXT,
+  unit VARCHAR(50),
+  target_value DECIMAL(12,2),
+  min_value DECIMAL(12,2) NOT NULL DEFAULT 0,
+  max_value DECIMAL(12,2) NOT NULL DEFAULT 100,
+  data_source VARCHAR(100),
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_category ON performance_metrics(category);
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_status ON performance_metrics(status);
+CREATE INDEX IF NOT EXISTS idx_performance_metrics_code ON performance_metrics(code);
+
+CREATE TABLE IF NOT EXISTS metric_departments (
+  metric_id VARCHAR(36) NOT NULL REFERENCES performance_metrics(id) ON DELETE CASCADE,
+  department_id VARCHAR(36) NOT NULL REFERENCES departments(id) ON DELETE CASCADE,
+  PRIMARY KEY (metric_id, department_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_metric_departments_metric ON metric_departments(metric_id);
+CREATE INDEX IF NOT EXISTS idx_metric_departments_department ON metric_departments(department_id);
+
+CREATE TABLE IF NOT EXISTS metric_positions (
+  metric_id VARCHAR(36) NOT NULL REFERENCES performance_metrics(id) ON DELETE CASCADE,
+  position_id VARCHAR(36) NOT NULL REFERENCES positions(id) ON DELETE CASCADE,
+  PRIMARY KEY (metric_id, position_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_metric_positions_metric ON metric_positions(metric_id);
+CREATE INDEX IF NOT EXISTS idx_metric_positions_position ON metric_positions(position_id);
+
+CREATE TABLE IF NOT EXISTS metric_levels (
+  metric_id VARCHAR(36) NOT NULL REFERENCES performance_metrics(id) ON DELETE CASCADE,
+  level VARCHAR(50) NOT NULL,
+  PRIMARY KEY (metric_id, level)
+);
+
+CREATE INDEX IF NOT EXISTS idx_metric_levels_metric ON metric_levels(metric_id);
+
+CREATE TABLE IF NOT EXISTS scoring_criteria (
+  id VARCHAR(100) PRIMARY KEY,
+  metric_id VARCHAR(36) NOT NULL REFERENCES performance_metrics(id) ON DELETE CASCADE,
+  level VARCHAR(10) NOT NULL,
+  score DECIMAL(5,2) NOT NULL,
+  description TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_scoring_criteria_performance_metric ON scoring_criteria(metric_id);
+
+CREATE TABLE IF NOT EXISTS metric_templates (
+  id VARCHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  position_id VARCHAR(36) REFERENCES positions(id) ON DELETE SET NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_metric_templates_position ON metric_templates(position_id);
+CREATE INDEX IF NOT EXISTS idx_metric_templates_status ON metric_templates(status);
+
+CREATE TABLE IF NOT EXISTS metric_template_metrics (
+  template_id VARCHAR(36) NOT NULL REFERENCES metric_templates(id) ON DELETE CASCADE,
+  metric_id VARCHAR(36) NOT NULL REFERENCES performance_metrics(id) ON DELETE CASCADE,
+  weight DECIMAL(5,2) NOT NULL DEFAULT 0,
+  required BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (template_id, metric_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_metric_template_metrics_template ON metric_template_metrics(template_id);
+CREATE INDEX IF NOT EXISTS idx_metric_template_metrics_metric ON metric_template_metrics(metric_id);
+
 CREATE TABLE IF NOT EXISTS monthly_assessments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   employee_id VARCHAR(50) NOT NULL,
