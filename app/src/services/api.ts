@@ -863,31 +863,72 @@ export const appealApi = {
   })
 };
 
+const DISABLED_NOTIFICATION_MESSAGE = '消息中心模块已停用';
+
+const notificationDisabledResponse = <T>(data: T, message = DISABLED_NOTIFICATION_MESSAGE) => ({
+  success: true,
+  data,
+  disabled: true,
+  message
+});
+
+const notificationRequest = async <T>(url: string, options: RequestInit = {}, disabledData: T) => {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers as Record<string, string>
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    ...options,
+    headers
+  });
+  const data = await readErrorPayload(response);
+
+  if (response.status === 410) {
+    return notificationDisabledResponse(disabledData, data.message ?? data.error ?? DISABLED_NOTIFICATION_MESSAGE);
+  }
+
+  if (!response.ok) {
+    const message = data.message ?? data.error ?? '请求失败';
+    if (response.status === 401) {
+      handleUnauthorized(message);
+    }
+    throw new Error(message);
+  }
+
+  return data;
+};
+
 // 站内消息通知相关API
 export const notificationApi = {
   // 获取我的消息列表
   getMyNotifications: (read?: boolean) => {
     const url = read !== undefined ? `/notifications?read=${read}` : '/notifications';
-    return request(url);
+    return notificationRequest(url, {}, []);
   },
   
   // 获取未读数量
-  getUnreadCount: () => request('/notifications/unread-count'),
+  getUnreadCount: () => notificationRequest('/notifications/unread-count', {}, { count: 0 }),
   
   // 标记为已读
   markAsRead: (id: string) => 
-    request(`/notifications/${id}/read`, {
+    notificationRequest(`/notifications/${id}/read`, {
       method: 'PUT'
-    }),
+    }, null),
   
   // 全部标记为已读
   markAllAsRead: () => 
-    request('/notifications/read-all', {
+    notificationRequest('/notifications/read-all', {
       method: 'PUT'
-    }),
+    }, null),
   
   // 根据ID获取消息详情
-  getById: (id: string) => request(`/notifications/${id}`)
+  getById: (id: string) => notificationRequest(`/notifications/${id}`, {}, null)
 };
 
 // 自动化任务相关API
