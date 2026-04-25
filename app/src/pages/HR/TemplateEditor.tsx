@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
+import { assessmentTemplateApi } from '@/services/api';
 
 const DEPARTMENT_TYPES = [
   { value: 'sales', label: '销售类', icon: '💰' },
@@ -168,28 +168,13 @@ export function TemplateEditor({ template, viewMode, onSave, onCancel }: Templat
     setSaving(true);
     
     try {
-      const url = template?.id 
-        ? buildApiUrl(`/assessment-templates/${template.id}`)
-        : buildApiUrl('/assessment-templates');
-      
-      const method = template?.id ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (response.ok) {
-        toast.success(template?.id ? '模板已更新' : '模板已创建');
-        onSave();
+      if (template?.id) {
+        await assessmentTemplateApi.update(template.id, formData as unknown as Record<string, unknown>);
       } else {
-        const error = await response.json();
-        toast.error(error.message || '保存失败');
+        await assessmentTemplateApi.create(formData as unknown as Record<string, unknown>);
       }
+      toast.success(template?.id ? '模板已更新' : '模板已创建');
+      onSave();
     } catch (error) {
       console.error('保存模板失败:', error);
       toast.error('保存失败');

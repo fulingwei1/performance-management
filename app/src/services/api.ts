@@ -276,6 +276,14 @@ export const assessmentTemplateApi = {
   getAll: (params?: { departmentType?: string; includeMetrics?: boolean }) =>
     request(`/assessment-templates${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
   getDefault: (departmentType: string) => request(`/assessment-templates/default/${departmentType}`),
+  create: (data: Record<string, unknown>) => request('/assessment-templates', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id: string, data: Record<string, unknown>) => request(`/assessment-templates/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
   delete: (id: string) => request(`/assessment-templates/${id}`, { method: 'DELETE' })
 };
 
