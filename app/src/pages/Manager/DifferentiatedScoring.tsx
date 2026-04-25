@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
 import { useAuthStore } from '@/stores/authStore';
 import { DifferentiatedScoringHelp } from '@/components/help/DifferentiatedScoringHelp';
+import { assessmentTemplateApi, employeeApi, monthlyAssessmentApi, organizationApi } from '@/services/api';
 
 const DEPARTMENT_TYPES = {
   sales: { label: '销售类', icon: '💰', color: 'bg-green-100 text-green-700' },
@@ -33,6 +33,7 @@ interface Employee {
   name: string;
   department: string;
   position: string;
+  managerId?: string;
   department_type?: string;
 }
 
@@ -77,20 +78,15 @@ export function DifferentiatedScoring() {
   const loadEmployees = async () => {
     try {
       setLoading(true);
-      const response = await fetch(buildApiUrl('/employees'), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // 如果是经理，只显示下属
-          let employeeList = result.data || [];
-          if (user?.role === 'manager') {
-            employeeList = employeeList.filter((e: Employee) => e.managerId === user.id);
-          }
-          setEmployees(employeeList);
+      const result = await employeeApi.getAll();
+
+      if (result.success) {
+        // 如果是经理，只显示下属
+        let employeeList = result.data || [];
+        if (user?.role === 'manager') {
+          employeeList = employeeList.filter((e: Employee) => e.managerId === user.id);
         }
+        setEmployees(employeeList);
       }
     } catch (error) {
       console.error('加载员工失败:', error);
@@ -105,45 +101,34 @@ export function DifferentiatedScoring() {
       setLoading(true);
       
       // 获取员工部门信息
-      const deptResponse = await fetch(buildApiUrl('/departments/tree'), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
       let deptType = 'support'; // 默认类型
-      
-      if (deptResponse.ok) {
-        const deptResult = await deptResponse.json();
-        if (deptResult.success) {
-          const findDeptType = (depts: any[], name: string): string | null => {
-            for (const dept of depts) {
-              if (dept.name === name) return dept.department_type || null;
-              if (dept.children) {
-                const found = findDeptType(dept.children, name);
-                if (found) return found;
-              }
+      const deptResult = await organizationApi.getDepartmentTree();
+
+      if (deptResult.success) {
+        const findDeptType = (depts: any[], name: string): string | null => {
+          for (const dept of depts) {
+            if (dept.name === name) return dept.department_type || null;
+            if (dept.children) {
+              const found = findDeptType(dept.children, name);
+              if (found) return found;
             }
-            return null;
-          };
-          
-          const foundType = findDeptType(deptResult.data || [], employee.department);
-          if (foundType) deptType = foundType;
-        }
+          }
+          return null;
+        };
+
+        const foundType = findDeptType(deptResult.data || [], employee.department);
+        if (foundType) deptType = foundType;
       }
       
       // 加载对应模板
-      const templateResponse = await fetch(buildApiUrl(`/assessment-templates/default/${deptType}`), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const templateResult = await assessmentTemplateApi.getDefault(deptType);
       
-      if (templateResponse.ok) {
-        const templateResult = await templateResponse.json();
-        if (templateResult.success) {
-          setTemplate(templateResult.data);
-          setSelectedEmployee({ ...employee, department_type: deptType });
-          setScores(new Map());
-        } else {
-          toast.error('未找到该部门类型的考核模板');
-        }
+      if (templateResult.success) {
+        setTemplate(templateResult.data);
+        setSelectedEmployee({ ...employee, department_type: deptType });
+        setScores(new Map());
+      } else {
+        toast.error('未找到该部门类型的考核模板');
       }
     } catch (error) {
       console.error('加载模板失败:', error);
@@ -232,24 +217,11 @@ export function DifferentiatedScoring() {
         evaluatorName: user?.name
       };
       
-      const response = await fetch(buildApiUrl('/performance/monthly'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (response.ok) {
-        toast.success('评分已保存');
-        setSelectedEmployee(null);
-        setTemplate(null);
-        setScores(new Map());
-      } else {
-        const error = await response.json();
-        toast.error(error.message || '保存失败');
-      }
+      await monthlyAssessmentApi.createOrUpdate(payload);
+      toast.success('评分已保存');
+      setSelectedEmployee(null);
+      setTemplate(null);
+      setScores(new Map());
     } catch (error) {
       console.error('保存失败:', error);
       toast.error('保存失败');

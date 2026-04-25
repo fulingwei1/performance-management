@@ -248,6 +248,34 @@ export const performanceApi = {
   getEmployeeHistory: (employeeId: string) => request(`/performance/employee/${employeeId}/history`)
 };
 
+// 月度差异化评分API
+export const monthlyAssessmentApi = {
+  createOrUpdate: (data: {
+    employeeId: string;
+    month: string;
+    templateId: string;
+    templateName: string;
+    departmentType: string;
+    scores: Array<{
+      metricName: string;
+      metricCode: string;
+      weight: number;
+      level: string;
+      score: number;
+      comment?: string;
+    }>;
+    totalScore: number;
+  }) => request('/performance/monthly', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+};
+
+// 考核模板API
+export const assessmentTemplateApi = {
+  getDefault: (departmentType: string) => request(`/assessment-templates/default/${departmentType}`)
+};
+
 // 绩效参与范围/排名配置（HR/Admin）
 export const performanceConfigApi = {
   getRankingConfig: () => request('/performance-config/ranking'),
@@ -866,6 +894,8 @@ export default {
   performance: performanceApi,
   quarterlySummary: quarterlySummaryApi,
   ai: aiApi,
+  assessmentTemplate: assessmentTemplateApi,
+  monthlyAssessment: monthlyAssessmentApi,
   promotion: promotionApi,
   interviewRecord: interviewRecordApi,
   peerReview: peerReviewApi,
