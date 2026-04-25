@@ -273,7 +273,10 @@ export const monthlyAssessmentApi = {
 
 // 考核模板API
 export const assessmentTemplateApi = {
-  getDefault: (departmentType: string) => request(`/assessment-templates/default/${departmentType}`)
+  getAll: (params?: { departmentType?: string; includeMetrics?: boolean }) =>
+    request(`/assessment-templates${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+  getDefault: (departmentType: string) => request(`/assessment-templates/default/${departmentType}`),
+  delete: (id: string) => request(`/assessment-templates/${id}`, { method: 'DELETE' })
 };
 
 // 绩效参与范围/排名配置（HR/Admin）
@@ -687,7 +690,7 @@ export const metricLibraryApi = {
   })
 };
 
-type QueryValue = string | number | undefined | null;
+type QueryValue = string | number | boolean | undefined | null;
 
 const buildQueryString = (params?: Record<string, QueryValue>) => {
   const query = new URLSearchParams();

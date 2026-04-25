@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
+import { assessmentTemplateApi } from '@/services/api';
 import { TemplateEditor } from './TemplateEditor';
 
 const DEPARTMENT_TYPES = [
@@ -51,19 +51,13 @@ export function AssessmentTemplates() {
 
   const loadTemplates = async () => {
     try {
-      const params = new URLSearchParams();
-      if (filterType !== 'all') params.append('departmentType', filterType);
-      params.append('includeMetrics', 'true');
-      
-      const response = await fetch(buildApiUrl(`/assessment-templates?${params.toString()}`), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      const result = await assessmentTemplateApi.getAll({
+        departmentType: filterType !== 'all' ? filterType : undefined,
+        includeMetrics: true,
       });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setTemplates(result.data || []);
-        }
+
+      if (result.success) {
+        setTemplates(result.data || []);
       }
     } catch (error) {
       console.error('加载模板失败:', error);
@@ -77,17 +71,9 @@ export function AssessmentTemplates() {
     if (!confirm('确定要删除这个模板吗？')) return;
 
     try {
-      const response = await fetch(buildApiUrl(`/assessment-templates/${id}`), {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-
-      if (response.ok) {
-        toast.success('模板已删除');
-        loadTemplates();
-      } else {
-        toast.error('删除失败');
-      }
+      await assessmentTemplateApi.delete(id);
+      toast.success('模板已删除');
+      loadTemplates();
     } catch (error) {
       console.error('删除模板失败:', error);
       toast.error('删除失败');
@@ -181,6 +167,7 @@ export function AssessmentTemplates() {
               variant={filterType === type.value ? 'default' : 'outline'}
               onClick={() => setFilterType(type.value)}
               size="sm"
+              aria-label={`筛选${type.label}模板`}
             >
               {type.icon} {type.label} ({count})
             </Button>
@@ -252,6 +239,7 @@ export function AssessmentTemplates() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleCopy(template)}
+                    aria-label={`复制模板 ${template.name}`}
                   >
                     <Copy className="w-3 h-3" />
                   </Button>
@@ -260,6 +248,7 @@ export function AssessmentTemplates() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDelete(template.id)}
+                      aria-label={`删除模板 ${template.name}`}
                     >
                       <Trash2 className="w-3 h-3 text-red-500" />
                     </Button>
