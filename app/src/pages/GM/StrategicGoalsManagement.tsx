@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { strategicObjectiveApi } from '@/services/api';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -53,15 +54,9 @@ export function StrategicGoalsManagement() {
 
   const fetchGoals = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const result = await strategicObjectiveApi.getAll({ year: currentYear });
 
-      const response = await fetch(`${API_BASE_URL}/strategic-objectives?year=${currentYear}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
+      if (result?.success) {
         setGoals(result.data || []);
       }
     } catch (error) {
@@ -101,9 +96,6 @@ export function StrategicGoalsManagement() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
       const payload: any = {
         title: formData.title,
         description: formData.description,
@@ -116,46 +108,28 @@ export function StrategicGoalsManagement() {
 
       if (editingGoal) {
         // 更新
-        const response = await fetch(`${API_BASE_URL}/strategic-objectives/${editingGoal.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
+        const result = await strategicObjectiveApi.update(editingGoal.id, payload);
         
-        if (response.ok && result.success) {
+        if (result?.success) {
           toast.success('更新成功');
           fetchGoals();
           setEditDialogOpen(false);
         } else {
-          const errorMsg = result.message || '更新失败';
+          const errorMsg = result?.message || '更新失败';
           console.error('更新失败:', errorMsg, result);
           toast.error(`更新失败：${errorMsg}`);
         }
       } else {
         // 创建
         payload.id = uuidv4();
-        const response = await fetch(`${API_BASE_URL}/strategic-objectives`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
+        const result = await strategicObjectiveApi.create(payload);
         
-        if (response.ok && result.success) {
+        if (result?.success) {
           toast.success('创建成功');
           fetchGoals();
           setEditDialogOpen(false);
         } else {
-          const errorMsg = result.message || '创建失败';
+          const errorMsg = result?.message || '创建失败';
           console.error('创建失败:', errorMsg, result);
           toast.error(`创建失败：${errorMsg}`);
         }
@@ -170,15 +144,9 @@ export function StrategicGoalsManagement() {
     if (!confirm('确定删除这条目标吗？')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      const result = await strategicObjectiveApi.delete(id);
 
-      const response = await fetch(`${API_BASE_URL}/strategic-objectives/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
+      if (result?.success) {
         toast.success('删除成功');
         fetchGoals();
       } else {

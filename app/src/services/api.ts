@@ -378,7 +378,16 @@ export const strategicObjectiveApi = {
   getAll: (params?: { year?: number }) => {
     const query = params?.year ? `?year=${params.year}` : '';
     return request(`/strategic-objectives${query}`);
-  }
+  },
+  create: (data: Record<string, unknown>) => request('/strategic-objectives', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id: string, data: Record<string, unknown>) => request(`/strategic-objectives/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id: string) => request(`/strategic-objectives/${id}`, { method: 'DELETE' })
 };
 
 // HR管理API
