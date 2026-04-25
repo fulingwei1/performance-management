@@ -8,8 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings, Shield, Users, Crown, User, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { systemSettingsApi } from '@/services/api';
 import { toast } from 'sonner';
-import { buildApiUrl } from '@/lib/api-config';
 
 const ROLES = [
   { key: 'admin', label: '系统管理员', icon: ShieldCheck, color: 'bg-red-100 text-red-700', desc: '拥有所有权限，可管理用户和系统设置' },
@@ -42,29 +42,22 @@ export function SystemSettings() {
 
   const loadSettings = async () => {
     try {
-      const response = await fetch(buildApiUrl('/system-settings/'), {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const result = await systemSettingsApi.getAll();
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          // 转换为 settings 对象
-          const settingsMap: SystemSettings = {};
-          result.data.forEach((item: any) => {
-            let value = item.settingValue;
-            // 类型转换
-            if (item.settingType === 'boolean') {
-              value = value === 'true' || value === true;
-            } else if (item.settingType === 'number') {
-              value = parseInt(value);
-            }
-            settingsMap[item.settingKey as keyof SystemSettings] = { value };
-          });
-          setSettings(settingsMap);
-        }
+      if (result?.success) {
+        // 转换为 settings 对象
+        const settingsMap: SystemSettings = {};
+        result.data.forEach((item: any) => {
+          let value = item.settingValue;
+          // 类型转换
+          if (item.settingType === 'boolean') {
+            value = value === 'true' || value === true;
+          } else if (item.settingType === 'number') {
+            value = parseInt(value);
+          }
+          settingsMap[item.settingKey as keyof SystemSettings] = { value };
+        });
+        setSettings(settingsMap);
       }
     } catch (error) {
       console.error('加载配置失败:', error);
@@ -77,21 +70,12 @@ export function SystemSettings() {
   const handleSaveSetting = async (key: string, value: any) => {
     try {
       setSaving(true);
-      const response = await fetch(buildApiUrl(`/system-settings/${key}`), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ value: String(value) })
-      });
-
-      const result = await response.json();
-      if (result.success) {
+      const result = await systemSettingsApi.update(key, String(value));
+      if (result?.success) {
         toast.success('设置已保存');
         await loadSettings(); // 重新加载
       } else {
-        toast.error(result.message || '保存失败');
+        toast.error(result?.message || '保存失败');
       }
     } catch (error) {
       console.error('保存配置失败:', error);

@@ -342,6 +342,29 @@ export const aiApi = {
   }) => request('/ai/goal-decomposition', {
     method: 'POST',
     body: JSON.stringify(data)
+  }),
+  generateCompanyStrategy: (data: {
+    currentStrategy?: string;
+    companyName: string;
+    industry: string;
+  }) => request('/ai/company-strategy', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  generateCompanyKeyWorks: (data: {
+    strategy: string;
+    companyName: string;
+  }) => request('/ai/company-key-works', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  generateDepartmentKeyWorks: (data: {
+    department: string;
+    companyStrategy: string;
+    companyKeyWorks: string[];
+  }) => request('/ai/department-key-works', {
+    method: 'POST',
+    body: JSON.stringify(data)
   })
 };
 
@@ -1012,6 +1035,16 @@ export const automationApi = {
     request('/automation/batch-unfreeze', {
       method: 'POST',
       body: JSON.stringify({ month })
+    })
+};
+
+// 系统设置API
+export const systemSettingsApi = {
+  getAll: () => request('/system-settings/'),
+  update: (key: string, value: string) =>
+    request(`/system-settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value })
     })
 };
 

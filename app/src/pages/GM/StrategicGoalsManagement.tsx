@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { strategicObjectiveApi } from '@/services/api';
+import { strategicObjectiveApi, aiApi } from '@/services/api';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -166,41 +166,30 @@ export function StrategicGoalsManagement() {
     setAiVersions([]);
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      let endpoint = '';
+      let result;
       const payload: any = { year: currentYear };
 
       // 根据类型选择不同的AI生成接口
       if (formData.type === 'company-strategy') {
-        endpoint = '/ai/company-strategy';
-        payload.currentStrategy = formData.content;
-        payload.companyName = '金凯博自动化';
-        payload.industry = '自动化测试设备';
+        result = await aiApi.generateCompanyStrategy({
+          currentStrategy: formData.content,
+          companyName: '金凯博自动化',
+          industry: '自动化测试设备'
+        });
       } else if (formData.type === 'company-key-work') {
-        endpoint = '/ai/company-key-works';
-        payload.strategy = companyStrategies[0]?.content;
-        payload.companyName = '金凯博自动化';
+        result = await aiApi.generateCompanyKeyWorks({
+          strategy: companyStrategies[0]?.content || '',
+          companyName: '金凯博自动化'
+        });
       } else if (formData.type === 'department-key-work') {
-        endpoint = '/ai/department-key-works';
-        payload.department = formData.department;
-        payload.companyStrategy = companyStrategies[0]?.content;
-        payload.companyKeyWorks = companyKeyWorks.map(g => g.title);
+        result = await aiApi.generateDepartmentKeyWorks({
+          department: formData.department,
+          companyStrategy: companyStrategies[0]?.content || '',
+          companyKeyWorks: companyKeyWorks.map(g => g.title)
+        });
       }
 
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
+      if (result?.success) {
         // 处理不同的响应格式并自动采用第一个版本
         let contentToAdopt = '';
         

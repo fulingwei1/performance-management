@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { buildApiUrl } from '@/lib/api-config';
-import { employeeApi } from '@/services/api';
+import { employeeApi, organizationApi } from '@/services/api';
 
 interface DepartmentNode {
   id: string;
@@ -55,10 +54,8 @@ export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOption
     }).catch(() => {});
 
     // Try to fetch department tree
-    fetch(buildApiUrl('/departments/tree'), {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    }).then(r => r.json()).then(res => {
-      if (res.success && res.data && res.data.length > 0) {
+    organizationApi.getDepartmentTree().then((res: any) => {
+      if (res?.success && res.data && res.data.length > 0) {
         setDeptTree(res.data);
         setUseDeptTree(true);
       }
