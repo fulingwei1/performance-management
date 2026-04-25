@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Plus, Users, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { interviewRecordApi } from '@/services/api';
 
 // 面谈计划管理（经理/HR视图）
 export function InterviewPlans() {
@@ -18,19 +19,17 @@ export function InterviewPlans() {
 
   const fetchPlans = async () => {
     try {
-      let url = 'http://localhost:3001/api/interview-records/plans';
-      
-      // 根据角色和筛选条件构建URL
+      const params: { manager_id?: string | number; status?: string } = {};
+
       if (user?.role === 'manager') {
-        url += `?manager_id=${user.id}`;
-      }
-      
-      if (filter !== 'all') {
-        url += `${url.includes('?') ? '&' : '?'}status=${filter}`;
+        params.manager_id = user.id;
       }
 
-      const response = await fetch(url);
-      const data = await response.json();
+      if (filter !== 'all') {
+        params.status = filter;
+      }
+
+      const data = await interviewRecordApi.getPlans(params);
       
       if (data.success) {
         setPlans(data.data || []);
@@ -254,17 +253,12 @@ function CreatePlanModal({ onClose, onSuccess }: any) {
     setSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/interview-records/plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          manager_id: user?.id,
-          employee_id: parseInt(formData.employee_id)
-        })
+      const data = await interviewRecordApi.createPlan({
+        ...formData,
+        manager_id: user?.id,
+        employee_id: parseInt(formData.employee_id)
       });
 
-      const data = await response.json();
       if (data.success) {
         onSuccess();
       } else {

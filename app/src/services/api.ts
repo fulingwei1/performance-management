@@ -659,6 +659,58 @@ export const metricLibraryApi = {
   })
 };
 
+type QueryValue = string | number | undefined | null;
+
+const buildQueryString = (params?: Record<string, QueryValue>) => {
+  const query = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      query.set(key, String(value));
+    }
+  });
+
+  const search = query.toString();
+  return search ? `?${search}` : '';
+};
+
+export const interviewRecordApi = {
+  getPlans: (params?: { manager_id?: string | number; employee_id?: string | number; status?: string }) =>
+    request(`/interview-records/plans${buildQueryString(params)}`),
+
+  createPlan: (data: Record<string, unknown>) => request('/interview-records/plans', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  updatePlan: (id: string | number, data: Record<string, unknown>) => request(`/interview-records/plans/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+
+  getRecords: (params?: { manager_id?: string | number; employee_id?: string | number }) =>
+    request(`/interview-records/records${buildQueryString(params)}`),
+
+  createRecord: (data: Record<string, unknown>) => request('/interview-records/records', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  getRecord: (id: string | number) => request(`/interview-records/records/${id}`),
+
+  createImprovementPlan: (data: Record<string, unknown>) => request('/interview-records/improvement-plans', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  updateImprovementProgress: (id: string | number, data: Record<string, unknown>) => request(`/interview-records/improvement-plans/${id}/progress`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+
+  getImprovementPlansByEmployee: (employeeId: string | number) =>
+    request(`/interview-records/improvement-plans/employee/${employeeId}`)
+};
 
 export const peerReviewApi = {
   getCycles: (query?: { status?: string; review_type?: string }) => {
@@ -815,6 +867,7 @@ export default {
   quarterlySummary: quarterlySummaryApi,
   ai: aiApi,
   promotion: promotionApi,
+  interviewRecord: interviewRecordApi,
   peerReview: peerReviewApi,
   assessmentPublication: assessmentPublicationApi,
   appeal: appealApi,

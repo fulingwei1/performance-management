@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Plus, User, Calendar, TrendingUp, Target } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { interviewRecordApi } from '@/services/api';
 
 // 面谈记录页面（经理视图）
 export function InterviewRecord() {
@@ -17,9 +18,7 @@ export function InterviewRecord() {
 
   const fetchRecords = async () => {
     try {
-      const url = `http://localhost:3001/api/interview-records/records?manager_id=${user?.id}`;
-      const response = await fetch(url);
-      const data = await response.json();
+      const data = await interviewRecordApi.getRecords({ manager_id: user?.id });
       
       if (data.success) {
         setRecords(data.data || []);
@@ -207,17 +206,12 @@ function CreateRecordModal({ onClose, onSuccess }: any) {
     setSubmitting(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/interview-records/records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          manager_id: user?.id,
-          employee_id: parseInt(formData.employee_id)
-        })
+      const data = await interviewRecordApi.createRecord({
+        ...formData,
+        manager_id: user?.id,
+        employee_id: parseInt(formData.employee_id)
       });
 
-      const data = await response.json();
       if (data.success) {
         onSuccess();
       } else {
