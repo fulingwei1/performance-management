@@ -57,7 +57,7 @@ const secureDownload = async (url: string, filename: string) => {
 };
 
 // 通用请求函数
-const request = async (url: string, options: RequestInit = {}) => {
+export const request = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
   
   const headers: Record<string, string> = {

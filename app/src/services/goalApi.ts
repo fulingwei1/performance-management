@@ -3,39 +3,7 @@
  * 包含目标设置、确认、进度追踪等功能
  */
 
-const isProd = import.meta.env.PROD;
-let API_BASE_URL = import.meta.env.VITE_API_URL;
-
-if (isProd && API_BASE_URL && API_BASE_URL.includes('localhost')) {
-  API_BASE_URL = '/api';
-}
-if (!API_BASE_URL) {
-  API_BASE_URL = isProd ? '/api' : 'http://localhost:3001/api';
-}
-
-const getToken = () => localStorage.getItem('token');
-
-const request = async (url: string, options: RequestInit = {}) => {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...options.headers as Record<string, string>
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  try {
-    const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message ?? data.error ?? '请求失败');
-    }
-    return data;
-  } catch (error) {
-    console.error('API请求错误:', error);
-    throw error;
-  }
-};
+import { request } from '@/services/api';
 
 // 目标类型定义
 export interface QuarterlyTarget {

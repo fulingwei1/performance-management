@@ -1,37 +1,5 @@
-// OKR/KPI API服务
-const isProd = import.meta.env.PROD;
-let API_BASE_URL = import.meta.env.VITE_API_URL;
-
-if (isProd && API_BASE_URL && API_BASE_URL.includes('localhost')) {
-  API_BASE_URL = '/api';
-}
-if (!API_BASE_URL) {
-  API_BASE_URL = isProd ? '/api' : 'http://localhost:3001/api';
-}
-
-const getToken = () => localStorage.getItem('token');
-
-const request = async (url: string, options: RequestInit = {}) => {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...options.headers as Record<string, string>
-  };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  try {
-    const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message ?? data.error ?? '请求失败');
-    }
-    return data;
-  } catch (error) {
-    console.error('API请求错误:', error);
-    throw error;
-  }
-};
+// OKR/KPI API服务 — 统一使用 api.ts 的 request 函数
+import { request } from '@/services/api';
 
 // 战略目标
 export const strategicObjectiveApi = {
@@ -131,16 +99,28 @@ export const assignmentApi = {
 // 附件管理
 export const attachmentApi = {
   upload: async (file: File, relatedType: string, relatedId: string) => {
-    const token = getToken();
+    const token = localStorage.getItem('token');
     const formData = new FormData();
     formData.append('file', file);
     formData.append('relatedType', relatedType);
     formData.append('relatedId', relatedId);
+    // attachment upload 需要 multipart，不能用统一的 JSON request
+    const { API_BASE_URL } = await import('@/lib/api-config');
     const response = await fetch(`${API_BASE_URL}/attachments/upload`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,
     });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('auth-storage');
+        window.location.replace('/login');
+        throw new Error('登录已过期，请重新登录');
+      }
+      throw new Error(data.message ?? data.error ?? '上传失败');
+    }
     return response.json();
   },
   getByRelated: (relatedType: string, relatedId: string) =>
