@@ -12,6 +12,7 @@ import { assessmentPublicationApi } from '@/services/api';
 
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
+import { toast } from 'sonner';
 
 export function MyScores() {
   const { user } = useAuthStore();
@@ -39,6 +40,7 @@ export function MyScores() {
             }
           } catch (error) {
             console.error(`检查 ${month} 发布状态失败:`, error);
+            toast.error('检查发布状态失败');
             statusMap[month] = false;
           }
         })

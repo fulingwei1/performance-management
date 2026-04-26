@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 interface Appeal {
   id: string;
@@ -59,6 +60,7 @@ export function EmployeePerformanceAppeals() {
       }
     } catch (error) {
       console.error('获取申诉列表失败:', error);
+      toast.error('获取申诉列表失败');
     } finally {
       setLoading(false);
     }
@@ -76,6 +78,7 @@ export function EmployeePerformanceAppeals() {
       }
     } catch (error) {
       console.error('获取考核记录失败:', error);
+      toast.error('获取考核记录失败');
     }
   };
 
@@ -101,6 +104,7 @@ export function EmployeePerformanceAppeals() {
       }
     } catch (error: any) {
       console.error('提交申诉失败:', error);
+      toast.error('提交申诉失败');
       alert(error.message || '提交申诉失败');
     } finally {
       setSubmitting(false);

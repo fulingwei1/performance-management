@@ -18,6 +18,7 @@ import { performanceApi } from '@/services/api';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export function WorkSummary() {
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ export function WorkSummary() {
         }
       } catch (error) {
         console.error('加载记录失败:', error);
+        toast.error('加载记录失败');
       }
     };
     

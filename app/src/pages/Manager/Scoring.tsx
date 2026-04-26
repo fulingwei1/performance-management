@@ -46,7 +46,7 @@ export function ScoringManagement() {
   
   useEffect(() => {
     if (user && user.role === 'manager') {
-      employeeApi.getSubordinates().then(r => { if (r.success) setSubordinates(r.data); }).catch(console.error);
+      employeeApi.getSubordinates().then(r => { if (r.success) setSubordinates(r.data); }).catch((error) => { console.error(error); toast.error('获取下属列表失败'); });
     }
   }, [user]);
   

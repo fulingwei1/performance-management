@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, Star, Send, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { peerReviewApi } from '@/services/api';
+import { toast } from 'sonner';
 
 // 员工互评页面
 export function PeerReview() {
@@ -34,6 +35,7 @@ export function PeerReview() {
       }
     } catch (error) {
       console.error('获取数据失败:', error);
+    toast.error('获取数据失败');
     } finally {
       setLoading(false);
     }
@@ -51,6 +53,7 @@ export function PeerReview() {
       }
     } catch (error) {
       console.error('获取评价列表失败:', error);
+    toast.error('获取评价列表失败');
     }
   };
 
@@ -285,6 +288,7 @@ function ReviewModal({ review, cycleId, onClose, onSuccess }: any) {
       }
     } catch (error) {
       console.error('提交失败:', error);
+    toast.error('提交评价失败');
       alert('提交失败');
     } finally {
       setSubmitting(false);

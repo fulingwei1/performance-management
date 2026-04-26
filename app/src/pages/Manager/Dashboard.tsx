@@ -15,6 +15,7 @@ import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
 import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { todoApi } from '@/services/api';
+import { toast } from 'sonner';
 
 // 月份选项
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
@@ -46,6 +47,7 @@ export function ManagerDashboard() {
         }
       } catch (error) {
         console.error('Failed to fetch subordinates:', error);
+        toast.error('获取下属列表失败');
       }
     };
     

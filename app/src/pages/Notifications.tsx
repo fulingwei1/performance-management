@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Check, CheckCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../services/api';
+import { toast } from 'sonner';
 
 interface Notification {
   id: string;
@@ -32,6 +33,7 @@ const Notifications: React.FC = () => {
       }
     } catch (error) {
       console.error('获取通知列表失败:', error);
+      toast.error('获取通知列表失败');
     } finally {
       setLoading(false);
     }
@@ -64,6 +66,7 @@ const Notifications: React.FC = () => {
       }
     } catch (error) {
       console.error('标记已读失败:', error);
+      toast.error('标记已读失败');
     }
   };
 
@@ -76,6 +79,7 @@ const Notifications: React.FC = () => {
       fetchNotifications(activeTab);
     } catch (error) {
       console.error('全部标记已读失败:', error);
+      toast.error('全部标记已读失败');
     }
   };
 

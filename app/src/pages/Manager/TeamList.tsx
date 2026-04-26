@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { employeeApi } from '@/services/api';
 import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
+import { toast } from 'sonner';
 
 type FilterType = 'all' | 'pending' | 'completed';
 
@@ -36,6 +37,7 @@ export function TeamList() {
         }
       } catch (error) {
         console.error('Failed to fetch subordinates:', error);
+        toast.error('获取下属列表失败');
       }
     };
     

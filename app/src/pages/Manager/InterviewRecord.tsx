@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { FileText, Plus, User, Calendar, TrendingUp, Target } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { interviewRecordApi } from '@/services/api';
+import { toast } from 'sonner';
 
 // 面谈记录页面（经理视图）
 export function InterviewRecord() {
@@ -25,6 +26,7 @@ export function InterviewRecord() {
       }
     } catch (error) {
       console.error('获取面谈记录失败:', error);
+      toast.error('获取面谈记录失败');
     } finally {
       setLoading(false);
     }
@@ -219,6 +221,7 @@ function CreateRecordModal({ onClose, onSuccess }: any) {
       }
     } catch (error) {
       console.error('创建失败:', error);
+      toast.error('创建面谈记录失败');
       alert('创建失败');
     } finally {
       setSubmitting(false);

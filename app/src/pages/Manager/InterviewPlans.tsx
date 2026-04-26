@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, Plus, Users, Clock, CheckCircle, XCircle, Edit } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { interviewRecordApi } from '@/services/api';
+import { toast } from 'sonner';
 
 // 面谈计划管理（经理/HR视图）
 export function InterviewPlans() {
@@ -36,6 +37,7 @@ export function InterviewPlans() {
       }
     } catch (error) {
       console.error('获取面谈计划失败:', error);
+      toast.error('获取面谈计划失败');
     } finally {
       setLoading(false);
     }
@@ -266,6 +268,7 @@ function CreatePlanModal({ onClose, onSuccess }: any) {
       }
     } catch (error) {
       console.error('创建失败:', error);
+      toast.error('创建面谈计划失败');
       alert('创建失败');
     } finally {
       setSubmitting(false);

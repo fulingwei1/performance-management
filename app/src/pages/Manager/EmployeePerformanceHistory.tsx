@@ -21,6 +21,7 @@ import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/lib/utils';
 import type { PerformanceRecord } from '@/types';
+import { toast } from 'sonner';
 
 interface EmployeePerformanceHistoryProps {
   employeeId: string;
@@ -49,10 +50,12 @@ export function EmployeePerformanceHistory({
           setRecords(response.data);
         } else {
           console.error('获取历史数据失败:', response.error);
+          toast.error('获取历史数据失败');
           setRecords([]);
         }
       } catch (error) {
         console.error('API调用失败:', error);
+        toast.error('获取历史数据失败');
         setRecords([]);
       } finally {
         setLoading(false);
