@@ -127,6 +127,7 @@ app.use(cors({
     'http://localhost:5174',
     'http://localhost:3000',
     'https://performance-management-api-three.vercel.app',
+    'http://8.138.230.46',
     process.env.FRONTEND_URL
   ]);
 
