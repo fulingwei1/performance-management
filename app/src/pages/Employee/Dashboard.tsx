@@ -90,29 +90,6 @@ export function EmployeeDashboard() {
         <StrategicGoalsDisplay showDepartment={true} />
       </motion.div>
 
-      {/* 个人目标规划入口 */}
-      <motion.div variants={itemVariants}>
-        <Card className="border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-purple-900">
-              <Target className="w-5 h-5" />
-              我的年度目标
-            </CardTitle>
-            <CardDescription className="text-purple-700">
-              根据公司战略和部门重点，规划您的个人年度目标
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Link to="/employee/goal-planning">
-              <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                <Target className="w-4 h-4 mr-2" />
-                开始目标规划
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </motion.div>
-
       {/* Stats */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard
