@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { goalApi, Objective } from '@/services/goalApi';
+import { aiApi } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 
 const levelLabels: Record<string, string> = {
@@ -64,29 +65,16 @@ export function GoalConfirmation() {
     setAiLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/goal-confirmation-feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          employeeName: user.name,
-          goalName: confirmingGoal.title,
-          targetValue: confirmingGoal.targetValue,
-          unit: confirmingGoal.unit
-        })
+      const result = await aiApi.generateGoalConfirmationFeedback({
+        employeeName: user.name,
+        goalName: confirmingGoal.title,
+        targetValue: confirmingGoal.targetValue,
+        unit: confirmingGoal.unit
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
-        if (versions.length > 0) {
-          setFeedback(versions[0]);
-        }
+      const versions = result.data?.versions || [];
+      if (versions.length > 0) {
+        setFeedback(versions[0]);
       }
     } catch (error) {
       console.error('Error generating AI feedback:', error);

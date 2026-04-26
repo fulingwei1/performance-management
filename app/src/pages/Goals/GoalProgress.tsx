@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { goalApi, goalProgressApi, Objective, GoalProgress } from '@/services/goalApi';
+import { aiApi } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
 
 const statusLabels: Record<string, string> = {
@@ -113,29 +114,16 @@ export function GoalProgressPage() {
     setAiLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/goal-progress-comment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          employeeName: user.name,
-          goalName: selectedObjective.name,
-          completionRate: formData.completionRate,
-          month: `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
-        })
+      const result = await aiApi.generateGoalProgressComment({
+        employeeName: user.name,
+        goalName: selectedObjective.name,
+        completionRate: formData.completionRate,
+        month: `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
-        if (versions.length > 0) {
-          setFormData(prev => ({ ...prev, comment: versions[0] }));
-        }
+      const versions = result.data?.versions || [];
+      if (versions.length > 0) {
+        setFormData(prev => ({ ...prev, comment: versions[0] }));
       }
     } catch (error) {
       console.error('Error generating AI comment:', error);

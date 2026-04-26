@@ -365,7 +365,38 @@ export const aiApi = {
   }) => request('/ai/department-key-works', {
     method: 'POST',
     body: JSON.stringify(data)
-  })
+  }),
+
+  // AI生成目标确认反馈
+  generateGoalConfirmationFeedback: (data: {
+    employeeName: string;
+    goalName: string;
+    targetValue: number;
+    unit: string;
+  }) => request('/ai/goal-confirmation-feedback', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  // AI生成目标进度说明
+  generateGoalProgressComment: (data: {
+    employeeName: string;
+    goalName: string;
+    completionRate: number;
+    month: string;
+  }) => request('/ai/goal-progress-comment', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  // 获取晋升候选人
+  getPromotionCandidates: (limit?: number) => {
+    const query = limit ? `?limit=${limit}` : '';
+    return request(`/ai/promotion-candidates${query}`);
+  },
+
+  // 获取绩效异常检测
+  getPerformanceAnomalies: () => request('/ai/performance-anomalies')
 };
 
 // 目标管理API

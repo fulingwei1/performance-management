@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -22,8 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { CheckCircle2, XCircle, Eye, Loader2 } from 'lucide-react';
-import axios from 'axios';
-import { buildApiUrl } from '@/lib/api-config';
+import { goalApi } from '@/services/goalApi';
 
 interface PendingGoal {
   id: string;
@@ -44,7 +42,6 @@ interface PendingGoal {
 type ActionType = 'approve' | 'reject' | 'view';
 
 export default function GoalApproval() {
-  const { token } = useAuthStore();
   const [goals, setGoals] = useState<PendingGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGoal, setSelectedGoal] = useState<PendingGoal | null>(null);
@@ -60,16 +57,14 @@ export default function GoalApproval() {
   const fetchPendingGoals = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(buildApiUrl('/goal-approval/pending'), {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await goalApi.getPendingApprovals();
       
-      if (response.data.success) {
-        setGoals(response.data.data);
+      if (response.success) {
+        setGoals(response.data);
       }
     } catch (error: any) {
       console.error('Failed to fetch pending goals:', error);
-      toast.error(error.response?.data?.message || '获取待审批目标失败');
+      toast.error(error.message || '获取待审批目标失败');
     } finally {
       setLoading(false);
     }
@@ -92,25 +87,19 @@ export default function GoalApproval() {
 
     try {
       setSubmitting(true);
-      const endpoint = actionType === 'approve' ? 'approve' : 'reject';
       
-      await axios.post(
-        buildApiUrl(`/goal-approval/${endpoint}`),
-        {
-          objectiveId: selectedGoal.id,
-          comment: comment.trim() || undefined
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      if (actionType === 'approve') {
+        await goalApi.approve(selectedGoal.id, comment.trim() || undefined);
+      } else {
+        await goalApi.reject(selectedGoal.id, comment.trim());
+      }
 
       toast.success(actionType === 'approve' ? '目标已批准' : '目标已拒绝');
       setDialogOpen(false);
       fetchPendingGoals();
     } catch (error: any) {
       console.error(`Failed to ${actionType} goal:`, error);
-      toast.error(error.response?.data?.message || `${actionType === 'approve' ? '批准' : '拒绝'}目标失败`);
+      toast.error(error.message || `${actionType === 'approve' ? '批准' : '拒绝'}目标失败`);
     } finally {
       setSubmitting(false);
     }
