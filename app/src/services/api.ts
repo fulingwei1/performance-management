@@ -2,6 +2,9 @@ import { API_BASE_URL } from '@/lib/api-config';
 
 // API服务 - 连接后端
 
+// 新员工默认密码
+export const DEFAULT_EMPLOYEE_PASSWORD = '123456';
+
 // 获取Token
 const getToken = () => localStorage.getItem('token');
 
@@ -131,16 +134,16 @@ export const employeeApi = {
   getById: (id: string) => request(`/employees/${id}`),
   
   // 创建员工
-  create: (data: any) => request('/employees', {
+  create: (data: Record<string, unknown>) => request('/employees', {
     method: 'POST',
     body: JSON.stringify({
       ...data,
-      password: data.password || '123456' // 默认密码
+      password: data.password || DEFAULT_EMPLOYEE_PASSWORD // 默认密码
     })
   }),
   
   // 更新员工
-  updateEmployee: (id: string, data: any) => request(`/employees/${id}`, {
+  updateEmployee: (id: string, data: Record<string, unknown>) => request(`/employees/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -290,7 +293,7 @@ export const assessmentTemplateApi = {
 // 绩效参与范围/排名配置（HR/Admin）
 export const performanceConfigApi = {
   getRankingConfig: () => request('/performance-config/ranking'),
-  updateRankingConfig: (config: any) =>
+  updateRankingConfig: (config: Record<string, unknown>) =>
     request('/performance-config/ranking', {
       method: 'PUT',
       body: JSON.stringify(config),
@@ -505,7 +508,7 @@ export const hrApi = {
   }),
   
   // 批量导入员工（逐个调用 createEmployee）
-  importEmployees: async (employees: any[]) => {
+  importEmployees: async (employees: Record<string, unknown>[]) => {
     let successCount = 0;
     let failedCount = 0;
     for (const emp of employees) {
@@ -639,7 +642,7 @@ export const organizationApi = {
   }),
   
   // 更新部门
-  updateDepartment: (id: string, data: any) => request(`/organization/departments/${id}`, {
+  updateDepartment: (id: string, data: Record<string, unknown>) => request(`/organization/departments/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -670,7 +673,7 @@ export const organizationApi = {
   }),
   
   // 更新岗位
-  updatePosition: (id: string, data: any) => request(`/organization/positions/${id}`, {
+  updatePosition: (id: string, data: Record<string, unknown>) => request(`/organization/positions/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -740,7 +743,7 @@ export const assessmentCycleApi = {
   }),
   
   // 更新考核周期
-  updateCycle: (id: string, data: any) => request(`/cycles/${id}`, {
+  updateCycle: (id: string, data: Record<string, unknown>) => request(`/cycles/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -776,7 +779,7 @@ export const assessmentCycleApi = {
   }),
   
   // 批量导入节假日
-  importHolidays: (holidays: any[]) => request('/cycles/holidays/import', {
+  importHolidays: (holidays: Record<string, unknown>[]) => request('/cycles/holidays/import', {
     method: 'POST',
     body: JSON.stringify({ holidays })
   })
@@ -797,7 +800,7 @@ export const metricLibraryApi = {
     category: string;
     type: string;
     description: string;
-    scoringCriteria?: any[];
+    scoringCriteria?: Record<string, unknown>[];
     weight?: number;
     departmentIds?: string[];
     positionIds?: string[];
@@ -810,7 +813,7 @@ export const metricLibraryApi = {
   }),
   
   // 更新指标
-  updateMetric: (id: string, data: any) => request(`/metrics/${id}`, {
+  updateMetric: (id: string, data: Record<string, unknown>) => request(`/metrics/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -821,7 +824,7 @@ export const metricLibraryApi = {
   }),
   
   // 批量导入指标
-  importMetrics: (metrics: any[]) => request('/metrics/import', {
+  importMetrics: (metrics: Record<string, unknown>[]) => request('/metrics/import', {
     method: 'POST',
     body: JSON.stringify({ metrics })
   }),

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import {
-  strategicObjectiveApi, objectiveApi, krApi, kpiApi,
+  okrStrategicObjectiveApi, objectiveApi, krApi, kpiApi,
   contractApi, monthlyReportApi, interviewApi, assignmentApi
 } from '@/services/okrApi';
 
@@ -254,20 +254,20 @@ export const useOKRStore = create<OKRState>((set, get) => ({
   fetchStrategicObjectives: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await strategicObjectiveApi.getAll();
+      const res = await okrStrategicObjectiveApi.getAll();
       set({ strategicObjectives: res.data || res, loading: false });
     } catch (e: any) { set({ error: e.message, loading: false }); }
   },
   createStrategicObjective: async (data) => {
-    await strategicObjectiveApi.create(data);
+    await okrStrategicObjectiveApi.create(data);
     get().fetchStrategicObjectives();
   },
   updateStrategicObjective: async (id, data) => {
-    await strategicObjectiveApi.update(id, data);
+    await okrStrategicObjectiveApi.update(id, data);
     get().fetchStrategicObjectives();
   },
   deleteStrategicObjective: async (id) => {
-    await strategicObjectiveApi.delete(id);
+    await okrStrategicObjectiveApi.delete(id);
     get().fetchStrategicObjectives();
   },
 

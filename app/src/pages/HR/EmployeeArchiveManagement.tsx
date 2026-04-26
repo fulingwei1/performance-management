@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { employeeApi, organizationApi } from '@/services/api';
+import { employeeApi, organizationApi, DEFAULT_EMPLOYEE_PASSWORD } from '@/services/api';
 import type { EmployeeArchive, EmployeeLevel } from '@/types';
 
 type DeptFlat = { id: string; name: string; code?: string; parentId?: string | null };
@@ -233,7 +233,7 @@ export function EmployeeArchiveManagement() {
         await employeeApi.create({
           ...formData,
           id: `EMP${Date.now()}`,
-          password: '123456'
+          password: DEFAULT_EMPLOYEE_PASSWORD
         });
         toast.success('员工创建成功');
       }

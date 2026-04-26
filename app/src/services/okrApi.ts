@@ -1,8 +1,8 @@
 // OKR/KPI API服务 — 统一使用 api.ts 的 request 函数
 import { request } from '@/services/api';
 
-// 战略目标
-export const strategicObjectiveApi = {
+// OKR 专属的战略目标（路径前缀 /okr/，区别于 api.ts 的 /strategic-objectives）
+export const okrStrategicObjectiveApi = {
   getAll: () => request('/okr/strategic-objectives'),
   create: (data: { title: string; description: string; year: number; priority: number }) =>
     request('/okr/strategic-objectives', { method: 'POST', body: JSON.stringify(data) }),
@@ -12,7 +12,7 @@ export const strategicObjectiveApi = {
     request(`/okr/strategic-objectives/${id}`, { method: 'DELETE' }),
 };
 
-// OKR目标
+// OKR目标（注意：api.ts 也有 objectiveApi 指向 /objectives，本文件指向 /okr/objectives）
 export const objectiveApi = {
   getAll: (params?: { level?: string; parentId?: string }) => {
     const query = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : '';

@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { type Employee, type EmployeeLevel } from '@/types';
-import { employeeApi } from '@/services/api';
+import { employeeApi, DEFAULT_EMPLOYEE_PASSWORD } from '@/services/api';
 import { EmployeeForm } from '@/pages/HR/EmployeeManagement/EmployeeForm';
 
 export function UserManagement() {
@@ -66,7 +66,7 @@ export function UserManagement() {
         await employeeApi.updateEmployee(editingEmployee.id, employeeForm);
         toast.success('员工信息已更新');
       } else {
-        await employeeApi.create({ ...employeeForm, password: '123456' });
+        await employeeApi.create({ ...employeeForm, password: DEFAULT_EMPLOYEE_PASSWORD });
         toast.success('员工已添加');
       }
       setShowAddDialog(false);
@@ -94,7 +94,7 @@ export function UserManagement() {
   };
 
   const handleResetPassword = async (id: string, name: string) => {
-    if (!confirm(`确定要重置 ${name} 的密码为默认密码(123456)吗？`)) return;
+    if (!confirm(`确定要重置 ${name} 的密码为默认密码(见系统配置)吗？`)) return;
     try {
       await employeeApi.resetPassword(id);
       toast.success('密码已重置');
@@ -146,7 +146,7 @@ export function UserManagement() {
             id: values[0] || `emp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             name: values[1], department: values[2] || '总公司', subDepartment: values[3] || '',
             role: values[4] || 'employee', level: values[5] || 'intermediate',
-            managerId: values[6] || undefined, password: '123456'
+            managerId: values[6] || undefined, password: DEFAULT_EMPLOYEE_PASSWORD
           });
           successCount++;
         } catch { failCount++; }
