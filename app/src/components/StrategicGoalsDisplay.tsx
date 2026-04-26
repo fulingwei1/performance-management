@@ -8,6 +8,7 @@ import { Target, Briefcase, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/authStore';
+import { strategicObjectiveApi } from '@/services/api';
 
 const STRATEGIC_GOALS_ENABLED = false;
 
@@ -49,22 +50,8 @@ export function StrategicGoalsDisplay({ compact = false, showDepartment = true }
 
   const fetchStrategicGoals = async () => {
     try {
-      const token = localStorage.getItem('token');
       const currentYear = new Date().getFullYear();
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/strategic-objectives?year=${currentYear}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        console.error('Failed to fetch strategic goals');
-        return;
-      }
-
-      const result = await response.json();
+      const result = await strategicObjectiveApi.getAll({ year: currentYear });
       const goals: StrategicGoal[] = result.data || [];
 
       // 分类

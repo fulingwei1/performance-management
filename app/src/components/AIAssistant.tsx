@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { aiApi } from '@/services/api';
 
 interface AIAssistantProps {
   /** AI功能类型 */
@@ -61,36 +62,26 @@ export function AIAssistant({ type, requestData, onAdopt, className }: AIAssista
     setVersions([]);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('未登录，请重新登录');
+      const apiMethodMap: Record<string, (data: Record<string, unknown>) => Promise<unknown>> = {
+        'self-summary': aiApi.generateSelfSummary,
+        'next-month-plan': aiApi.generateNextMonthPlan,
+        'manager-comment': aiApi.generateManagerComment,
+        'work-arrangement': aiApi.generateWorkArrangement
+      };
+      const apiMethod = apiMethodMap[type];
+      if (!apiMethod) {
+        throw new Error('不支持的AI功能类型');
       }
 
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const endpoint = getEndpoint();
+      const result = await apiMethod(requestData) as { success: boolean; data: { versions?: string[]; comment?: string }; message?: string };
 
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'AI生成失败');
-      }
-
-      const result = await response.json();
-      
       if (!result.success) {
         throw new Error(result.message || 'AI生成失败');
       }
 
       // 处理返回的版本
-      const versionList = result.data.versions || [result.data.comment || ''];
+      const data = result.data || {};
+      const versionList = data.versions || [data.comment || ''];
       setVersions(versionList.map((content: string, index: number) => ({ content, index })));
 
     } catch (err: any) {

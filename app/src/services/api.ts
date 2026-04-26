@@ -396,7 +396,31 @@ export const aiApi = {
   },
 
   // 获取绩效异常检测
-  getPerformanceAnomalies: () => request('/ai/performance-anomalies')
+  getPerformanceAnomalies: () => request('/ai/performance-anomalies'),
+
+  // AI生成员工自评总结
+  generateSelfSummary: (data: Record<string, unknown>) => request('/ai/self-summary', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  // AI生成下月工作计划
+  generateNextMonthPlan: (data: Record<string, unknown>) => request('/ai/next-month-plan', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  // AI生成经理综合评价
+  generateManagerComment: (data: Record<string, unknown>) => request('/ai/manager-comment', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  // AI生成下月工作安排
+  generateWorkArrangement: (data: Record<string, unknown>) => request('/ai/work-arrangement', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
 };
 
 // 目标管理API
