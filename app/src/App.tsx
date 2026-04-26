@@ -16,16 +16,16 @@ const DifferentiatedScoring = lazy(() => import('@/pages/Manager/DifferentiatedS
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
 const QuarterlySummary = lazy(() => import('@/pages/Manager/QuarterlySummary').then((module) => ({ default: module.QuarterlySummary })));
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
-const PerformanceAnalytics = lazy(() => import('@/pages/Analytics/PerformanceAnalytics').then((module) => ({ default: module.PerformanceAnalytics })));
-const EmployeeTrend = lazy(() => import('@/pages/Analytics/EmployeeTrend').then((module) => ({ default: module.EmployeeTrend })));
+// HIDDEN: const PerformanceAnalytics = lazy(() => import('@/pages/Analytics/PerformanceAnalytics').then((module) => ({ default: module.PerformanceAnalytics })));
+// HIDDEN: const EmployeeTrend = lazy(() => import('@/pages/Analytics/EmployeeTrend').then((module) => ({ default: module.EmployeeTrend })));
 const EmployeePerformanceHistory = lazy(() => import('@/pages/Manager/EmployeePerformanceHistory').then((module) => ({ default: module.EmployeePerformanceHistory })));
 const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => ({ default: module.TeamList })));
 const GMDashboard = lazy(() => import('@/pages/GM/Dashboard').then((module) => ({ default: module.GMDashboard })));
 const GMScoring = lazy(() => import('@/pages/GM/Scoring').then((module) => ({ default: module.GMScoring })));
 const GMDataExport = lazy(() => import('@/pages/GM/GMDataExport').then((module) => ({ default: module.GMDataExport })));
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
-const EmployeeInfo = lazy(() => import('@/pages/HR/EmployeeInfo').then((module) => ({ default: module.EmployeeInfo })));
-const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((module) => ({ default: module.DataManagement })));
+// HIDDEN: const EmployeeInfo = lazy(() => import('@/pages/HR/EmployeeInfo').then((module) => ({ default: module.EmployeeInfo })));
+// HIDDEN: const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((module) => ({ default: module.DataManagement })));
 // HIDDEN: const HRAppealsManagement = lazy(() => import('@/pages/HR/AppealsManagement').then((module) => ({ default: module.HRAppealsManagement })));
 const AssessmentPublication = lazy(() => import('@/pages/HR/AssessmentPublication').then((module) => ({ default: module.AssessmentPublication })));
 // HIDDEN: const ObjectiveTree = lazy(() => import('@/pages/OKR/ObjectiveTree').then((module) => ({ default: module.ObjectiveTree })));
@@ -59,9 +59,9 @@ const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((m
 // HIDDEN: const GoalSetting = lazy(() => import('@/pages/Goals/GoalSetting').then((module) => ({ default: module.GoalSetting })));
 // HIDDEN: const GoalConfirmation = lazy(() => import('@/pages/Goals/GoalConfirmation').then((module) => ({ default: module.GoalConfirmation })));
 // HIDDEN: const GoalProgressPage = lazy(() => import('@/pages/Goals/GoalProgress').then((module) => ({ default: module.GoalProgressPage })));
-const ProgressDashboard = lazy(() => import('@/pages/Dashboard/ProgressDashboard'));
+// HIDDEN: const ProgressDashboard = lazy(() => import('@/pages/Dashboard/ProgressDashboard'));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
-const AIInsights = lazy(() => import('@/pages/ai/AIInsights').then((module) => ({ default: module.AIInsights })));
+// HIDDEN: const AIInsights = lazy(() => import('@/pages/ai/AIInsights').then((module) => ({ default: module.AIInsights })));
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
@@ -242,7 +242,7 @@ function App() {
           {/* <Route path="/employee/goal-confirmation" element={<GoalConfirmation />} /> */}
           <Route path="/employee/peer-review" element={<PeerReview />} />
           {/* <Route path="/employee/goal-progress" element={<GoalProgressPage />} /> */}
-          <Route path="/employee/progress-dashboard" element={<ProgressDashboard />} />
+          {/* <Route path="/employee/progress-dashboard" element={<ProgressDashboard />} /> */}
         </Route>
 
         {/* Manager routes */}
@@ -253,8 +253,8 @@ function App() {
           <Route path="/manager/differentiated-scoring" element={<DifferentiatedScoring />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
-          <Route path="/manager/performance-analytics" element={<PerformanceAnalytics />} />
-          <Route path="/manager/employee-trend/:employeeId" element={<EmployeeTrend />} />
+          {/* <Route path="/manager/performance-analytics" element={<PerformanceAnalytics />} /> */}
+          {/* <Route path="/manager/employee-trend/:employeeId" element={<EmployeeTrend />} /> */}
           <Route path="/manager/quarterly-summary" element={<QuarterlySummary />} />
           {/* <Route path="/manager/objectives" element={<ObjectiveTree />} /> */}
           {/* <Route path="/manager/team-objectives" element={<TeamObjectives />} /> */}
@@ -267,7 +267,7 @@ function App() {
           {/* <Route path="/manager/interview-records" element={<InterviewRecord />} /> */}
           {/* <Route path="/manager/goal-setting" element={<GoalSetting />} /> */}
           {/* <Route path="/manager/goal-progress" element={<GoalProgressPage />} /> */}
-          <Route path="/manager/progress-dashboard" element={<ProgressDashboard />} />
+          {/* <Route path="/manager/progress-dashboard" element={<ProgressDashboard />} /> */}
           {/* <Route path="/manager/appeals" element={<AppealsReview />} /> */}
         </Route>
 
@@ -277,24 +277,24 @@ function App() {
           <Route path="/gm/scoring" element={<GMScoring />} />
           <Route path="/gm/analytics" element={<GMAnalytics />} />
           <Route path="/gm/data-export" element={<GMDataExport />} />
-          <Route path="/gm/performance-analytics" element={<PerformanceAnalytics />} />
-          <Route path="/gm/employee-trend/:employeeId" element={<EmployeeTrend />} />
+          {/* <Route path="/gm/performance-analytics" element={<PerformanceAnalytics />} /> */}
+          {/* <Route path="/gm/employee-trend/:employeeId" element={<EmployeeTrend />} /> */}
           {/* <Route path="/gm/objectives" element={<ObjectiveTree />} /> */}
           {/* <Route path="/gm/goal-setting" element={<GoalSetting />} /> */}
           {/* <Route path="/gm/goal-progress" element={<GoalProgressPage />} /> */}
-          <Route path="/gm/progress-dashboard" element={<ProgressDashboard />} />
+          {/* <Route path="/gm/progress-dashboard" element={<ProgressDashboard />} /> */}
         </Route>
 
         {/* HR routes */}
         <Route element={<ProtectedLayout allowedRole="hr" />}>
           <Route path="/hr/dashboard" element={<HRDashboard />} />
-          <Route path="/hr/employee-info" element={<EmployeeInfo />} />
-          <Route path="/hr/data-management" element={<DataManagement />} />
+          {/* <Route path="/hr/employee-info" element={<EmployeeInfo />} /> */}
+          {/* <Route path="/hr/data-management" element={<DataManagement />} /> */}
           <Route path="/hr/performance-ranking-config" element={<PerformanceRankingConfig />} />
           {/* <Route path="/hr/appeals" element={<HRAppealsManagement />} /> */}
           <Route path="/hr/analytics" element={<GMAnalytics />} />
-          <Route path="/hr/performance-analytics" element={<PerformanceAnalytics />} />
-          <Route path="/hr/employee-trend/:employeeId" element={<EmployeeTrend />} />
+          {/* <Route path="/hr/performance-analytics" element={<PerformanceAnalytics />} /> */}
+          {/* <Route path="/hr/employee-trend/:employeeId" element={<EmployeeTrend />} /> */}
           {/* <Route path="/hr/objectives" element={<ObjectiveTree />} /> */}
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
@@ -309,8 +309,8 @@ function App() {
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
           {/* <Route path="/hr/goal-setting" element={<GoalSetting />} /> */}
           {/* <Route path="/hr/goal-progress" element={<GoalProgressPage />} /> */}
-          <Route path="/hr/progress-dashboard" element={<ProgressDashboard />} />
-          <Route path="/hr/ai-insights" element={<AIInsights />} />
+          {/* <Route path="/hr/progress-dashboard" element={<ProgressDashboard />} /> */}
+          {/* <Route path="/hr/ai-insights" element={<AIInsights />} /> */}
         </Route>
 
         {/* Admin routes */}
