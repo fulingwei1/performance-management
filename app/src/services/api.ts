@@ -245,7 +245,7 @@ export const performanceApi = {
   }),
 
   // 获取员工绩效历史
-  getEmployeeHistory: (employeeId: string) => request(`/performance/employee/${employeeId}`)
+  getEmployeeHistory: (employeeId: string) => request(`/monthly-assessment/employee/${employeeId}`)
 };
 
 // 月度差异化评分API
@@ -265,7 +265,7 @@ export const monthlyAssessmentApi = {
       comment?: string;
     }>;
     totalScore: number;
-  }) => request('/performance/monthly', {
+  }) => request('/monthly-assessment/monthly', {
     method: 'POST',
     body: JSON.stringify(data)
   })
@@ -504,14 +504,26 @@ export const hrApi = {
     method: 'DELETE'
   }),
   
-  // 批量导入员工
-  importEmployees: (employees: any[]) => request('/employees/import', {
-    method: 'POST',
-    body: JSON.stringify({ employees })
-  }),
+  // 批量导入员工（逐个调用 createEmployee）
+  importEmployees: async (employees: any[]) => {
+    let successCount = 0;
+    let failedCount = 0;
+    for (const emp of employees) {
+      try {
+        await request('/employees', {
+          method: 'POST',
+          body: JSON.stringify(emp)
+        });
+        successCount++;
+      } catch {
+        failedCount++;
+      }
+    }
+    return { success: true, data: { successCount, failedCount } };
+  },
   
   // 导出员工
-  exportEmployees: () => secureDownload(`${API_BASE_URL}/employees/export`, 'employees.xlsx')
+  exportEmployees: () => secureDownload(`${API_BASE_URL}/export/employees`, 'employees.xlsx')
 };
 
 export const exportApi = {
@@ -552,13 +564,13 @@ export const exportApi = {
 
   // 考核数据导出
   exportMonthlyAssessments: (params: URLSearchParams) =>
-    secureDownload(`/export/monthly-assessments?${params.toString()}`, `月度评分记录_${Date.now()}.xlsx`),
+    secureDownload(`/assessment-export/monthly-assessments?${params.toString()}`, `月度评分记录_${Date.now()}.xlsx`),
 
   exportDepartmentStats: () =>
-    secureDownload('/export/department-stats', `部门类型统计_${Date.now()}.xlsx`),
+    secureDownload('/assessment-export/department-stats', `部门类型统计_${Date.now()}.xlsx`),
 
   exportScoreTrend: (employeeId: string) =>
-    secureDownload(`/export/score-trend/${employeeId}`, `评分趋势_${employeeId}_${Date.now()}.xlsx`)
+    secureDownload(`/assessment-export/score-trend/${employeeId}`, `评分趋势_${employeeId}_${Date.now()}.xlsx`),
 };
 
 // 晋升/加薪申请
@@ -998,11 +1010,6 @@ export const appealApi = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
-  // 删除申诉（仅允许删除自己的待处理申诉）
-  delete: (id: string) => request(`/appeals/${id}`, {
-    method: 'DELETE'
-  })
 };
 
 const DISABLED_NOTIFICATION_MESSAGE = '消息中心模块已停用';

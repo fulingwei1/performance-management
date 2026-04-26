@@ -209,8 +209,8 @@ app.use('/api/data-export', dataExportRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/assessment-templates', assessmentTemplateRoutes);
-app.use('/api/performance', monthlyAssessmentRoutes);
-app.use('/api/export', assessmentExportRoutes);
+app.use('/api/monthly-assessment', monthlyAssessmentRoutes);
+app.use('/api/assessment-export', assessmentExportRoutes);
 app.use('/api/stats', assessmentStatsRoutes);
 app.use('/api/integrations/salary', salaryIntegrationRoutes);
 app.use('/api/performance-config', performanceConfigRoutes);
@@ -249,7 +249,6 @@ const initializeServer = async () => {
 
 // 只有在非 Vercel 环境下（本地开发）才直接监听端口
 if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
- const PORT = process.env.PORT || 3000;
  app.listen(PORT, async () => {
   await initializeServer();
  logger.info(`Server is running on port ${PORT}`);

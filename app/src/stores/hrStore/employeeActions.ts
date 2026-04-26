@@ -6,11 +6,8 @@ export const createEmployeeActions = (set: any, get: any) => ({
     set({ loading: true, error: null });
     try {
       const response = await hrApi.getAllEmployees();
-      console.log('[hrStore] fetchEmployees响应:', response);
       if (response.success) {
-        console.log(`[hrStore] 成功加载 ${response.data?.length || 0} 名员工`);
         const managers = (response.data || []).filter((e: any) => e.role === 'manager');
-        console.log(`[hrStore] 其中部门经理 ${managers.length} 名:`, managers.map((m: any) => m.name));
         set({ employeesList: response.data, loading: false });
       } else {
         console.error('[hrStore] 加载员工失败:', response.error);
