@@ -6,9 +6,17 @@
 -- ============================================
 INSERT INTO departments (id, name, code, parent_id, sort_order, status, department_type)
 VALUES 
+  -- 工程技术中心（核心部门）及其子部门
   ('dept-engineering', '工程技术中心', 'ENG', NULL, 1, 'active', 'engineering'),
   ('dept-testing', '测试部', 'TEST', 'dept-engineering', 1, 'active', 'engineering'),
   ('dept-rd', '研发部', 'RD', 'dept-engineering', 2, 'active', 'engineering'),
+  ('dept-frontend', '前端开发部', 'FRONTEND', 'dept-engineering', 3, 'active', 'engineering'),
+  ('dept-backend', '后端开发部', 'BACKEND', 'dept-engineering', 4, 'active', 'engineering'),
+  ('dept-architecture', '架构部', 'ARCH', 'dept-engineering', 5, 'active', 'engineering'),
+  ('dept-devops', '运维开发部', 'DEVOPS', 'dept-engineering', 6, 'active', 'engineering'),
+  ('dept-security', '安全部', 'SECURITY', 'dept-engineering', 7, 'active', 'engineering'),
+  
+  -- 其他核心部门
   ('dept-hr', '人力资源部', 'HR', NULL, 2, 'active', 'support'),
   ('dept-sales', '销售部', 'SALES', NULL, 3, 'active', 'sales'),
   ('dept-production', '生产部', 'PROD', NULL, 4, 'active', 'manufacturing'),
@@ -43,6 +51,30 @@ VALUES
   ('pos-senior-engineer', '高级工程师', 'dept-engineering', 'senior', '负责核心技术开发和架构设计'),
   ('pos-mid-engineer', '中级工程师', 'dept-engineering', 'intermediate', '负责模块开发和功能实现'),
   ('pos-junior-engineer', '初级工程师', 'dept-engineering', 'junior', '负责基础开发和学习成长'),
+  
+  -- 前端开发部
+  ('pos-frontend-lead', '前端开发主管', 'dept-frontend', 'senior', '负责前端技术架构和团队管理'),
+  ('pos-senior-frontend', '高级前端工程师', 'dept-frontend', 'senior', '负责前端核心模块开发'),
+  ('pos-mid-frontend', '中级前端工程师', 'dept-frontend', 'intermediate', '负责前端功能开发'),
+  ('pos-junior-frontend', '初级前端工程师', 'dept-frontend', 'junior', '负责前端基础开发'),
+  
+  -- 后端开发部
+  ('pos-backend-lead', '后端开发主管', 'dept-backend', 'senior', '负责后端架构和团队管理'),
+  ('pos-senior-backend', '高级后端工程师', 'dept-backend', 'senior', '负责后端核心服务开发'),
+  ('pos-mid-backend', '中级后端工程师', 'dept-backend', 'intermediate', '负责后端功能开发'),
+  ('pos-junior-backend', '初级后端工程师', 'dept-backend', 'junior', '负责后端基础开发'),
+  
+  -- 架构部
+  ('pos-architect', '架构师', 'dept-architecture', 'senior', '负责系统架构设计和技术选型'),
+  ('pos-senior-architect', '高级架构师', 'dept-architecture', 'senior', '负责复杂系统架构设计'),
+  
+  -- 运维开发部
+  ('pos-devops-lead', '运维开发主管', 'dept-devops', 'senior', '负责 CI/CD 和基础设施管理'),
+  ('pos-senior-devops', '高级运维工程师', 'dept-devops', 'senior', '负责自动化运维和监控'),
+  
+  -- 安全部
+  ('pos-security-lead', '安全主管', 'dept-security', 'senior', '负责安全策略和漏洞管理'),
+  ('pos-security-engineer', '安全工程师', 'dept-security', 'intermediate', '负责安全测试和审计'),
   
   -- 测试部
   ('pos-test-manager', '测试经理', 'dept-testing', 'senior', '负责测试团队管理和质量保障'),
@@ -226,6 +258,66 @@ INSERT INTO metric_templates (id, name, description, position_id, status)
 VALUES ('template-eng-junior', '工程技术中心 - 初级工程师考核模板', '适用于初级工程师的绩效考核', 'pos-junior-engineer', 'active')
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
 
+-- 前端开发部 - 前端开发主管模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-frontend-lead', '前端开发部 - 前端开发主管考核模板', '适用于前端开发主管的绩效考核', 'pos-frontend-lead', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 前端开发部 - 高级前端工程师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-frontend-senior', '前端开发部 - 高级前端工程师考核模板', '适用于高级前端工程师的绩效考核', 'pos-senior-frontend', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 前端开发部 - 中级前端工程师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-frontend-mid', '前端开发部 - 中级前端工程师考核模板', '适用于中级前端工程师的绩效考核', 'pos-mid-frontend', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 后端开发部 - 后端开发主管模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-backend-lead', '后端开发部 - 后端开发主管考核模板', '适用于后端开发主管的绩效考核', 'pos-backend-lead', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 后端开发部 - 高级后端工程师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-backend-senior', '后端开发部 - 高级后端工程师考核模板', '适用于高级后端工程师的绩效考核', 'pos-senior-backend', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 后端开发部 - 中级后端工程师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-backend-mid', '后端开发部 - 中级后端工程师考核模板', '适用于中级后端工程师的绩效考核', 'pos-mid-backend', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 架构部 - 架构师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-architect', '架构部 - 架构师考核模板', '适用于架构师的绩效考核', 'pos-architect', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 架构部 - 高级架构师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-senior-architect', '架构部 - 高级架构师考核模板', '适用于高级架构师的绩效考核', 'pos-senior-architect', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 运维开发部 - 运维开发主管模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-devops-lead', '运维开发部 - 运维开发主管考核模板', '适用于运维开发主管的绩效考核', 'pos-devops-lead', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 运维开发部 - 高级运维工程师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-devops-senior', '运维开发部 - 高级运维工程师考核模板', '适用于高级运维工程师的绩效考核', 'pos-senior-devops', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 安全部 - 安全主管模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-security-lead', '安全部 - 安全主管考核模板', '适用于安全主管的绩效考核', 'pos-security-lead', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
+-- 安全部 - 安全工程师模板
+INSERT INTO metric_templates (id, name, description, position_id, status)
+VALUES ('template-security-engineer', '安全部 - 安全工程师考核模板', '适用于安全工程师的绩效考核', 'pos-security-engineer', 'active')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+
 -- 测试部 - 高级测试工程师模板
 INSERT INTO metric_templates (id, name, description, position_id, status)
 VALUES ('template-test-senior', '测试部 - 高级测试工程师考核模板', '适用于高级测试工程师的绩效考核', 'pos-senior-tester', 'active')
@@ -308,6 +400,146 @@ VALUES
   ('template-eng-junior', 'metric-professional-skills', 10, true),
   ('template-eng-junior', 'metric-initiative', 10, true),
   ('template-eng-junior', 'metric-teamwork', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 前端开发主管模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-frontend-lead', 'metric-task-completion', 20, true),
+  ('template-frontend-lead', 'metric-code-quality', 15, true),
+  ('template-frontend-lead', 'metric-project-delivery', 20, true),
+  ('template-frontend-lead', 'metric-leadership', 15, true),
+  ('template-frontend-lead', 'metric-professional-skills', 10, true),
+  ('template-frontend-lead', 'metric-teamwork', 10, true),
+  ('template-frontend-lead', 'metric-innovation', 10, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 高级前端工程师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-frontend-senior', 'metric-task-completion', 25, true),
+  ('template-frontend-senior', 'metric-code-quality', 20, true),
+  ('template-frontend-senior', 'metric-bug-fix-rate', 15, true),
+  ('template-frontend-senior', 'metric-innovation', 15, true),
+  ('template-frontend-senior', 'metric-documentation', 10, true),
+  ('template-frontend-senior', 'metric-professional-skills', 10, true),
+  ('template-frontend-senior', 'metric-teamwork', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 中级前端工程师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-frontend-mid', 'metric-task-completion', 30, true),
+  ('template-frontend-mid', 'metric-code-quality', 20, true),
+  ('template-frontend-mid', 'metric-bug-fix-rate', 15, true),
+  ('template-frontend-mid', 'metric-documentation', 10, true),
+  ('template-frontend-mid', 'metric-professional-skills', 10, true),
+  ('template-frontend-mid', 'metric-learning-ability', 10, true),
+  ('template-frontend-mid', 'metric-teamwork', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 后端开发主管模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-backend-lead', 'metric-task-completion', 20, true),
+  ('template-backend-lead', 'metric-code-quality', 15, true),
+  ('template-backend-lead', 'metric-project-delivery', 20, true),
+  ('template-backend-lead', 'metric-leadership', 15, true),
+  ('template-backend-lead', 'metric-professional-skills', 10, true),
+  ('template-backend-lead', 'metric-teamwork', 10, true),
+  ('template-backend-lead', 'metric-innovation', 10, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 高级后端工程师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-backend-senior', 'metric-task-completion', 25, true),
+  ('template-backend-senior', 'metric-code-quality', 20, true),
+  ('template-backend-senior', 'metric-bug-fix-rate', 15, true),
+  ('template-backend-senior', 'metric-innovation', 15, true),
+  ('template-backend-senior', 'metric-documentation', 10, true),
+  ('template-backend-senior', 'metric-professional-skills', 10, true),
+  ('template-backend-senior', 'metric-teamwork', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 中级后端工程师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-backend-mid', 'metric-task-completion', 30, true),
+  ('template-backend-mid', 'metric-code-quality', 20, true),
+  ('template-backend-mid', 'metric-bug-fix-rate', 15, true),
+  ('template-backend-mid', 'metric-documentation', 10, true),
+  ('template-backend-mid', 'metric-professional-skills', 10, true),
+  ('template-backend-mid', 'metric-learning-ability', 10, true),
+  ('template-backend-mid', 'metric-teamwork', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 架构师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-architect', 'metric-task-completion', 20, true),
+  ('template-architect', 'metric-innovation', 25, true),
+  ('template-architect', 'metric-problem-solving', 20, true),
+  ('template-architect', 'metric-documentation', 15, true),
+  ('template-architect', 'metric-professional-skills', 10, true),
+  ('template-architect', 'metric-leadership', 10, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 高级架构师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-senior-architect', 'metric-task-completion', 15, true),
+  ('template-senior-architect', 'metric-innovation', 30, true),
+  ('template-senior-architect', 'metric-problem-solving', 25, true),
+  ('template-senior-architect', 'metric-documentation', 15, true),
+  ('template-senior-architect', 'metric-leadership', 15, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 运维开发主管模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-devops-lead', 'metric-task-completion', 20, true),
+  ('template-devops-lead', 'metric-efficiency', 20, true),
+  ('template-devops-lead', 'metric-leadership', 15, true),
+  ('template-devops-lead', 'metric-innovation', 15, true),
+  ('template-devops-lead', 'metric-documentation', 10, true),
+  ('template-devops-lead', 'metric-teamwork', 10, true),
+  ('template-devops-lead', 'metric-problem-solving', 10, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 高级运维工程师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-devops-senior', 'metric-task-completion', 25, true),
+  ('template-devops-senior', 'metric-efficiency', 20, true),
+  ('template-devops-senior', 'metric-innovation', 15, true),
+  ('template-devops-senior', 'metric-problem-solving', 15, true),
+  ('template-devops-senior', 'metric-documentation', 10, true),
+  ('template-devops-senior', 'metric-professional-skills', 10, true),
+  ('template-devops-senior', 'metric-teamwork', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 安全主管模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-security-lead', 'metric-task-completion', 20, true),
+  ('template-security-lead', 'metric-problem-solving', 25, true),
+  ('template-security-lead', 'metric-leadership', 15, true),
+  ('template-security-lead', 'metric-documentation', 15, true),
+  ('template-security-lead', 'metric-innovation', 10, true),
+  ('template-security-lead', 'metric-teamwork', 10, true),
+  ('template-security-lead', 'metric-professional-skills', 5, true)
+ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
+
+-- 安全工程师模板指标配置
+INSERT INTO metric_template_metrics (template_id, metric_id, weight, required)
+VALUES
+  ('template-security-engineer', 'metric-task-completion', 25, true),
+  ('template-security-engineer', 'metric-problem-solving', 20, true),
+  ('template-security-engineer', 'metric-documentation', 20, true),
+  ('template-security-engineer', 'metric-professional-skills', 15, true),
+  ('template-security-engineer', 'metric-learning-ability', 10, true),
+  ('template-security-engineer', 'metric-teamwork', 10, true)
 ON CONFLICT (template_id, metric_id) DO UPDATE SET weight = EXCLUDED.weight;
 
 -- 高级测试工程师模板指标配置
