@@ -9,7 +9,7 @@ const Login = lazy(() => import('@/pages/Login').then((module) => ({ default: mo
 const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((module) => ({ default: module.EmployeeDashboard })));
 const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
 const MyScores = lazy(() => import('@/pages/Employee/MyScores').then((module) => ({ default: module.MyScores })));
-const EmployeePerformanceAppeals = lazy(() => import('@/pages/Employee/PerformanceAppeals').then((module) => ({ default: module.EmployeePerformanceAppeals })));
+// HIDDEN: const EmployeePerformanceAppeals = lazy(() => import('@/pages/Employee/PerformanceAppeals').then((module) => ({ default: module.EmployeePerformanceAppeals })));
 const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
 const ScoringManagement = lazy(() => import('@/pages/Manager/Scoring').then((module) => ({ default: module.ScoringManagement })));
 const DifferentiatedScoring = lazy(() => import('@/pages/Manager/DifferentiatedScoring').then((module) => ({ default: module.DifferentiatedScoring })));
@@ -26,7 +26,7 @@ const GMDataExport = lazy(() => import('@/pages/GM/GMDataExport').then((module) 
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
 const EmployeeInfo = lazy(() => import('@/pages/HR/EmployeeInfo').then((module) => ({ default: module.EmployeeInfo })));
 const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((module) => ({ default: module.DataManagement })));
-const HRAppealsManagement = lazy(() => import('@/pages/HR/AppealsManagement').then((module) => ({ default: module.HRAppealsManagement })));
+// HIDDEN: const HRAppealsManagement = lazy(() => import('@/pages/HR/AppealsManagement').then((module) => ({ default: module.HRAppealsManagement })));
 const AssessmentPublication = lazy(() => import('@/pages/HR/AssessmentPublication').then((module) => ({ default: module.AssessmentPublication })));
 // HIDDEN: const ObjectiveTree = lazy(() => import('@/pages/OKR/ObjectiveTree').then((module) => ({ default: module.ObjectiveTree })));
 // HIDDEN: const MyObjectives = lazy(() => import('@/pages/OKR/MyObjectives').then((module) => ({ default: module.MyObjectives })));
@@ -34,13 +34,13 @@ const MyKPI = lazy(() => import('@/pages/Employee/MyKPI').then((module) => ({ de
 const MonthlyReport = lazy(() => import('@/pages/Employee/MonthlyReport').then((module) => ({ default: module.MonthlyReport })));
 // HIDDEN: const TeamObjectives = lazy(() => import('@/pages/Manager/TeamObjectives').then((module) => ({ default: module.TeamObjectives })));
 const ReviewReports = lazy(() => import('@/pages/Manager/ReviewReports').then((module) => ({ default: module.ReviewReports })));
-const InterviewSchedule = lazy(() => import('@/pages/Manager/InterviewSchedule').then((module) => ({ default: module.InterviewSchedule })));
+// HIDDEN: const InterviewSchedule = lazy(() => import('@/pages/Manager/InterviewSchedule').then((module) => ({ default: module.InterviewSchedule })));
 const PeerReview = lazy(() => import('@/pages/Employee/PeerReview').then((module) => ({ default: module.PeerReview })));
-const InterviewPlans = lazy(() => import('@/pages/Manager/InterviewPlans').then((module) => ({ default: module.InterviewPlans })));
-const InterviewRecord = lazy(() => import('@/pages/Manager/InterviewRecord').then((module) => ({ default: module.InterviewRecord })));
+// HIDDEN: const InterviewPlans = lazy(() => import('@/pages/Manager/InterviewPlans').then((module) => ({ default: module.InterviewPlans })));
+// HIDDEN: const InterviewRecord = lazy(() => import('@/pages/Manager/InterviewRecord').then((module) => ({ default: module.InterviewRecord })));
 // HIDDEN: const GoalApproval = lazy(() => import('@/pages/Manager/GoalApproval'));
 // HIDDEN: const GoalDashboard = lazy(() => import('@/pages/Manager/GoalDashboard'));
-const AppealsReview = lazy(() => import('@/pages/Manager/AppealsReview').then((module) => ({ default: module.AppealsReview })));
+// HIDDEN: const AppealsReview = lazy(() => import('@/pages/Manager/AppealsReview').then((module) => ({ default: module.AppealsReview })));
 // HIDDEN: const MyGoalPlanning = lazy(() => import('@/pages/Employee/MyGoalPlanning').then((module) => ({ default: module.MyGoalPlanning })));
 const DepartmentTree = lazy(() => import('@/pages/HR/DepartmentTree').then((module) => ({ default: module.DepartmentTree })));
 const DepartmentClassification = lazy(() => import('@/pages/HR/DepartmentClassification').then((module) => ({ default: module.DepartmentClassification })));
@@ -113,6 +113,12 @@ const DISABLED_FEATURE_PATHS = [
   '/admin/objectives',
   '/admin/goal-setting',
   '/admin/goal-progress',
+  '/employee/appeals',
+  '/manager/interviews',
+  '/manager/interview-plans',
+  '/manager/interview-records',
+  '/manager/appeals',
+  '/hr/appeals',
 ];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
@@ -229,7 +235,7 @@ function App() {
           {/* <Route path="/employee/my-objectives" element={<MyObjectives />} /> */}
           <Route path="/employee/kpi" element={<MyKPI />} />
           <Route path="/employee/monthly-report" element={<MonthlyReport />} />
-          <Route path="/employee/appeals" element={<EmployeePerformanceAppeals />} />
+          {/* <Route path="/employee/appeals" element={<EmployeePerformanceAppeals />} /> */}
           {/* <Route path="/employee/goal-confirmation" element={<GoalConfirmation />} /> */}
           <Route path="/employee/peer-review" element={<PeerReview />} />
           {/* <Route path="/employee/goal-progress" element={<GoalProgressPage />} /> */}
@@ -253,13 +259,13 @@ function App() {
           {/* <Route path="/manager/goal-dashboard" element={<GoalDashboard />} /> */}
           <Route path="/manager/review-reports" element={<ReviewReports />} />
           <Route path="/manager/peer-review-management" element={<PeerReviewManage />} />
-          <Route path="/manager/interviews" element={<InterviewSchedule />} />
-          <Route path="/manager/interview-plans" element={<InterviewPlans />} />
-          <Route path="/manager/interview-records" element={<InterviewRecord />} />
+          {/* <Route path="/manager/interviews" element={<InterviewSchedule />} /> */}
+          {/* <Route path="/manager/interview-plans" element={<InterviewPlans />} /> */}
+          {/* <Route path="/manager/interview-records" element={<InterviewRecord />} /> */}
           {/* <Route path="/manager/goal-setting" element={<GoalSetting />} /> */}
           {/* <Route path="/manager/goal-progress" element={<GoalProgressPage />} /> */}
           <Route path="/manager/progress-dashboard" element={<ProgressDashboard />} />
-          <Route path="/manager/appeals" element={<AppealsReview />} />
+          {/* <Route path="/manager/appeals" element={<AppealsReview />} /> */}
         </Route>
 
         {/* GM routes */}
@@ -282,7 +288,7 @@ function App() {
           <Route path="/hr/employee-info" element={<EmployeeInfo />} />
           <Route path="/hr/data-management" element={<DataManagement />} />
           <Route path="/hr/performance-ranking-config" element={<PerformanceRankingConfig />} />
-          <Route path="/hr/appeals" element={<HRAppealsManagement />} />
+          {/* <Route path="/hr/appeals" element={<HRAppealsManagement />} /> */}
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/performance-analytics" element={<PerformanceAnalytics />} />
           <Route path="/hr/employee-trend/:employeeId" element={<EmployeeTrend />} />

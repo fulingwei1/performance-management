@@ -35,7 +35,7 @@ const employeeNavItems = [
   { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
   { path: '/employee/monthly-report', label: '月度汇报', icon: FileText },
   { path: '/employee/peer-review', label: '360度互评', icon: Users },
-  { path: '/employee/appeals', label: '绩效申诉', icon: AlertCircle },
+  // HIDDEN: { path: '/employee/appeals', label: '绩效申诉', icon: AlertCircle },
 ];
 
 const managerNavItems = [
@@ -47,10 +47,10 @@ const managerNavItems = [
   // HIDDEN: { path: '/manager/goal-dashboard', label: '进度仪表板', icon: BarChart3 },
   { path: '/manager/review-reports', label: '月报审阅', icon: MessageSquare },
   { path: '/manager/peer-review-management', label: '360互评统计', icon: Users },
-  { path: '/manager/interview-plans', label: '面谈计划', icon: Calendar },
-  { path: '/manager/interview-records', label: '面谈记录', icon: FileText },
+  // HIDDEN: { path: '/manager/interview-plans', label: '面谈计划', icon: Calendar },
+  // HIDDEN: { path: '/manager/interview-records', label: '面谈记录', icon: FileText },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },
-  { path: '/manager/appeals', label: '申诉审核', icon: AlertCircle },
+  // HIDDEN: { path: '/manager/appeals', label: '申诉审核', icon: AlertCircle },
 ];
 
 const gmNavItems = [
@@ -69,7 +69,7 @@ const hrNavItems = [
   { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
   { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
   { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
-  { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
+  // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
   { path: '/hr/task-freeze-management', label: '任务冻结管理', icon: Lock },
   { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
