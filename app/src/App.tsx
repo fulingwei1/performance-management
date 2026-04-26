@@ -42,12 +42,12 @@ const PeerReview = lazy(() => import('@/pages/Employee/PeerReview').then((module
 // HIDDEN: const GoalDashboard = lazy(() => import('@/pages/Manager/GoalDashboard'));
 // HIDDEN: const AppealsReview = lazy(() => import('@/pages/Manager/AppealsReview').then((module) => ({ default: module.AppealsReview })));
 // HIDDEN: const MyGoalPlanning = lazy(() => import('@/pages/Employee/MyGoalPlanning').then((module) => ({ default: module.MyGoalPlanning })));
-const DepartmentTree = lazy(() => import('@/pages/HR/DepartmentTree').then((module) => ({ default: module.DepartmentTree })));
+// HIDDEN: const DepartmentTree = lazy(() => import('@/pages/HR/DepartmentTree').then((module) => ({ default: module.DepartmentTree })));
 const DepartmentClassification = lazy(() => import('@/pages/HR/DepartmentClassification').then((module) => ({ default: module.DepartmentClassification })));
 const AssessmentTemplates = lazy(() => import('@/pages/HR/AssessmentTemplates').then((module) => ({ default: module.AssessmentTemplates })));
 const MetricLibraryManagement = lazy(() => import('@/pages/HR/MetricLibraryManagement').then((module) => ({ default: module.MetricLibraryManagement })));
 const AssessmentExport = lazy(() => import('@/pages/HR/AssessmentExport').then((module) => ({ default: module.AssessmentExport })));
-const OrganizationChart = lazy(() => import('@/pages/HR/OrganizationChart').then((module) => ({ default: module.OrganizationChart })));
+// HIDDEN: const OrganizationChart = lazy(() => import('@/pages/HR/OrganizationChart').then((module) => ({ default: module.OrganizationChart })));
 const DataImport = lazy(() => import('@/pages/HR/DataImport').then((module) => ({ default: module.DataImport })));
 const DataExport = lazy(() => import('@/pages/HR/DataExport').then((module) => ({ default: module.DataExport })));
 const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement').then((module) => ({ default: module.PeerReviewManagement })));
@@ -119,6 +119,9 @@ const DISABLED_FEATURE_PATHS = [
   '/manager/interview-records',
   '/manager/appeals',
   '/hr/appeals',
+  '/hr/department-tree',
+  '/hr/organization-chart',
+  '/admin/department-tree',
 ];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
@@ -295,12 +298,12 @@ function App() {
           {/* <Route path="/hr/objectives" element={<ObjectiveTree />} /> */}
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
-          <Route path="/hr/department-tree" element={<DepartmentTree />} />
+          {/* <Route path="/hr/department-tree" element={<DepartmentTree />} /> */}
           <Route path="/hr/department-classification" element={<DepartmentClassification />} />
           <Route path="/hr/assessment-templates" element={<AssessmentTemplates />} />
           <Route path="/hr/metric-library" element={<MetricLibraryManagement />} />
           <Route path="/hr/assessment-export" element={<AssessmentExport />} />
-          <Route path="/hr/organization-chart" element={<OrganizationChart />} />
+          {/* <Route path="/hr/organization-chart" element={<OrganizationChart />} /> */}
           <Route path="/hr/data-import" element={<DataImport />} />
           <Route path="/hr/data-export" element={<DataExport />} />
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
@@ -319,7 +322,7 @@ function App() {
           <Route path="/admin/analytics" element={<GMAnalytics />} />
           <Route path="/admin/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/admin/task-freeze-management" element={<TaskFreezeManagement />} />
-          <Route path="/admin/department-tree" element={<DepartmentTree />} />
+          {/* <Route path="/admin/department-tree" element={<DepartmentTree />} /> */}
           <Route path="/admin/assessment-publication" element={<AssessmentPublication />} />
           <Route path="/admin/scoring" element={<GMScoring />} />
           <Route path="/admin/data-export" element={<GMDataExport />} />

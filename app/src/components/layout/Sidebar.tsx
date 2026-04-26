@@ -72,8 +72,8 @@ const hrNavItems = [
   // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
   { path: '/hr/task-freeze-management', label: '任务冻结管理', icon: Lock },
-  { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
-  { path: '/hr/organization-chart', label: '架构可视化', icon: Building2 },
+  // HIDDEN: { path: '/hr/department-tree', label: '组织架构', icon: Building2 },
+  // HIDDEN: { path: '/hr/organization-chart', label: '架构可视化', icon: Building2 },
   { path: '/hr/data-import', label: '数据导入', icon: Upload },
   { path: '/hr/data-export', label: '数据导出', icon: Download },
 ];
@@ -87,7 +87,7 @@ const adminNavItems = [
   { path: '/admin/assessment-publication', label: '考核结果发布', icon: Send },
   { path: '/admin/peer-review-management', label: '360互评管理', icon: ShieldCheck },
   { path: '/admin/task-freeze-management', label: '任务冻结管理', icon: Lock },
-  { path: '/admin/department-tree', label: '组织架构', icon: Building2 },
+  // HIDDEN: { path: '/admin/department-tree', label: '组织架构', icon: Building2 },
   { path: '/admin/scoring', label: '总经理评分', icon: Award },
   { path: '/admin/data-export', label: '数据导出', icon: LogOut },
 ];
