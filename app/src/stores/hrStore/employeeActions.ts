@@ -13,9 +13,10 @@ export const createEmployeeActions = (set: any, get: any) => ({
         console.error('[hrStore] 加载员工失败:', response.error);
         set({ error: response.error || '获取员工失败', loading: false });
       }
-    } catch (error: any) {
-      console.error('[hrStore] 网络错误:', error);
-      set({ error: error.message || '网络错误', loading: false });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '网络错误';
+      console.error('[hrStore] 网络错误:', msg);
+      set({ error: msg, loading: false });
     }
   },
   

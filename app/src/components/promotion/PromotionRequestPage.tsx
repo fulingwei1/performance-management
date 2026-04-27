@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Employee, EmployeeLevel, PerformanceRecord } from '@/types';
 import { useAuthStore } from '@/stores/authStore';
 import { usePromotionStore } from '@/stores/promotionStore';
-import { employeeApi, performanceApi } from '@/services/api';
+import { employeeApi, performanceApi, request } from '@/services/api';
 import { employeeLevels, getLevelLabel } from '@/lib/config';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -188,25 +188,15 @@ export function PromotionRequestPage({
     setAiLoading(prev => ({ ...prev, performance: true }));
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/promotion-performance`, {
+      const result = await request('/ai/promotion-performance', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           employeeName: selectedEmployee.name,
           currentLevel: getLevelLabel(selectedEmployee.level),
           targetLevel: getLevelLabel(targetLevel)
         })
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
+      const versions = result.data?.versions || [];
         if (versions.length > 0) {
           setPerformanceSummary(versions[0]);
           toast.success('AI已生成绩效总结');
@@ -234,15 +224,8 @@ export function PromotionRequestPage({
     setAiLoading(prev => ({ ...prev, skills: true }));
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/promotion-skills`, {
+      const result = await request('/ai/promotion-skills', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           employeeName: selectedEmployee.name,
           currentLevel: getLevelLabel(selectedEmployee.level),
@@ -250,14 +233,11 @@ export function PromotionRequestPage({
           department: selectedEmployee.department
         })
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
-        if (versions.length > 0) {
-          setSkillSummary(versions[0]);
-          toast.success('AI已生成技能总结');
-        }
+      const versions = result.data?.versions || [];
+      if (versions.length > 0) {
+        setSkillSummary(versions[0]);
+        toast.success('AI已生成技能总结');
+      }
       } else {
         toast.error('AI生成失败');
       }
@@ -281,31 +261,18 @@ export function PromotionRequestPage({
     setAiLoading(prev => ({ ...prev, competency: true }));
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/promotion-competency`, {
+      const result = await request('/ai/promotion-competency', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           employeeName: selectedEmployee.name,
           currentLevel: getLevelLabel(selectedEmployee.level),
           targetLevel: getLevelLabel(targetLevel)
         })
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
-        if (versions.length > 0) {
-          setCompetencySummary(versions[0]);
-          toast.success('AI已生成胜任力总结');
-        }
-      } else {
-        toast.error('AI生成失败');
+      const versions = result.data?.versions || [];
+      if (versions.length > 0) {
+        setCompetencySummary(versions[0]);
+        toast.success('AI已生成胜任力总结');
       }
     } catch (error) {
       console.error('Error generating AI:', error);
@@ -327,15 +294,8 @@ export function PromotionRequestPage({
     setAiLoading(prev => ({ ...prev, work: true }));
 
     try {
-      const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-
-      const response = await fetch(`${API_BASE_URL}/ai/promotion-work`, {
+      const result = await request('/ai/promotion-work', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({
           employeeName: selectedEmployee.name,
           currentLevel: getLevelLabel(selectedEmployee.level),
@@ -343,14 +303,10 @@ export function PromotionRequestPage({
           department: selectedEmployee.department
         })
       });
-
-      if (response.ok) {
-        const result = await response.json();
-        const versions = result.data.versions || [];
-        if (versions.length > 0) {
-          setWorkSummary(versions[0]);
-          toast.success('AI已生成工作总结');
-        }
+      const versions = result.data?.versions || [];
+      if (versions.length > 0) {
+        setWorkSummary(versions[0]);
+        toast.success('AI已生成工作总结');
       } else {
         toast.error('AI生成失败');
       }

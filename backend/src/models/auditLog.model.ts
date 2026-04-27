@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger';
+const logger = createLogger('AuditLog');
 import { query, USE_MEMORY_DB } from '../config/database';
 
 export type AuditAction = 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'LOGIN' | 'LOGOUT';
@@ -83,7 +85,7 @@ export class AuditLogModel {
       ]);
     } catch (error) {
       // 审计日志失败不应该影响主流程，仅记录错误
-      console.error('[AuditLog Error]', error);
+      logger.error('', error);
     }
   }
 

@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger';
+const logger = createLogger('AuditLog');
 import { Request, Response, NextFunction } from 'express';
 import { AuditLogModel, AuditAction } from '../models/auditLog.model';
 
@@ -204,9 +206,9 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
           error_message: !isSuccess ? body?.message : undefined,
         });
 
-        console.log(`[AuditLog] ${action} ${module} - ${description} - ${isSuccess ? 'SUCCESS' : 'FAILED'} (${Date.now() - startTime}ms)`);
+        logger.info(` ${action} ${module} - ${description} - ${isSuccess ? 'SUCCESS' : 'FAILED'} (${Date.now() - startTime}ms)`);
       } catch (error) {
-        console.error('[AuditLog Error]', error);
+        logger.error('', error);
       }
     });
 
@@ -252,6 +254,6 @@ export const logAudit = async (
       error_message: options.errorMessage,
     });
   } catch (error) {
-    console.error('[AuditLog Error]', error);
+    logger.error('', error);
   }
 };

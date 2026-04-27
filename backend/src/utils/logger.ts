@@ -21,7 +21,7 @@ export const createLogger = (module: string) => ({
   warn: (message: string, data?: Record<string, unknown>) => {
     console.warn(formatMessage('warn', module, message, data));
   },
-  error: (message: string, data?: Record<string, unknown>) => {
-    console.error(formatMessage('error', module, message, data));
+  error: (message: string, data?: Record<string, unknown> | unknown) => {
+    console.error(formatMessage('error', module, message, typeof data === 'object' && data !== null && !Array.isArray(data) ? data as Record<string, unknown> : undefined), data instanceof Error ? data.message : '');
   },
 });
