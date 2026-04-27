@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { notificationApi } from '../services/api';
+import { toast } from 'sonner';
 
 interface Notification {
   id: string;
@@ -30,6 +31,7 @@ export const NotificationBell: React.FC = () => {
       }
     } catch (error) {
       console.error('获取未读数量失败:', error);
+      toast.error('获取未读通知数量失败');
     }
   };
 
@@ -43,6 +45,7 @@ export const NotificationBell: React.FC = () => {
       }
     } catch (error) {
       console.error('获取通知列表失败:', error);
+      toast.error('获取通知列表失败');
     } finally {
       setLoading(false);
     }
@@ -93,6 +96,7 @@ export const NotificationBell: React.FC = () => {
       }
     } catch (error) {
       console.error('标记已读失败:', error);
+      toast.error('标记已读失败');
     }
   };
 

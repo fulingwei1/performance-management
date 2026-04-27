@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { aiApi } from '@/services/api';
+import { toast } from 'sonner';
 
 interface AIAssistantProps {
   /** AI功能类型 */
@@ -86,6 +87,7 @@ export function AIAssistant({ type, requestData, onAdopt, className }: AIAssista
 
     } catch (err: any) {
       console.error('AI生成错误:', err);
+      toast.error('AI生成失败，请重试');
       setError(err.message || '生成失败，请稍后重试');
     } finally {
       setLoading(false);

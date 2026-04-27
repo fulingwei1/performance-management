@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
 import { buildApiUrl } from '@/lib/api-config';
+import { toast } from 'sonner';
 
 interface Stats {
   totalTemplates: number;
@@ -53,6 +54,7 @@ export function AssessmentStatsCard() {
       }
     } catch (error) {
       console.error('加载统计失败:', error);
+      toast.error('加载统计数据失败');
     } finally {
       setLoading(false);
     }

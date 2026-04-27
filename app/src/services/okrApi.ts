@@ -160,17 +160,6 @@ export const departmentApi = {
     request(`/departments/${id}/manager`, { method: 'PUT', body: JSON.stringify({ managerId }) }),
 };
 
-// 互评周期
-export const peerReviewCycleApi = {
-  createCycle: (data: { title: string; year: number; quarter: number; startDate: string; endDate: string; participants: string[] }) =>
-    request('/peer-review-cycles/cycles', { method: 'POST', body: JSON.stringify(data) }),
-  getCycles: () => request('/peer-review-cycles/cycles'),
-  getPending: () => request('/peer-review-cycles/pending'),
-  submit: (data: { cycleId: string; revieweeId: string; scores: { dimension: string; score: number; comment?: string }[] }) =>
-    request('/peer-review-cycles/submit', { method: 'POST', body: JSON.stringify(data) }),
-  getResults: (cycleId: string) => request(`/peer-review-cycles/results/${cycleId}`),
-};
-
 // 绩效面谈
 export const interviewApi = {
   getMy: () => request('/okr/interviews/my'),

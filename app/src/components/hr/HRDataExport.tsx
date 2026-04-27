@@ -63,6 +63,7 @@ export function HRDataExport() {
       toast.success('导出请求已发送，文件下载即将开始');
     } catch (error: any) {
       console.error('导出失败:', error);
+      toast.error('导出失败');
       toast.error(`导出失败: ${error.message}`);
     } finally {
       setLoading(false);

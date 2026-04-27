@@ -247,7 +247,7 @@ export const useOKRStore = create<OKRState>((set, get) => ({
       set(state => ({
         objectiveFeedbacks: { ...state.objectiveFeedbacks, [objectiveId]: data.feedbacks || [] }
       }));
-    } catch (e: any) { console.error(e); }
+    } catch (e: unknown) { console.error('获取反馈失败:', e); }
   },
 
   // Strategic Objectives

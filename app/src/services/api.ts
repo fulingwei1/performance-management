@@ -1196,23 +1196,3 @@ export const dataImportApi = {
     return data;
   },
 };
-
-// 增强数据导出 API
-export const dataExportApi = {
-  exportPerformance: (filters: { startMonth: string; endMonth: string; department?: string }) => {
-    const params = new URLSearchParams({ startMonth: filters.startMonth, endMonth: filters.endMonth });
-    if (filters.department) params.set('department', filters.department);
-    return secureDownload(
-      `${API_BASE_URL}/data-export/performance?${params.toString()}`,
-      `绩效数据_${filters.startMonth}_${filters.endMonth}.xlsx`
-    );
-  },
-  exportObjectives: (filters: { year: string; department?: string }) => {
-    const params = new URLSearchParams({ year: filters.year });
-    if (filters.department) params.set('department', filters.department);
-    return secureDownload(
-      `${API_BASE_URL}/data-export/objectives?${params.toString()}`,
-      `目标数据_${filters.year}.xlsx`
-    );
-  },
-};

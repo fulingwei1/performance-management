@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/stores/authStore';
 import { strategicObjectiveApi } from '@/services/api';
+import { toast } from 'sonner';
 
 const STRATEGIC_GOALS_ENABLED = false;
 
@@ -77,6 +78,7 @@ export function StrategicGoalsDisplay({ compact = false, showDepartment = true }
       setDepartmentKeyWorks(deptWorks);
     } catch (error) {
       console.error('Error fetching strategic goals:', error);
+      toast.error('获取战略目标失败');
     } finally {
       setLoading(false);
     }

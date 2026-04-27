@@ -1,3 +1,5 @@
+import { createLogger } from '../utils/logger';
+const logger = createLogger('Automation');
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeModel } from '../models/employee.model';
@@ -16,7 +18,7 @@ export const automationController = {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const currentMonth = `${year}-${month}`;
     
-    console.log(`[Automation] 生成月度绩效任务: ${currentMonth}`);
+    logger.info(`生成月度绩效任务: ${currentMonth}`);
     
     // 获取所有员工（排除admin/hr等管理角色）
     const employees = await EmployeeModel.findAll();
@@ -24,7 +26,7 @@ export const automationController = {
       e.role === 'employee' || e.role === 'manager'
     );
     
-    console.log(`[Automation] 找到 ${targetEmployees.length} 个目标员工`);
+    logger.info(`找到 ${targetEmployees.length} 个目标员工`);
     
     // 截止日期：下月3号
     const deadline = new Date(year, now.getMonth() + 1, 3);
@@ -65,7 +67,7 @@ export const automationController = {
       createdCount++;
     }
     
-    console.log(`[Automation] 月度任务生成完成: 新增 ${createdCount} 条，跳过 ${skippedCount} 条`);
+    logger.info(`月度任务生成完成: 新增 ${createdCount} 条，跳过 ${skippedCount} 条`);
     
     res.json({
       success: true,
@@ -89,12 +91,12 @@ export const automationController = {
     const quarter = Math.ceil((now.getMonth() + 1) / 3);
     const currentQuarter = `${year}-Q${quarter}`;
     
-    console.log(`[Automation] 生成季度评分任务: ${currentQuarter}`);
+    logger.info(`生成季度评分任务: ${currentQuarter}`);
     
     // 获取所有部门经理
     const managers = await EmployeeModel.findByRole('manager');
     
-    console.log(`[Automation] 找到 ${managers.length} 个部门经理`);
+    logger.info(`找到 ${managers.length} 个部门经理`);
     
     // 这里需要调用 hrStore 的 generateGMTasks 逻辑
     // 由于是后端，我们直接插入数据库
@@ -131,7 +133,7 @@ export const automationController = {
   freezeOverdueTasks: asyncHandler(async (req: Request, res: Response) => {
     const today = new Date().toISOString().split('T')[0];
     
-    console.log(`[Automation] 检查超期任务: ${today}`);
+    logger.info(`检查超期任务: ${today}`);
     
     // 查找所有超期且未冻结的任务
     const result = await query(
@@ -145,7 +147,7 @@ export const automationController = {
     
     const frozenCount = result.affectedRows || 0;
     
-    console.log(`[Automation] 冻结了 ${frozenCount} 条超期任务`);
+    logger.info(`冻结了 ${frozenCount} 条超期任务`);
     
     res.json({
       success: true,
@@ -178,7 +180,7 @@ export const automationController = {
       [recordId]
     );
     
-    console.log(`[Automation] HR ${req.user?.userId} 解冻任务 ${recordId}`);
+    logger.info(`HR ${req.user?.userId} 解冻任务 ${recordId}`);
     
     res.json({
       success: true,
@@ -209,7 +211,7 @@ export const automationController = {
     
     const unfrozenCount = result.affectedRows || 0;
     
-    console.log(`[Automation] HR ${req.user?.userId} 批量解冻 ${month} 的任务，共 ${unfrozenCount} 条`);
+    logger.info(`HR ${req.user?.userId} 批量解冻 ${month} 的任务，共 ${unfrozenCount} 条`);
     
     res.json({
       success: true,
@@ -233,7 +235,7 @@ export const automationController = {
     const todayStr = today.toISOString().split('T')[0];
     const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
     
-    console.log(`[Automation] 检查截止日期提醒: ${todayStr} ~ ${threeDaysLaterStr}`);
+    logger.info(`检查截止日期提醒: ${todayStr} ~ ${threeDaysLaterStr}`);
     
     // 查询符合条件的任务
     const tasks = await query(
@@ -249,7 +251,7 @@ export const automationController = {
       [todayStr, threeDaysLaterStr]
     ) as any[];
     
-    console.log(`[Automation] 找到 ${tasks.length} 条需要提醒的任务`);
+    logger.info(`找到 ${tasks.length} 条需要提醒的任务`);
     
     if (tasks.length === 0) {
       return res.json({
@@ -278,7 +280,7 @@ export const automationController = {
     // 批量创建通知
     const createdCount = await NotificationModel.createBatch(notifications);
     
-    console.log(`[Automation] 成功创建 ${createdCount} 条提醒消息`);
+    logger.info(`成功创建 ${createdCount} 条提醒消息`);
     
     res.json({
       success: true,
