@@ -29,6 +29,7 @@ export function Login() {
     
     if (success) {
       const role = useAuthStore.getState().user?.role || 'employee';
+      const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
       const redirectMap: Record<string, string> = {
         employee: '/employee/dashboard',
         manager: '/manager/dashboard',
@@ -36,7 +37,7 @@ export function Login() {
         hr: '/hr/dashboard',
         admin: '/admin/dashboard',
       };
-      window.location.replace(redirectMap[role] || '/employee/dashboard');
+      window.location.replace(`${base}${redirectMap[role] || '/employee/dashboard'}`);
     }
   };
   

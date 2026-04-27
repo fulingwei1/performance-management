@@ -16,8 +16,10 @@ const clearAuthState = () => {
 const redirectToLogin = () => {
   if (typeof window === 'undefined') return;
 
-  if (window.location.pathname !== '/login') {
-    window.location.replace('/login');
+  const base = (import.meta as any).env.BASE_URL.replace(/\/+$/, '') || '';
+  const loginPath = `${base}/login`;
+  if (window.location.pathname !== loginPath) {
+    window.location.replace(loginPath);
   }
 };
 

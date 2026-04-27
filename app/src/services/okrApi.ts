@@ -116,7 +116,8 @@ export const attachmentApi = {
       if (response.status === 401) {
         localStorage.removeItem('token');
         localStorage.removeItem('auth-storage');
-        window.location.replace('/login');
+        const base = (import.meta as any).env.BASE_URL.replace(/\/+$/, '') || '';
+        window.location.replace(`${base}/login`);
         throw new Error('登录已过期，请重新登录');
       }
       throw new Error(data.message ?? data.error ?? '上传失败');
