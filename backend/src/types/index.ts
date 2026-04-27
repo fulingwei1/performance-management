@@ -25,67 +25,6 @@ export interface Employee {
   updatedAt?: Date;
 }
 
-// 员工档案（扩展信息）
-export interface EmployeeArchive extends Employee {
-  // 部门层级
-  thirdDepartment?: string;
-  
-  // 在职状态
-  workStatus?: 'active' | 'probation' | 'internship' | 'inactive' | 'retired';
-  
-  // 岗位信息
-  position?: string;
-  
-  // 入职信息
-  joinDate?: string;
-  isRegular?: boolean;
-  regularDate?: string;
-  
-  // 合同信息
-  contractStart?: string;
-  contractEnd?: string;
-  
-  // 个人信息
-  gender?: string;
-  idCard?: string;
-  birthDate?: string;
-  age?: number;
-  ethnicity?: string;
-  politicalStatus?: string;
-  maritalStatus?: string;
-  
-  // 联系方式
-  phone?: string;
-  email?: string;
-  
-  // 身体信息
-  height?: number;
-  weight?: number;
-  
-  // 地址信息
-  birthplace?: string;
-  homeAddress?: string;
-  currentAddress?: string;
-  
-  // 紧急联系人
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  
-  // 教育信息
-  school?: string;
-  graduationDate?: string;
-  major?: string;
-  education?: string;
-  
-  // 财务信息
-  bankAccount?: string;
-  socialSecurityNumber?: string;
-  providentFundNumber?: string;
-  
-  // 状态
-  status?: 'active' | 'inactive' | 'disabled';
-}
-
 // 绩效记录
 export interface PerformanceRecord {
   id: string;
@@ -177,36 +116,7 @@ export interface TaskItem {
   completionRate: number;
 }
 
-// 临时工作
-export interface TemporaryWork {
-  id: string;
-  managerId: string;
-  month: string;
-  name: string;
-  description: string;
-  completed: boolean;
-  completionRate: number;
-  addedBy: string;
-  addedAt?: Date;
-}
 
-// 总经理评分
-export interface GMManagerScore {
-  id: string;
-  managerId: string;
-  managerName?: string;
-  quarter: string;
-  monthlyTaskCompletion: number;
-  temporaryWorkCompletion: number;
-  workload: number;
-  talentDevelopment: number;
-  totalScore: number;
-  gmComment: string;
-  rank: number;
-  status: 'pending' | 'scored' | 'completed';
-  createdAt?: Date;
-  updatedAt?: Date;
-}
 
 // 经理季度工作总结
 export interface QuarterlySummary {
@@ -274,14 +184,6 @@ export interface JWTPayload {
   exp?: number;
 }
 
-// API响应格式
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
-
 // ============ 组织架构管理 ============
 export interface Department {
   id: string;
@@ -312,14 +214,6 @@ export interface Position {
   updatedAt?: Date | string;
 }
 
-export interface OrgNode {
-  id: string;
-  name: string;
-  type: 'company' | 'department' | 'position' | 'employee';
-  data: Department | Position | Employee;
-  children?: OrgNode[];
-}
-
 // ============ 考核周期管理 ============
 export type AssessmentCycleType = 'monthly' | 'quarterly' | 'annual' | 'probation';
 
@@ -341,12 +235,6 @@ export interface AssessmentCycle {
   description?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-}
-
-export interface AssessmentCalendar {
-  year: number;
-  cycles: AssessmentCycle[];
-  holidays: Holiday[];
 }
 
 export interface Holiday {
