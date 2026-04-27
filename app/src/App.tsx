@@ -32,6 +32,7 @@ const MetricLibraryManagement = lazy(() => import('@/pages/HR/MetricLibraryManag
 const AssessmentExport = lazy(() => import('@/pages/HR/AssessmentExport').then((module) => ({ default: module.AssessmentExport })));
 const DataImport = lazy(() => import('@/pages/HR/DataImport').then((module) => ({ default: module.DataImport })));
 const DataExport = lazy(() => import('@/pages/HR/DataExport').then((module) => ({ default: module.DataExport })));
+const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((module) => ({ default: module.DataManagement })));
 const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement').then((module) => ({ default: module.PeerReviewManagement })));
 const PeerReviewManage = lazy(() => import('@/pages/Manager/PeerReviewManage').then((module) => ({ default: module.PeerReviewManage })));
 const TaskFreezeManagement = lazy(() => import('@/pages/HR/TaskFreezeManagement').then((module) => ({ default: module.TaskFreezeManagement })));
@@ -243,8 +244,7 @@ function App() {
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/department-classification" element={<DepartmentClassification />} />
           <Route path="/hr/assessment-export" element={<AssessmentExport />} />
-          <Route path="/hr/data-import" element={<DataImport />} />
-          <Route path="/hr/data-export" element={<DataExport />} />
+          <Route path="/hr/data-management" element={<DataManagement />} />
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
         </Route>
 

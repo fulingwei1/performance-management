@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Lock,
   Send,
+  Database,
   AlertCircle,
   ClipboardCheck
 } from 'lucide-react';
@@ -68,8 +69,7 @@ const hrNavItems = [
   { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
   { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
   // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
-  { path: '/hr/data-import', label: '数据导入', icon: Upload },
-  { path: '/hr/data-export', label: '数据导出', icon: Download },
+  { path: '/hr/data-management', label: '数据管理', icon: Database },
 ];
 
 const adminNavItems = [
