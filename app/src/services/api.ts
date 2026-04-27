@@ -870,44 +870,6 @@ const buildQueryString = (params?: Record<string, QueryValue>) => {
   return search ? `?${search}` : '';
 };
 
-export const interviewRecordApi = {
-  getPlans: (params?: { manager_id?: string | number; employee_id?: string | number; status?: string }) =>
-    request(`/interview-records/plans${buildQueryString(params)}`),
-
-  createPlan: (data: Record<string, unknown>) => request('/interview-records/plans', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  updatePlan: (id: string | number, data: Record<string, unknown>) => request(`/interview-records/plans/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  getRecords: (params?: { manager_id?: string | number; employee_id?: string | number }) =>
-    request(`/interview-records/records${buildQueryString(params)}`),
-
-  createRecord: (data: Record<string, unknown>) => request('/interview-records/records', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  getRecord: (id: string | number) => request(`/interview-records/records/${id}`),
-
-  createImprovementPlan: (data: Record<string, unknown>) => request('/interview-records/improvement-plans', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  updateImprovementProgress: (id: string | number, data: Record<string, unknown>) => request(`/interview-records/improvement-plans/${id}/progress`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  getImprovementPlansByEmployee: (employeeId: string | number) =>
-    request(`/interview-records/improvement-plans/employee/${employeeId}`)
-};
-
 export const peerReviewApi = {
   getCycles: (query?: { status?: string; review_type?: string }) => {
     const params = new URLSearchParams();
@@ -1124,7 +1086,6 @@ export default {
   assessmentTemplate: assessmentTemplateApi,
   monthlyAssessment: monthlyAssessmentApi,
   promotion: promotionApi,
-  interviewRecord: interviewRecordApi,
   peerReview: peerReviewApi,
   assessmentPublication: assessmentPublicationApi,
   appeal: appealApi,
@@ -1133,50 +1094,12 @@ export default {
   automation: automationApi
 };
 
-// 目标进度仪表板API
-export const goalDashboardApi = {
-  getTeamProgress: () => request('/goal-dashboard/team-progress'),
-  getProgressTrend: () => request('/goal-dashboard/progress-trend'),
-};
-
 // 待办事项API
 export const todoApi = {
   getMyTodos: (status?: string) => request(`/todos/my${status ? `?status=${status}` : ''}`),
   getStatistics: () => request('/todos/statistics'),
   getSummary: () => request('/todos/summary'),
   markCompleted: (id: string) => request(`/todos/${id}/complete`, { method: 'PUT' }),
-};
-
-// 绩效分析API
-export const analyticsApi = {
-  getPerformanceDistribution: (month?: string, department?: string) => {
-    const params = new URLSearchParams();
-    if (month) params.set('month', month);
-    if (department) params.set('department', department);
-    return request(`/analytics/performance-distribution?${params.toString()}`);
-  },
-  getDepartmentComparison: (startMonth?: string, endMonth?: string) => {
-    const params = new URLSearchParams();
-    if (startMonth) params.set('startMonth', startMonth);
-    if (endMonth) params.set('endMonth', endMonth);
-    return request(`/analytics/department-comparison?${params.toString()}`);
-  },
-  getPerformanceTrend: (employeeId?: string, months?: number) => {
-    const params = new URLSearchParams();
-    if (employeeId) params.set('employeeId', employeeId);
-    if (months) params.set('months', months.toString());
-    return request(`/analytics/performance-trend?${params.toString()}`);
-  },
-  detectAnomalies: (month?: string) => {
-    const params = new URLSearchParams();
-    if (month) params.set('month', month);
-    return request(`/analytics/anomaly-detection?${params.toString()}`);
-  },
-  exportReport: (month?: string) => {
-    const token = getToken();
-    const params = month ? `?month=${month}` : '';
-    return secureDownload(`${API_BASE_URL}/analytics/report/export${params}`, `绩效分析报告-${month || 'all'}.txt`);
-  }
 };
 
 // 数据导入 API
