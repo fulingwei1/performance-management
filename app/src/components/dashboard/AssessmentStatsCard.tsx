@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Users, CheckCircle, Clock } from 'lucide-react';
-import { buildApiUrl } from '@/lib/api-config';
+import { assessmentTemplateApi } from '@/services/api';
 import { toast } from 'sonner';
 
 interface Stats {
@@ -27,30 +27,25 @@ export function AssessmentStatsCard() {
 
   const loadStats = async () => {
     try {
-      const response = await fetch(buildApiUrl('/assessment-templates?includeMetrics=true'), {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const result = await assessmentTemplateApi.getAll({ includeMetrics: true });
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          const templates = result.data;
-          
-          const deptTypeCounts: Record<string, number> = {};
-          let totalMetrics = 0;
-          
-          templates.forEach((t: any) => {
-            deptTypeCounts[t.departmentType] = (deptTypeCounts[t.departmentType] || 0) + 1;
-            if (t.metrics) totalMetrics += t.metrics.length;
-          });
-          
-          setStats({
-            totalTemplates: templates.length,
-            activeTemplates: templates.filter((t: any) => t.status === 'active').length,
-            departmentTypes: Object.entries(deptTypeCounts).map(([type, count]) => ({ type, count })),
-            totalMetrics
-          });
-        }
+      if (result?.success && result.data) {
+        const templates = result.data;
+        
+        const deptTypeCounts: Record<string, number> = {};
+        let totalMetrics = 0;
+        
+        templates.forEach((t: any) => {
+          deptTypeCounts[t.departmentType] = (deptTypeCounts[t.departmentType] || 0) + 1;
+          if (t.metrics) totalMetrics += t.metrics.length;
+        });
+        
+        setStats({
+          totalTemplates: templates.length,
+          activeTemplates: templates.filter((t: any) => t.status === 'active').length,
+          departmentTypes: Object.entries(deptTypeCounts).map(([type, count]) => ({ type, count })),
+          totalMetrics
+        });
       }
     } catch (error) {
       console.error('加载统计失败:', error);

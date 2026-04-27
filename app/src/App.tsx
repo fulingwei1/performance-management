@@ -36,7 +36,7 @@ const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement'
 const PeerReviewManage = lazy(() => import('@/pages/Manager/PeerReviewManage').then((module) => ({ default: module.PeerReviewManage })));
 const TaskFreezeManagement = lazy(() => import('@/pages/HR/TaskFreezeManagement').then((module) => ({ default: module.TaskFreezeManagement })));
 const PerformanceRankingConfig = lazy(() => import('@/pages/HR/PerformanceRankingConfig').then((module) => ({ default: module.PerformanceRankingConfig })));
-const SystemSettings = lazy(() => import('@/pages/Admin/SystemSettings').then((module) => ({ default: module.SystemSettings })));
+const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
 
@@ -239,13 +239,9 @@ function App() {
         {/* HR routes */}
         <Route element={<ProtectedLayout allowedRole="hr" />}>
           <Route path="/hr/dashboard" element={<HRDashboard />} />
-          <Route path="/hr/performance-ranking-config" element={<PerformanceRankingConfig />} />
+          <Route path="/hr/system-settings" element={<HRSystemSettings />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
-          <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
-          <Route path="/hr/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/hr/department-classification" element={<DepartmentClassification />} />
-          <Route path="/hr/assessment-templates" element={<AssessmentTemplates />} />
-          <Route path="/hr/metric-library" element={<MetricLibraryManagement />} />
           <Route path="/hr/assessment-export" element={<AssessmentExport />} />
           <Route path="/hr/data-import" element={<DataImport />} />
           <Route path="/hr/data-export" element={<DataExport />} />
@@ -256,11 +252,8 @@ function App() {
         <Route element={<ProtectedLayout allowedRole="admin" />}>
           <Route path="/admin/dashboard" element={<HRDashboard />} />
           <Route path="/admin/user-management" element={<UserManagement />} />
-          <Route path="/admin/system-settings" element={<SystemSettings />} />
-          <Route path="/admin/performance-ranking-config" element={<PerformanceRankingConfig />} />
+          <Route path="/admin/system-settings" element={<HRSystemSettings />} />
           <Route path="/admin/analytics" element={<GMAnalytics />} />
-          <Route path="/admin/peer-review-management" element={<PeerReviewManagement />} />
-          <Route path="/admin/task-freeze-management" element={<TaskFreezeManagement />} />
           <Route path="/admin/assessment-publication" element={<AssessmentPublication />} />
           <Route path="/admin/scoring" element={<GMScoring />} />
           <Route path="/admin/data-export" element={<GMDataExport />} />

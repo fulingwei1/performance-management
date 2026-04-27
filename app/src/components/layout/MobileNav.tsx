@@ -42,14 +42,13 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   hr: [
     { name: '工作台', path: '/hr/dashboard', icon: HomeIcon },
     { name: '绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
-    { name: '绩效范围/排名', path: '/hr/performance-ranking-config', icon: Cog6ToothIcon },
+    { name: '系统设置', path: '/hr/system-settings', icon: Cog6ToothIcon },
     { name: '组织架构', path: '/hr/department-tree', icon: UserGroupIcon },
   ],
   admin: [
     { name: '工作台', path: '/admin/dashboard', icon: HomeIcon },
     { name: '用户管理', path: '/admin/user-management', icon: UsersIcon },
     { name: '系统设置', path: '/admin/system-settings', icon: Cog6ToothIcon },
-    { name: '绩效范围/排名', path: '/admin/performance-ranking-config', icon: ChartBarIcon },
   ],
 };
 
