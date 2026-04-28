@@ -52,42 +52,31 @@ const ROLE_HOME: Record<string, string> = {
 const DISABLED_FEATURE_PATHS = [
   '/notifications',
   '/employee/assignments',
-  '/employee/contract',
   '/employee/related-okr',
-  '/employee/promotion',
-  '/employee/my-bonus',
   '/employee/my-objectives',
   '/employee/objectives',
   '/employee/goal-planning',
   '/employee/goal-setting',
   '/employee/goal-confirmation',
   '/employee/goal-progress',
-  '/manager/promotion',
   '/manager/team-objectives',
   '/manager/goal-approval',
   '/manager/goal-dashboard',
   '/manager/goal-setting',
   '/manager/goal-progress',
   '/manager/objectives',
-  '/gm/promotion-approvals',
   '/gm/strategic-overview',
   '/gm/strategic-goals',
   '/gm/objectives',
   '/gm/goal-setting',
   '/gm/goal-progress',
-  '/hr/promotion-approvals',
   '/hr/strategic-objectives',
-  '/hr/contract-management',
   '/hr/okr-dashboard',
-  '/hr/bonus-management',
   '/hr/objectives',
   '/hr/goal-setting',
   '/hr/goal-progress',
   '/admin/strategic-objectives',
-  '/admin/contract-management',
   '/admin/okr-dashboard',
-  '/admin/promotion-approvals',
-  '/admin/bonus-management',
   '/admin/objectives',
   '/admin/goal-setting',
   '/admin/goal-progress',
@@ -99,7 +88,6 @@ const DISABLED_FEATURE_PATHS = [
   '/hr/appeals',
   '/hr/department-tree',
   '/hr/organization-chart',
-  '/admin/department-tree',
 ];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
@@ -246,6 +234,12 @@ function App() {
           <Route path="/hr/assessment-export" element={<AssessmentExport />} />
           <Route path="/hr/data-management" element={<DataManagement />} />
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
+          <Route path="/hr/data-import" element={<DataImport />} />
+          <Route path="/hr/assessment-templates" element={<AssessmentTemplates />} />
+          <Route path="/hr/metric-library" element={<MetricLibraryManagement />} />
+          <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
+          <Route path="/hr/performance-ranking-config" element={<PerformanceRankingConfig />} />
+          <Route path="/hr/task-freeze" element={<TaskFreezeManagement />} />
         </Route>
 
         {/* Admin routes */}

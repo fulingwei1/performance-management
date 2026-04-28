@@ -64,12 +64,18 @@ const gmNavItems = [
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/hr/system-settings', label: '系统设置', icon: Settings },
-  { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
-  { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
-  { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
-  // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
+  { path: '/hr/data-import', label: '数据导入', icon: Upload },
   { path: '/hr/data-management', label: '数据管理', icon: Database },
+  { path: '/hr/assessment-templates', label: '考核模板', icon: FileText },
+  { path: '/hr/metric-library', label: '指标库', icon: Target },
+  { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
+  { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
+  { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
+  { path: '/hr/performance-ranking-config', label: '绩效排名配置', icon: Award },
+  { path: '/hr/task-freeze', label: '任务冻结', icon: Lock },
+  { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
+  // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
+  { path: '/hr/system-settings', label: '系统设置', icon: Settings },
 ];
 
 const adminNavItems = [
