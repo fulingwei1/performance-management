@@ -48,18 +48,19 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
     
     const assessments = await loadMonthlyAssessments(options);
 
-    assessments.forEach(assessment => {
+    assessments.forEach((assessment) => {
+      const a = assessment as any;
       detailSheet.addRow({
         id: assessment.id,
         employeeName: assessment.employeeName || assessment.employeeId,
-        department: (assessment as any).department || '',
-        position: (assessment as any).position || '',
+        department: assessment.department || '',
+        position: a.position || '',
         month: assessment.month,
-        departmentType: assessment.departmentType,
-        templateName: assessment.templateName,
+        departmentType: a.departmentType || assessment.department || '',
+        templateName: a.templateName || '',
         totalScore: assessment.totalScore,
-        evaluatorName: assessment.evaluatorName,
-        createdAt: new Date(assessment.createdAt).toLocaleString('zh-CN')
+        evaluatorName: a.evaluatorName || a.assessorName || '',
+        createdAt: assessment.createdAt ? new Date(assessment.createdAt).toLocaleString('zh-CN') : ''
       });
     });
     
@@ -88,17 +89,19 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
     };
     metricsSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
-    assessments.forEach(assessment => {
-      assessment.scores.forEach(score => {
+    assessments.forEach((assessment) => {
+      const a = assessment as any;
+      const scores: any[] = a.scores || [];
+      scores.forEach((score: any) => {
         metricsSheet.addRow({
           employeeName: assessment.employeeName || assessment.employeeId,
           month: assessment.month,
-          metricName: score.metricName,
-          metricCode: score.metricCode,
-          weight: score.weight,
-          level: score.level,
-          score: score.score,
-          weightedScore: Number((score.score * score.weight / 100).toFixed(2)),
+          metricName: score.metricName || '',
+          metricCode: score.metricCode || '',
+          weight: score.weight || 0,
+          level: score.level || '',
+          score: score.score || 0,
+          weightedScore: Number(((score.score || 0) * (score.weight || 0) / 100).toFixed(2)),
           comment: score.comment || ''
         });
       });
@@ -146,8 +149,9 @@ async function loadMonthlyAssessments(options: ExportOptions) {
     ? await PerformanceModel.findByMonth(options.month)
     : await PerformanceModel.findAll();
 
-  return assessments.filter(assessment => {
-    if (options.departmentType && assessment.departmentType !== options.departmentType) {
+  return assessments.filter((assessment) => {
+    const a = assessment as any;
+    if (options.departmentType && (a.departmentType || assessment.department) !== options.departmentType) {
       return false;
     }
     if (options.employeeIds?.length && !options.employeeIds.includes(assessment.employeeId)) {
@@ -250,7 +254,7 @@ export async function exportScoreTrendAnalysis(employeeId: string): Promise<Exce
     const sheet = workbook.addWorksheet('评分趋势分析');
     
     // 获取员工历史评分
-    const assessments = await PerformanceModel.findByEmployee(employeeId);
+    const assessments = await PerformanceModel.findByEmployeeId(employeeId);
     
     // 标题
     sheet.mergeCells('A1:E1');
@@ -274,7 +278,7 @@ export async function exportScoreTrendAnalysis(employeeId: string): Promise<Exce
     
     // 填充数据
     let rowIndex = 5;
-    assessments.forEach(assessment => {
+    assessments.forEach((assessment: any) => {
       const level = assessment.totalScore >= 1.4 ? 'L5' :
                    assessment.totalScore >= 1.1 ? 'L4' :
                    assessment.totalScore >= 0.9 ? 'L3' :
@@ -285,8 +289,8 @@ export async function exportScoreTrendAnalysis(employeeId: string): Promise<Exce
         assessment.month,
         assessment.totalScore.toFixed(2),
         level,
-        assessment.templateName,
-        new Date(assessment.createdAt).toLocaleString('zh-CN')
+        assessment.templateName || '',
+        assessment.createdAt ? new Date(assessment.createdAt).toLocaleString('zh-CN') : ''
       ];
     });
     
