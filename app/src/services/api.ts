@@ -579,44 +579,6 @@ export const exportApi = {
 };
 
 // 晋升/加薪申请
-export const promotionApi = {
-  create: (data: {
-    employeeId?: string;
-    targetLevel: string;
-    targetPosition: string;
-    raisePercentage: number;
-    performanceSummary: string;
-    skillSummary: string;
-    competencySummary: string;
-    workSummary: string;
-  }) => request('/promotion-requests', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  getMyRequests: () => request('/promotion-requests/my'),
-
-  getPending: () => request('/promotion-requests/pending'),
-
-  approve: (id: string, comment?: string) => request(`/promotion-requests/${id}/approve`, {
-    method: 'POST',
-    body: JSON.stringify({ comment })
-  }),
-
-  reject: (id: string, reason: string) => request(`/promotion-requests/${id}/reject`, {
-    method: 'POST',
-    body: JSON.stringify({ reason })
-  }),
-
-  getHistory: (page = 1, pageSize = 10) =>
-    request(`/promotion-requests/history?page=${page}&pageSize=${pageSize}`),
-
-  exportRecords: (format: 'excel' | 'json' = 'excel') => {
-    const query = new URLSearchParams({ format }).toString();
-    return secureDownload(`${API_BASE_URL}/promotion-requests/export?${query}`, `promotion-records.xlsx`);
-  }
-};
-
 // 组织架构API
 export const organizationApi = {
   // 获取组织架构树
@@ -705,9 +667,6 @@ export const settingsApi = {
   getAssessmentScope: () => request('/settings/assessment-scope'),
   updateAssessmentScope: (data: { rootDepts: string[]; subDeptsByRoot: Record<string, string[]> }) =>
     request('/settings/assessment-scope', { method: 'PUT', body: JSON.stringify(data) }),
-  getPromotionApprovalChain: () => request('/settings/promotion-approval-chain'),
-  updatePromotionApprovalChain: (chain: string[]) =>
-    request('/settings/promotion-approval-chain', { method: 'PUT', body: JSON.stringify({ chain }) })
 };
 
 // 考核周期API
@@ -1087,7 +1046,6 @@ export default {
   strategicObjective: strategicObjectiveApi,
   assessmentTemplate: assessmentTemplateApi,
   monthlyAssessment: monthlyAssessmentApi,
-  promotion: promotionApi,
   peerReview: peerReviewApi,
   assessmentPublication: assessmentPublicationApi,
   appeal: appealApi,

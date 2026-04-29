@@ -204,7 +204,7 @@ export const contractController = {
     // Enrich with employee names
     const employees = await EmployeeModel.findAll();
     const empMap = new Map(employees.map((e: any) => [e.id, e.name]));
-    const enriched = data.map(c => ({ ...c, employeeName: empMap.get(c.employeeId) || '' }));
+    const enriched = data.map((c: any) => ({ ...c, employeeName: empMap.get(c.employeeId) || '' }));
     res.json({ success: true, data: enriched });
   }),
 

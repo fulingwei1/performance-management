@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { aiPredictionService } from '../services/ai-prediction.service';
-import { promotionRecommenderService } from '../services/promotion-recommender.service';
+// HIDDEN: import { promotionRecommenderService } from '../services/promotion-recommender.service';
 import { anomalyDetectionService } from '../services/anomaly-detection.service';
 import { generateAISuggestion, prompts } from '../services/ai.service';
 
