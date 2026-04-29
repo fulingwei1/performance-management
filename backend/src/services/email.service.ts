@@ -415,4 +415,22 @@ export class EmailService {
       text,
     });
   }
+
+  /**
+   * 发送测试邮件（验证 SMTP 连通性）
+   */
+  static async sendTestEmail(to: string): Promise<boolean> {
+    try {
+      await this.sendBulk({
+        recipients: [to],
+        subject: '【测试】绩效管理系统邮件连通性测试',
+        html: '<h2>✅ 邮件发送成功</h2><p>如果你收到此邮件，说明 SMTP 配置正确。</p>',
+        text: '✅ 邮件发送成功。如果你收到此邮件，说明 SMTP 配置正确。',
+      });
+      return true;
+    } catch (err) {
+      logger.error(`[Email] 测试邮件发送失败: ${err}`);
+      return false;
+    }
+  }
 }

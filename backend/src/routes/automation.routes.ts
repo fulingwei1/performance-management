@@ -11,6 +11,10 @@ router.post('/auto-publish', authenticate, automationController.autoPublish);
 router.post('/check-reminders', authenticate, automationController.checkDeadlineReminders);
 router.post('/push-quarter-results', authenticate, requireRole('hr', 'admin'), automationController.pushQuarterResults);
 
+// 测试通知渠道连通性
+router.post('/test-wecom', authenticate, requireRole('hr', 'admin'), automationController.testWecom);
+router.post('/test-email', authenticate, requireRole('hr', 'admin'), automationController.testEmail);
+
 // 归档管理
 router.post('/archive', authenticate, requireRole('hr', 'admin'), automationController.archiveMonth);
 router.get('/archives', authenticate, automationController.listArchives);

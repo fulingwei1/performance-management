@@ -4,6 +4,8 @@ import { SchedulerService } from '../services/scheduler.service';
 import { ProgressMonitorService } from '../services/progressMonitor.service';
 import { ArchiveService } from '../services/archive.service';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
+import { WecomWebhookService } from '../services/wecomWebhook.service';
+import { EmailService } from '../services/email.service';
 import logger from '../config/logger';
 
 export const automationController = {
@@ -236,6 +238,33 @@ export const automationController = {
       success: true,
       message: `已解冻 ${unfrozenCount} 条任务`,
       data: { month, unfrozen: unfrozenCount }
+    });
+  }),
+
+  /**
+   * 测试企业微信连通性
+   */
+  testWecom: asyncHandler(async (_req: Request, res: Response) => {
+    const ok = await WecomWebhookService.testConnection();
+    res.json({
+      success: ok,
+      message: ok ? '企业微信应用消息推送成功' : '企业微信推送失败，请检查配置和日志',
+    });
+  }),
+
+  /**
+   * 测试邮件发送连通性
+   */
+  testEmail: asyncHandler(async (req: Request, res: Response) => {
+    const targetEmail = req.body.email || req.user?.email;
+    if (!targetEmail) {
+      res.status(400).json({ success: false, message: '请提供 email 参数' });
+      return;
+    }
+    const ok = await EmailService.sendTestEmail(targetEmail);
+    res.json({
+      success: ok,
+      message: ok ? `测试邮件已发送至 ${targetEmail}` : '邮件发送失败，请检查 SMTP 配置和日志',
     });
   })
 };

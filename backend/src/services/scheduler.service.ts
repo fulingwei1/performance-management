@@ -12,6 +12,7 @@ import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
 import { EmailService } from './email.service';
 import { generateMonthlyReportCharts } from './chart.service';
+import { WecomWebhookService } from './wecomWebhook.service';
 import logger from '../config/logger';
 
 export class SchedulerService {
@@ -186,6 +187,13 @@ export class SchedulerService {
 
     const notificationCount = await NotificationModel.createBatch(notifications);
 
+    // 企业微信通知：月度任务已生成
+    await WecomWebhookService.sendTaskGenerated({
+      month: targetMonth,
+      totalCount: createdCount,
+      dueDate: dueDate.toLocaleDateString('zh-CN'),
+    });
+
     return {
       month: targetMonth,
       createdCount,
@@ -198,42 +206,77 @@ export class SchedulerService {
   }
 
   /**
-   * 检查考核周期截止日期，发送提醒
+   * 检查绩效记录截止日期，发送提醒
    */
   static async checkDeadlines() {
     try {
-      // 获取进行中的考核周期
-      const activeCycles = await this.getActiveCycles();
+      const reminderDays = 3;
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-      for (const cycle of activeCycles) {
-        const reminderDays = cycle.reminderDays || 3;
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // 查找所有未完成且快到 deadline 的绩效记录
+      const pendingRecords = await this.getPendingRecordsForReminder(reminderDays);
 
-        // 检查各截止日期
-        const deadlines = [
-          { date: cycle.selfAssessmentDeadline, type: 'work_summary', label: '自评' },
-          { date: cycle.managerReviewDeadline, type: 'manager_review', label: '经理评审' },
-          { date: cycle.hrReviewDeadline, type: 'hr_review', label: 'HR评审' },
-          { date: cycle.appealDeadline, type: 'appeal_review', label: '申诉' },
-        ];
+      if (pendingRecords.length === 0) {
+        logger.info('[Scheduler] checkDeadlines: 无需催办的记录');
+        return;
+      }
 
-        for (const dl of deadlines) {
-          if (!dl.date) continue;
-          const deadline = new Date(dl.date);
-          const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      // 按 month 分组
+      const byMonth: Record<string, any[]> = {};
+      for (const r of pendingRecords) {
+        const m = r.month;
+        if (!byMonth[m]) byMonth[m] = [];
+        byMonth[m].push(r);
+      }
 
-          if (diffDays === reminderDays) {
-            // 提前N天提醒
-            await this.sendDeadlineReminder(cycle, dl, diffDays, 'reminder');
-          } else if (diffDays === 1) {
-            // 最后一天提醒
-            await this.sendDeadlineReminder(cycle, dl, diffDays, 'deadline');
-          } else if (diffDays < 0 && cycle.autoSubmit) {
-            // 超期自动提交
-            await this.handleOverdue(cycle, dl);
+      for (const [month, records] of Object.entries(byMonth)) {
+        const deadline = records[0].deadline;
+        const deadlineDate = new Date(deadline).toLocaleDateString('zh-CN');
+        const diffDays = Math.ceil((new Date(deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        const isUrgent = diffDays <= 1;
+        const label = isUrgent ? '【最后提醒】' : '【提醒】';
+
+        // 1. 站内通知
+        const notifications: CreateNotificationInput[] = records.map((r: any) => ({
+          userId: r.employeeId,
+          type: isUrgent ? 'deadline' as any : 'reminder' as any,
+          title: `${label}${month}月绩效考核还有${diffDays}天截止`,
+          content: `${month}月绩效考核将于${deadlineDate}截止，请及时完成自评。`,
+          link: '/performance/self-assessment',
+        }));
+
+        if (notifications.length > 0) {
+          await NotificationModel.createBatch(notifications);
+          logger.info(`[Scheduler] 发送了 ${notifications.length} 条 ${month} 绩效催办站内通知`);
+        }
+
+        // 2. 邮件催办
+        let emailSent = 0;
+        for (const r of records) {
+          if (r.email) {
+            const ok = await EmailService.sendDeadlineReminder(
+              r.email, r.employeeName, `${month}月绩效`, 'self_assessment', deadlineDate, '/performance/self-assessment'
+            );
+            if (ok) emailSent++;
           }
         }
+        if (emailSent > 0) {
+          logger.info(`[Scheduler] 催办邮件已发送 ${emailSent}/${records.length} 封 (${month})`);
+        }
+
+        // 3. 企业微信催办
+        await WecomWebhookService.sendReminder({
+          cycleName: `${month}月绩效考核`,
+          taskType: '绩效自评',
+          daysLeft: diffDays,
+          deadlineDate,
+          pendingCount: records.length,
+          employeeNames: records.map((r: any) => r.employeeName),
+        });
+
+        logger.info(`[Scheduler] ${month} 催办完成: ${records.length} 人, 邮件 ${emailSent} 封`);
       }
     } catch (err) {
       logger.error(`[Scheduler] checkDeadlines 出错: ${err}`);
@@ -241,84 +284,23 @@ export class SchedulerService {
   }
 
   /**
-   * 发送截止日期提醒给相关员工
+   * 获取需要催办的绩效记录（未完成且 deadline 在 reminderDays 天内）
    */
-  private static async sendDeadlineReminder(
-    cycle: any,
-    deadline: { type: string; label: string },
-    daysLeft: number,
-    notificationType: 'reminder' | 'deadline'
-  ) {
-    // 根据类型确定通知的目标员工
-    const employees = await this.getTargetEmployees(deadline.type);
+  private static async getPendingRecordsForReminder(reminderDays: number): Promise<any[]> {
+    if (USE_MEMORY_DB) return [];
 
-    const notifications: CreateNotificationInput[] = employees.map((emp: any) => ({
-      userId: emp.id,
-      type: notificationType as any,
-      title: daysLeft === 1
-        ? `【最后提醒】${cycle.name} - ${deadline.label}明天截止`
-        : `【提醒】${cycle.name} - ${deadline.label}还有${daysLeft}天截止`,
-      content: `考核周期「${cycle.name}」的${deadline.label}将于${new Date(cycle[this.getDeadlineField(deadline.type)]).toLocaleDateString('zh-CN')}截止，请及时完成。`,
-      link: this.getTodoLink(deadline.type),
-    }));
-
-    if (notifications.length > 0) {
-      await NotificationModel.createBatch(notifications);
-      logger.info(`[Scheduler] 发送了 ${notifications.length} 条${deadline.label}提醒`);
-    }
-
-    // 创建待办
-    for (const emp of employees) {
-      const existing = await TodoModel.findExisting(emp.id, deadline.type as any, cycle.id);
-      if (!existing) {
-        await TodoModel.create({
-          employeeId: emp.id,
-          type: deadline.type as any,
-          title: `完成${deadline.label} - ${cycle.name}`,
-          description: `请在截止日期前完成${deadline.label}`,
-          dueDate: new Date(cycle[this.getDeadlineField(deadline.type)]),
-          link: this.getTodoLink(deadline.type),
-          relatedId: cycle.id,
-        });
-      }
-    }
-  }
-
-  /**
-   * 处理超期情况
-   */
-  private static async handleOverdue(cycle: any, deadline: { type: string; label: string }) {
-    logger.info(`[Scheduler] 考核周期 ${cycle.name} 的 ${deadline.label} 已超期`);
-
-    // 获取未完成的员工
-    const employees = await this.getTargetEmployees(deadline.type);
-
-    // 通知上级和HR
-    const notifications: CreateNotificationInput[] = [];
-    for (const emp of employees) {
-      // 通知员工
-      notifications.push({
-        userId: emp.id,
-        type: 'reminder',
-        title: `【逾期】${cycle.name} - ${deadline.label}已超过截止日期`,
-        content: `您的${deadline.label}已超过截止日期，请尽快完成或联系上级。`,
-        link: this.getTodoLink(deadline.type),
-      });
-
-      // 通知经理（如果有）
-      if (emp.managerId) {
-        notifications.push({
-          userId: emp.managerId,
-          type: 'reminder',
-          title: `【下属逾期】${emp.name}的${deadline.label}已超期`,
-          content: `员工${emp.name}的${deadline.label}已超过截止日期。`,
-        });
-      }
-    }
-
-    if (notifications.length > 0) {
-      await NotificationModel.createBatch(notifications);
-    }
+    const sql = `
+      SELECT pr.employee_id as "employeeId", pr.month, pr.deadline,
+             e.name as "employeeName", e.email
+      FROM performance_records pr
+      JOIN employees e ON e.id = pr.employee_id
+      WHERE pr.status IN ('draft', 'scored')
+        AND pr.deadline IS NOT NULL
+        AND pr.deadline >= CURRENT_DATE
+        AND pr.deadline <= CURRENT_DATE + INTERVAL '${reminderDays} days'
+      ORDER BY pr.deadline ASC, pr.month
+    `;
+    return await query(sql, []);
   }
 
   /**
@@ -332,25 +314,23 @@ export class SchedulerService {
   }
 
   /**
-   * 获取进行中的考核周期
+   * 获取有未完成绩效记录的月份（替代原 assessment_cycles 查询）
+   * 返回 { month, deadline, pendingCount }[]
    */
-  private static async getActiveCycles(): Promise<any[]> {
+  private static async getPendingRecordMonths(): Promise<any[]> {
     if (USE_MEMORY_DB) {
-      if (!memoryStore.assessmentCycles) return [];
-      return Array.from(memoryStore.assessmentCycles.values()).filter((c: any) => c.status === 'active');
+      // 内存模式无此功能
+      return [];
     }
 
     const sql = `
-      SELECT id, name, type, year,
-        start_date as "startDate", end_date as "endDate",
-        self_assessment_deadline as "selfAssessmentDeadline",
-        manager_review_deadline as "managerReviewDeadline",
-        hr_review_deadline as "hrReviewDeadline",
-        appeal_deadline as "appealDeadline",
-        status, reminder_days as "reminderDays",
-        auto_submit as "autoSubmit"
-      FROM assessment_cycles
-      WHERE status = 'active'
+      SELECT month, MAX(deadline) as deadline, COUNT(*) as "pendingCount"
+      FROM performance_records
+      WHERE status IN ('draft', 'scored')
+        AND deadline IS NOT NULL
+        AND deadline >= CURRENT_DATE - INTERVAL '30 days'
+      GROUP BY month
+      ORDER BY month DESC
     `;
     return await query(sql, []);
   }
@@ -573,6 +553,14 @@ export class SchedulerService {
 
     await AssessmentPublicationModel.publish(targetMonth, publishedBy);
     logger.info(`[Scheduler] ${targetMonth} 绩效结果已自动发布`);
+
+    // 企业微信通知：结果已发布
+    const avgScore = completedRecords.reduce((sum, r) => sum + (parseFloat((r as any).totalScore || (r as any).total_score) || 0), 0) / completedRecords.length;
+    await WecomWebhookService.sendResultPublished({
+      month: targetMonth,
+      completedCount: completedRecords.length,
+      avgScore: parseFloat(avgScore.toFixed(2)),
+    });
 
     // 发布后自动归档
     try {
