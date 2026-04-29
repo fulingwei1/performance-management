@@ -142,7 +142,8 @@ export class SchedulerService {
         month: targetMonth,
         selfSummary: '',
         nextMonthPlan: '',
-        groupType
+        groupType,
+        deadline: dueDate
       });
       createdCount++;
 
@@ -333,66 +334,6 @@ export class SchedulerService {
       ORDER BY month DESC
     `;
     return await query(sql, []);
-  }
-
-  /**
-   * 根据任务类型获取目标员工
-   */
-  private static async getTargetEmployees(type: string): Promise<any[]> {
-    if (USE_MEMORY_DB) {
-      if (!memoryStore.employees) return [];
-      const employees = Array.from(memoryStore.employees.values()).filter((e: any) => e.status === 'active');
-      switch (type) {
-        case 'work_summary':
-          return employees;
-        case 'manager_review':
-          return employees.filter((e: any) => e.role === 'manager' || e.role === 'gm');
-        case 'hr_review':
-          return employees.filter((e: any) => e.role === 'hr' || e.role === 'admin');
-        case 'appeal_review':
-          return employees.filter((e: any) => e.role === 'hr' || e.role === 'admin');
-        default:
-          return employees;
-      }
-    }
-
-    let sql: string;
-    switch (type) {
-      case 'work_summary':
-        sql = `SELECT id, name, manager_id as "managerId" FROM employees WHERE status = 'active'`;
-        break;
-      case 'manager_review':
-        sql = `SELECT id, name, manager_id as "managerId" FROM employees WHERE status = 'active' AND role IN ('manager', 'gm')`;
-        break;
-      case 'hr_review':
-      case 'appeal_review':
-        sql = `SELECT id, name, manager_id as "managerId" FROM employees WHERE status = 'active' AND role IN ('hr', 'admin')`;
-        break;
-      default:
-        sql = `SELECT id, name, manager_id as "managerId" FROM employees WHERE status = 'active'`;
-    }
-    return await query(sql, []);
-  }
-
-  private static getDeadlineField(type: string): string {
-    const map: Record<string, string> = {
-      work_summary: 'selfAssessmentDeadline',
-      manager_review: 'managerReviewDeadline',
-      hr_review: 'hrReviewDeadline',
-      appeal_review: 'appealDeadline',
-    };
-    return map[type] || 'selfAssessmentDeadline';
-  }
-
-  private static getTodoLink(type: string): string {
-    const map: Record<string, string> = {
-      work_summary: '/employee/summary',
-      manager_review: '/manager/scoring',
-      hr_review: '/hr/assessment-publication',
-      appeal_review: '/hr/appeals',
-      goal_approval: '/manager/goal-approval',
-    };
-    return map[type] || '/employee/dashboard';
   }
 
   /**

@@ -223,6 +223,7 @@ export class PerformanceModel {
     selfSummary: string;
     nextMonthPlan: string;
     groupType: 'high' | 'low';
+    deadline?: Date;
   }): Promise<PerformanceRecord> {
     // 根据内容判断状态：空总结为draft，有内容为submitted
     const status = data.selfSummary && data.selfSummary.length > 0 ? 'submitted' : 'draft';
@@ -260,12 +261,13 @@ export class PerformanceModel {
     const sql = `
       INSERT INTO performance_records (
         id, employee_id, assessor_id, month, self_summary, next_month_plan, 
-        group_type, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        group_type, status, deadline
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
         self_summary = EXCLUDED.self_summary,
         next_month_plan = EXCLUDED.next_month_plan,
         status = EXCLUDED.status,
+        deadline = COALESCE(performance_records.deadline, EXCLUDED.deadline),
         updated_at = CURRENT_TIMESTAMP
     `;
     
@@ -277,7 +279,8 @@ export class PerformanceModel {
       data.selfSummary,
       data.nextMonthPlan,
       data.groupType,
-      status
+      status,
+      data.deadline || null
     ]);
     
     return this.findById(data.id) as Promise<PerformanceRecord>;
