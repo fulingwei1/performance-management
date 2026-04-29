@@ -46,6 +46,9 @@ interface MemoryStore {
   departmentTemplates?: Map<string, any>;
   systemSettings?: Map<string, any>;
   monthlyAssessments?: Map<string, any>;
+  performanceArchives?: Map<string, any>;
+  monthlyReportSummaries?: Map<string, any>;
+  automationLogs?: Map<string, any>;
 }
 
 export const memoryStore: MemoryStore = {
@@ -84,6 +87,9 @@ export const memoryStore: MemoryStore = {
   departmentTemplates: new Map(),
   systemSettings: new Map(),
   monthlyAssessments: new Map(),
+  performanceArchives: new Map(),
+  monthlyReportSummaries: new Map(),
+  automationLogs: new Map(),
 };
 
 // 员工数据操作

@@ -608,3 +608,50 @@ export interface Appeal {
   createdAt: Date | string;
   updatedAt: Date | string;
 }
+
+// ============ 自动化月度报告 ============
+export interface MonthlyReportSummary {
+  id: string;
+  month: string;
+  totalEmployees: number;
+  participatedCount: number;
+  draftCount: number;
+  submittedCount: number;
+  scoredCount: number;
+  completedCount: number;
+  participationRate: number;
+  avgScore: number;
+  maxScore: number;
+  minScore: number;
+  l5Count: number;
+  l4Count: number;
+  l3Count: number;
+  l2Count: number;
+  l1Count: number;
+  departmentStats?: Record<string, { count: number; avgScore: number }>;
+  anomalyReport?: any[];
+  generatedAt: Date | string;
+}
+
+// ============ 绩效归档 ============
+export interface PerformanceArchive {
+  id: string;
+  month: string;
+  archiveData: Record<string, any>;
+  snapshotSummary: Record<string, any>;
+  archivedAt: Date | string;
+  archivedBy?: string;
+}
+
+// ============ 自动化任务日志 ============
+export interface AutomationLog {
+  id: string;
+  taskType: string;
+  taskName?: string;
+  status: 'running' | 'success' | 'failed';
+  inputParams?: Record<string, any>;
+  resultSummary?: Record<string, any>;
+  errorMessage?: string;
+  startedAt: Date | string;
+  completedAt?: Date | string;
+}

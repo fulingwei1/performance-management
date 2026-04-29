@@ -4,8 +4,12 @@ import { NotificationModel, CreateNotificationInput } from '../models/notificati
 import { TodoModel } from '../models/todo.model';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
+import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { getGroupType } from '../utils/helpers';
 import { getPerformanceRankingConfig, isParticipatingRecord } from './performanceRankingConfig.service';
+import { ProgressMonitorService } from './progressMonitor.service';
+import { ArchiveService } from './archive.service';
+import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
 import logger from '../config/logger';
 
 export class SchedulerService {
@@ -44,6 +48,28 @@ export class SchedulerService {
         if (count > 0) logger.info(`[Scheduler] 标记 ${count} 个待办为逾期`);
       } catch (err) {
         logger.error(`[Scheduler] 过期检查出错: ${err}`);
+      }
+    });
+
+    // 每月 6 日凌晨 2:00 自动生成上月统计报告
+    cron.schedule('0 2 6 * *', async () => {
+      logger.info('[Scheduler] 执行月度统计报告生成...');
+      try {
+        const result = await this.generateMonthlyStatisticsReport();
+        logger.info(`[Scheduler] 月度统计报告生成完成: ${JSON.stringify(result)}`);
+      } catch (err) {
+        logger.error(`[Scheduler] 月度统计报告生成出错: ${err}`);
+      }
+    });
+
+    // 每月 10 日凌晨 3:00 自动发布（兜底）
+    cron.schedule('0 3 10 * *', async () => {
+      logger.info('[Scheduler] 检查自动发布...');
+      try {
+        const result = await this.autoPublishPreviousMonth();
+        logger.info(`[Scheduler] 自动发布检查完成: ${JSON.stringify(result)}`);
+      } catch (err) {
+        logger.error(`[Scheduler] 自动发布出错: ${err}`);
       }
     });
 
@@ -354,5 +380,119 @@ export class SchedulerService {
       goal_approval: '/manager/goal-approval',
     };
     return map[type] || '/employee/dashboard';
+  }
+
+  /**
+   * 每月 6 日自动生成上月统计报告
+   */
+  static async generateMonthlyStatisticsReport(referenceDate: Date = new Date()): Promise<{
+    month: string;
+    progress: Record<string, any>;
+    stats: Record<string, any>;
+  }> {
+    // 计算上月
+    const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+    const targetMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    logger.info(`[Scheduler] 生成 ${targetMonth} 月度统计报告`);
+
+    // 获取进度快照
+    const progress = await ProgressMonitorService.getMonthProgress(targetMonth);
+
+    // 获取统计信息
+    const stats = await getMonthlyStats(targetMonth);
+    const anomalies = await detectAnomalousScores();
+
+    // 按部门聚合统计
+    const deptStats: Record<string, { count: number; avgScore: number }> = {};
+    for (const dp of progress.departmentProgress) {
+      deptStats[dp.department] = {
+        count: dp.total,
+        avgScore: dp.rate // 简化使用完成率，后续可接入实际平均分
+      };
+    }
+
+    logger.info(`[Scheduler] ${targetMonth} 统计报告: 完成率 ${progress.participationRate}%, 均分 ${stats.avgScore}`);
+
+    return {
+      month: targetMonth,
+      progress: {
+        totalEmployees: progress.totalEmployees,
+        eligibleEmployees: progress.eligibleEmployees,
+        draftCount: progress.draftCount,
+        submittedCount: progress.submittedCount,
+        scoredCount: progress.scoredCount,
+        completedCount: progress.completedCount,
+        participationRate: progress.participationRate,
+        departmentProgress: progress.departmentProgress,
+        managerProgress: progress.managerProgress
+      },
+      stats: {
+        monthlyStats: stats,
+        anomalies: anomalies || []
+      }
+    };
+  }
+
+  /**
+   * 每月 10 日自动发布上月绩效（兜底）
+   * 条件：上月所有 eligible 员工的记录都是 completed/scored 状态，且未发布
+   */
+  static async autoPublishPreviousMonth(referenceDate: Date = new Date()): Promise<{
+    month: string;
+    published: boolean;
+    reason: string;
+  }> {
+    const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+    const targetMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // 检查是否已发布
+    const alreadyPublished = await AssessmentPublicationModel.isPublished(targetMonth);
+    if (alreadyPublished) {
+      return { month: targetMonth, published: false, reason: '已发布' };
+    }
+
+    // 检查是否已归档（归档说明已经发布过）
+    const alreadyArchived = await ArchiveService.isArchived(targetMonth);
+    if (alreadyArchived) {
+      return { month: targetMonth, published: false, reason: '已归档' };
+    }
+
+    // 获取所有 eligible 员工
+    const allEmployees = await EmployeeModel.findAll();
+    const eligibleEmployees = allEmployees.filter(
+      (e: any) => (e.role === 'employee' || e.role === 'manager') && e.status !== 'disabled'
+    );
+
+    // 检查所有员工是否都已完成
+    const records = await PerformanceModel.findByMonth(targetMonth);
+    const completedRecords = records.filter(
+      r => r.status === 'completed' || r.status === 'scored'
+    );
+
+    if (completedRecords.length < eligibleEmployees.length) {
+      return {
+        month: targetMonth,
+        published: false,
+        reason: `未完成: ${completedRecords.length}/${eligibleEmployees.length}`
+      };
+    }
+
+    // 自动发布
+    const adminUser = allEmployees.find((e: any) => e.role === 'admin');
+    const publishedBy = adminUser?.id || 'system';
+
+    await AssessmentPublicationModel.publish(targetMonth, publishedBy);
+    logger.info(`[Scheduler] ${targetMonth} 绩效结果已自动发布`);
+
+    // 发布后自动归档
+    try {
+      const archiveResult = await ArchiveService.archiveMonth(targetMonth, publishedBy);
+      logger.info(`[Scheduler] ${targetMonth} 归档完成: ${archiveResult.completedRecords} 条记录`);
+    } catch (err) {
+      logger.error(`[Scheduler] ${targetMonth} 归档失败: ${err}`);
+    }
+
+    return { month: targetMonth, published: true, reason: `自动发布完成 (${completedRecords.length} 条记录)` };
   }
 }
