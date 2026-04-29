@@ -301,6 +301,49 @@ export const assessmentTemplateApi = {
     })
 };
 
+// 模板绑定 API（部门经理设置下属考核模板，设置后永久生效）
+export const templateBindingApi = {
+  bind: (employeeId: string, templateId: string) =>
+    request('/template-bindings', {
+      method: 'POST',
+      body: JSON.stringify({ employeeId, templateId })
+    }),
+  batchBind: (bindings: Array<{ employeeId: string; templateId: string }>) =>
+    request('/template-bindings/batch', {
+      method: 'POST',
+      body: JSON.stringify({ bindings })
+    }),
+  unbind: (employeeId: string) =>
+    request(`/template-bindings/${employeeId}`, { method: 'DELETE' }),
+  getEmployeeBinding: (employeeId: string) =>
+    request(`/template-bindings/employee/${employeeId}`),
+  getMyTeamBindings: () => request('/template-bindings/my-team'),
+  getAllBindings: (params?: { department?: string; templateId?: string }) =>
+    request(`/template-bindings/all${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+  resolve: (employeeId: string) => request(`/template-bindings/resolve/${employeeId}`),
+  getStats: () => request('/template-bindings/stats'),
+};
+
+// 部门×层级模板规则
+export const levelTemplateRuleApi = {
+  setRule: (departmentType: string, level: string, templateId: string) =>
+    request('/level-template-rules', {
+      method: 'POST',
+      body: JSON.stringify({ departmentType, level, templateId })
+    }),
+  batchSetRules: (rules: Array<{ departmentType: string; level: string; templateId: string }>) =>
+    request('/level-template-rules/batch', {
+      method: 'POST',
+      body: JSON.stringify({ rules })
+    }),
+  getAllRules: () => request('/level-template-rules'),
+  getByDepartmentType: (deptType: string) => request(`/level-template-rules/${deptType}`),
+  deleteRule: (departmentType: string, level: string) =>
+    request(`/level-template-rules/${departmentType}/${level}`, { method: 'DELETE' }),
+  resolve: (employeeId: string) => request(`/level-template-rules/resolve/${employeeId}`),
+  getCoverageStats: () => request('/level-template-rules/stats/coverage'),
+};
+
 // 绩效参与范围/排名配置（HR/Admin）
 export const performanceConfigApi = {
   getRankingConfig: () => request('/performance-config/ranking'),

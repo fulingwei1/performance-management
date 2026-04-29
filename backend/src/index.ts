@@ -53,9 +53,12 @@ import monthlyAssessmentRoutes from './routes/monthlyAssessment.routes';
 import assessmentExportRoutes from './routes/assessmentExport.routes';
 import assessmentStatsRoutes from './routes/assessmentStats.routes';
 import salaryIntegrationRoutes from './routes/salaryIntegration.routes';
+import templateBindingRoutes from './routes/templateBinding.routes';
+import levelTemplateRuleRoutes from './routes/levelTemplateRule.routes';
 import performanceConfigRoutes from './routes/performanceConfig.routes';
 import progressMonitorRoutes from './routes/progressMonitor.routes';
 import archiveRoutes from './routes/archive.routes';
+import employeeQuarterlyRoutes from './routes/employeeQuarterly.routes';
 import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
@@ -174,6 +177,8 @@ app.use('/api/metrics', metricLibraryRoutes);
 app.use('/api/peer-reviews', peerReviewRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
+// OKR 模块 (routes not yet implemented)
+// app.use('/api/okr', okrRoutes);
 app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
 app.use('/api/monthly-reports', monthlyReportRoutes);
 app.use('/api/interviews', performanceInterviewRoutes);
@@ -201,11 +206,14 @@ app.use('/api/monthly-assessment', monthlyAssessmentRoutes);
 app.use('/api/assessment-export', assessmentExportRoutes);
 app.use('/api/stats', assessmentStatsRoutes);
 app.use('/api/integrations/salary', salaryIntegrationRoutes);
+app.use('/api/template-bindings', templateBindingRoutes);
+app.use('/api/level-template-rules', levelTemplateRuleRoutes);
 app.use('/api/performance-config', performanceConfigRoutes);
 
 // 进度监控与归档
 app.use('/api/progress/monitor', progressMonitorRoutes);
 app.use('/api/archives', archiveRoutes);
+app.use('/api/employee-quarterly', employeeQuarterlyRoutes);
 
 // 404处理
 app.use(notFoundHandler);

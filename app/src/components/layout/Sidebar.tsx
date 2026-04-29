@@ -20,7 +20,9 @@ import {
   Send,
   Database,
   AlertCircle,
-  ClipboardCheck
+  ClipboardCheck,
+  BookTemplate,
+  Zap
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -42,6 +44,7 @@ const employeeNavItems = [
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/manager/template-assignment', label: '模板分配', icon: BookTemplate },
   { path: '/manager/differentiated-scoring', label: '差异化评分', icon: Award },
   // HIDDEN: { path: '/manager/team-objectives', label: '团队目标', icon: Target },
   // HIDDEN: { path: '/manager/goal-approval', label: '目标审批', icon: ClipboardCheck },
@@ -74,6 +77,7 @@ const hrNavItems = [
   { path: '/hr/performance-ranking-config', label: '绩效排名配置', icon: Award },
   { path: '/hr/task-freeze', label: '任务冻结', icon: Lock },
   { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
+  { path: '/hr/monthly-automation', label: '月度自动化', icon: Zap },
   // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
   { path: '/hr/system-settings', label: '系统设置', icon: Settings },
 ];

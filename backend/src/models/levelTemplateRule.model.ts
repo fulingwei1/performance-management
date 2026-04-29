@@ -1,0 +1,248 @@
+import { query } from '../config/database';
+import { v4 as uuidv4 } from 'uuid';
+import logger from '../config/logger';
+
+export interface LevelTemplateRule {
+  id: string;
+  departmentType: string;
+  level: string;
+  templateId: string;
+  templateName?: string;
+  setBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 部门→部门类型映射（与 local-schema.ts 保持一致）
+ */
+export function getDepartmentType(department: string): string {
+  const d = department?.trim() || '';
+  if (/营销|销售/.test(d)) return 'sales';
+  if (/工程|技术|研发/.test(d)) return 'engineering';
+  if (/制造|生产|品质/.test(d)) return 'manufacturing';
+  if (/总经|管理|总办/.test(d)) return 'management';
+  return 'support'; // 人力、财务、采购、项目管理、教育装备等
+}
+
+export class LevelTemplateRuleModel {
+  /**
+   * 创建或更新规则（UPSERT by department_type + level）
+   */
+  static async upsert(data: {
+    departmentType: string;
+    level: string;
+    templateId: string;
+    setBy: string;
+  }): Promise<LevelTemplateRule> {
+    const id = uuidv4();
+    const result = await query(
+      `INSERT INTO level_template_rules (id, department_type, level, template_id, set_by, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+       ON CONFLICT (department_type, level)
+       DO UPDATE SET template_id = $4, set_by = $5, updated_at = NOW()
+       RETURNING *`,
+      [id, data.departmentType, data.level, data.templateId, data.setBy]
+    );
+    return result[0];
+  }
+
+  /**
+   * 批量设置规则
+   */
+  static async batchUpsert(
+    rules: Array<{ departmentType: string; level: string; templateId: string }>,
+    setBy: string
+  ): Promise<LevelTemplateRule[]> {
+    const results: LevelTemplateRule[] = [];
+    for (const rule of rules) {
+      const r = await this.upsert({ ...rule, setBy });
+      results.push(r);
+    }
+    return results;
+  }
+
+  /**
+   * 获取所有规则
+   */
+  static async getAll(): Promise<any[]> {
+    const result = await query(
+      `SELECT r.*, t.name as template_name
+       FROM level_template_rules r
+       LEFT JOIN assessment_templates t ON r.template_id = t.id
+       ORDER BY r.department_type, r.level`
+    );
+    return result;
+  }
+
+  /**
+   * 获取某部门类型的规则
+   */
+  static async getByDepartmentType(departmentType: string): Promise<any[]> {
+    const result = await query(
+      `SELECT r.*, t.name as template_name
+       FROM level_template_rules r
+       LEFT JOIN assessment_templates t ON r.template_id = t.id
+       WHERE r.department_type = $1
+       ORDER BY r.level`,
+      [departmentType]
+    );
+    return result;
+  }
+
+  /**
+   * 删除规则
+   */
+  static async delete(departmentType: string, level: string): Promise<void> {
+    await query(
+      'DELETE FROM level_template_rules WHERE department_type = $1 AND level = $2',
+      [departmentType, level]
+    );
+  }
+
+  /**
+   * ★ 核心：解析员工的最终模板
+   * 优先级：个人绑定 > 部门×层级规则 > 自动匹配 > 兜底默认
+   */
+  static async resolveTemplate(employeeId: string): Promise<{
+    templateId: string;
+    templateName: string;
+    source: 'personal_binding' | 'level_rule' | 'auto_match' | 'default';
+    departmentType: string;
+    level: string;
+  }> {
+    // 1. 获取员工信息
+    const empResult = await query('SELECT * FROM employees WHERE id = $1', [employeeId]);
+    if (empResult.length === 0) {
+      throw new Error('员工不存在');
+    }
+    const employee = empResult[0];
+    const departmentType = getDepartmentType(employee.department);
+    const level = employee.level || 'junior';
+
+    // 2. 优先查个人绑定
+    const bindingResult = await query(
+      'SELECT * FROM employee_template_bindings WHERE employee_id = $1',
+      [employeeId]
+    );
+    if (bindingResult.length > 0) {
+      const tplResult = await query(
+        'SELECT id, name FROM assessment_templates WHERE id = $1',
+        [bindingResult[0].template_id]
+      );
+      if (tplResult.length > 0) {
+        return {
+          templateId: tplResult[0].id,
+          templateName: tplResult[0].name,
+          source: 'personal_binding',
+          departmentType,
+          level
+        };
+      }
+    }
+
+    // 3. 查部门×层级规则
+    const ruleResult = await query(
+      `SELECT r.*, t.name as template_name
+       FROM level_template_rules r
+       JOIN assessment_templates t ON r.template_id = t.id
+       WHERE r.department_type = $1 AND r.level = $2`,
+      [departmentType, level]
+    );
+    if (ruleResult.length > 0) {
+      return {
+        templateId: ruleResult[0].template_id,
+        templateName: ruleResult[0].template_name,
+        source: 'level_rule',
+        departmentType,
+        level
+      };
+    }
+
+    // 4. 自动匹配（模板名含层级关键词）
+    const autoResult = await query(
+      `SELECT id, name FROM assessment_templates
+       WHERE department_type = $1
+       AND (
+         ($2 = 'junior' AND (name LIKE '%初级%' OR name LIKE '%普通%' OR name LIKE '%标准%'))
+         OR ($2 = 'senior' AND (name LIKE '%高级%' OR name LIKE '%主管%' OR name LIKE '%经理%'))
+       )
+       ORDER BY
+         CASE WHEN $2 = 'junior' AND name LIKE '%初级%' THEN 0
+              WHEN $2 = 'senior' AND name LIKE '%高级%' THEN 0
+              ELSE 1
+         END
+       LIMIT 1`,
+      [departmentType, level]
+    );
+    if (autoResult.length > 0) {
+      return {
+        templateId: autoResult[0].id,
+        templateName: autoResult[0].name,
+        source: 'auto_match',
+        departmentType,
+        level
+      };
+    }
+
+    // 5. 兜底：取部门类型的 default 模板
+    const defaultResult = await query(
+      `SELECT id, name FROM assessment_templates
+       WHERE department_type = $1 AND (name LIKE '%标准%' OR name LIKE '%default%')
+       LIMIT 1`,
+      [departmentType]
+    );
+    if (defaultResult.length > 0) {
+      return {
+        templateId: defaultResult[0].id,
+        templateName: defaultResult[0].name,
+        source: 'default',
+        departmentType,
+        level
+      };
+    }
+
+    // 6. 最终兜底
+    const anyResult = await query(
+      'SELECT id, name FROM assessment_templates LIMIT 1'
+    );
+    if (anyResult.length > 0) {
+      return {
+        templateId: anyResult[0].id,
+        templateName: anyResult[0].name,
+        source: 'default',
+        departmentType,
+        level
+      };
+    }
+
+    throw new Error('没有可用的考核模板');
+  }
+
+  /**
+   * 获取部门×层级规则覆盖统计
+   */
+  static async getCoverageStats(): Promise<any> {
+    // 获取所有规则
+    const rules = await query(
+      `SELECT department_type, level FROM level_template_rules`
+    );
+    // 获取所有活跃员工
+    const employees = await query(
+      `SELECT department, level FROM employees WHERE status = 'active' AND role NOT IN ('admin')`
+    );
+    // 按部门类型+层级统计
+    const stats: Record<string, any> = {};
+    for (const emp of employees) {
+      const deptType = getDepartmentType(emp.department);
+      const lvl = emp.level || 'junior';
+      const key = `${deptType}:${lvl}`;
+      if (!stats[key]) {
+        const hasRule = rules.some((r: any) => r.department_type === deptType && r.level === lvl);
+        stats[key] = { department: emp.department, departmentType: deptType, level: lvl, employeeCount: 0, hasRule };
+      }
+      stats[key].employeeCount++;
+    }
+    return Object.values(stats);
+  }
+}

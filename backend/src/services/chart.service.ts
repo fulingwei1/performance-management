@@ -8,7 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { getMonthlyStats } from './assessmentStats.service';
 import { ProgressMonitorService } from './progressMonitor.service';
-import { MonthlyAssessmentModel } from '../models/monthlyAssessment.model';
+import { PerformanceModel } from '../models/performance.model';
 import logger from '../config/logger';
 
 // 图表输出目录
@@ -532,7 +532,7 @@ async function generateTrendChart(currentMonth: string): Promise<ChartResult | n
  */
 async function generateTopBottomChart(month: string): Promise<ChartResult | null> {
   try {
-    const assessments = await MonthlyAssessmentModel.findByMonth(month);
+    const assessments = await PerformanceModel.findByMonth(month);
     if (assessments.length === 0) return null;
 
     // 按分数排序

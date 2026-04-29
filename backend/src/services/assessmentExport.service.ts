@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { MonthlyAssessmentModel } from '../models/monthlyAssessment.model';
+import { PerformanceModel } from '../models/performance.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import logger from '../config/logger';
 
@@ -143,8 +143,8 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
 
 async function loadMonthlyAssessments(options: ExportOptions) {
   const assessments = options.month
-    ? await MonthlyAssessmentModel.findByMonth(options.month)
-    : await MonthlyAssessmentModel.findAll();
+    ? await PerformanceModel.findByMonth(options.month)
+    : await PerformanceModel.findAll();
 
   return assessments.filter(assessment => {
     if (options.departmentType && assessment.departmentType !== options.departmentType) {
@@ -250,7 +250,7 @@ export async function exportScoreTrendAnalysis(employeeId: string): Promise<Exce
     const sheet = workbook.addWorksheet('评分趋势分析');
     
     // 获取员工历史评分
-    const assessments = await MonthlyAssessmentModel.findByEmployee(employeeId);
+    const assessments = await PerformanceModel.findByEmployee(employeeId);
     
     // 标题
     sheet.mergeCells('A1:E1');

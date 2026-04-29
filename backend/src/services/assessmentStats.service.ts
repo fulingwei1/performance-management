@@ -3,7 +3,7 @@
  * 提供各种统计分析功能
  */
 
-import { MonthlyAssessmentModel } from '../models/monthlyAssessment.model';
+import { PerformanceModel } from '../models/performance.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { scoreToLevel } from '../utils/helpers';
 import logger from '../config/logger';
@@ -85,7 +85,7 @@ export async function getMonthlyStats(month: string): Promise<MonthlyStats> {
   try {
     logger.info(`Getting monthly stats for ${month}`);
 
-    const assessments = await MonthlyAssessmentModel.findByMonth(month);
+    const assessments = await PerformanceModel.findByMonth(month);
     const scores = assessments.map(a => a.totalScore).filter(score => Number.isFinite(score));
 
     const stats: MonthlyStats = {
@@ -130,7 +130,7 @@ export async function getMonthlyStats(month: string): Promise<MonthlyStats> {
  */
 export async function getEmployeePerformanceTrend(employeeId: string): Promise<EmployeePerformance | null> {
   try {
-    const assessments = await MonthlyAssessmentModel.findByEmployee(employeeId);
+    const assessments = await PerformanceModel.findByEmployee(employeeId);
     
     if (assessments.length === 0) {
       return null;
@@ -172,8 +172,8 @@ export async function getScoreDistribution(month?: string): Promise<Record<strin
     logger.info(`Getting score distribution for ${month || 'all months'}`);
 
     const assessments = month
-      ? await MonthlyAssessmentModel.findByMonth(month)
-      : await MonthlyAssessmentModel.findAll();
+      ? await PerformanceModel.findByMonth(month)
+      : await PerformanceModel.findAll();
 
     const distribution = {
       l5: 0,

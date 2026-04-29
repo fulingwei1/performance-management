@@ -100,10 +100,37 @@ export function DifferentiatedScoring() {
     try {
       setLoading(true);
       
-      // 获取员工部门信息
-      let deptType = 'support'; // 默认类型
-      const deptResult = await organizationApi.getDepartmentTree();
+      // 优先使用 resolve API：个人绑定 → 层级规则 → 自动匹配 → 兜底默认
+      const resolveResult = await fetch(`/api/level-template-rules/resolve/${employee.id}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      }).then(r => r.json());
 
+      if (resolveResult.success && resolveResult.data) {
+        const { templateId, templateName, source } = resolveResult.data;
+        // 加载完整模板数据
+        const tplResult = await fetch(`/api/assessment-templates/${templateId}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }).then(r => r.json());
+        
+        if (tplResult.success && tplResult.data) {
+          setTemplate(tplResult.data);
+          setSelectedEmployee({ ...employee, department_type: tplResult.data.departmentType });
+          setScores(new Map());
+          
+          const sourceLabels: Record<string, string> = {
+            personal_binding: '个人绑定模板',
+            level_rule: '层级规则模板',
+            auto_match: '自动匹配模板',
+            default: '默认模板'
+          };
+          toast.info(`${sourceLabels[source] || '模板'}：${templateName}`);
+          return;
+        }
+      }
+
+      // fallback：原逻辑（部门类型默认模板）
+      let deptType = 'support';
+      const deptResult = await organizationApi.getDepartmentTree();
       if (deptResult.success) {
         const findDeptType = (depts: any[], name: string): string | null => {
           for (const dept of depts) {
@@ -115,14 +142,11 @@ export function DifferentiatedScoring() {
           }
           return null;
         };
-
         const foundType = findDeptType(deptResult.data || [], employee.department);
         if (foundType) deptType = foundType;
       }
       
-      // 加载对应模板
       const templateResult = await assessmentTemplateApi.getDefault(deptType);
-      
       if (templateResult.success) {
         setTemplate(templateResult.data);
         setSelectedEmployee({ ...employee, department_type: deptType });
