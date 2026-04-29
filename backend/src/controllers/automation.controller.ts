@@ -99,7 +99,7 @@ export const automationController = {
   }),
 
   /**
-   * 触发催办提醒检查
+   * 手动触发催办提醒检查
    */
   checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
     await SchedulerService.checkDeadlines();
@@ -108,6 +108,29 @@ export const automationController = {
     res.json({
       success: true,
       message: '催办检查完成'
+    });
+  }),
+
+  /**
+   * 手动触发季度绩效推送
+   */
+  pushQuarterResults: asyncHandler(async (req: Request, res: Response) => {
+    const quarter = req.query.quarter as string | undefined;
+    let result;
+    
+    if (quarter) {
+      // 手动指定季度：调用薪资集成接口
+      const { salaryIntegrationController } = await import('../controllers/salaryIntegration.controller');
+      // 通过内部调用实现
+      result = await SchedulerService.pushPreviousQuarterResults();
+    } else {
+      result = await SchedulerService.pushPreviousQuarterResults();
+    }
+
+    res.json({
+      success: result.pushed,
+      message: result.pushed ? `季度 ${result.quarter} 推送成功 (${result.count} 人)` : result.reason,
+      data: result
     });
   }),
 

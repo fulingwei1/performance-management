@@ -5,7 +5,7 @@ import { TodoModel } from '../models/todo.model';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
-import { getGroupType } from '../utils/helpers';
+import { getGroupType, scoreToLevel, levelToScore } from '../utils/helpers';
 import { getPerformanceRankingConfig, isParticipatingRecord } from './performanceRankingConfig.service';
 import { ProgressMonitorService } from './progressMonitor.service';
 import { ArchiveService } from './archive.service';
@@ -72,6 +72,17 @@ export class SchedulerService {
         logger.info(`[Scheduler] 自动发布检查完成: ${JSON.stringify(result)}`);
       } catch (err) {
         logger.error(`[Scheduler] 自动发布出错: ${err}`);
+      }
+    });
+
+    // 每季度首月（1/4/7/10）2 日凌晨 4:00 自动推送上季度绩效到薪资系统
+    cron.schedule('0 4 2 1,4,7,10 *', async () => {
+      logger.info('[Scheduler] 执行季度绩效推送...');
+      try {
+        const result = await this.pushPreviousQuarterResults();
+        logger.info(`[Scheduler] 季度推送完成: ${JSON.stringify(result)}`);
+      } catch (err) {
+        logger.error(`[Scheduler] 季度推送出错: ${err}`);
       }
     });
 
@@ -572,5 +583,178 @@ export class SchedulerService {
     }
 
     return { month: targetMonth, published: true, reason: `自动发布完成 (${completedRecords.length} 条记录)` };
+  }
+
+  /**
+   * 季度首月自动推送上季度绩效到薪资系统
+   * 季度分数 = 该季度3个月度分数的平均值
+   */
+  static async pushPreviousQuarterResults(referenceDate: Date = new Date()): Promise<{
+    quarter: string;
+    pushed: boolean;
+    count: number;
+    reason?: string;
+  }> {
+    // 计算上季度
+    const month = referenceDate.getMonth() + 1; // 1-12
+    const year = referenceDate.getFullYear();
+    
+    let prevQuarter: string;
+    let prevYear = year;
+    let prevQ: number;
+    
+    if (month === 1) { // 1月 → 上一年Q4
+      prevYear = year - 1;
+      prevQ = 4;
+    } else if (month <= 3) { // 2-3月 → 上一年Q4
+      prevYear = year - 1;
+      prevQ = 4;
+    } else if (month <= 6) { // 4-6月 → Q1
+      prevQ = 1;
+    } else if (month <= 9) { // 7-9月 → Q2
+      prevQ = 2;
+    } else { // 10-12月 → Q3
+      prevQ = 3;
+    }
+    
+    prevQuarter = `${prevYear}-Q${prevQ}`;
+    
+    // 季度对应的3个月
+    const startMonth = (prevQ - 1) * 3 + 1;
+    const months = [0, 1, 2].map(offset => `${prevYear}-${String(startMonth + offset).padStart(2, '0')}`);
+    
+    logger.info(`[Scheduler] 推送上季度绩效: ${prevQuarter} (${months.join(', ')})`);
+    
+    // 获取所有员工
+    const allEmployees = await EmployeeModel.findAll();
+    const eligibleEmployees = allEmployees.filter(
+      (e: any) => (e.role === 'employee' || e.role === 'manager') && e.status !== 'disabled'
+    );
+    
+    // 聚合季度分数
+    const scoreAgg = new Map<string, {
+      employeeExternalId: string;
+      employeeName: string;
+      department: string;
+      subDepartment: string;
+      sum: number;
+      count: number;
+    }>();
+    
+    for (const monthStr of months) {
+      const records = await PerformanceModel.findByMonth(monthStr);
+      for (const record of records) {
+        if (record.status !== 'completed') continue;
+        const empId = record.employeeId;
+        if (!empId) continue;
+        
+        const totalScore = Number(record.totalScore || 0);
+        const empName = (record as any).employeeName || '';
+        const dept = (record as any).department || '';
+        const subDept = (record as any).subDepartment || '';
+        
+        const prev = scoreAgg.get(empId);
+        if (!prev) {
+          scoreAgg.set(empId, {
+            employeeExternalId: empId,
+            employeeName: empName,
+            department: dept,
+            subDepartment: subDept,
+            sum: totalScore,
+            count: 1
+          });
+        } else {
+          prev.sum += totalScore;
+          prev.count += 1;
+          prev.employeeName = empName || prev.employeeName;
+          prev.department = dept || prev.department;
+          prev.subDepartment = subDept || prev.subDepartment;
+        }
+      }
+    }
+    
+    // 检查是否所有人都完成了
+    const completedEmployeeIds = new Set(scoreAgg.keys());
+    const incomplete = eligibleEmployees.filter((e: any) => !completedEmployeeIds.has(e.id));
+    
+    if (incomplete.length > 0) {
+      return {
+        quarter: prevQuarter,
+        pushed: false,
+        count: 0,
+        reason: `${incomplete.length} 名员工未完成季度考核`
+      };
+    }
+    
+    // 构建推送数据
+    const results = Array.from(scoreAgg.values()).map(agg => {
+      const avg = agg.count > 0 ? agg.sum / agg.count : 0;
+      const quarterScore = Math.round(avg * 100) / 100;
+      const level = scoreToLevel(quarterScore) as 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
+      const coefficient = levelToScore(level);
+      return {
+        employeeExternalId: agg.employeeExternalId,
+        employeeName: agg.employeeName,
+        department: agg.department,
+        subDepartment: agg.subDepartment,
+        quarterScore,
+        monthsCount: agg.count,
+        rank: 0,
+        level,
+        coefficient
+      };
+    });
+    
+    // 排序并设置排名
+    results.sort((a, b) => {
+      if (b.quarterScore !== a.quarterScore) return b.quarterScore - a.quarterScore;
+      return a.employeeExternalId.localeCompare(b.employeeExternalId);
+    });
+    results.forEach((item, idx) => { item.rank = idx + 1; });
+    
+    // 推送到薪资系统
+    const salaryBaseUrl = (process.env.SALARY_SYSTEM_BASE_URL || '').trim();
+    const pushToken = (process.env.SALARY_SYSTEM_PUSH_TOKEN || '').trim();
+    
+    if (!salaryBaseUrl || !pushToken) {
+      return {
+        quarter: prevQuarter,
+        pushed: false,
+        count: 0,
+        reason: '未配置薪资系统推送环境变量 (SALARY_SYSTEM_BASE_URL / SALARY_SYSTEM_PUSH_TOKEN)'
+      };
+    }
+    
+    const base = salaryBaseUrl.endsWith('/') ? salaryBaseUrl.slice(0, -1) : salaryBaseUrl;
+    const url = `${base}/api/integrations/performance/quarter-results`;
+    
+    const payload = {
+      quarter: prevQuarter,
+      effectiveQuarter: `${prevYear}-Q${prevQ + 1 > 4 ? 1 : prevQ + 1}`,
+      publishedAt: new Date().toISOString(),
+      results
+    };
+    
+    try {
+      const axios = (await import('axios')).default;
+      await axios.post(url, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Performance-Push-Token': pushToken
+        },
+        timeout: 15_000
+      });
+      
+      logger.info(`[Scheduler] 季度绩效推送成功: ${prevQuarter}, ${results.length} 人`);
+      return { quarter: prevQuarter, pushed: true, count: results.length };
+    } catch (err) {
+      logger.error(`[Scheduler] 季度绩效推送失败: ${err}`);
+      return {
+        quarter: prevQuarter,
+        pushed: false,
+        count: 0,
+        reason: `推送失败: ${err instanceof Error ? err.message : String(err)}`
+      };
+    }
   }
 }

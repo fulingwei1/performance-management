@@ -9,6 +9,7 @@ router.post('/generate-monthly-tasks', authenticate, automationController.genera
 router.post('/generate-monthly-stats', authenticate, automationController.generateMonthlyStats);
 router.post('/auto-publish', authenticate, automationController.autoPublish);
 router.post('/check-reminders', authenticate, automationController.checkDeadlineReminders);
+router.post('/push-quarter-results', authenticate, requireRole('hr', 'admin'), automationController.pushQuarterResults);
 
 // 归档管理
 router.post('/archive', authenticate, requireRole('hr', 'admin'), automationController.archiveMonth);
