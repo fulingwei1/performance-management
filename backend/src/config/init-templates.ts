@@ -1,11 +1,13 @@
 /**
- * 初始化默认考核模板数据
- * 在系统启动时加载到 Memory DB
+ * 金凯博自动化 — 非标自动化行业考核模板体系
  * 
- * 模板体系：按岗位×层级细分的多模板体系
- * - 每个部门有一个兜底模板（isDefault=true, priority=0）
+ * 行业特点：项目制定制、多专业协同（机械/电气/软件）、长交付周期、
+ *           技术攻关密集、跨部门协作多、售后成本高
+ * 
+ * 模板体系：10大岗位 × 多层级 = 30+ 模板
+ * - 每个岗位有兜底模板（isDefault=true, priority=0）
  * - 每个岗位×层级组合有专用模板（priority=30~50）
- * - 匹配规则：岗位精确匹配(50) > 层级匹配(30) > 角色匹配(10) > 部门兜底(0)
+ * - 匹配规则：岗位精确匹配(50) > 层级匹配(30) > 部门兜底(0)
  */
 
 import { memoryStore } from './database';
@@ -42,25 +44,16 @@ interface MetricDef {
 
 function registerTemplate(t: TemplateDef) {
   memoryStore.assessmentTemplates?.set(t.id, {
-    id: t.id,
-    name: t.name,
-    description: t.description,
-    department_type: t.department_type,
-    is_default: t.is_default,
-    status: t.status,
-    applicable_roles: t.applicableRoles || [],
-    applicable_levels: t.applicableLevels || [],
-    applicable_positions: t.applicablePositions || [],
-    priority: t.priority,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
+    id: t.id, name: t.name, description: t.description,
+    department_type: t.department_type, is_default: t.is_default, status: t.status,
+    applicable_roles: t.applicableRoles || [], applicable_levels: t.applicableLevels || [],
+    applicable_positions: t.applicablePositions || [], priority: t.priority,
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString()
   });
 }
 
 function registerMetrics(metrics: MetricDef[]) {
-  metrics.forEach(m => {
-    memoryStore.templateMetrics?.set(m.id, m);
-  });
+  metrics.forEach(m => memoryStore.templateMetrics?.set(m.id, m));
 }
 
 // ============================================
@@ -68,472 +61,531 @@ function registerMetrics(metrics: MetricDef[]) {
 // ============================================
 
 export function initializeDefaultTemplates() {
-  logger.info('📦 初始化默认考核模板（岗位×层级细分体系）...');
-  
-  // 清空现有数据
+  logger.info('📦 初始化金凯博自动化考核模板（非标自动化行业专用）...');
   memoryStore.assessmentTemplates?.clear();
   memoryStore.templateMetrics?.clear();
   memoryStore.metricScoringCriteria?.clear();
-  
+
   // ============================================
-  // 1. 工程技术部门模板
+  // 1. 机械设计工程师（非标自动化核心）
   // ============================================
-  
-  // 1.1 工程技术部门 - 兜底模板
+
+  // 1.1 机械设计 - 兜底模板
   registerTemplate({
-    id: 'template-eng-default',
-    name: '工程技术部门标准模板',
-    description: '适用于工程技术岗位的通用考核模板：项目交付50%+技术能力30%+协作成长20%',
-    department_type: 'engineering',
-    is_default: true,
-    status: 'active',
-    priority: 0
+    id: 'template-mech-default', name: '机械设计部门标准模板',
+    description: '适用于机械设计岗位：3D设计40%+出图质量30%+BOM与标准件15%+协作15%',
+    department_type: 'engineering', is_default: true, status: 'active', priority: 0
   });
   registerMetrics([
-    { id: 'metric-eng-def-01', template_id: 'template-eng-default', metric_name: '项目按时完成率', metric_code: 'PROJECT_ONTIME_RATE', category: 'performance', weight: 20.00, description: '按时交付项目数/总项目数', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-eng-def-02', template_id: 'template-eng-default', metric_name: '一次验收通过率', metric_code: 'FIRST_PASS_RATE', category: 'performance', weight: 15.00, description: '一次验收通过数/总验收数', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-eng-def-03', template_id: 'template-eng-default', metric_name: '技术方案合理性', metric_code: 'SOLUTION_QUALITY', category: 'performance', weight: 15.00, description: '方案设计质量、可行性评估', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-eng-def-04', template_id: 'template-eng-default', metric_name: '技术难题解决能力', metric_code: 'PROBLEM_SOLVING', category: 'innovation', weight: 15.00, description: '攻克技术难题的能力', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-eng-def-05', template_id: 'template-eng-default', metric_name: '创新贡献', metric_code: 'INNOVATION', category: 'innovation', weight: 10.00, description: '专利、技术改进提案', evaluation_type: 'quantitative', sort_order: 5 },
-    { id: 'metric-eng-def-06', template_id: 'template-eng-default', metric_name: '技术文档完整性', metric_code: 'DOCUMENTATION', category: 'performance', weight: 5.00, description: '技术文档的完整性和规范性', evaluation_type: 'qualitative', sort_order: 6 },
-    { id: 'metric-eng-def-07', template_id: 'template-eng-default', metric_name: '跨部门协作', metric_code: 'CROSS_TEAM_COLLABORATION', category: 'collaboration', weight: 10.00, description: '与其他部门的协作配合', evaluation_type: 'qualitative', sort_order: 7 },
-    { id: 'metric-eng-def-08', template_id: 'template-eng-default', metric_name: '技术分享与培训', metric_code: 'KNOWLEDGE_SHARING', category: 'collaboration', weight: 10.00, description: '技术分享次数和质量', evaluation_type: 'quantitative', sort_order: 8 }
+    { id: 'metric-mech-def-01', template_id: 'template-mech-default', metric_name: '3D建模与设计质量', metric_code: '3D_DESIGN_QUALITY', category: 'performance', weight: 20.00, description: '3D模型准确性、设计合理性、可制造性', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-mech-def-02', template_id: 'template-mech-default', metric_name: '2D出图质量', metric_code: '2D_DRAWING_QUALITY', category: 'performance', weight: 15.00, description: '工程图完整性、标注准确性、公差合理性', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-mech-def-03', template_id: 'template-mech-default', metric_name: 'BOM准确性', metric_code: 'BOM_ACCURACY', category: 'performance', weight: 15.00, description: 'BOM清单准确率、无遗漏', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-mech-def-04', template_id: 'template-mech-default', metric_name: '设计变更率', metric_code: 'DESIGN_CHANGE_RATE', category: 'performance', weight: 15.00, description: '设计变更次数/项目数，反映设计一次通过率', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-mech-def-05', template_id: 'template-mech-default', metric_name: '标准件复用率', metric_code: 'STD_PART_REUSE', category: 'innovation', weight: 10.00, description: '标准件和成熟模块复用程度', evaluation_type: 'quantitative', sort_order: 5 },
+    { id: 'metric-mech-def-06', template_id: 'template-mech-default', metric_name: '设计按期交付', metric_code: 'DESIGN_ON_TIME', category: 'performance', weight: 15.00, description: '设计任务按时完成率', evaluation_type: 'quantitative', sort_order: 6 },
+    { id: 'metric-mech-def-07', template_id: 'template-mech-default', metric_name: '跨部门协作', metric_code: 'CROSS_TEAM_COLLAB', category: 'collaboration', weight: 10.00, description: '与电气/软件/采购/装配的配合', evaluation_type: 'qualitative', sort_order: 7 },
   ]);
-  
-  // 1.2 工程技术部门 - 高级工程师
+
+  // 1.2 机械设计 - 高级/专家工程师
   registerTemplate({
-    id: 'template-eng-senior-001',
-    name: '工程技术高级工程师考核模板',
-    description: '适用于高级工程师：技术攻坚40%+项目管理30%+创新15%+协作15%',
-    department_type: 'engineering',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['senior'],
-    applicablePositions: ['高级工程师'],
-    priority: 50
+    id: 'template-mech-senior-001', name: '机械设计高级工程师考核模板',
+    description: '高级/专家机械工程师：技术攻坚40%+方案设计30%+标准建设15%+指导15%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级机械工程师', '机械专家', '首席机械工程师'], priority: 50
   });
   registerMetrics([
-    { id: 'metric-eng-snr-01', template_id: 'template-eng-senior-001', metric_name: '技术攻坚能力', metric_code: 'TECH_BREAKTHROUGH', category: 'performance', weight: 25.00, description: '解决核心技术难题、技术攻关贡献', evaluation_type: 'qualitative', sort_order: 1 },
-    { id: 'metric-eng-snr-02', template_id: 'template-eng-senior-001', metric_name: '技术方案设计', metric_code: 'SOLUTION_DESIGN', category: 'performance', weight: 15.00, description: '架构设计、技术方案评审质量', evaluation_type: 'qualitative', sort_order: 2 },
-    { id: 'metric-eng-snr-03', template_id: 'template-eng-senior-001', metric_name: '项目管理', metric_code: 'PROJECT_MGMT', category: 'performance', weight: 20.00, description: '项目进度把控、风险识别与管理', evaluation_type: 'quantitative', sort_order: 3 },
-    { id: 'metric-eng-snr-04', template_id: 'template-eng-senior-001', metric_name: '技术创新', metric_code: 'TECH_INNOVATION', category: 'innovation', weight: 15.00, description: '技术创新、专利提案、技术改进', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-eng-snr-05', template_id: 'template-eng-senior-001', metric_name: '技术 mentoring', metric_code: 'TECH_MENTORING', category: 'collaboration', weight: 15.00, description: '指导初中级工程师、技术分享', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-eng-snr-06', template_id: 'template-eng-senior-001', metric_name: '质量把控', metric_code: 'QUALITY_CONTROL', category: 'performance', weight: 10.00, description: '代码/方案评审、质量把关', evaluation_type: 'qualitative', sort_order: 6 }
+    { id: 'metric-mech-snr-01', template_id: 'template-mech-senior-001', metric_name: '核心技术攻坚', metric_code: 'CORE_TECH_BREAKTHROUGH', category: 'performance', weight: 25.00, description: '复杂机构设计、关键技术方案攻关', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-mech-snr-02', template_id: 'template-mech-senior-001', metric_name: '方案设计能力', metric_code: 'CONCEPT_DESIGN', category: 'performance', weight: 20.00, description: '方案可行性、创新性、成本意识', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-mech-snr-03', template_id: 'template-mech-senior-001', metric_name: '设计评审质量', metric_code: 'DESIGN_REVIEW', category: 'performance', weight: 15.00, description: '评审问题发现率、方案优化建议', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-mech-snr-04', template_id: 'template-mech-senior-001', metric_name: '标准化建设', metric_code: 'STANDARDIZATION', category: 'innovation', weight: 15.00, description: '标准模块库建设、设计规范制定', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-mech-snr-05', template_id: 'template-mech-senior-001', metric_name: '技术指导', metric_code: 'TECH_MENTORING', category: 'collaboration', weight: 15.00, description: '指导中初级工程师、技术分享', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-mech-snr-06', template_id: 'template-mech-senior-001', metric_name: '专利与技术成果', metric_code: 'PATENT_INNOVATION', category: 'innovation', weight: 10.00, description: '专利提案、技术论文', evaluation_type: 'quantitative', sort_order: 6 },
   ]);
-  
-  // 1.3 工程技术部门 - 中级工程师
+
+  // 1.3 机械设计 - 中级工程师
   registerTemplate({
-    id: 'template-eng-inter-001',
-    name: '工程技术中级工程师考核模板',
-    description: '适用于中级工程师：项目交付40%+技术能力30%+学习成长15%+协作15%',
-    department_type: 'engineering',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['intermediate'],
-    applicablePositions: ['中级工程师'],
-    priority: 50
+    id: 'template-mech-inter-001', name: '机械设计中级工程师考核模板',
+    description: '中级机械工程师：独立设计50%+出图质量20%+BOM15%+协作15%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate'],
+    applicablePositions: ['机械工程师', '机械设计工程师'], priority: 50
   });
   registerMetrics([
-    { id: 'metric-eng-int-01', template_id: 'template-eng-inter-001', metric_name: '项目交付质量', metric_code: 'PROJECT_DELIVERY', category: 'performance', weight: 25.00, description: '项目按时按质交付情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-eng-int-02', template_id: 'template-eng-inter-001', metric_name: '任务完成率', metric_code: 'TASK_COMPLETION', category: 'performance', weight: 15.00, description: '分配任务按时完成率', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-eng-int-03', template_id: 'template-eng-inter-001', metric_name: '技术能力', metric_code: 'TECH_SKILL', category: 'performance', weight: 20.00, description: '技术栈掌握、独立解决问题能力', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-eng-int-04', template_id: 'template-eng-inter-001', metric_name: '代码/文档质量', metric_code: 'CODE_DOC_QUALITY', category: 'performance', weight: 10.00, description: '代码规范、文档完整性', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-eng-int-05', template_id: 'template-eng-inter-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 15.00, description: '新技术学习、能力提升', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-eng-int-06', template_id: 'template-eng-inter-001', metric_name: '团队协作', metric_code: 'TEAMWORK', category: 'collaboration', weight: 15.00, description: '团队配合、沟通协作', evaluation_type: 'qualitative', sort_order: 6 }
+    { id: 'metric-mech-int-01', template_id: 'template-mech-inter-001', metric_name: '独立设计能力', metric_code: 'INDEPENDENT_DESIGN', category: 'performance', weight: 25.00, description: '独立完成子模块设计的能力和效率', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-mech-int-02', template_id: 'template-mech-inter-001', metric_name: '3D建模质量', metric_code: '3D_MODEL_QUALITY', category: 'performance', weight: 20.00, description: '模型准确性、干涉检查通过率', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-mech-int-03', template_id: 'template-mech-inter-001', metric_name: '2D出图质量', metric_code: '2D_DRAWING_QUALITY', category: 'performance', weight: 15.00, description: '工程图完整准确、符合国标', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-mech-int-04', template_id: 'template-mech-inter-001', metric_name: 'BOM准确率', metric_code: 'BOM_ACCURACY', category: 'performance', weight: 15.00, description: 'BOM无遗漏、物料规格正确', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-mech-int-05', template_id: 'template-mech-inter-001', metric_name: '设计按期交付', metric_code: 'DESIGN_ON_TIME', category: 'performance', weight: 15.00, description: '按时完成设计任务', evaluation_type: 'quantitative', sort_order: 5 },
+    { id: 'metric-mech-int-06', template_id: 'template-mech-inter-001', metric_name: '跨部门协作', metric_code: 'COLLABORATION', category: 'collaboration', weight: 10.00, description: '与电气/装配/采购的配合', evaluation_type: 'qualitative', sort_order: 6 },
   ]);
-  
-  // 1.4 工程技术部门 - 初级工程师
+
+  // 1.4 机械设计 - 初级工程师
   registerTemplate({
-    id: 'template-eng-junior-001',
-    name: '工程技术初级工程师考核模板',
-    description: '适用于初级工程师：学习成长30%+项目协助40%+技术基础20%+态度10%',
-    department_type: 'engineering',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['junior'],
-    applicablePositions: ['初级工程师'],
-    priority: 50
+    id: 'template-mech-junior-001', name: '机械设计初级工程师考核模板',
+    description: '初级机械工程师：学习成长30%+辅助设计40%+基础出图20%+态度10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['junior'],
+    applicablePositions: ['助理机械工程师', '见习机械工程师', '初级机械工程师'], priority: 50
   });
   registerMetrics([
-    { id: 'metric-eng-jnr-01', template_id: 'template-eng-junior-001', metric_name: '项目协助贡献', metric_code: 'PROJECT_ASSIST', category: 'performance', weight: 25.00, description: '参与项目任务的完成情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-eng-jnr-02', template_id: 'template-eng-junior-001', metric_name: '任务执行力', metric_code: 'TASK_EXECUTION', category: 'performance', weight: 15.00, description: '分配任务的执行质量和效率', evaluation_type: 'qualitative', sort_order: 2 },
-    { id: 'metric-eng-jnr-03', template_id: 'template-eng-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 30.00, description: '技术学习进度、培训参与度', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-eng-jnr-04', template_id: 'template-eng-junior-001', metric_name: '技术基础', metric_code: 'TECH_FOUNDATION', category: 'performance', weight: 20.00, description: '基础知识掌握、工具使用熟练度', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-eng-jnr-05', template_id: 'template-eng-junior-001', metric_name: '工作态度', metric_code: 'WORK_ATTITUDE', category: 'behavior', weight: 10.00, description: '主动性、责任心、出勤情况', evaluation_type: 'qualitative', sort_order: 5 }
+    { id: 'metric-mech-jnr-01', template_id: 'template-mech-junior-001', metric_name: '辅助设计贡献', metric_code: 'ASSIST_DESIGN', category: 'performance', weight: 25.00, description: '辅助完成设计任务的完成情况', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-mech-jnr-02', template_id: 'template-mech-junior-001', metric_name: '3D建模学习', metric_code: '3D_LEARNING', category: 'performance', weight: 15.00, description: 'SolidWorks等工具掌握程度', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-mech-jnr-03', template_id: 'template-mech-junior-001', metric_name: '出图规范性', metric_code: 'DRAWING_STANDARD', category: 'performance', weight: 15.00, description: '出图符合规范、标注准确', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-mech-jnr-04', template_id: 'template-mech-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 30.00, description: '技术学习进度、培训参与度', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-mech-jnr-05', template_id: 'template-mech-junior-001', metric_name: '工作态度', metric_code: 'WORK_ATTITUDE', category: 'behavior', weight: 15.00, description: '主动性、责任心、执行力', evaluation_type: 'qualitative', sort_order: 5 },
   ]);
-  
-  // 1.5 工程技术部门 - 项目经理
-  registerTemplate({
-    id: 'template-eng-mgr-001',
-    name: '工程技术项目经理考核模板',
-    description: '适用于项目经理：项目管理50%+团队管理30%+质量把控10%+沟通10%',
-    department_type: 'engineering',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['manager'],
-    applicableLevels: ['senior', 'intermediate'],
-    applicablePositions: ['项目经理'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-eng-mgr-01', template_id: 'template-eng-mgr-001', metric_name: '项目交付率', metric_code: 'PROJECT_DELIVERY_RATE', category: 'performance', weight: 25.00, description: '项目按时交付比例', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-eng-mgr-02', template_id: 'template-eng-mgr-001', metric_name: '项目预算控制', metric_code: 'BUDGET_CONTROL', category: 'performance', weight: 15.00, description: '项目成本控制在预算范围内', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-eng-mgr-03', template_id: 'template-eng-mgr-001', metric_name: '风险管理', metric_code: 'RISK_MGMT', category: 'performance', weight: 10.00, description: '风险识别、预防和应对', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-eng-mgr-04', template_id: 'template-eng-mgr-001', metric_name: '团队建设', metric_code: 'TEAM_BUILDING', category: 'collaboration', weight: 15.00, description: '团队培养、凝聚力建设', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-eng-mgr-05', template_id: 'template-eng-mgr-001', metric_name: '资源协调', metric_code: 'RESOURCE_COORDINATION', category: 'collaboration', weight: 15.00, description: '跨部门资源协调、冲突解决', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-eng-mgr-06', template_id: 'template-eng-mgr-001', metric_name: '质量把控', metric_code: 'QUALITY_OVERSIGHT', category: 'performance', weight: 10.00, description: '项目质量标准和把控', evaluation_type: 'qualitative', sort_order: 6 },
-    { id: 'metric-eng-mgr-07', template_id: 'template-eng-mgr-001', metric_name: '沟通汇报', metric_code: 'COMMUNICATION_REPORTING', category: 'behavior', weight: 10.00, description: '向上汇报、跨部门沟通', evaluation_type: 'qualitative', sort_order: 7 }
-  ]);
-  
+
   // ============================================
-  // 2. 销售部门模板
+  // 2. 电气工程师（PLC/伺服/现场总线）
   // ============================================
-  
-  // 2.1 销售部门 - 兜底模板
+
+  // 2.1 电气 - 兜底模板
   registerTemplate({
-    id: 'template-sales-default',
-    name: '销售部门标准模板',
-    description: '适用于销售岗位的通用考核模板：业绩导向，70%量化指标+30%行为指标',
-    department_type: 'sales',
-    is_default: true,
-    status: 'active',
-    priority: 0
+    id: 'template-elec-default', name: '电气部门标准模板',
+    description: '适用于电气岗位：PLC编程35%+电气设计25%+调试30%+安全10%',
+    department_type: 'engineering', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-elec-def-01', template_id: 'template-elec-default', metric_name: 'PLC编程质量', metric_code: 'PLC_PROGRAM_QUALITY', category: 'performance', weight: 25.00, description: '程序逻辑正确性、可读性、异常处理', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-elec-def-02', template_id: 'template-elec-default', metric_name: '电气设计质量', metric_code: 'ELEC_DESIGN_QUALITY', category: 'performance', weight: 20.00, description: '电气原理图、接线图、选型合理性', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-elec-def-03', template_id: 'template-elec-default', metric_name: '调试一次通过率', metric_code: 'DEBUG_FIRST_PASS', category: 'performance', weight: 20.00, description: '电气调试一次验收通过率', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-elec-def-04', template_id: 'template-elec-default', metric_name: '按期交付', metric_code: 'ON_TIME_DELIVERY', category: 'performance', weight: 15.00, description: '电气部分按期完成', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-elec-def-05', template_id: 'template-elec-default', metric_name: '安全规范遵守', metric_code: 'SAFETY_COMPLIANCE', category: 'performance', weight: 10.00, description: '电气安全标准、接地、防护', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-elec-def-06', template_id: 'template-elec-default', metric_name: '文档完整性', metric_code: 'DOCUMENTATION', category: 'performance', weight: 10.00, description: '程序注释、操作说明、接线文档', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 2.2 电气 - 高级工程师
+  registerTemplate({
+    id: 'template-elec-senior-001', name: '电气高级工程师考核模板',
+    description: '高级电气工程师：技术攻坚40%+架构设计25%+调试20%+标准建设15%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级电气工程师', '电气专家', '首席电气工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-elec-snr-01', template_id: 'template-elec-senior-001', metric_name: '技术攻坚', metric_code: 'TECH_BREAKTHROUGH', category: 'performance', weight: 25.00, description: '复杂运动控制、总线通讯、安全PLC攻关', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-elec-snr-02', template_id: 'template-elec-senior-001', metric_name: '架构设计', metric_code: 'ARCH_DESIGN', category: 'performance', weight: 20.00, description: '电气架构方案、选型、成本控制', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-elec-snr-03', template_id: 'template-elec-senior-001', metric_name: '调试效率', metric_code: 'DEBUG_EFFICIENCY', category: 'performance', weight: 20.00, description: '调试周期缩短、问题快速定位', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-elec-snr-04', template_id: 'template-elec-senior-001', metric_name: '标准化建设', metric_code: 'STANDARDIZATION', category: 'innovation', weight: 15.00, description: '标准程序库、功能块封装', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-elec-snr-05', template_id: 'template-elec-senior-001', metric_name: '技术指导', metric_code: 'MENTORING', category: 'collaboration', weight: 10.00, description: '指导中初级工程师', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-elec-snr-06', template_id: 'template-elec-senior-001', metric_name: '技术创新', metric_code: 'TECH_INNOVATION', category: 'innovation', weight: 10.00, description: '新技术应用、工艺改进', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 2.3 电气 - 中级工程师
+  registerTemplate({
+    id: 'template-elec-inter-001', name: '电气中级工程师考核模板',
+    description: '中级电气工程师：独立编程40%+电气设计25%+调试25%+协作10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate'],
+    applicablePositions: ['电气工程师', 'PLC工程师', '自动化工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-elec-int-01', template_id: 'template-elec-inter-001', metric_name: 'PLC编程能力', metric_code: 'PLC_SKILL', category: 'performance', weight: 25.00, description: '独立完成PLC程序编写', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-elec-int-02', template_id: 'template-elec-inter-001', metric_name: '电气设计', metric_code: 'ELEC_DESIGN', category: 'performance', weight: 20.00, description: '原理图、接线图设计质量', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-elec-int-03', template_id: 'template-elec-inter-001', metric_name: '调试能力', metric_code: 'DEBUG_SKILL', category: 'performance', weight: 20.00, description: '现场调试、问题排查', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-elec-int-04', template_id: 'template-elec-inter-001', metric_name: '按期交付', metric_code: 'ON_TIME', category: 'performance', weight: 15.00, description: '按期完成电气任务', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-elec-int-05', template_id: 'template-elec-inter-001', metric_name: '机械协作', metric_code: 'MECH_COLLAB', category: 'collaboration', weight: 10.00, description: '与机械设计的配合', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-elec-int-06', template_id: 'template-elec-inter-001', metric_name: '文档规范', metric_code: 'DOC_STANDARD', category: 'performance', weight: 10.00, description: '程序注释、文档完整', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 2.4 电气 - 初级工程师
+  registerTemplate({
+    id: 'template-elec-junior-001', name: '电气初级工程师考核模板',
+    description: '初级电气工程师：学习30%+辅助编程35%+接线图15%+态度20%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['junior'],
+    applicablePositions: ['助理电气工程师', '见习电气工程师', '初级电气工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-elec-jnr-01', template_id: 'template-elec-junior-001', metric_name: '辅助编程', metric_code: 'ASSIST_PROGRAM', category: 'performance', weight: 25.00, description: '辅助完成PLC程序编写和测试', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-elec-jnr-02', template_id: 'template-elec-junior-001', metric_name: '接线图绘制', metric_code: 'WIRING_DRAWING', category: 'performance', weight: 15.00, description: '电气接线图绘制质量', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-elec-jnr-03', template_id: 'template-elec-junior-001', metric_name: '调试辅助', metric_code: 'ASSIST_DEBUG', category: 'performance', weight: 10.00, description: '辅助现场调试', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-elec-jnr-04', template_id: 'template-elec-junior-001', metric_name: '学习成长', metric_code: 'LEARNING', category: 'behavior', weight: 30.00, description: 'PLC/电气知识学习进度', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-elec-jnr-05', template_id: 'template-elec-junior-001', metric_name: '工作态度', metric_code: 'ATTITUDE', category: 'behavior', weight: 20.00, description: '主动性、责任心', evaluation_type: 'qualitative', sort_order: 5 },
+  ]);
+
+  // ============================================
+  // 3. 软件工程师（视觉/上位机/ MES）
+  // ============================================
+
+  registerTemplate({
+    id: 'template-sw-default', name: '软件部门标准模板',
+    description: '适用于软件岗位：开发质量40%+效率25%+稳定性20%+协作15%',
+    department_type: 'engineering', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-sw-def-01', template_id: 'template-sw-default', metric_name: '代码质量', metric_code: 'CODE_QUALITY', category: 'performance', weight: 20.00, description: '代码规范、可读性、架构合理性', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-sw-def-02', template_id: 'template-sw-default', metric_name: 'Bug率', metric_code: 'BUG_RATE', category: 'performance', weight: 15.00, description: '千行代码Bug数、严重Bug数', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sw-def-03', template_id: 'template-sw-default', metric_name: '系统稳定性', metric_code: 'STABILITY', category: 'performance', weight: 20.00, description: '系统运行稳定性、崩溃率', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-sw-def-04', template_id: 'template-sw-default', metric_name: '按期交付', metric_code: 'ON_TIME', category: 'performance', weight: 15.00, description: '开发任务按期完成', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-sw-def-05', template_id: 'template-sw-default', metric_name: '视觉算法能力', metric_code: 'VISION_ALGO', category: 'performance', weight: 15.00, description: '视觉识别准确率、算法优化', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-sw-def-06', template_id: 'template-sw-default', metric_name: '设备联调', metric_code: 'EQUIPMENT_INTEGRATION', category: 'collaboration', weight: 15.00, description: '与PLC/硬件的通讯联调', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 3.2 软件 - 高级工程师
+  registerTemplate({
+    id: 'template-sw-senior-001', name: '软件高级工程师考核模板',
+    description: '高级软件工程师：架构设计30%+技术攻坚25%+稳定性20%+指导15%+创新10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级软件工程师', '视觉算法工程师', '上位机专家'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-sw-snr-01', template_id: 'template-sw-senior-001', metric_name: '架构设计', metric_code: 'ARCH_DESIGN', category: 'performance', weight: 25.00, description: '系统架构设计、框架选型', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-sw-snr-02', template_id: 'template-sw-senior-001', metric_name: '技术攻坚', metric_code: 'TECH_BREAKTHROUGH', category: 'performance', weight: 20.00, description: '视觉算法攻关、性能优化', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-sw-snr-03', template_id: 'template-sw-senior-001', metric_name: '系统稳定性', metric_code: 'STABILITY', category: 'performance', weight: 20.00, description: '系统长时间运行稳定性', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-sw-snr-04', template_id: 'template-sw-senior-001', metric_name: '标准化建设', metric_code: 'STANDARDIZATION', category: 'innovation', weight: 15.00, description: '框架封装、通用组件', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-sw-snr-05', template_id: 'template-sw-senior-001', metric_name: '技术指导', metric_code: 'MENTORING', category: 'collaboration', weight: 10.00, description: '代码Review、技术分享', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-sw-snr-06', template_id: 'template-sw-senior-001', metric_name: '技术创新', metric_code: 'INNOVATION', category: 'innovation', weight: 10.00, description: '新技术引入、算法优化', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 3.3 软件 - 中级工程师
+  registerTemplate({
+    id: 'template-sw-inter-001', name: '软件中级工程师考核模板',
+    description: '中级软件工程师：独立开发45%+代码质量20%+联调20%+学习15%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate'],
+    applicablePositions: ['软件工程师', '上位机工程师', '视觉工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-sw-int-01', template_id: 'template-sw-inter-001', metric_name: '独立开发', metric_code: 'INDEPENDENT_DEV', category: 'performance', weight: 25.00, description: '独立完成模块开发', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-sw-int-02', template_id: 'template-sw-inter-001', metric_name: '代码质量', metric_code: 'CODE_QUALITY', category: 'performance', weight: 20.00, description: '代码规范、注释完整', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-sw-int-03', template_id: 'template-sw-inter-001', metric_name: 'Bug控制', metric_code: 'BUG_CONTROL', category: 'performance', weight: 15.00, description: '测试阶段Bug数量', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-sw-int-04', template_id: 'template-sw-inter-001', metric_name: '设备联调', metric_code: 'EQUIPMENT_INTEGRATION', category: 'performance', weight: 20.00, description: '与PLC/相机的通讯联调', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-sw-int-05', template_id: 'template-sw-inter-001', metric_name: '按期交付', metric_code: 'ON_TIME', category: 'performance', weight: 10.00, description: '开发任务按期完成', evaluation_type: 'quantitative', sort_order: 5 },
+    { id: 'metric-sw-int-06', template_id: 'template-sw-inter-001', metric_name: '学习成长', metric_code: 'LEARNING', category: 'behavior', weight: 10.00, description: '技术学习、技能提升', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 3.4 软件 - 初级工程师
+  registerTemplate({
+    id: 'template-sw-junior-001', name: '软件初级工程师考核模板',
+    description: '初级软件工程师：学习35%+辅助开发35%+测试20%+态度10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['junior'],
+    applicablePositions: ['助理软件工程师', '见习软件工程师', '初级软件工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-sw-jnr-01', template_id: 'template-sw-junior-001', metric_name: '辅助开发', metric_code: 'ASSIST_DEV', category: 'performance', weight: 25.00, description: '辅助完成开发任务', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-sw-jnr-02', template_id: 'template-sw-junior-001', metric_name: '测试执行', metric_code: 'TEST_EXECUTION', category: 'performance', weight: 15.00, description: '测试用例执行、Bug报告', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sw-jnr-03', template_id: 'template-sw-junior-001', metric_name: '编程基础', metric_code: 'CODING_BASICS', category: 'performance', weight: 15.00, description: 'C#/Python/C++基础', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-sw-jnr-04', template_id: 'template-sw-junior-001', metric_name: '学习成长', metric_code: 'LEARNING', category: 'behavior', weight: 30.00, description: '技术学习进度', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-sw-jnr-05', template_id: 'template-sw-junior-001', metric_name: '工作态度', metric_code: 'ATTITUDE', category: 'behavior', weight: 15.00, description: '主动性、责任心', evaluation_type: 'qualitative', sort_order: 5 },
+  ]);
+
+  // ============================================
+  // 4. 装配技师（非标自动化核心技能岗）
+  // ============================================
+
+  registerTemplate({
+    id: 'template-assembly-default', name: '装配部门标准模板',
+    description: '适用于装配岗位：装配质量40%+效率25%+安全20%+现场管理15%',
+    department_type: 'manufacturing', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-asm-def-01', template_id: 'template-assembly-default', metric_name: '装配质量', metric_code: 'ASSEMBLY_QUALITY', category: 'performance', weight: 25.00, description: '装配精度、工艺执行', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-asm-def-02', template_id: 'template-assembly-default', metric_name: '一次装配合格率', metric_code: 'FIRST_PASS_RATE', category: 'performance', weight: 15.00, description: '一次装配合格无需返工', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-asm-def-03', template_id: 'template-assembly-default', metric_name: '装配效率', metric_code: 'ASSEMBLY_EFFICIENCY', category: 'performance', weight: 15.00, description: '单位工时产出', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-asm-def-04', template_id: 'template-assembly-default', metric_name: '按期交付', metric_code: 'ON_TIME', category: 'performance', weight: 15.00, description: '装配任务按期完成', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-asm-def-05', template_id: 'template-assembly-default', metric_name: '安全生产', metric_code: 'SAFETY', category: 'performance', weight: 15.00, description: '安全操作规范、零事故', evaluation_type: 'quantitative', sort_order: 5 },
+    { id: 'metric-asm-def-06', template_id: 'template-assembly-default', metric_name: '现场5S', metric_code: '5S', category: 'behavior', weight: 10.00, description: '现场整理整顿', evaluation_type: 'qualitative', sort_order: 6 },
+    { id: 'metric-asm-def-07', template_id: 'template-assembly-default', metric_name: '问题反馈', metric_code: 'ISSUE_REPORT', category: 'collaboration', weight: 5.00, description: '设计问题及时反馈', evaluation_type: 'qualitative', sort_order: 7 },
+  ]);
+
+  // 4.2 装配 - 高级技师/班组长
+  registerTemplate({
+    id: 'template-assembly-senior-001', name: '装配高级技师/班组长考核模板',
+    description: '高级技师/班组长：技术攻坚30%+团队效率25%+质量把控20%+安全15%+培训10%',
+    department_type: 'manufacturing', is_default: false, status: 'active',
+    applicableRoles: ['manager', 'employee'], applicableLevels: ['senior'],
+    applicablePositions: ['装配班组长', '高级装配技师', '装配主管'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-asm-snr-01', template_id: 'template-assembly-senior-001', metric_name: '复杂装配', metric_code: 'COMPLEX_ASSEMBLY', category: 'performance', weight: 20.00, description: '精密机构、复杂设备的装配', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-asm-snr-02', template_id: 'template-assembly-senior-001', metric_name: '团队效率', metric_code: 'TEAM_EFFICIENCY', category: 'performance', weight: 20.00, description: '班组整体装配效率', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-asm-snr-03', template_id: 'template-assembly-senior-001', metric_name: '质量把控', metric_code: 'QUALITY_CONTROL', category: 'performance', weight: 20.00, description: '班组装配质量', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-asm-snr-04', template_id: 'template-assembly-senior-001', metric_name: '安全管理', metric_code: 'SAFETY_MGMT', category: 'performance', weight: 15.00, description: '安全培训、隐患排查', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-asm-snr-05', template_id: 'template-assembly-senior-001', metric_name: '工艺改进', metric_code: 'PROCESS_IMPROVE', category: 'innovation', weight: 15.00, description: '装配工艺优化、工装改进', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-asm-snr-06', template_id: 'template-assembly-senior-001', metric_name: '技能培训', metric_code: 'TRAINING', category: 'collaboration', weight: 10.00, description: '指导初级装配工', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 4.3 装配 - 中级技师
+  registerTemplate({
+    id: 'template-assembly-inter-001', name: '装配中级技师考核模板',
+    description: '中级装配技师：独立装配45%+质量20%+效率20%+安全15%',
+    department_type: 'manufacturing', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate'],
+    applicablePositions: ['装配技师', '中级装配工', '钳工'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-asm-int-01', template_id: 'template-assembly-inter-001', metric_name: '独立装配', metric_code: 'INDEPENDENT_ASSEMBLY', category: 'performance', weight: 25.00, description: '独立完成设备装配', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-asm-int-02', template_id: 'template-assembly-inter-001', metric_name: '装配质量', metric_code: 'ASSEMBLY_QUALITY', category: 'performance', weight: 20.00, description: '装配精度、返工率', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-asm-int-03', template_id: 'template-assembly-inter-001', metric_name: '装配效率', metric_code: 'EFFICIENCY', category: 'performance', weight: 20.00, description: '按时完成装配任务', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-asm-int-04', template_id: 'template-assembly-inter-001', metric_name: '安全生产', metric_code: 'SAFETY', category: 'performance', weight: 15.00, description: '安全操作', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-asm-int-05', template_id: 'template-assembly-inter-001', metric_name: '5S执行', metric_code: '5S', category: 'behavior', weight: 10.00, description: '现场5S', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-asm-int-06', template_id: 'template-assembly-inter-001', metric_name: '问题反馈', metric_code: 'ISSUE_REPORT', category: 'collaboration', weight: 10.00, description: '设计/物料问题及时反馈', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // 4.4 装配 - 初级/学徒
+  registerTemplate({
+    id: 'template-assembly-junior-001', name: '装配初级技师考核模板',
+    description: '初级装配工：学习30%+辅助装配40%+安全20%+纪律10%',
+    department_type: 'manufacturing', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['junior'],
+    applicablePositions: ['装配学徒', '初级装配工', '实习装配工'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-asm-jnr-01', template_id: 'template-assembly-junior-001', metric_name: '辅助装配', metric_code: 'ASSIST_ASSEMBLY', category: 'performance', weight: 25.00, description: '辅助完成装配任务', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-asm-jnr-02', template_id: 'template-assembly-junior-001', metric_name: '技能学习', metric_code: 'SKILL_LEARNING', category: 'performance', weight: 20.00, description: '装配技能学习进度', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-asm-jnr-03', template_id: 'template-assembly-junior-001', metric_name: '安全规范', metric_code: 'SAFETY', category: 'performance', weight: 25.00, description: '安全操作规范遵守', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-asm-jnr-04', template_id: 'template-assembly-junior-001', metric_name: '劳动纪律', metric_code: 'DISCIPLINE', category: 'behavior', weight: 15.00, description: '出勤、服从安排', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-asm-jnr-05', template_id: 'template-assembly-junior-001', metric_name: '工作态度', metric_code: 'ATTITUDE', category: 'behavior', weight: 15.00, description: '主动性、学习意愿', evaluation_type: 'qualitative', sort_order: 5 },
+  ]);
+
+  // ============================================
+  // 5. 调试工程师
+  // ============================================
+
+  registerTemplate({
+    id: 'template-debug-default', name: '调试部门标准模板',
+    description: '适用于调试岗位：调试质量35%+效率25%+客户验收20%+安全10%+文档10%',
+    department_type: 'engineering', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-dbg-def-01', template_id: 'template-debug-default', metric_name: '调试质量', metric_code: 'DEBUG_QUALITY', category: 'performance', weight: 25.00, description: '设备调试精度、功能完整性', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-dbg-def-02', template_id: 'template-debug-default', metric_name: '调试周期', metric_code: 'DEBUG_CYCLE', category: 'performance', weight: 20.00, description: '调试周期控制在计划内', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-dbg-def-03', template_id: 'template-debug-default', metric_name: '客户验收通过率', metric_code: 'CLIENT_ACCEPTANCE', category: 'performance', weight: 20.00, description: '客户现场验收一次通过率', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-dbg-def-04', template_id: 'template-debug-default', metric_name: '问题定位', metric_code: 'PROBLEM_LOCATE', category: 'performance', weight: 15.00, description: '快速定位和解决问题', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-dbg-def-05', template_id: 'template-debug-default', metric_name: '安全生产', metric_code: 'SAFETY', category: 'performance', weight: 10.00, description: '调试安全操作', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-dbg-def-06', template_id: 'template-debug-default', metric_name: '文档记录', metric_code: 'DOCUMENTATION', category: 'performance', weight: 10.00, description: '调试记录、问题总结', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-debug-senior-001', name: '调试高级工程师考核模板',
+    description: '高级调试工程师：技术攻坚35%+客户验收25%+效率20%+标准化10%+指导10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级调试工程师', '调试专家', '现场调试主管'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-dbg-snr-01', template_id: 'template-debug-senior-001', metric_name: '技术攻坚', metric_code: 'TECH_BREAKTHROUGH', category: 'performance', weight: 25.00, description: '复杂问题攻关、现场异常处理', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-dbg-snr-02', template_id: 'template-debug-senior-001', metric_name: '客户验收', metric_code: 'CLIENT_ACCEPTANCE', category: 'performance', weight: 25.00, description: '客户满意度、验收通过率', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-dbg-snr-03', template_id: 'template-debug-senior-001', metric_name: '调试效率', metric_code: 'EFFICIENCY', category: 'performance', weight: 20.00, description: '调试周期缩短', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-dbg-snr-04', template_id: 'template-debug-senior-001', metric_name: '标准化建设', metric_code: 'STANDARDIZATION', category: 'innovation', weight: 15.00, description: '调试SOP、常见问题库', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-dbg-snr-05', template_id: 'template-debug-senior-001', metric_name: '问题反馈', metric_code: 'ISSUE_FEEDBACK', category: 'collaboration', weight: 10.00, description: '向设计端反馈问题', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-dbg-snr-06', template_id: 'template-debug-senior-001', metric_name: '技术指导', metric_code: 'MENTORING', category: 'collaboration', weight: 5.00, description: '指导初中级调试工程师', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-debug-inter-001', name: '调试中级工程师考核模板',
+    description: '中级调试工程师：独立调试40%+客户验收25%+效率20%+文档15%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate'],
+    applicablePositions: ['调试工程师', '现场调试工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-dbg-int-01', template_id: 'template-debug-inter-001', metric_name: '独立调试', metric_code: 'INDEPENDENT_DEBUG', category: 'performance', weight: 25.00, description: '独立完成设备调试', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-dbg-int-02', template_id: 'template-debug-inter-001', metric_name: '调试质量', metric_code: 'DEBUG_QUALITY', category: 'performance', weight: 20.00, description: '调试精度、功能达标', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-dbg-int-03', template_id: 'template-debug-inter-001', metric_name: '客户沟通', metric_code: 'CLIENT_COMM', category: 'collaboration', weight: 15.00, description: '与客户的技术沟通', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-dbg-int-04', template_id: 'template-debug-inter-001', metric_name: '按期交付', metric_code: 'ON_TIME', category: 'performance', weight: 20.00, description: '按期完成调试', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-dbg-int-05', template_id: 'template-debug-inter-001', metric_name: '文档记录', metric_code: 'DOCUMENTATION', category: 'performance', weight: 10.00, description: '调试记录完整', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-dbg-int-06', template_id: 'template-debug-inter-001', metric_name: '安全生产', metric_code: 'SAFETY', category: 'performance', weight: 10.00, description: '安全操作', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // ============================================
+  // 6. 项目经理
+  // ============================================
+
+  registerTemplate({
+    id: 'template-pm-default', name: '项目经理标准模板',
+    description: '适用于项目经理：交付率40%+成本控制20%+客户满意度20%+团队10%+风险10%',
+    department_type: 'engineering', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-pm-def-01', template_id: 'template-pm-default', metric_name: '项目交付率', metric_code: 'PROJECT_DELIVERY', category: 'performance', weight: 25.00, description: '项目按期交付比例', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-pm-def-02', template_id: 'template-pm-default', metric_name: '成本控制', metric_code: 'COST_CONTROL', category: 'performance', weight: 20.00, description: '项目成本控制在预算内', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-pm-def-03', template_id: 'template-pm-default', metric_name: '客户满意度', metric_code: 'CLIENT_SATISFACTION', category: 'performance', weight: 20.00, description: '客户满意度评分', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-pm-def-04', template_id: 'template-pm-default', metric_name: '风险管理', metric_code: 'RISK_MGMT', category: 'performance', weight: 15.00, description: '风险识别和应对', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-pm-def-05', template_id: 'template-pm-default', metric_name: '团队协调', metric_code: 'TEAM_COORD', category: 'collaboration', weight: 10.00, description: '跨部门协调', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-pm-def-06', template_id: 'template-pm-default', metric_name: '项目文档', metric_code: 'DOC_MGMT', category: 'performance', weight: 10.00, description: '项目文档完整性', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-pm-senior-001', name: '高级项目经理考核模板',
+    description: '高级项目经理：大型项目40%+利润贡献20%+客户战略15%+标准化15%+团队10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['manager'], applicableLevels: ['senior'],
+    applicablePositions: ['高级项目经理', '项目总监', '项目主管'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-pm-snr-01', template_id: 'template-pm-senior-001', metric_name: '大型项目交付', metric_code: 'LARGE_PROJECT', category: 'performance', weight: 25.00, description: '百万级以上项目交付', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-pm-snr-02', template_id: 'template-pm-senior-001', metric_name: '项目利润', metric_code: 'PROJECT_PROFIT', category: 'performance', weight: 20.00, description: '项目利润率达标', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-pm-snr-03', template_id: 'template-pm-senior-001', metric_name: '客户关系', metric_code: 'CLIENT_RELATION', category: 'performance', weight: 15.00, description: '大客户维护、复购', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-pm-snr-04', template_id: 'template-pm-senior-001', metric_name: '流程优化', metric_code: 'PROCESS_OPT', category: 'innovation', weight: 15.00, description: '项目管理流程优化', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-pm-snr-05', template_id: 'template-pm-senior-001', metric_name: '团队建设', metric_code: 'TEAM_BUILDING', category: 'collaboration', weight: 15.00, description: '项目经理培养', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-pm-snr-06', template_id: 'template-pm-senior-001', metric_name: '知识沉淀', metric_code: 'KNOWLEDGE', category: 'innovation', weight: 10.00, description: '项目经验总结、案例库', evaluation_type: 'quantitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-pm-inter-001', name: '中级项目经理考核模板',
+    description: '中级项目经理：交付率35%+成本控制20%+客户沟通20%+风险15%+文档10%',
+    department_type: 'engineering', is_default: false, status: 'active',
+    applicableRoles: ['manager'], applicableLevels: ['intermediate'],
+    applicablePositions: ['项目经理', '项目工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-pm-int-01', template_id: 'template-pm-inter-001', metric_name: '项目交付', metric_code: 'PROJECT_DELIVERY', category: 'performance', weight: 25.00, description: '按期交付', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-pm-int-02', template_id: 'template-pm-inter-001', metric_name: '进度把控', metric_code: 'SCHEDULE_CONTROL', category: 'performance', weight: 20.00, description: '进度节点达成', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-pm-int-03', template_id: 'template-pm-inter-001', metric_name: '成本控制', metric_code: 'COST_CONTROL', category: 'performance', weight: 15.00, description: '预算内完成', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-pm-int-04', template_id: 'template-pm-inter-001', metric_name: '客户沟通', metric_code: 'CLIENT_COMM', category: 'collaboration', weight: 15.00, description: '客户需求管理和沟通', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-pm-int-05', template_id: 'template-pm-inter-001', metric_name: '风险管理', metric_code: 'RISK_MGMT', category: 'performance', weight: 15.00, description: '风险预警和应对', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-pm-int-06', template_id: 'template-pm-inter-001', metric_name: '项目文档', metric_code: 'DOCUMENTATION', category: 'performance', weight: 10.00, description: '文档完整规范', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // ============================================
+  // 7. 采购工程师
+  // ============================================
+
+  registerTemplate({
+    id: 'template-purch-default', name: '采购部门标准模板',
+    description: '适用于采购岗位：交期达成30%+成本节约20%+质量20%+供应商15%+响应15%',
+    department_type: 'support', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-purch-def-01', template_id: 'template-purch-default', metric_name: '交期达成率', metric_code: 'DELIVERY_RATE', category: 'performance', weight: 25.00, description: '物料按期到货率', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-purch-def-02', template_id: 'template-purch-default', metric_name: '成本节约', metric_code: 'COST_SAVING', category: 'performance', weight: 20.00, description: '采购成本降低', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-purch-def-03', template_id: 'template-purch-default', metric_name: '来料合格率', metric_code: 'INCOMING_QUALITY', category: 'performance', weight: 20.00, description: '采购物料合格率', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-purch-def-04', template_id: 'template-purch-default', metric_name: '供应商管理', metric_code: 'SUPPLIER_MGMT', category: 'performance', weight: 15.00, description: '供应商评估、开发', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-purch-def-05', template_id: 'template-purch-default', metric_name: '急单响应', metric_code: 'URGENT_RESPONSE', category: 'performance', weight: 10.00, description: '紧急采购响应速度', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-purch-def-06', template_id: 'template-purch-default', metric_name: '合规性', metric_code: 'COMPLIANCE', category: 'performance', weight: 10.00, description: '采购流程合规', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-purch-senior-001', name: '高级采购工程师考核模板',
+    description: '高级采购：战略采购30%+成本25%+供应商20%+急单15%+流程优化10%',
+    department_type: 'support', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级采购工程师', '采购主管', '采购经理'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-purch-snr-01', template_id: 'template-purch-senior-001', metric_name: '战略采购', metric_code: 'STRATEGIC_PURCH', category: 'performance', weight: 25.00, description: '关键物料供应商战略', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-purch-snr-02', template_id: 'template-purch-senior-001', metric_name: '成本节约', metric_code: 'COST_SAVING', category: 'performance', weight: 25.00, description: '年度成本节约目标', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-purch-snr-03', template_id: 'template-purch-senior-001', metric_name: '供应商优化', metric_code: 'SUPPLIER_OPT', category: 'performance', weight: 20.00, description: '供应商评估、淘汰、开发', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-purch-snr-04', template_id: 'template-purch-senior-001', metric_name: '供应链风险', metric_code: 'SUPPLY_RISK', category: 'performance', weight: 15.00, description: '供应链风险管理', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-purch-snr-05', template_id: 'template-purch-senior-001', metric_name: '流程优化', metric_code: 'PROCESS_OPT', category: 'innovation', weight: 10.00, description: '采购流程改进', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-purch-snr-06', template_id: 'template-purch-senior-001', metric_name: '库存优化', metric_code: 'INVENTORY_OPT', category: 'performance', weight: 5.00, description: '库存周转率优化', evaluation_type: 'quantitative', sort_order: 6 },
+  ]);
+
+  // ============================================
+  // 8. 质量工程师（IQC/IPQC/OQC）
+  // ============================================
+
+  registerTemplate({
+    id: 'template-qa-default', name: '质量部门标准模板',
+    description: '适用于质量岗位：检验质量35%+制程控制25%+客诉处理20%+体系15%+改进5%',
+    department_type: 'support', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-qa-def-01', template_id: 'template-qa-default', metric_name: '检验准确率', metric_code: 'INSPECTION_ACCURACY', category: 'performance', weight: 25.00, description: '检验无漏检、误检', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-qa-def-02', template_id: 'template-qa-default', metric_name: '制程不良率', metric_code: 'PROCESS_DEFECT_RATE', category: 'performance', weight: 20.00, description: '制程不良率控制', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-qa-def-03', template_id: 'template-qa-default', metric_name: '客诉处理', metric_code: 'COMPLAINT_HANDLE', category: 'performance', weight: 20.00, description: '客诉响应和处理时效', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-qa-def-04', template_id: 'template-qa-default', metric_name: '体系审核', metric_code: 'SYSTEM_AUDIT', category: 'performance', weight: 15.00, description: 'ISO体系审核通过', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-qa-def-05', template_id: 'template-qa-default', metric_name: '检验按期', metric_code: 'INSPECTION_ON_TIME', category: 'performance', weight: 10.00, description: '检验按时完成', evaluation_type: 'quantitative', sort_order: 5 },
+    { id: 'metric-qa-def-06', template_id: 'template-qa-default', metric_name: '改进建议', metric_code: 'IMPROVEMENT', category: 'innovation', weight: 10.00, description: '质量改进提案', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-qa-senior-001', name: '高级质量工程师考核模板',
+    description: '高级质量工程师：体系建设30%+质量分析25%+供应商质量20%+客诉15%+改进10%',
+    department_type: 'support', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级质量工程师', '质量主管', '质量经理'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-qa-snr-01', template_id: 'template-qa-senior-001', metric_name: '体系建设', metric_code: 'SYSTEM_BUILD', category: 'performance', weight: 25.00, description: '质量体系建立和维护', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-qa-snr-02', template_id: 'template-qa-senior-001', metric_name: '质量分析', metric_code: 'QUALITY_ANALYSIS', category: 'performance', weight: 20.00, description: '质量数据分析、趋势预判', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-qa-snr-03', template_id: 'template-qa-senior-001', metric_name: '供应商质量', metric_code: 'SUPPLIER_QUALITY', category: 'performance', weight: 20.00, description: '供应商质量管控', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-qa-snr-04', template_id: 'template-qa-senior-001', metric_name: '客诉管理', metric_code: 'COMPLAINT_MGMT', category: 'performance', weight: 15.00, description: '客诉闭环、8D报告', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-qa-snr-05', template_id: 'template-qa-senior-001', metric_name: '流程优化', metric_code: 'PROCESS_OPT', category: 'innovation', weight: 10.00, description: '质量流程优化', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-qa-snr-06', template_id: 'template-qa-senior-001', metric_name: '质量培训', metric_code: 'QUALITY_TRAINING', category: 'collaboration', weight: 10.00, description: '质量意识培训', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // ============================================
+  // 9. 售后工程师
+  // ============================================
+
+  registerTemplate({
+    id: 'template-service-default', name: '售后服务标准模板',
+    description: '适用于售后岗位：响应时效25%+一次解决率30%+客户满意度25%+反馈15%+安全5%',
+    department_type: 'support', is_default: true, status: 'active', priority: 0
+  });
+  registerMetrics([
+    { id: 'metric-svc-def-01', template_id: 'template-service-default', metric_name: '响应时效', metric_code: 'RESPONSE_TIME', category: 'performance', weight: 20.00, description: '客户报修响应速度', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-svc-def-02', template_id: 'template-service-default', metric_name: '一次解决率', metric_code: 'FIRST_FIX_RATE', category: 'performance', weight: 25.00, description: '一次上门解决问题', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-svc-def-03', template_id: 'template-service-default', metric_name: '客户满意度', metric_code: 'CLIENT_SATISFACTION', category: 'performance', weight: 25.00, description: '客户满意度评分', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-svc-def-04', template_id: 'template-service-default', metric_name: '问题反馈', metric_code: 'ISSUE_FEEDBACK', category: 'collaboration', weight: 15.00, description: '向设计端反馈问题', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-svc-def-05', template_id: 'template-service-default', metric_name: '服务报告', metric_code: 'SERVICE_REPORT', category: 'performance', weight: 10.00, description: '服务报告完整及时', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-svc-def-06', template_id: 'template-service-default', metric_name: '安全生产', metric_code: 'SAFETY', category: 'performance', weight: 5.00, description: '现场安全操作', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-service-senior-001', name: '高级售后工程师考核模板',
+    description: '高级售后工程师：疑难问题30%+客户管理25%+效率20%+标准化15%+培训10%',
+    department_type: 'support', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级售后工程师', '售后主管', '售后服务经理'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-svc-snr-01', template_id: 'template-service-senior-001', metric_name: '疑难问题攻关', metric_code: 'COMPLEX_ISSUE', category: 'performance', weight: 25.00, description: '复杂故障处理', evaluation_type: 'qualitative', sort_order: 1 },
+    { id: 'metric-svc-snr-02', template_id: 'template-service-senior-001', metric_name: '客户关系', metric_code: 'CLIENT_RELATION', category: 'performance', weight: 20.00, description: '客户关系维护', evaluation_type: 'qualitative', sort_order: 2 },
+    { id: 'metric-svc-snr-03', template_id: 'template-service-senior-001', metric_name: '服务效率', metric_code: 'SERVICE_EFFICIENCY', category: 'performance', weight: 20.00, description: '服务时效', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-svc-snr-04', template_id: 'template-service-senior-001', metric_name: '知识库建设', metric_code: 'KNOWLEDGE_BASE', category: 'innovation', weight: 15.00, description: '故障案例库、SOP', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-svc-snr-05', template_id: 'template-service-senior-001', metric_name: '培训', metric_code: 'TRAINING', category: 'collaboration', weight: 10.00, description: '客户培训', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-svc-snr-06', template_id: 'template-service-senior-001', metric_name: '改进建议', metric_code: 'IMPROVEMENT', category: 'innovation', weight: 10.00, description: '设计改进建议', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  // ============================================
+  // 10. 销售工程师（非标自动化行业销售）
+  // ============================================
+
+  registerTemplate({
+    id: 'template-sales-default', name: '销售部门标准模板',
+    description: '适用于销售岗位：业绩60%+客户20%+协作10%+学习10%',
+    department_type: 'sales', is_default: true, status: 'active', priority: 0
   });
   registerMetrics([
     { id: 'metric-sales-def-01', template_id: 'template-sales-default', metric_name: '销售额完成率', metric_code: 'SALES_COMPLETION', category: 'performance', weight: 30.00, description: '实际销售额/目标销售额', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sales-def-02', template_id: 'template-sales-default', metric_name: '回款率', metric_code: 'PAYMENT_RATE', category: 'performance', weight: 20.00, description: '实际回款/应收款项', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sales-def-03', template_id: 'template-sales-default', metric_name: '新客户开发', metric_code: 'NEW_CLIENTS', category: 'performance', weight: 10.00, description: '新增有效客户数量', evaluation_type: 'quantitative', sort_order: 3 },
-    { id: 'metric-sales-def-04', template_id: 'template-sales-default', metric_name: '客户满意度', metric_code: 'CLIENT_SATISFACTION', category: 'performance', weight: 10.00, description: '客户满意度调查得分', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-sales-def-05', template_id: 'template-sales-default', metric_name: '客户关系维护', metric_code: 'CLIENT_RELATIONSHIP', category: 'behavior', weight: 10.00, description: '客户拜访频率、关系维护质量', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-sales-def-06', template_id: 'template-sales-default', metric_name: '团队协作', metric_code: 'TEAMWORK', category: 'collaboration', weight: 10.00, description: '跨部门协作、信息共享', evaluation_type: 'qualitative', sort_order: 6 },
-    { id: 'metric-sales-def-07', template_id: 'template-sales-default', metric_name: '专业能力提升', metric_code: 'SKILL_DEVELOPMENT', category: 'behavior', weight: 10.00, description: '产品知识、销售技巧提升', evaluation_type: 'qualitative', sort_order: 7 }
+    { id: 'metric-sales-def-02', template_id: 'template-sales-default', metric_name: '回款率', metric_code: 'PAYMENT_RATE', category: 'performance', weight: 20.00, description: '回款比例', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sales-def-03', template_id: 'template-sales-default', metric_name: '新客户开发', metric_code: 'NEW_CLIENT', category: 'performance', weight: 10.00, description: '新增有效客户', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-sales-def-04', template_id: 'template-sales-default', metric_name: '客户满意度', metric_code: 'CLIENT_SATISFACTION', category: 'performance', weight: 15.00, description: '客户满意度', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-sales-def-05', template_id: 'template-sales-default', metric_name: '技术协作', metric_code: 'TECH_COLLAB', category: 'collaboration', weight: 10.00, description: '与技术团队配合', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-sales-def-06', template_id: 'template-sales-default', metric_name: '市场信息', metric_code: 'MARKET_INFO', category: 'innovation', weight: 10.00, description: '市场信息收集', evaluation_type: 'qualitative', sort_order: 6 },
+    { id: 'metric-sales-def-07', template_id: 'template-sales-default', metric_name: '产品知识', metric_code: 'PRODUCT_KNOWLEDGE', category: 'behavior', weight: 5.00, description: '产品技术知识', evaluation_type: 'qualitative', sort_order: 7 },
   ]);
-  
-  // 2.2 销售部门 - 销售经理
+
   registerTemplate({
-    id: 'template-sales-mgr-001',
-    name: '销售部门销售经理考核模板',
-    description: '适用于销售经理：团队业绩40%+个人业绩30%+团队管理15%+战略规划15%',
-    department_type: 'sales',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['manager'],
-    applicableLevels: ['senior'],
-    applicablePositions: ['销售经理'],
-    priority: 50
+    id: 'template-sales-senior-001', name: '高级销售工程师考核模板',
+    description: '高级销售：业绩50%+大客户20%+策略15%+协作10%+指导5%',
+    department_type: 'sales', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['senior'],
+    applicablePositions: ['高级销售工程师', '销售主管', '销售经理'], priority: 50
   });
   registerMetrics([
-    { id: 'metric-sales-mgr-01', template_id: 'template-sales-mgr-001', metric_name: '团队业绩完成率', metric_code: 'TEAM_SALES_RATE', category: 'performance', weight: 25.00, description: '团队整体销售目标达成情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sales-mgr-02', template_id: 'template-sales-mgr-001', metric_name: '团队回款率', metric_code: 'TEAM_PAYMENT_RATE', category: 'performance', weight: 15.00, description: '团队整体回款比例', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sales-mgr-03', template_id: 'template-sales-mgr-001', metric_name: '个人业绩贡献', metric_code: 'PERSONAL_SALES', category: 'performance', weight: 20.00, description: '个人直接销售业绩', evaluation_type: 'quantitative', sort_order: 3 },
-    { id: 'metric-sales-mgr-04', template_id: 'template-sales-mgr-001', metric_name: '团队管理', metric_code: 'TEAM_MGMT', category: 'collaboration', weight: 15.00, description: '团队培养、激励、绩效管理', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-sales-mgr-05', template_id: 'template-sales-mgr-001', metric_name: '客户资源管理', metric_code: 'CLIENT_RESOURCE_MGMT', category: 'performance', weight: 10.00, description: '大客户维护、客户分配公平性', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-sales-mgr-06', template_id: 'template-sales-mgr-001', metric_name: '市场策略规划', metric_code: 'MARKET_STRATEGY', category: 'innovation', weight: 15.00, description: '销售策略制定、市场开拓规划', evaluation_type: 'qualitative', sort_order: 6 }
+    { id: 'metric-sales-snr-01', template_id: 'template-sales-senior-001', metric_name: '个人业绩', metric_code: 'PERSONAL_SALES', category: 'performance', weight: 30.00, description: '个人销售额', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-sales-snr-02', template_id: 'template-sales-senior-001', metric_name: '回款率', metric_code: 'PAYMENT_RATE', category: 'performance', weight: 20.00, description: '回款比例', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sales-snr-03', template_id: 'template-sales-senior-001', metric_name: '大客户维护', metric_code: 'KEY_ACCOUNT', category: 'performance', weight: 15.00, description: '重点客户关系', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-sales-snr-04', template_id: 'template-sales-senior-001', metric_name: '市场策略', metric_code: 'MARKET_STRATEGY', category: 'innovation', weight: 15.00, description: '市场开拓策略', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-sales-snr-05', template_id: 'template-sales-senior-001', metric_name: '技术协作', metric_code: 'TECH_COLLAB', category: 'collaboration', weight: 10.00, description: '与技术方案团队配合', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-sales-snr-06', template_id: 'template-sales-senior-001', metric_name: '经验分享', metric_code: 'SHARING', category: 'collaboration', weight: 10.00, description: '销售经验分享', evaluation_type: 'qualitative', sort_order: 6 },
   ]);
-  
-  // 2.3 销售部门 - 高级销售
-  registerTemplate({
-    id: 'template-sales-senior-001',
-    name: '销售部门高级销售考核模板',
-    description: '适用于高级销售：个人业绩60%+客户维护20%+市场开拓10%+专业成长10%',
-    department_type: 'sales',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['senior'],
-    applicablePositions: ['高级销售'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-sales-snr-01', template_id: 'template-sales-senior-001', metric_name: '个人销售额', metric_code: 'PERSONAL_SALES_AMT', category: 'performance', weight: 35.00, description: '个人实际销售额', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sales-snr-02', template_id: 'template-sales-senior-001', metric_name: '个人回款率', metric_code: 'PERSONAL_PAYMENT_RATE', category: 'performance', weight: 25.00, description: '个人订单回款比例', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sales-snr-03', template_id: 'template-sales-senior-001', metric_name: '大客户维护', metric_code: 'KEY_ACCOUNT_MGMT', category: 'performance', weight: 20.00, description: '重点客户关系维护、复购率', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-sales-snr-04', template_id: 'template-sales-senior-001', metric_name: '市场开拓', metric_code: 'MARKET_DEVELOPMENT', category: 'performance', weight: 10.00, description: '新市场、新渠道开拓', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-sales-snr-05', template_id: 'template-sales-senior-001', metric_name: '专业能力提升', metric_code: 'PROFESSIONAL_GROWTH', category: 'behavior', weight: 10.00, description: '产品知识深度、谈判技巧', evaluation_type: 'qualitative', sort_order: 5 }
-  ]);
-  
-  // 2.4 销售部门 - 普通销售
-  registerTemplate({
-    id: 'template-sales-junior-001',
-    name: '销售部门普通销售考核模板',
-    description: '适用于普通销售：个人业绩50%+客户维护15%+学习成长20%+新客户开发15%',
-    department_type: 'sales',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['intermediate', 'junior'],
-    applicablePositions: ['普通销售'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-sales-jnr-01', template_id: 'template-sales-junior-001', metric_name: '个人销售额', metric_code: 'PERSONAL_SALES_AMT', category: 'performance', weight: 30.00, description: '个人实际销售额', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sales-jnr-02', template_id: 'template-sales-junior-001', metric_name: '销售目标完成率', metric_code: 'SALES_TARGET_RATE', category: 'performance', weight: 20.00, description: '实际销售额/目标销售额', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sales-jnr-03', template_id: 'template-sales-junior-001', metric_name: '客户维护', metric_code: 'CLIENT_MAINTENANCE', category: 'performance', weight: 15.00, description: '客户回访、关系维护', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-sales-jnr-04', template_id: 'template-sales-junior-001', metric_name: '新客户开发', metric_code: 'NEW_CLIENT_DEV', category: 'performance', weight: 15.00, description: '新客户获取数量和转化', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-sales-jnr-05', template_id: 'template-sales-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 10.00, description: '产品培训、销售技巧学习', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-sales-jnr-06', template_id: 'template-sales-junior-001', metric_name: '工作态度', metric_code: 'WORK_ATTITUDE', category: 'behavior', weight: 10.00, description: '积极性、执行力、出勤', evaluation_type: 'qualitative', sort_order: 6 }
-  ]);
-  
-  // ============================================
-  // 3. 生产制造部门模板
-  // ============================================
-  
-  // 3.1 生产制造部门 - 兜底模板
-  registerTemplate({
-    id: 'template-mfg-default',
-    name: '生产制造部门标准模板',
-    description: '适用于生产制造岗位的通用考核模板：效率40%+质量安全40%+现场管理20%',
-    department_type: 'manufacturing',
-    is_default: true,
-    status: 'active',
-    priority: 0
-  });
-  registerMetrics([
-    { id: 'metric-mfg-def-01', template_id: 'template-mfg-default', metric_name: '产量完成率', metric_code: 'OUTPUT_COMPLETION', category: 'performance', weight: 20.00, description: '实际产量/目标产量', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mfg-def-02', template_id: 'template-mfg-default', metric_name: '生产效率', metric_code: 'PRODUCTION_EFFICIENCY', category: 'performance', weight: 10.00, description: '单位时间产出', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-mfg-def-03', template_id: 'template-mfg-default', metric_name: '设备利用率', metric_code: 'EQUIPMENT_UTILIZATION', category: 'performance', weight: 10.00, description: '设备有效运转时间占比', evaluation_type: 'quantitative', sort_order: 3 },
-    { id: 'metric-mfg-def-04', template_id: 'template-mfg-default', metric_name: '产品合格率', metric_code: 'QUALITY_RATE', category: 'performance', weight: 20.00, description: '合格产品数/总产品数', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-mfg-def-05', template_id: 'template-mfg-default', metric_name: '安全事故率', metric_code: 'SAFETY_INCIDENT_RATE', category: 'performance', weight: 15.00, description: '安全事故次数（零事故=满分）', evaluation_type: 'quantitative', sort_order: 5 },
-    { id: 'metric-mfg-def-06', template_id: 'template-mfg-default', metric_name: '物料损耗率', metric_code: 'MATERIAL_LOSS_RATE', category: 'performance', weight: 5.00, description: '物料浪费比例', evaluation_type: 'quantitative', sort_order: 6 },
-    { id: 'metric-mfg-def-07', template_id: 'template-mfg-default', metric_name: '5S现场管理', metric_code: '5S_MANAGEMENT', category: 'behavior', weight: 10.00, description: '现场整理整顿清扫清洁素养', evaluation_type: 'qualitative', sort_order: 7 },
-    { id: 'metric-mfg-def-08', template_id: 'template-mfg-default', metric_name: '团队协作', metric_code: 'TEAMWORK', category: 'collaboration', weight: 10.00, description: '班组协作、互帮互助', evaluation_type: 'qualitative', sort_order: 8 }
-  ]);
-  
-  // 3.2 生产制造部门 - 生产主管
-  registerTemplate({
-    id: 'template-mfg-mgr-001',
-    name: '生产制造生产主管考核模板',
-    description: '适用于生产主管：团队效率40%+安全管理30%+质量控制15%+流程优化15%',
-    department_type: 'manufacturing',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['manager'],
-    applicableLevels: ['senior', 'intermediate'],
-    applicablePositions: ['生产主管'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-mfg-mgr-01', template_id: 'template-mfg-mgr-001', metric_name: '团队产量达成', metric_code: 'TEAM_OUTPUT_RATE', category: 'performance', weight: 20.00, description: '班组整体产量目标达成率', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mfg-mgr-02', template_id: 'template-mfg-mgr-001', metric_name: '团队效率提升', metric_code: 'TEAM_EFFICIENCY', category: 'performance', weight: 20.00, description: '单位人效、产线效率', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-mfg-mgr-03', template_id: 'template-mfg-mgr-001', metric_name: '安全管理', metric_code: 'SAFETY_MGMT', category: 'performance', weight: 20.00, description: '安全培训、隐患排查、零事故', evaluation_type: 'quantitative', sort_order: 3 },
-    { id: 'metric-mfg-mgr-04', template_id: 'template-mfg-mgr-001', metric_name: '人员管理', metric_code: 'PERSONNEL_MGMT', category: 'collaboration', weight: 10.00, description: '班组管理、考勤、排班', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-mfg-mgr-05', template_id: 'template-mfg-mgr-001', metric_name: '质量控制', metric_code: 'QUALITY_OVERSIGHT', category: 'performance', weight: 15.00, description: '班组产品合格率把控', evaluation_type: 'quantitative', sort_order: 5 },
-    { id: 'metric-mfg-mgr-06', template_id: 'template-mfg-mgr-001', metric_name: '流程优化', metric_code: 'PROCESS_OPTIMIZATION', category: 'innovation', weight: 15.00, description: '生产流程改进、降本增效提案', evaluation_type: 'qualitative', sort_order: 6 }
-  ]);
-  
-  // 3.3 生产制造部门 - 高级技工
-  registerTemplate({
-    id: 'template-mfg-senior-001',
-    name: '生产制造高级技工考核模板',
-    description: '适用于高级技工：产量30%+质量30%+设备维护20%+安全10%+创新10%',
-    department_type: 'manufacturing',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['senior'],
-    applicablePositions: ['高级技工'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-mfg-snr-01', template_id: 'template-mfg-senior-001', metric_name: '个人产量', metric_code: 'PERSONAL_OUTPUT', category: 'performance', weight: 30.00, description: '个人实际产出/目标产量', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mfg-snr-02', template_id: 'template-mfg-senior-001', metric_name: '产品质量', metric_code: 'PRODUCT_QUALITY', category: 'performance', weight: 30.00, description: '个人产品合格率、返工率', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-mfg-snr-03', template_id: 'template-mfg-senior-001', metric_name: '设备维护保养', metric_code: 'EQUIPMENT_MAINTENANCE', category: 'performance', weight: 20.00, description: '设备日常保养、故障排除', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-mfg-snr-04', template_id: 'template-mfg-senior-001', metric_name: '安全生产', metric_code: 'SAFETY_PRODUCTION', category: 'performance', weight: 10.00, description: '安全操作规范遵守', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-mfg-snr-05', template_id: 'template-mfg-senior-001', metric_name: '技术创新', metric_code: 'TECH_INNOVATION', category: 'innovation', weight: 10.00, description: '工艺改进、效率提升建议', evaluation_type: 'qualitative', sort_order: 5 }
-  ]);
-  
-  // 3.4 生产制造部门 - 普通工人
-  registerTemplate({
-    id: 'template-mfg-junior-001',
-    name: '生产制造普通工人考核模板',
-    description: '适用于普通工人：产量40%+质量30%+安全20%+纪律10%',
-    department_type: 'manufacturing',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['junior', 'intermediate'],
-    applicablePositions: ['普通工人'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-mfg-jnr-01', template_id: 'template-mfg-junior-001', metric_name: '产量达成', metric_code: 'OUTPUT_ACHIEVEMENT', category: 'performance', weight: 40.00, description: '个人产量目标完成情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mfg-jnr-02', template_id: 'template-mfg-junior-001', metric_name: '产品质量', metric_code: 'WORK_QUALITY', category: 'performance', weight: 30.00, description: '操作质量、次品率', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-mfg-jnr-03', template_id: 'template-mfg-junior-001', metric_name: '安全规范', metric_code: 'SAFETY_COMPLIANCE', category: 'performance', weight: 20.00, description: '安全操作规程遵守、劳保用品佩戴', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-mfg-jnr-04', template_id: 'template-mfg-junior-001', metric_name: '劳动纪律', metric_code: 'WORK_DISCIPLINE', category: 'behavior', weight: 10.00, description: '出勤、服从安排、5S执行', evaluation_type: 'qualitative', sort_order: 4 }
-  ]);
-  
-  // ============================================
-  // 4. 支持部门模板（HR/财务/行政）
-  // ============================================
-  
-  // 4.1 支持部门 - 兜底模板
-  registerTemplate({
-    id: 'template-sup-default',
-    name: '支持部门标准模板',
-    description: '适用于财务、人事、行政、采购等支持岗位：质量50%+服务30%+能力20%',
-    department_type: 'support',
-    is_default: true,
-    status: 'active',
-    priority: 0
-  });
-  registerMetrics([
-    { id: 'metric-sup-def-01', template_id: 'template-sup-default', metric_name: '工作准确率', metric_code: 'ACCURACY_RATE', category: 'performance', weight: 25.00, description: '工作无差错率', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sup-def-02', template_id: 'template-sup-default', metric_name: '工作及时性', metric_code: 'TIMELINESS', category: 'performance', weight: 15.00, description: '按时完成率', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sup-def-03', template_id: 'template-sup-default', metric_name: '合规性', metric_code: 'COMPLIANCE', category: 'performance', weight: 10.00, description: '制度执行、无违规', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-sup-def-04', template_id: 'template-sup-default', metric_name: '内部客户满意度', metric_code: 'INTERNAL_SATISFACTION', category: 'performance', weight: 15.00, description: '内部客户评价得分', evaluation_type: 'quantitative', sort_order: 4 },
-    { id: 'metric-sup-def-05', template_id: 'template-sup-default', metric_name: '响应速度', metric_code: 'RESPONSE_SPEED', category: 'behavior', weight: 10.00, description: '问题响应时效', evaluation_type: 'quantitative', sort_order: 5 },
-    { id: 'metric-sup-def-06', template_id: 'template-sup-default', metric_name: '主动服务意识', metric_code: 'PROACTIVE_SERVICE', category: 'behavior', weight: 5.00, description: '主动发现问题、提供支持', evaluation_type: 'qualitative', sort_order: 6 },
-    { id: 'metric-sup-def-07', template_id: 'template-sup-default', metric_name: '专业知识运用', metric_code: 'PROFESSIONAL_SKILL', category: 'performance', weight: 10.00, description: '专业能力应用', evaluation_type: 'qualitative', sort_order: 7 },
-    { id: 'metric-sup-def-08', template_id: 'template-sup-default', metric_name: '流程优化建议', metric_code: 'PROCESS_IMPROVEMENT', category: 'innovation', weight: 5.00, description: '改进提案数量和质量', evaluation_type: 'quantitative', sort_order: 8 },
-    { id: 'metric-sup-def-09', template_id: 'template-sup-default', metric_name: '跨部门协作', metric_code: 'CROSS_DEPT_COLLABORATION', category: 'collaboration', weight: 5.00, description: '跨部门配合', evaluation_type: 'qualitative', sort_order: 9 }
-  ]);
-  
-  // 4.2 支持部门 - 部门主管
-  registerTemplate({
-    id: 'template-sup-mgr-001',
-    name: '支持部门主管考核模板',
-    description: '适用于支持部门主管：服务质量40%+流程优化30%+团队管理15%+合规15%',
-    department_type: 'support',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['manager'],
-    applicableLevels: ['senior', 'intermediate'],
-    applicablePositions: ['部门主管'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-sup-mgr-01', template_id: 'template-sup-mgr-001', metric_name: '部门服务质量', metric_code: 'DEPT_SERVICE_QUALITY', category: 'performance', weight: 20.00, description: '部门整体服务质量、内部客户满意度', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sup-mgr-02', template_id: 'template-sup-mgr-001', metric_name: '服务效率', metric_code: 'SERVICE_EFFICIENCY', category: 'performance', weight: 20.00, description: '部门任务完成时效', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sup-mgr-03', template_id: 'template-sup-mgr-001', metric_name: '流程优化', metric_code: 'PROCESS_OPTIMIZATION', category: 'innovation', weight: 20.00, description: '流程改进、制度完善', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-sup-mgr-04', template_id: 'template-sup-mgr-001', metric_name: '制度建设', metric_code: 'SYSTEM_BUILDING', category: 'innovation', weight: 10.00, description: '制度制定和执行情况', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-sup-mgr-05', template_id: 'template-sup-mgr-001', metric_name: '团队管理', metric_code: 'TEAM_MGMT', category: 'collaboration', weight: 15.00, description: '团队培养、绩效考核', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-sup-mgr-06', template_id: 'template-sup-mgr-001', metric_name: '合规风控', metric_code: 'COMPLIANCE_RISK', category: 'performance', weight: 15.00, description: '合规管理、风险控制', evaluation_type: 'qualitative', sort_order: 6 }
-  ]);
-  
-  // 4.3 支持部门 - 高级专员
-  registerTemplate({
-    id: 'template-sup-senior-001',
-    name: '支持部门高级专员考核模板',
-    description: '适用于高级专员：工作质量40%+专业能力30%+服务15%+创新15%',
-    department_type: 'support',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['senior'],
-    applicablePositions: ['高级专员'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-sup-snr-01', template_id: 'template-sup-senior-001', metric_name: '工作质量', metric_code: 'WORK_QUALITY', category: 'performance', weight: 25.00, description: '工作准确率、无差错', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sup-snr-02', template_id: 'template-sup-senior-001', metric_name: '任务完成效率', metric_code: 'TASK_EFFICIENCY', category: 'performance', weight: 15.00, description: '按时完成率、处理速度', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sup-snr-03', template_id: 'template-sup-senior-001', metric_name: '专业能力', metric_code: 'PROFESSIONAL_SKILL', category: 'performance', weight: 20.00, description: '专业领域深度、复杂问题处理', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-sup-snr-04', template_id: 'template-sup-senior-001', metric_name: '指导能力', metric_code: 'MENTORING_SKILL', category: 'collaboration', weight: 10.00, description: '指导初级同事、知识传承', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-sup-snr-05', template_id: 'template-sup-senior-001', metric_name: '服务满意度', metric_code: 'SERVICE_SATISFACTION', category: 'performance', weight: 15.00, description: '内部客户评价', evaluation_type: 'quantitative', sort_order: 5 },
-    { id: 'metric-sup-snr-06', template_id: 'template-sup-senior-001', metric_name: '创新贡献', metric_code: 'INNOVATION', category: 'innovation', weight: 15.00, description: '流程改进、方法创新', evaluation_type: 'qualitative', sort_order: 6 }
-  ]);
-  
-  // 4.4 支持部门 - 普通专员
-  registerTemplate({
-    id: 'template-sup-junior-001',
-    name: '支持部门普通专员考核模板',
-    description: '适用于普通专员：工作准确率40%+及时性30%+服务态度20%+学习10%',
-    department_type: 'support',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['employee'],
-    applicableLevels: ['junior', 'intermediate'],
-    applicablePositions: ['普通专员'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-sup-jnr-01', template_id: 'template-sup-junior-001', metric_name: '工作准确率', metric_code: 'ACCURACY_RATE', category: 'performance', weight: 40.00, description: '工作无差错率、数据准确性', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-sup-jnr-02', template_id: 'template-sup-junior-001', metric_name: '工作及时性', metric_code: 'TIMELINESS', category: 'performance', weight: 30.00, description: '任务按时完成率', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-sup-jnr-03', template_id: 'template-sup-junior-001', metric_name: '服务态度', metric_code: 'SERVICE_ATTITUDE', category: 'behavior', weight: 20.00, description: '服务主动性、沟通礼貌', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-sup-jnr-04', template_id: 'template-sup-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 10.00, description: '业务学习、技能提升', evaluation_type: 'qualitative', sort_order: 4 }
-  ]);
-  
-  // ============================================
-  // 5. 高管部门模板
-  // ============================================
-  
-  // 5.1 高管部门 - 兜底模板
-  registerTemplate({
-    id: 'template-mgmt-default',
-    name: '高管部门标准模板',
-    description: '适用于高管的通用考核模板：战略目标50%+团队建设30%+决策质量20%',
-    department_type: 'management',
-    is_default: true,
-    status: 'active',
-    priority: 0
-  });
-  registerMetrics([
-    { id: 'metric-mgmt-def-01', template_id: 'template-mgmt-default', metric_name: '战略目标达成', metric_code: 'STRATEGIC_GOAL_RATE', category: 'performance', weight: 30.00, description: '公司战略目标完成情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mgmt-def-02', template_id: 'template-mgmt-default', metric_name: '经营指标', metric_code: 'BUSINESS_METRICS', category: 'performance', weight: 20.00, description: '营收、利润等核心经营指标', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-mgmt-def-03', template_id: 'template-mgmt-default', metric_name: '团队建设', metric_code: 'TEAM_BUILDING', category: 'collaboration', weight: 20.00, description: '人才梯队建设、组织能力提升', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-mgmt-def-04', template_id: 'template-mgmt-default', metric_name: '决策质量', metric_code: 'DECISION_QUALITY', category: 'performance', weight: 15.00, description: '决策准确性、前瞻性', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-mgmt-def-05', template_id: 'template-mgmt-default', metric_name: '创新变革', metric_code: 'INNOVATION_CHANGE', category: 'innovation', weight: 15.00, description: '推动变革、创新举措', evaluation_type: 'qualitative', sort_order: 5 }
-  ]);
-  
-  // 5.2 高管部门 - GM/高管
-  registerTemplate({
-    id: 'template-mgmt-gm-001',
-    name: '高管GM考核模板',
-    description: '适用于总经理/高管：战略目标50%+团队建设30%+决策质量10%+创新10%',
-    department_type: 'management',
-    is_default: false,
-    status: 'active',
-    applicableRoles: ['gm', 'manager'],
-    applicableLevels: ['senior'],
-    applicablePositions: ['总经理', '副总经理', '高管'],
-    priority: 50
-  });
-  registerMetrics([
-    { id: 'metric-mgmt-gm-01', template_id: 'template-mgmt-gm-001', metric_name: '战略目标达成', metric_code: 'STRATEGIC_GOAL_RATE', category: 'performance', weight: 30.00, description: '年度战略目标完成情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mgmt-gm-02', template_id: 'template-mgmt-gm-001', metric_name: '营收利润指标', metric_code: 'REVENUE_PROFIT', category: 'performance', weight: 20.00, description: '公司整体营收和利润目标', evaluation_type: 'quantitative', sort_order: 2 },
-    { id: 'metric-mgmt-gm-03', template_id: 'template-mgmt-gm-001', metric_name: '团队建设', metric_code: 'TEAM_BUILDING', category: 'collaboration', weight: 20.00, description: '高管团队培养、组织架构优化', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-mgmt-gm-04', template_id: 'template-mgmt-gm-001', metric_name: '企业文化建设', metric_code: 'CORPORATE_CULTURE', category: 'collaboration', weight: 10.00, description: '企业文化塑造、价值观传递', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-mgmt-gm-05', template_id: 'template-mgmt-gm-001', metric_name: '决策质量', metric_code: 'DECISION_QUALITY', category: 'performance', weight: 10.00, description: '重大决策的准确性和效果', evaluation_type: 'qualitative', sort_order: 5 },
-    { id: 'metric-mgmt-gm-06', template_id: 'template-mgmt-gm-001', metric_name: '创新变革推动', metric_code: 'INNOVATION_CHANGE', category: 'innovation', weight: 10.00, description: '推动公司级变革和创新', evaluation_type: 'qualitative', sort_order: 6 }
-  ]);
-  
+
   // 统计
   const templateCount = memoryStore.assessmentTemplates?.size || 0;
   const metricCount = memoryStore.templateMetrics?.size || 0;
-  
-  logger.info(`✅ 已加载 ${templateCount} 个考核模板（含 ${templateCount - 5} 个岗位×层级细分模板 + 5 个部门兜底模板），${metricCount} 个考核指标`);
+  logger.info(`✅ 已加载 ${templateCount} 个非标自动化行业考核模板（10大岗位×多层级），${metricCount} 个考核指标`);
 }
 
-// 更新部门类型（根据部门名称）
 export function updateDepartmentTypes() {
-  logger.info('🏢 更新部门类型...');
-  
-  let updated = 0;
-  
-  memoryStore.departments.forEach((dept, id) => {
-    let type = 'support'; // 默认类型
-    
-    const name = dept.name || '';
-    
-    if (name.includes('营销') || name.includes('销售')) {
-      type = 'sales';
-    } else if (name.includes('工程') || name.includes('技术') || name.includes('研发')) {
-      type = 'engineering';
-    } else if (name.includes('制造') || name.includes('生产') || name.includes('品质')) {
-      type = 'manufacturing';
-    } else if (name.includes('财务') || name.includes('人力') || name.includes('行政') || name.includes('采购')) {
-      type = 'support';
-    } else if (name.includes('总') || name.includes('管理')) {
-      type = 'management';
-    }
-    
-    // 更新部门对象（添加 department_type 字段）
-    const updatedDept = { ...dept, department_type: type };
-    memoryStore.departments.set(id, updatedDept);
-    updated++;
-  });
-  
-  logger.info(`✅ 已更新 ${updated} 个部门的类型`);
+  // departmentTypes not used - templates use department_type string directly
+  return;
 }
