@@ -36,6 +36,7 @@ const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((modu
 const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement').then((module) => ({ default: module.PeerReviewManagement })));
 const PeerReviewManage = lazy(() => import('@/pages/Manager/PeerReviewManage').then((module) => ({ default: module.PeerReviewManage })));
 const TaskFreezeManagement = lazy(() => import('@/pages/HR/TaskFreezeManagement').then((module) => ({ default: module.TaskFreezeManagement })));
+const TemplateAssignmentRules = lazy(() => import('@/pages/HR/TemplateAssignmentRules').then((module) => ({ default: module.TemplateAssignmentRules })));
 const PerformanceRankingConfig = lazy(() => import('@/pages/HR/PerformanceRankingConfig').then((module) => ({ default: module.PerformanceRankingConfig })));
 const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
@@ -240,6 +241,7 @@ function App() {
           <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
           <Route path="/hr/performance-ranking-config" element={<PerformanceRankingConfig />} />
           <Route path="/hr/task-freeze" element={<TaskFreezeManagement />} />
+          <Route path="/hr/template-assignment-rules" element={<TemplateAssignmentRules />} />
         </Route>
 
         {/* Admin routes */}

@@ -481,6 +481,31 @@ export interface MetricTemplate {
   updatedAt: string;
 }
 
+// ============ 考核模板 ============
+export interface AssessmentTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  departmentType: string;
+  isDefault: boolean;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  metrics?: Array<{
+    id: string;
+    metricName: string;
+    metricCode: string;
+    weight: number;
+    category: string;
+    evaluationType: 'quantitative' | 'qualitative';
+  }>;
+  // 分配规则字段
+  applicableRoles?: string[];
+  applicableLevels?: string[];
+  applicablePositions?: string[];
+  priority?: number;
+}
+
 // ============ 考核流程扩展 ============
 export interface AssessmentAppeal {
   id: string;

@@ -289,7 +289,16 @@ export const assessmentTemplateApi = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  delete: (id: string) => request(`/assessment-templates/${id}`, { method: 'DELETE' })
+  delete: (id: string) => request(`/assessment-templates/${id}`, { method: 'DELETE' }),
+  // 匹配模板
+  match: (params?: { role?: string; level?: string; position?: string; department?: string }) =>
+    request(`/assessment-templates/match${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+  // 预览分配
+  previewAssignments: (data?: { employeeIds?: string[] }) =>
+    request('/assessment-templates/preview-assignments', {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    })
 };
 
 // 绩效参与范围/排名配置（HR/Admin）

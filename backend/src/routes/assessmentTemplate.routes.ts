@@ -22,6 +22,10 @@ router.delete('/metrics/:metricId', requireRole('hr', 'admin'), templateControll
 // 评分标准
 router.post('/metrics/:metricId/scoring-criteria', requireRole('hr', 'admin'), templateController.addScoringCriteria);
 
+// 模板匹配（新增）
+router.get('/match', templateController.matchTemplate);
+router.post('/preview-assignments', requireRole('hr', 'admin'), templateController.previewTemplateAssignments);
+
 router.get('/:id', templateController.getTemplateById);
 
 export default router;

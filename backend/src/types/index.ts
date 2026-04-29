@@ -17,6 +17,7 @@ export interface Employee {
   level: EmployeeLevel;
   managerId?: string;
   avatar?: string;
+  email?: string;
   password?: string;
   // 身份证后六位（bcrypt hash），仅用于登录校验；任何接口返回时必须剔除
   idCardLast6Hash?: string;

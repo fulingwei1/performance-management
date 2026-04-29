@@ -143,3 +143,58 @@ export const addScoringCriteria = asyncHandler(async (req: Request, res: Respons
   const result = await AssessmentTemplateModel.addScoringCriteria(metricId, criteria);
   res.status(201).json({ success: true, data: result });
 });
+
+/**
+ * 模板匹配：根据员工信息找到最佳模板
+ */
+export const matchTemplate = asyncHandler(async (req: Request, res: Response) => {
+  const { role, level, position, department } = req.query;
+  
+  const template = await AssessmentTemplateModel.findMatchingTemplate({
+    role: role as string,
+    level: level as string,
+    position: position as string,
+    department: department as string
+  });
+  
+  if (!template) {
+    return res.status(404).json({ 
+      success: false, 
+      message: '未找到匹配的模板，请检查模板配置' 
+    });
+  }
+  
+  res.json({ success: true, data: template });
+});
+
+/**
+ * 模板分配预览：显示所有员工将被分配哪个模板
+ */
+export const previewTemplateAssignments = asyncHandler(async (req: Request, res: Response) => {
+  const { employeeIds } = req.body;
+  
+  const { EmployeeModel } = await import('../models/employee.model');
+  
+  let employees: any[];
+  if (employeeIds && employeeIds.length > 0) {
+    employees = await Promise.all(
+      employeeIds.map((id: string) => EmployeeModel.findById(id))
+    ).then(results => results.filter(Boolean));
+  } else {
+    const all = await EmployeeModel.findAll();
+    employees = all.filter((e: any) => e.status !== 'inactive' && e.status !== 'disabled');
+  }
+  
+  const assignments = await AssessmentTemplateModel.getTemplateAssignments(
+    employees.map((e: any) => ({
+      id: e.id,
+      name: e.name,
+      role: e.role,
+      level: e.level,
+      position: e.position,
+      department: e.department
+    }))
+  );
+  
+  res.json({ success: true, data: assignments });
+});

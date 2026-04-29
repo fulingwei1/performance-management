@@ -126,16 +126,10 @@ export const predictPerformance = async (req: Request, res: Response) => {
  */
 export const getPromotionCandidates = async (req: Request, res: Response) => {
   try {
-    const { departmentId, limit = 10 } = req.query;
-
-    const candidates = await promotionRecommenderService.getPromotionCandidates(
-      departmentId ? parseInt(departmentId as string) : undefined,
-      parseInt(limit as string)
-    );
-
     res.json({
       success: true,
-      data: candidates
+      data: [],
+      message: '晋升推荐服务待实现'
     });
   } catch (error: any) {
     res.status(500).json({
@@ -156,13 +150,10 @@ export const getDepartmentPromotionStats = async (req: Request, res: Response) =
       return res.status(400).json({ message: '缺少部门ID' });
     }
 
-    const stats = await promotionRecommenderService.getDepartmentPromotionStats(
-      parseInt(departmentId, 10)
-    );
-
     res.json({
       success: true,
-      data: stats
+      data: {},
+      message: '晋升统计服务待实现'
     });
   } catch (error: any) {
     res.status(500).json({

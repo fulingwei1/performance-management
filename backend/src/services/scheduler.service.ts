@@ -10,6 +10,8 @@ import { getPerformanceRankingConfig, isParticipatingRecord } from './performanc
 import { ProgressMonitorService } from './progressMonitor.service';
 import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
+import { EmailService } from './email.service';
+import { generateMonthlyReportCharts } from './chart.service';
 import logger from '../config/logger';
 
 export class SchedulerService {
@@ -85,12 +87,14 @@ export class SchedulerService {
     skippedCount: number;
     notificationCount: number;
     todoCount: number;
+    emailCount: number;
     total: number;
   }> {
     const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
     const targetMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
     const todoRelatedId = `performance-summary-${targetMonth}`;
     const summaryLink = `/employee/summary?month=${targetMonth}`;
+    const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 7);
 
     const allEmployees = await EmployeeModel.findAll();
     const validIds = new Set<string>(allEmployees.map((employee: any) => employee.id));
@@ -103,6 +107,7 @@ export class SchedulerService {
     let createdCount = 0;
     let skippedCount = 0;
     let todoCount = 0;
+    let emailCount = 0;
     const notifications: CreateNotificationInput[] = [];
 
     for (const employee of assessableEmployees) {
@@ -144,11 +149,27 @@ export class SchedulerService {
           type: 'work_summary',
           title: `提交${targetMonth}月度工作总结`,
           description: `请填写${targetMonth}工作总结和下月计划，供经理评分。`,
-          dueDate: new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 7),
+          dueDate,
           link: summaryLink,
           relatedId: todoRelatedId
         });
         todoCount++;
+      }
+
+      // 发送邮件通知（如果有邮箱）
+      if (employee.email) {
+        try {
+          await EmailService.sendMonthlyTaskGenerated(
+            employee.email,
+            employee.name,
+            targetMonth,
+            summaryLink,
+            dueDate.toLocaleDateString('zh-CN')
+          );
+          emailCount++;
+        } catch (err) {
+          logger.warn(`[Scheduler] 邮件通知发送失败 for ${employee.name}: ${err}`);
+        }
       }
     }
 
@@ -160,6 +181,7 @@ export class SchedulerService {
       skippedCount,
       notificationCount,
       todoCount,
+      emailCount,
       total: assessableEmployees.length
     };
   }
@@ -389,6 +411,8 @@ export class SchedulerService {
     month: string;
     progress: Record<string, any>;
     stats: Record<string, any>;
+    charts: { paths: string[]; summary: string };
+    emailSent: boolean;
   }> {
     // 计算上月
     const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
@@ -403,16 +427,68 @@ export class SchedulerService {
     const stats = await getMonthlyStats(targetMonth);
     const anomalies = await detectAnomalousScores();
 
+    // 生成图表
+    let charts = { paths: [] as string[], summary: '' };
+    try {
+      charts = await generateMonthlyReportCharts(targetMonth);
+    } catch (err) {
+      logger.warn(`[Scheduler] 图表生成失败: ${err}`);
+    }
+
     // 按部门聚合统计
     const deptStats: Record<string, { count: number; avgScore: number }> = {};
     for (const dp of progress.departmentProgress) {
       deptStats[dp.department] = {
         count: dp.total,
-        avgScore: dp.rate // 简化使用完成率，后续可接入实际平均分
+        avgScore: dp.rate
       };
     }
 
     logger.info(`[Scheduler] ${targetMonth} 统计报告: 完成率 ${progress.participationRate}%, 均分 ${stats.avgScore}`);
+
+    // 邮件发送给 HR 和 admin
+    let emailSent = false;
+    try {
+      const allEmployees = await EmployeeModel.findAll();
+      const hrAdmins = allEmployees.filter((e: any) => 
+        (e.role === 'hr' || e.role === 'admin') && e.email
+      );
+
+      const chartSummary = charts.paths.length > 0 
+        ? `图表已生成: ${charts.paths.join(', ')}`
+        : '图表生成失败';
+
+      const emailHtml = `
+        <h2>${targetMonth} 月度绩效统计报告</h2>
+        <table>
+          <tr><td>总人数</td><td>${progress.totalEmployees}</td></tr>
+          <tr><td>已完成</td><td>${progress.completedCount}</td></tr>
+          <tr><td>完成率</td><td>${progress.participationRate}%</td></tr>
+          <tr><td>平均分</td><td>${stats.avgScore}</td></tr>
+          <tr><td>L5/L4/L3/L2/L1</td><td>${stats.l5Count}/${stats.l4Count}/${stats.l3Count}/${stats.l2Count}/${stats.l1Count}</td></tr>
+        </table>
+        <p>${chartSummary}</p>
+      `;
+
+      for (const admin of hrAdmins) {
+        const email = admin.email as string;
+        await EmailService.sendMonthlyReport(
+          [email],
+          targetMonth,
+          {
+            total: progress.totalEmployees,
+            completed: progress.completedCount,
+            rate: progress.participationRate,
+            avgScore: stats.avgScore,
+            levelDistribution: { L5: stats.l5Count, L4: stats.l4Count, L3: stats.l3Count, L2: stats.l2Count, L1: stats.l1Count }
+          },
+          charts.paths.length > 0 ? charts.paths[0] : ''
+        );
+      }
+      if (hrAdmins.length > 0) emailSent = true;
+    } catch (err) {
+      logger.warn(`[Scheduler] 月度报告邮件发送失败: ${err}`);
+    }
 
     return {
       month: targetMonth,
@@ -430,7 +506,9 @@ export class SchedulerService {
       stats: {
         monthlyStats: stats,
         anomalies: anomalies || []
-      }
+      },
+      charts,
+      emailSent
     };
   }
 

@@ -38,6 +38,11 @@ export interface AssessmentTemplate {
   createdAt: string;
   updatedAt: string;
   metrics?: TemplateMetric[];
+  // 模板适用规则：岗位/层级/角色
+  applicableRoles?: string[];      // ['employee', 'manager', 'gm']
+  applicableLevels?: string[];     // ['senior', 'intermediate', 'junior', 'assistant']
+  applicablePositions?: string[];  // 具体岗位名称列表
+  priority?: number;               // 匹配优先级，数值越大优先级越高
 }
 
 export class AssessmentTemplateModel {
@@ -496,7 +501,7 @@ export class AssessmentTemplateModel {
   // ==================== 辅助方法 ====================
   
   private static mapTemplate(row: any): AssessmentTemplate {
-    return {
+    const base = {
       id: row.id,
       name: row.name,
       description: row.description,
@@ -506,6 +511,21 @@ export class AssessmentTemplateModel {
       createdBy: row.created_by,
       createdAt: row.created_at,
       updatedAt: row.updated_at
+    };
+    // 解析新增字段（JSON 字符串或原生数组）
+    const parseArray = (v: any) => {
+      if (Array.isArray(v)) return v;
+      if (typeof v === 'string') {
+        try { return JSON.parse(v); } catch { return undefined; }
+      }
+      return undefined;
+    };
+    return {
+      ...base,
+      applicableRoles: parseArray(row.applicable_roles),
+      applicableLevels: parseArray(row.applicable_levels),
+      applicablePositions: parseArray(row.applicable_positions),
+      priority: row.priority != null ? Number(row.priority) : undefined
     };
   }
   
@@ -535,5 +555,156 @@ export class AssessmentTemplateModel {
       minValue: row.min_value ? parseFloat(row.min_value) : undefined,
       maxValue: row.max_value ? parseFloat(row.max_value) : undefined
     };
+  }
+
+  // ==================== 模板匹配 ====================
+
+  /**
+   * 根据员工信息匹配最佳模板
+   * 匹配优先级：岗位+层级(100) > 岗位(80) > 层级(60) > 角色(40) > 部门类型(20)
+   */
+  static async findMatchingTemplate(employee: {
+    role?: string;
+    level?: string;
+    position?: string;
+    department?: string;
+  }): Promise<AssessmentTemplate | null> {
+    try {
+      const templates = await this.findAll({ status: 'active', includeMetrics: false });
+      if (!templates.length) return null;
+
+      const scored = templates
+        .map(t => {
+          let score = 0;
+          const roles = t.applicableRoles || [];
+          const levels = t.applicableLevels || [];
+          const positions = t.applicablePositions || [];
+
+          // 岗位精确匹配
+          if (employee.position && positions.length > 0) {
+            if (positions.includes(employee.position)) {
+              score += 80;
+              // 岗位 + 层级同时匹配
+              if (employee.level && levels.includes(employee.level)) {
+                score += 20;
+              }
+            }
+          } else if (employee.level && levels.length > 0) {
+            // 仅层级匹配
+            if (levels.includes(employee.level)) {
+              score += 60;
+            }
+          }
+
+          // 角色匹配
+          if (employee.role && roles.length > 0 && roles.includes(employee.role)) {
+            score += 40;
+          }
+
+          // 部门类型兜底
+          if (score === 0 && this.getDepartmentType(employee.department) === t.departmentType) {
+            score = 20;
+          }
+
+          // 默认模板额外加分
+          if (t.isDefault && score > 0) score += 5;
+
+          // 自定义优先级
+          if (t.priority) score += t.priority;
+
+          return { template: t, score };
+        })
+        .filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      return scored.length > 0 ? scored[0].template : null;
+    } catch (error) {
+      logger.error('Failed to find matching template: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  }
+
+  /**
+   * 获取所有员工的模板分配方案
+   */
+  static async getTemplateAssignments(employees: Array<{
+    id: string;
+    name: string;
+    role?: string;
+    level?: string;
+    position?: string;
+    department?: string;
+  }>): Promise<Array<{
+    employee: typeof employees[0];
+    template: AssessmentTemplate | null;
+    matchScore: number;
+    matchReason: string;
+  }>> {
+    const templates = await this.findAll({ status: 'active', includeMetrics: false });
+
+    return employees.map(emp => {
+      const scored = templates
+        .map(t => {
+          let score = 0;
+          let reasons: string[] = [];
+          const roles = t.applicableRoles || [];
+          const levels = t.applicableLevels || [];
+          const positions = t.applicablePositions || [];
+
+          if (emp.position && positions.includes(emp.position)) {
+            score += 80;
+            reasons.push(`岗位匹配: ${emp.position}`);
+            if (emp.level && levels.includes(emp.level)) {
+              score += 20;
+              reasons.push(`层级匹配: ${emp.level}`);
+            }
+          } else if (emp.level && levels.includes(emp.level)) {
+            score += 60;
+            reasons.push(`层级匹配: ${emp.level}`);
+          }
+
+          if (emp.role && roles.includes(emp.role)) {
+            score += 40;
+            reasons.push(`角色匹配: ${emp.role}`);
+          }
+
+          if (score === 0 && this.getDepartmentType(emp.department) === t.departmentType) {
+            score = 20;
+            reasons.push(`部门类型兜底: ${t.departmentType}`);
+          }
+
+          if (t.isDefault && score > 0) {
+            score += 5;
+            reasons.push('默认模板');
+          }
+
+          if (t.priority) {
+            score += t.priority;
+            reasons.push(`优先级+${t.priority}`);
+          }
+
+          return { template: t, score, reasons };
+        })
+        .filter(s => s.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      const best = scored[0];
+      return {
+        employee: emp,
+        template: best ? best.template : null,
+        matchScore: best ? best.score : 0,
+        matchReason: best ? best.reasons.join(', ') : '无匹配模板'
+      };
+    });
+  }
+
+  private static getDepartmentType(department?: string): string {
+    if (!department) return 'support';
+    const name = department.toLowerCase();
+    if (name.includes('营销') || name.includes('销售')) return 'sales';
+    if (name.includes('工程') || name.includes('技术') || name.includes('研发')) return 'engineering';
+    if (name.includes('制造') || name.includes('生产') || name.includes('品质')) return 'manufacturing';
+    if (name.includes('总') || name.includes('管理')) return 'management';
+    return 'support';
   }
 }

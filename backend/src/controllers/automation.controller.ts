@@ -1,187 +1,194 @@
-import { createLogger } from '../utils/logger';
-const logger = createLogger('Automation');
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
-import { EmployeeModel } from '../models/employee.model';
-import { PerformanceModel } from '../models/performance.model';
-import { NotificationModel, CreateNotificationInput } from '../models/notification.model';
-import { query } from '../config/database';
+import { SchedulerService } from '../services/scheduler.service';
+import { ProgressMonitorService } from '../services/progressMonitor.service';
+import { ArchiveService } from '../services/archive.service';
+import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
+import logger from '../config/logger';
 
 export const automationController = {
   /**
-   * 每月1号自动生成月度绩效任务
-   * 为所有员工创建本月的绩效记录
+   * 手动触发月初任务生成（也可由 cron 自动触发）
    */
   generateMonthlyTasks: asyncHandler(async (req: Request, res: Response) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const currentMonth = `${year}-${month}`;
-    
-    logger.info(`生成月度绩效任务: ${currentMonth}`);
-    
-    // 获取所有员工（排除admin/hr等管理角色）
-    const employees = await EmployeeModel.findAll();
-    const targetEmployees = employees.filter(e => 
-      e.role === 'employee' || e.role === 'manager'
-    );
-    
-    logger.info(`找到 ${targetEmployees.length} 个目标员工`);
-    
-    // 截止日期：下月3号
-    const deadline = new Date(year, now.getMonth() + 1, 3);
-    const deadlineStr = deadline.toISOString().split('T')[0];
-    
-    let createdCount = 0;
-    let skippedCount = 0;
-    
-    for (const emp of targetEmployees) {
-      // 检查是否已存在记录
-      const existing = await PerformanceModel.findByEmployeeIdAndMonth(emp.id, currentMonth);
-      
-      if (existing) {
-        skippedCount++;
-        continue;
-      }
-      
-      // 创建新记录（只插入必要的字段）
-      const recordId = `auto-${emp.id}-${currentMonth}`;
-      // 根据level确定group_type（只有high/low两种，默认low）
-      let groupType: 'high' | 'low' = 'low';
-      if (emp.level) {
-        const levelStr = emp.level.toString();
-        // senior级别或包含5/6的归为high分组
-        if (levelStr === 'senior' || levelStr.includes('5') || levelStr.includes('6')) {
-          groupType = 'high';
-        }
-        // junior/intermediate级别归为low分组
-      }
-      
-      await query(
-        `INSERT INTO performance_records 
-        (id, employee_id, assessor_id, month, level, group_type, status, deadline, frozen, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'L3', ?, 'draft', ?, false, NOW(), NOW())`,
-        [recordId, emp.id, emp.managerId || emp.id, currentMonth, groupType, deadlineStr]
-      );
-      
-      createdCount++;
-    }
-    
-    logger.info(`月度任务生成完成: 新增 ${createdCount} 条，跳过 ${skippedCount} 条`);
-    
+    const month = req.query.month as string | undefined;
+    const refDate = month ? new Date(month) : new Date();
+    const result = await SchedulerService.generatePreviousMonthPerformanceTasks(refDate);
+
     res.json({
       success: true,
-      message: `月度绩效任务生成完成`,
-      data: {
-        month: currentMonth,
-        created: createdCount,
-        skipped: skippedCount,
-        total: targetEmployees.length,
-        deadline: deadlineStr
-      }
+      message: `${result.month} 月度任务生成完成`,
+      data: result
     });
   }),
 
   /**
-   * 每季度第一天生成总经理评分任务
+   * 手动触发月度统计报告生成
    */
-  generateQuarterlyTasks: asyncHandler(async (req: Request, res: Response) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const quarter = Math.ceil((now.getMonth() + 1) / 3);
-    const currentQuarter = `${year}-Q${quarter}`;
-    
-    logger.info(`生成季度评分任务: ${currentQuarter}`);
-    
-    // 获取所有部门经理
-    const managers = await EmployeeModel.findByRole('manager');
-    
-    logger.info(`找到 ${managers.length} 个部门经理`);
-    
-    // 这里需要调用 hrStore 的 generateGMTasks 逻辑
-    // 由于是后端，我们直接插入数据库
-    let createdCount = 0;
-    let skippedCount = 0;
-    
-    for (const manager of managers) {
-      // 检查是否已存在评分记录（这里需要GM评分表，暂时用注释表示）
-      // const existing = await GMScoreModel.findByManagerAndQuarter(manager.id, currentQuarter);
-      // if (existing) { skippedCount++; continue; }
-      
-      // await GMScoreModel.create({ ... });
-      // createdCount++;
-      
-      // 由于 gmScores 存在 hrStore 中（内存），这里暂时返回信息即可
-      skippedCount++;
-    }
-    
+  generateMonthlyStats: asyncHandler(async (req: Request, res: Response) => {
+    const month = req.query.month as string | undefined;
+    const refDate = month ? new Date(month) : new Date();
+    const result = await SchedulerService.generateMonthlyStatisticsReport(refDate);
+
     res.json({
       success: true,
-      message: `季度评分任务生成完成`,
-      data: {
-        quarter: currentQuarter,
-        managers: managers.length,
-        created: createdCount,
-        skipped: skippedCount
-      }
+      message: `${result.month} 统计报告生成完成`,
+      data: result
     });
   }),
 
   /**
-   * 每天检查并冻结超期任务
+   * 手动触发自动发布
    */
-  freezeOverdueTasks: asyncHandler(async (req: Request, res: Response) => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    logger.info(`检查超期任务: ${today}`);
-    
-    // 查找所有超期且未冻结的任务
-    const result = await query(
-      `UPDATE performance_records 
-       SET frozen = true, updated_at = NOW()
-       WHERE deadline < ? 
-       AND frozen = false 
-       AND status IN ('draft', 'submitted')`,
-      [today]
-    ) as any;
-    
-    const frozenCount = result.affectedRows || 0;
-    
-    logger.info(`冻结了 ${frozenCount} 条超期任务`);
-    
+  autoPublish: asyncHandler(async (req: Request, res: Response) => {
+    const month = req.query.month as string | undefined;
+    const refDate = month ? new Date(month) : new Date();
+    const result = await SchedulerService.autoPublishPreviousMonth(refDate);
+
     res.json({
-      success: true,
-      message: `超期任务冻结完成`,
-      data: {
-        date: today,
-        frozen: frozenCount
-      }
+      success: result.published,
+      message: result.reason,
+      data: result
     });
   }),
 
   /**
-   * HR解冻任务
+   * 获取某月进度监控
+   */
+  getProgress: asyncHandler(async (req: Request, res: Response) => {
+    const month = req.params.month as string;
+    if (!month) {
+      return res.status(400).json({ success: false, error: '缺少 month 参数' });
+    }
+    const result = await ProgressMonitorService.getMonthProgress(month);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  }),
+
+  /**
+   * 归档指定月份
+   */
+  archiveMonth: asyncHandler(async (req: Request, res: Response) => {
+    const month = req.body.month as string | undefined;
+    if (!month) {
+      return res.status(400).json({ success: false, error: '缺少 month 参数' });
+    }
+    const userId = (req as any).user?.userId || 'system';
+    const result = await ArchiveService.archiveMonth(month, userId);
+
+    res.json({
+      success: true,
+      message: `${month} 归档完成`,
+      data: result
+    });
+  }),
+
+  /**
+   * 查询归档列表
+   */
+  listArchives: asyncHandler(async (req: Request, res: Response) => {
+    const result = await ArchiveService.listArchives();
+
+    res.json({
+      success: true,
+      data: result
+    });
+  }),
+
+  /**
+   * 触发催办提醒检查
+   */
+  checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
+    await SchedulerService.checkDeadlines();
+    await SchedulerService.checkOverdueTodos();
+
+    res.json({
+      success: true,
+      message: '催办检查完成'
+    });
+  }),
+
+  /**
+   * 获取所有有记录的月份列表
+   */
+  listMonths: asyncHandler(async (req: Request, res: Response) => {
+    const months = await ProgressMonitorService.listMonths();
+
+    res.json({
+      success: true,
+      data: months
+    });
+  }),
+
+  /**
+   * 手动发布指定月份
+   */
+  publishMonth: asyncHandler(async (req: Request, res: Response) => {
+    const month = req.body.month as string | undefined;
+    if (!month) {
+      return res.status(400).json({ success: false, error: '缺少 month 参数' });
+    }
+
+    const alreadyPublished = await AssessmentPublicationModel.isPublished(month);
+    if (alreadyPublished) {
+      return res.json({
+        success: false,
+        message: `${month} 已发布`
+      });
+    }
+
+    const publishedBy = (req as any).user?.userId || 'system';
+    await AssessmentPublicationModel.publish(month, publishedBy);
+    logger.info(`[Automation] ${month} 手动发布完成`);
+
+    res.json({
+      success: true,
+      message: `${month} 发布成功`
+    });
+  }),
+
+  /**
+   * 获取自动化执行日志（从 automation_logs 表）
+   */
+  getAutomationLogs: asyncHandler(async (req: Request, res: Response) => {
+    const { query } = await import('../config/database');
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    const result = await query(`
+      SELECT * FROM automation_logs 
+      ORDER BY executed_at DESC 
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    const countResult = await query('SELECT COUNT(*) FROM automation_logs');
+    const total = Number((countResult as any[])[0]?.count || 0);
+
+    res.json({
+      success: true,
+      data: result,
+      pagination: { page, limit, total }
+    });
+  }),
+
+  /**
+   * HR 解冻任务（保留旧接口）
    */
   unfreezeTask: asyncHandler(async (req: Request, res: Response) => {
     const { recordId } = req.params;
-    
-    // 只有HR可以解冻
-    if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: '只有人力资源可以解冻任务'
-      });
-    }
-    
+    const { query } = await import('../config/database');
+
     await query(
-      `UPDATE performance_records 
-       SET frozen = false, updated_at = NOW()
-       WHERE id = ?`,
+      `UPDATE performance_records SET frozen = false, updated_at = NOW() WHERE id = $1`,
       [recordId]
     );
-    
-    logger.info(`HR ${req.user?.userId} 解冻任务 ${recordId}`);
-    
+
+    logger.info(`HR 解冻任务 ${recordId}`);
+
     res.json({
       success: true,
       message: '任务已解冻'
@@ -189,106 +196,23 @@ export const automationController = {
   }),
 
   /**
-   * HR批量解冻任务
+   * HR 批量解冻任务（保留旧接口）
    */
   batchUnfreeze: asyncHandler(async (req: Request, res: Response) => {
-    const { month } = req.body;
-    
-    // 只有HR可以解冻
-    if (req.user?.role !== 'hr' && req.user?.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        error: '只有人力资源可以批量解冻任务'
-      });
-    }
-    
+    const { query } = await import('../config/database');
+    const month = req.body.month as string | undefined;
+
     const result = await query(
-      `UPDATE performance_records 
-       SET frozen = false, updated_at = NOW()
-       WHERE month = ? AND frozen = true`,
+      `UPDATE performance_records SET frozen = false, updated_at = NOW() WHERE month = $1 AND frozen = true`,
       [month]
     ) as any;
-    
-    const unfrozenCount = result.affectedRows || 0;
-    
-    logger.info(`HR ${req.user?.userId} 批量解冻 ${month} 的任务，共 ${unfrozenCount} 条`);
-    
+
+    const unfrozenCount = (result as any).rowCount || 0;
+
     res.json({
       success: true,
       message: `已解冻 ${unfrozenCount} 条任务`,
-      data: {
-        month,
-        unfrozen: unfrozenCount
-      }
-    });
-  }),
-
-  /**
-   * 检查截止日期临近的任务并发送提醒
-   * 查询所有未冻结、未提交且截止日期在3天内的任务
-   */
-  checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
-    const today = new Date();
-    const threeDaysLater = new Date(today);
-    threeDaysLater.setDate(threeDaysLater.getDate() + 3);
-    
-    const todayStr = today.toISOString().split('T')[0];
-    const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
-    
-    logger.info(`检查截止日期提醒: ${todayStr} ~ ${threeDaysLaterStr}`);
-    
-    // 查询符合条件的任务
-    const tasks = await query(
-      `SELECT 
-        pr.id, pr.employee_id, pr.month, pr.deadline, pr.status,
-        e.name as employee_name
-       FROM performance_records pr
-       JOIN employees e ON pr.employee_id = e.id
-       WHERE pr.frozen = false 
-       AND pr.status IN ('draft')
-       AND pr.deadline >= ?
-       AND pr.deadline <= ?`,
-      [todayStr, threeDaysLaterStr]
-    ) as any[];
-    
-    logger.info(`找到 ${tasks.length} 条需要提醒的任务`);
-    
-    if (tasks.length === 0) {
-      return res.json({
-        success: true,
-        message: '没有需要提醒的任务',
-        data: {
-          checked: 0,
-          reminded: 0
-        }
-      });
-    }
-    
-    // 为每个任务创建提醒消息
-    const notifications: CreateNotificationInput[] = tasks.map(task => {
-      const daysLeft = Math.ceil((new Date(task.deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      
-      return {
-        userId: task.employee_id,
-        type: 'reminder' as const,
-        title: `绩效任务即将到期`,
-        content: `您的 ${task.month} 月度绩效任务还有 ${daysLeft} 天到期（截止日期：${task.deadline}），请尽快完成提交。`,
-        link: `/employee/summary?month=${task.month}`
-      };
-    });
-    
-    // 批量创建通知
-    const createdCount = await NotificationModel.createBatch(notifications);
-    
-    logger.info(`成功创建 ${createdCount} 条提醒消息`);
-    
-    res.json({
-      success: true,
-      message: `提醒检查完成，已创建 ${createdCount} 条消息`,
-      data: {
-        checked: tasks.length,
-        reminded: createdCount
-      }
+      data: { month, unfrozen: unfrozenCount }
     });
   })
 };
