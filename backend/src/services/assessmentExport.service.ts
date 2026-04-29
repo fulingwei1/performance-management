@@ -296,8 +296,8 @@ export async function exportScoreTrendAnalysis(employeeId: string): Promise<Exce
     sheet.getCell(`A${statsRow}`).font = { bold: true };
     
     if (assessments.length > 0) {
-      const scores = assessments.map(a => a.totalScore);
-      const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+      const scores: number[] = assessments.map((a: any) => a.totalScore);
+      const avgScore = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
       const maxScore = Math.max(...scores);
       const minScore = Math.min(...scores);
       

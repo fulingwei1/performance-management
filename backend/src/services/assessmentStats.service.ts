@@ -130,21 +130,21 @@ export async function getMonthlyStats(month: string): Promise<MonthlyStats> {
  */
 export async function getEmployeePerformanceTrend(employeeId: string): Promise<EmployeePerformance | null> {
   try {
-    const assessments = await PerformanceModel.findByEmployee(employeeId);
+    const assessments = await PerformanceModel.findByEmployeeId(employeeId);
     
     if (assessments.length === 0) {
       return null;
     }
     
-    const scores = assessments.map(a => a.totalScore);
-    const avgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
+    const scores: number[] = assessments.map((a: any) => a.totalScore);
+    const avgScore = scores.reduce((sum: number, s: number) => sum + s, 0) / scores.length;
     
     // 计算趋势（最近3次）
     let trend: 'up' | 'down' | 'stable' = 'stable';
     if (scores.length >= 3) {
       const recent3 = scores.slice(-3);
-      const avgRecent = recent3.reduce((sum, s) => sum + s, 0) / 3;
-      const avgEarlier = scores.slice(0, -3).reduce((sum, s) => sum + s, 0) / (scores.length - 3);
+      const avgRecent = recent3.reduce((sum: number, s: number) => sum + s, 0) / 3;
+      const avgEarlier = scores.slice(0, -3).reduce((sum: number, s: number) => sum + s, 0) / (scores.length - 3);
       
       if (avgRecent > avgEarlier + 0.1) trend = 'up';
       else if (avgRecent < avgEarlier - 0.1) trend = 'down';
