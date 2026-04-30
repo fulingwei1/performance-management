@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PerformanceRecord, Filters } from '@/types';
-import { performanceApi, peerReviewApi } from '@/services/api';
+import { performanceApi } from '@/services/api';
 
 interface PerformanceState {
   records: PerformanceRecord[];
@@ -17,7 +17,6 @@ interface PerformanceState {
   fetchGroupRecords: (groupType: 'high' | 'low', subDepartments?: string[]) => PerformanceRecord[];
   saveSummary: (data: Partial<PerformanceRecord>) => Promise<boolean>;
   submitScore: (data: Partial<PerformanceRecord>) => Promise<boolean>;
-  submitPeerReview: (data: Partial<PerformanceRecord>) => Promise<boolean>;
   setFilters: (filters: Filters) => void;
   clearError: () => void;
 }
@@ -171,29 +170,6 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
         return true;
       } else {
         set({ error: response.error || '评分失败', loading: false });
-        return false;
-      }
-    } catch (error: any) {
-      set({ error: error.message || '网络错误', loading: false });
-      return false;
-    }
-  },
-
-  submitPeerReview: async (data: Partial<PerformanceRecord>) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await peerReviewApi.submitPeerReview({
-        relationship_id: data.id as string,
-        collaboration_score: (data as any).collaboration ?? 0,
-        professionalism_score: (data as any).professionalism ?? 0,
-        communication_score: (data as any).communication ?? 0,
-        comment: (data as any).comment ?? '',
-      });
-      if (response.success) {
-        set({ loading: false });
-        return true;
-      } else {
-        set({ error: response.message || response.error || '互评提交失败', loading: false });
         return false;
       }
     } catch (error: any) {

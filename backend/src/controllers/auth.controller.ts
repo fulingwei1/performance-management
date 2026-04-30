@@ -7,14 +7,21 @@ import { asyncHandler } from '../middleware/errorHandler';
 export const authController = {
   // 登录
   login: [
-    body('username').notEmpty().withMessage('用户名不能为空'),
+    body('username')
+      .customSanitizer((value) => String(value || '').trim().replace(/\s+/g, ''))
+      .notEmpty()
+      .withMessage('用户名不能为空'),
     // 兼容两种字段：idCardLast6（推荐）或 password（旧版）
     body('idCardLast6')
       .optional()
       .isString()
+      .customSanitizer((value) => String(value || '').trim().replace(/\s+/g, ''))
       .matches(/^[0-9Xx]{6}$/)
       .withMessage('身份证后六位格式错误'),
-    body('password').optional().isString(),
+    body('password')
+      .optional()
+      .isString()
+      .customSanitizer((value) => String(value || '').trim()),
     body().custom((_, { req }) => {
       if (!req.body.idCardLast6 && !req.body.password) {
         throw new Error('身份证后六位不能为空');
@@ -31,7 +38,8 @@ export const authController = {
         });
       }
 
-      const { username } = req.body as { username: string };
+      const { username: rawUsername } = req.body as { username: string };
+      const username = rawUsername.trim().replace(/\s+/g, '');
       const idCardLast6 = (req.body.idCardLast6 ?? '').toString();
       const password = (req.body.password ?? '').toString();
 

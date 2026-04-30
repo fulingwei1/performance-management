@@ -515,13 +515,6 @@ export function getDimensionCriteria(dimensionKey: string, level: string) {
   return dimensionCriteria[dimensionKey]?.[level];
 }
 
-// 360度评分维度
-export const peerReviewDimensions = [
-  { key: 'collaboration', name: '协作态度', description: '评估协作配合的积极性' },
-  { key: 'professionalism', name: '专业能力', description: '评估专业技能水平' },
-  { key: 'communication', name: '沟通效率', description: '评估沟通协作效率' }
-];
-
 // 获取员工级别标签
 export function getLevelLabel(level: EmployeeLevel): string {
   return employeeLevels[level]?.label || level;

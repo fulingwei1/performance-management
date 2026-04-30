@@ -559,10 +559,15 @@ export const performanceController = {
     const allEmployees = await EmployeeModel.findAll();
     const rankingConfig = await getPerformanceRankingConfig();
     const assessableEmployees = allEmployees
+      .filter((e: any) => !e.status || e.status === 'active')
       .filter((e: any) => e.role === 'employee' || e.role === 'manager')
       .filter((e: any) => isParticipatingRecord(e, rankingConfig));
 
-    const validIds = new Set<string>(allEmployees.map((e: any) => e.id));
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((e: any) => !e.status || e.status === 'active')
+        .map((e: any) => e.id)
+    );
     
     let createdCount = 0;
     let skippedCount = 0;
@@ -618,12 +623,13 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
     }
 
-    const records = await PerformanceModel.findByMonth(month);
-    const employees = await EmployeeModel.findAll();
-    
-    // 创建员工映射
-    const employeeMap = new Map<string, any>();
-    employees.forEach((emp: any) => employeeMap.set(emp.id, emp));
+    const rankingConfig = await getPerformanceRankingConfig();
+    const employees = (await EmployeeModel.findAll())
+      .filter((emp: any) => !emp.status || emp.status === 'active')
+      .filter((emp: any) => isParticipatingRecord(emp, rankingConfig));
+    const eligibleEmployeeIds = new Set(employees.map((emp: any) => emp.id));
+    const records = (await PerformanceModel.findByMonth(month))
+      .filter((record: any) => eligibleEmployeeIds.has(record.employeeId));
     
     // 按部门统计
     const deptStats = new Map<string, {
@@ -632,28 +638,27 @@ export const performanceController = {
       employees: any[];
     }>();
     
-    records.forEach((r: any) => {
-      const emp = employeeMap.get(r.employeeId);
+    employees.forEach((emp: any) => {
       const dept = emp?.department || '未知部门';
-      
       if (!deptStats.has(dept)) {
         deptStats.set(dept, { department: dept, scores: [], employees: [] });
       }
-      
+
+      const record = records.find((r: any) => r.employeeId === emp.id);
       const deptData = deptStats.get(dept)!;
-      if (r.totalScore > 0) {
-        deptData.scores.push(r.totalScore);
+      if (record && record.totalScore > 0) {
+        deptData.scores.push(record.totalScore);
       }
       deptData.employees.push({
-        name: emp?.name || r.employeeName,
+        name: emp?.name || record?.employeeName,
         subDepartment: emp?.subDepartment || '',
         employeeLevel: emp?.level || '',
-        totalScore: r.totalScore,
-        status: r.status,
-        scoreLevel: r.level
+        totalScore: record?.totalScore || 0,
+        status: record?.status || 'not_submitted',
+        scoreLevel: record?.level
       });
     });
-    
+
     // 转换为数组
     const stats = Array.from(deptStats.values()).map(dept => ({
       department: dept.department,

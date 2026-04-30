@@ -23,7 +23,6 @@ import performanceRoutes from './routes/performance.routes';
 import organizationRoutes from './routes/organization.routes';
 import assessmentCycleRoutes from './routes/assessmentCycle.routes';
 import metricLibraryRoutes from './routes/metricLibrary.routes';
-import peerReviewRoutes from './routes/peerReview.routes';
 import settingsRoutes from './routes/settings.routes';
 import exportRoutes from './routes/export.routes';
 import quarterlySummaryRoutes from './routes/quarterlySummary.routes';
@@ -32,7 +31,6 @@ import performanceInterviewRoutes from './routes/performanceInterview.routes';
 import interviewRecordRoutes from './routes/interviewRecord.routes';
 import attachmentRoutes from './routes/attachment.routes';
 import departmentRoutes from './routes/department.routes';
-import peerReviewCycleRoutes from './routes/peerReviewCycle.routes';
 import goalProgressRoutes from './routes/goalProgress.routes';
 import aiRoutes from './routes/ai.routes';
 import dashboardRoutes from './routes/dashboard.routes';
@@ -174,7 +172,6 @@ app.use('/api/performance', performanceRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/cycles', assessmentCycleRoutes);
 app.use('/api/metrics', metricLibraryRoutes);
-app.use('/api/peer-reviews', peerReviewRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
 // OKR 模块 (routes not yet implemented)
@@ -185,7 +182,6 @@ app.use('/api/interviews', performanceInterviewRoutes);
 app.use('/api/interview-records', interviewRecordRoutes);
 app.use('/api/attachments', attachmentRoutes);
 app.use('/api/departments', departmentRoutes);
-app.use('/api/peer-review-cycles', peerReviewCycleRoutes);
 app.use('/api/goal-progress', goalProgressRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -236,7 +232,7 @@ const initializeServer = async () => {
  await ensureLocalPostgresSchema();
  await initializeData();
  updateDepartmentTypes();
- initializeDefaultTemplates();
+ await initializeDefaultTemplates();
  logger.info('✅ Data initialization completed');
     // 测试环境不要启动定时任务，避免 Jest 句柄泄露导致无法退出
     if (process.env.NODE_ENV !== 'test') {

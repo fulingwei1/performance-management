@@ -10,7 +10,7 @@
  * - 匹配规则：岗位精确匹配(50) > 层级匹配(30) > 部门兜底(0)
  */
 
-import { memoryStore } from './database';
+import { memoryStore, query, USE_MEMORY_DB } from './database';
 import logger from './logger';
 
 // ============================================
@@ -56,11 +56,93 @@ function registerMetrics(metrics: MetricDef[]) {
   metrics.forEach(m => memoryStore.templateMetrics?.set(m.id, m));
 }
 
+async function syncTemplatesToDatabase() {
+  if (USE_MEMORY_DB) return;
+
+  const templates = Array.from(memoryStore.assessmentTemplates?.values() || []);
+  const metrics = Array.from(memoryStore.templateMetrics?.values() || []);
+
+  if (templates.length === 0) return;
+
+  await query(`
+    ALTER TABLE assessment_templates
+      ADD COLUMN IF NOT EXISTS applicable_roles TEXT[] DEFAULT '{}',
+      ADD COLUMN IF NOT EXISTS applicable_levels TEXT[] DEFAULT '{}',
+      ADD COLUMN IF NOT EXISTS applicable_positions TEXT[] DEFAULT '{}',
+      ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0
+  `);
+
+  for (const t of templates) {
+    await query(
+      `INSERT INTO assessment_templates (
+        id, name, description, department_type, is_default, status,
+        applicable_roles, applicable_levels, applicable_positions, priority,
+        created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11::timestamp, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        description = EXCLUDED.description,
+        department_type = EXCLUDED.department_type,
+        is_default = EXCLUDED.is_default,
+        status = EXCLUDED.status,
+        applicable_roles = EXCLUDED.applicable_roles,
+        applicable_levels = EXCLUDED.applicable_levels,
+        applicable_positions = EXCLUDED.applicable_positions,
+        priority = EXCLUDED.priority,
+        updated_at = CURRENT_TIMESTAMP`,
+      [
+        t.id,
+        t.name,
+        t.description,
+        t.department_type,
+        t.is_default,
+        t.status || 'active',
+        t.applicable_roles || [],
+        t.applicable_levels || [],
+        t.applicable_positions || [],
+        t.priority || 0,
+        t.created_at || null,
+      ]
+    );
+  }
+
+  for (const m of metrics) {
+    await query(
+      `INSERT INTO template_metrics (
+        id, template_id, metric_name, metric_code, category, weight,
+        description, evaluation_type, sort_order, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        template_id = EXCLUDED.template_id,
+        metric_name = EXCLUDED.metric_name,
+        metric_code = EXCLUDED.metric_code,
+        category = EXCLUDED.category,
+        weight = EXCLUDED.weight,
+        description = EXCLUDED.description,
+        evaluation_type = EXCLUDED.evaluation_type,
+        sort_order = EXCLUDED.sort_order`,
+      [
+        m.id,
+        m.template_id,
+        m.metric_name,
+        m.metric_code,
+        m.category,
+        m.weight,
+        m.description,
+        m.evaluation_type,
+        m.sort_order,
+      ]
+    );
+  }
+
+  logger.info(`✅ 已同步 ${templates.length} 个行业考核模板、${metrics.length} 个指标到本地 PostgreSQL`);
+}
+
 // ============================================
 // 主初始化函数
 // ============================================
 
-export function initializeDefaultTemplates() {
+export async function initializeDefaultTemplates() {
   logger.info('📦 初始化金凯博自动化考核模板（非标自动化行业专用）...');
   memoryStore.assessmentTemplates?.clear();
   memoryStore.templateMetrics?.clear();
@@ -583,6 +665,7 @@ export function initializeDefaultTemplates() {
   const templateCount = memoryStore.assessmentTemplates?.size || 0;
   const metricCount = memoryStore.templateMetrics?.size || 0;
   logger.info(`✅ 已加载 ${templateCount} 个非标自动化行业考核模板（10大岗位×多层级），${metricCount} 个考核指标`);
+  await syncTemplatesToDatabase();
 }
 
 export function updateDepartmentTypes() {

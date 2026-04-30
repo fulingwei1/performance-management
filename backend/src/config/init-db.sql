@@ -60,27 +60,6 @@ CREATE TABLE IF NOT EXISTS performance_records (
   FOREIGN KEY (assessor_id) REFERENCES employees(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 360度评分表
-CREATE TABLE IF NOT EXISTS peer_reviews (
-  id VARCHAR(50) PRIMARY KEY,
-  reviewer_id VARCHAR(20) NOT NULL,
-  reviewee_id VARCHAR(20) NOT NULL,
-  record_id VARCHAR(50) NOT NULL,
-  collaboration DECIMAL(3,2) DEFAULT 1.00,
-  professionalism DECIMAL(3,2) DEFAULT 1.00,
-  communication DECIMAL(3,2) DEFAULT 1.00,
-  comment TEXT,
-  month VARCHAR(7) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_reviewer_id (reviewer_id),
-  INDEX idx_reviewee_id (reviewee_id),
-  INDEX idx_record_id (record_id),
-  INDEX idx_month (month),
-  FOREIGN KEY (reviewer_id) REFERENCES employees(id) ON DELETE CASCADE,
-  FOREIGN KEY (reviewee_id) REFERENCES employees(id) ON DELETE CASCADE,
-  FOREIGN KEY (record_id) REFERENCES performance_records(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- 月度任务表
 CREATE TABLE IF NOT EXISTS monthly_tasks (
   id VARCHAR(50) PRIMARY KEY,

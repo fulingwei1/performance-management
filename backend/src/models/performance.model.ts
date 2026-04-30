@@ -90,6 +90,7 @@ export class PerformanceModel {
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
       WHERE r.assessor_id = ?
+        AND (e.status = 'active' OR e.status IS NULL)
     `;
     const params: any[] = [assessorId];
     
@@ -123,6 +124,7 @@ export class PerformanceModel {
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
       WHERE r.month = ?
+        AND (e.status = 'active' OR e.status IS NULL)
       ORDER BY r.total_score DESC
     `;
     const results = await query(sql, [month]);
@@ -147,6 +149,7 @@ export class PerformanceModel {
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
+      WHERE (e.status = 'active' OR e.status IS NULL)
       ORDER BY r.month DESC, r.total_score DESC
     `;
     const results = await query(sql, []);
@@ -242,7 +245,6 @@ export class PerformanceModel {
       totalScore: 0,
       managerComment: '',
       nextMonthWorkArrangement: '',
-      peerReviews: [],
       groupType: data.groupType,
       groupRank: 0,
       crossDeptRank: 0,
@@ -500,7 +502,6 @@ export class PerformanceModel {
       normalizedScore: row.normalized_score ? parseFloat(row.normalized_score) : undefined,
       managerComment: row.manager_comment,
       nextMonthWorkArrangement: row.next_month_work_arrangement,
-      peerReviews: [],
       groupType: row.group_type,
       groupRank: row.group_rank,
       crossDeptRank: row.cross_dept_rank,

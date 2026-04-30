@@ -63,6 +63,12 @@ CREATE TABLE IF NOT EXISTS assessment_templates (
 CREATE INDEX IF NOT EXISTS idx_templates_dept_type ON assessment_templates(department_type);
 CREATE INDEX IF NOT EXISTS idx_templates_status ON assessment_templates(status);
 
+ALTER TABLE assessment_templates
+  ADD COLUMN IF NOT EXISTS applicable_roles TEXT[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS applicable_levels TEXT[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS applicable_positions TEXT[] DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS template_metrics (
   id VARCHAR(36) PRIMARY KEY,
   template_id VARCHAR(36) NOT NULL REFERENCES assessment_templates(id) ON DELETE CASCADE,

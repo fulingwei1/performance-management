@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { settingsApi, performanceApi } from '@/services/api';
+import { settingsApi, performanceApi, performanceConfigApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -36,6 +36,27 @@ import { TodoSection } from '@/components/dashboard/TodoSection';
 import { todoApi } from '@/services/api';
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
+
+type RankingConfig = {
+  participation?: {
+    enabledUnitKeys?: string[];
+  };
+};
+
+function getEmployeeUnitKey(employee: any): string {
+  const dept = String(employee?.department || '').trim();
+  const sub = String(employee?.subDepartment || '').trim();
+  if (dept && sub) return `${dept}/${sub}`;
+  return dept || sub;
+}
+
+function matchesParticipationScope(unitKey: string, enabledUnitKeys: string[]): boolean {
+  if (!enabledUnitKeys.length) return true;
+  if (enabledUnitKeys.includes(unitKey)) return true;
+  const slashIdx = unitKey.indexOf('/');
+  const root = slashIdx >= 0 ? unitKey.slice(0, slashIdx) : unitKey;
+  return Boolean(root && enabledUnitKeys.includes(root));
+}
 
 export function HRDashboard() {
   const { user } = useAuthStore();
@@ -57,6 +78,7 @@ export function HRDashboard() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [rankingConfig, setRankingConfig] = useState<RankingConfig | null>(null);
   
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
   
@@ -64,10 +86,18 @@ export function HRDashboard() {
     settingsApi.getAssessmentScope().then((res) => {
       if (res.success && res.data) setAssessmentScope(res.data);
     }).catch(() => {});
+    performanceConfigApi.getRankingConfig().then((res) => {
+      if (res.success && res.data) setRankingConfig(res.data);
+    }).catch(() => {});
   }, []);
   
-  const inScopeEmployees = employeesList;
-  const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth);
+  const enabledUnitKeys = rankingConfig?.participation?.enabledUnitKeys || [];
+  const inScopeEmployees = employeesList.filter((employee: any) => {
+    if (employee.status && employee.status !== 'active') return false;
+    return matchesParticipationScope(getEmployeeUnitKey(employee), enabledUnitKeys);
+  });
+  const inScopeEmployeeIds = new Set(inScopeEmployees.map((employee: any) => employee.id));
+  const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));
   const rootDepartments = [...new Set(inScopeEmployees.map(e => e.department))].filter(Boolean);
   
   // Build department records hierarchy
@@ -132,7 +162,7 @@ export function HRDashboard() {
       if (!response.success) throw new Error(response.message || '获取数据失败');
       const { summary, records } = response.data;
       
-      const summaryHeaders = ['部门', '总人数', '已评分', '平均分', '优秀', '良好', '合格', '待改进'];
+      const summaryHeaders = ['部门', '本期参与人数', '已评分', '平均分', '优秀', '良好', '合格', '待改进'];
       const summaryRows = summary.map((dept: any) => [dept.department, dept.totalEmployees, dept.scoredCount, dept.averageScore, dept.excellentCount, dept.goodCount, dept.normalCount, dept.needImprovementCount].join(','));
       const detailHeaders = ['姓名', '部门', '二级部门', '级别', '得分', '等级', '状态'];
       const detailRows = records.map((r: any) => [r.employeeName || '', r.department || '', r.subDepartment || '', r.employeeLevel || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分'].join(','));

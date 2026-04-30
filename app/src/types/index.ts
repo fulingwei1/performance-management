@@ -233,9 +233,6 @@ export interface PerformanceRecord {
   managerComment: string;
   nextMonthWorkArrangement: string;
   
-  // 360度评分
-  peerReviews: PeerReview[];
-  
   // 排名
   departmentRank: number;
   companyRank: number;
@@ -257,22 +254,6 @@ export interface AISuggestion {
     qualityImprovement: number;
   };
   reasoning: string;
-}
-
-// 360度评分
-export interface PeerReview {
-  id: string;
-  reviewerId: string;
-  reviewerName: string;
-  revieweeId: string;
-  recordId: string;
-  
-  collaboration: number;
-  professionalism: number;
-  communication: number;
-  
-  comment?: string;
-  createdAt: string;
 }
 
 // 评分等级
@@ -316,16 +297,6 @@ export interface GroupConfig {
   highLevels: EmployeeLevel[];
   lowLevels: EmployeeLevel[];
   crossDeptGroups: string[];
-}
-
-// 360度评分分配
-export interface PeerReviewAssignment {
-  revieweeId: string;
-  revieweeName: string;
-  reviewers: {
-    id: string;
-    name: string;
-  }[];
 }
 
 // 报表数据

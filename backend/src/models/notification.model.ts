@@ -1,7 +1,7 @@
 import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 
-export type NotificationType = 'reminder' | 'approval' | 'system' | 'freeze';
+export type NotificationType = 'reminder' | 'deadline' | 'approval' | 'system' | 'freeze';
 
 export interface Notification {
   id: string;

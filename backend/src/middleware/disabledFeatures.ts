@@ -15,6 +15,7 @@ const DISABLED_API_PREFIXES = [
   { prefix: '/api/interview-records', label: '面谈记录' },
   { prefix: '/api/interviews', label: '绩效面谈' },
   { prefix: '/api/appeals', label: '绩效申诉' },
+  { prefix: '/api/peer-reviews', label: '360互评' },
   { prefix: '/api/peer-review-cycles', label: '360互评周期' },
 ];
 

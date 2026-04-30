@@ -1,6 +1,7 @@
 import { query } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../config/logger';
+import { getDepartmentType } from './levelTemplateRule.model';
 
 export interface EmployeeTemplateBinding {
   id: string;
@@ -103,15 +104,7 @@ export class EmployeeTemplateBindingModel {
     }
 
     // 3. 部门类型默认模板兜底
-    const { getDepartmentType } = await import('./assessmentTemplate.model');
-    // findMatchingTemplate 里已经有 getDepartmentType 但它是 private
-    // 直接用 department type fallback
-    let deptType = 'support';
-    const dept = (employee.department || '').toLowerCase();
-    if (dept.includes('营销') || dept.includes('销售')) deptType = 'sales';
-    else if (dept.includes('工程') || dept.includes('技术') || dept.includes('研发')) deptType = 'engineering';
-    else if (dept.includes('制造') || dept.includes('生产') || dept.includes('品质')) deptType = 'manufacturing';
-    else if (dept.includes('总') || dept.includes('管理')) deptType = 'management';
+    const deptType = getDepartmentType(employee.department || '');
 
     const defaultTemplate = await AssessmentTemplateModel.getDefaultTemplate(deptType);
     if (defaultTemplate) {

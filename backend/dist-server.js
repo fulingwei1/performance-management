@@ -16,8 +16,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'performance_system_secret_key_2024
 // 内存存储
 const memoryStore = {
   employees: new Map(),
-  performanceRecords: new Map(),
-  peerReviews: new Map()
+  performanceRecords: new Map()
 };
 
 // 初始化员工数据
@@ -276,7 +275,6 @@ app.post('/api/performance/summary', authenticate, requireRole('employee'), asyn
     totalScore: 0,
     managerComment: '',
     nextMonthWorkArrangement: '',
-    peerReviews: [],
     groupType: getGroupType(employee.level),
     groupRank: 0,
     crossDeptRank: 0,

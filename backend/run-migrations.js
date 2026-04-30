@@ -16,7 +16,6 @@ async function runMigrations() {
 
   // 读取迁移文件（MySQL版本）
   const migrations = [
-    'migrations-mysql/012_peer_review_system_mysql.sql',
     'migrations-mysql/013_performance_interview_mysql.sql'
   ];
 

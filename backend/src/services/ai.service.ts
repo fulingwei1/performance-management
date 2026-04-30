@@ -578,39 +578,6 @@ ${data.avgScore ? `平均分：${data.avgScore.toFixed(2)}` : ''}
   },
 
   /**
-   * 同事互评 - 评价意见
-   */
-  peerReviewComment: (data: {
-    reviewerName: string;
-    revieweeName: string;
-    scores: {
-      collaboration: number;
-      professionalism: number;
-      communication: number;
-    };
-  }) => {
-    return {
-      systemPrompt: '你是一位团队成员，正在对同事进行360度评价。',
-      prompt: `请撰写对同事的评价意见：
-
-评价人：${data.reviewerName}
-被评价人：${data.revieweeName}
-
-评分：
-- 协作配合：${data.scores.collaboration}分（满分5分）
-- 专业能力：${data.scores.professionalism}分（满分5分）
-- 沟通能力：${data.scores.communication}分（满分5分）
-
-要求：
-1. 评价字数100-150字
-2. 基于评分给出客观、具体的评价
-3. 包含：优点、合作体验、改进建议
-4. 语气：友好、建设性
-5. 生成3个版本，JSON格式：{"versions": ["版本1", "版本2", "版本3"]}`
-    };
-  },
-
-  /**
    * 目标确认 - 反馈意见
    */
   goalConfirmationFeedback: (data: {

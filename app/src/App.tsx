@@ -27,22 +27,11 @@ const AssessmentPublication = lazy(() => import('@/pages/HR/AssessmentPublicatio
 const MyKPI = lazy(() => import('@/pages/Employee/MyKPI').then((module) => ({ default: module.MyKPI })));
 const MonthlyReport = lazy(() => import('@/pages/Employee/MonthlyReport').then((module) => ({ default: module.MonthlyReport })));
 const ReviewReports = lazy(() => import('@/pages/Manager/ReviewReports').then((module) => ({ default: module.ReviewReports })));
-const PeerReview = lazy(() => import('@/pages/Employee/PeerReview').then((module) => ({ default: module.PeerReview })));
-const DepartmentClassification = lazy(() => import('@/pages/HR/DepartmentClassification').then((module) => ({ default: module.DepartmentClassification })));
-const AssessmentTemplates = lazy(() => import('@/pages/HR/AssessmentTemplates').then((module) => ({ default: module.AssessmentTemplates })));
-const MetricLibraryManagement = lazy(() => import('@/pages/HR/MetricLibraryManagement').then((module) => ({ default: module.MetricLibraryManagement })));
-const AssessmentExport = lazy(() => import('@/pages/HR/AssessmentExport').then((module) => ({ default: module.AssessmentExport })));
-const DataImport = lazy(() => import('@/pages/HR/DataImport').then((module) => ({ default: module.DataImport })));
-const DataExport = lazy(() => import('@/pages/HR/DataExport').then((module) => ({ default: module.DataExport })));
-const DataManagement = lazy(() => import('@/pages/HR/DataManagement').then((module) => ({ default: module.DataManagement })));
-const PeerReviewManagement = lazy(() => import('@/pages/HR/PeerReviewManagement').then((module) => ({ default: module.PeerReviewManagement })));
-const PeerReviewManage = lazy(() => import('@/pages/Manager/PeerReviewManage').then((module) => ({ default: module.PeerReviewManage })));
-const TaskFreezeManagement = lazy(() => import('@/pages/HR/TaskFreezeManagement').then((module) => ({ default: module.TaskFreezeManagement })));
+const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
+const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
 const TemplateAssignmentRules = lazy(() => import('@/pages/HR/TemplateAssignmentRules').then((module) => ({ default: module.TemplateAssignmentRules })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
-const PerformanceRankingConfig = lazy(() => import('@/pages/HR/PerformanceRankingConfig').then((module) => ({ default: module.PerformanceRankingConfig })));
 const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
-const AssessmentScopeSettings = lazy(() => import('@/pages/HR/AssessmentScopeSettings'));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
 
@@ -93,6 +82,13 @@ const DISABLED_FEATURE_PATHS = [
   '/hr/appeals',
   '/hr/department-tree',
   '/hr/organization-chart',
+  '/employee/peer-review',
+  '/manager/peer-review-management',
+  '/hr/data-management',
+  '/hr/department-classification',
+  '/hr/peer-review-management',
+  '/hr/performance-ranking-config',
+  '/hr/task-freeze',
 ];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
@@ -207,7 +203,6 @@ function App() {
           <Route path="/employee/unified-assessment" element={<UnifiedAssessment />} />
           <Route path="/employee/kpi" element={<MyKPI />} />
           <Route path="/employee/monthly-report" element={<MonthlyReport />} />
-          <Route path="/employee/peer-review" element={<PeerReview />} />
         </Route>
 
         {/* Manager routes */}
@@ -222,7 +217,6 @@ function App() {
           <Route path="/manager/analytics" element={<Analytics />} />
           <Route path="/manager/quarterly-summary" element={<QuarterlySummary />} />
           <Route path="/manager/review-reports" element={<ReviewReports />} />
-          <Route path="/manager/peer-review-management" element={<PeerReviewManage />} />
         </Route>
 
         {/* GM routes */}
@@ -236,21 +230,18 @@ function App() {
         {/* HR routes */}
         <Route element={<ProtectedLayout allowedRole="hr" />}>
           <Route path="/hr/dashboard" element={<HRDashboard />} />
-          <Route path="/hr/system-settings" element={<HRSystemSettings />} />
+          <Route path="/hr/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
-          <Route path="/hr/department-classification" element={<DepartmentClassification />} />
-          <Route path="/hr/assessment-export" element={<AssessmentExport />} />
-          <Route path="/hr/data-management" element={<DataManagement />} />
+          <Route path="/hr/data-io" element={<DataImportExport />} />
+          <Route path="/hr/data-import" element={<Navigate to="/hr/data-io" replace />} />
+          <Route path="/hr/assessment-export" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
-          <Route path="/hr/data-import" element={<DataImport />} />
-          <Route path="/hr/assessment-templates" element={<AssessmentTemplates />} />
-          <Route path="/hr/metric-library" element={<MetricLibraryManagement />} />
-          <Route path="/hr/peer-review-management" element={<PeerReviewManagement />} />
-          <Route path="/hr/performance-ranking-config" element={<PerformanceRankingConfig />} />
-          <Route path="/hr/task-freeze" element={<TaskFreezeManagement />} />
+          <Route path="/hr/assessment-config" element={<AssessmentConfig />} />
+          <Route path="/hr/assessment-scope" element={<AssessmentConfig defaultTab="scope" />} />
+          <Route path="/hr/assessment-templates" element={<Navigate to="/hr/assessment-config" replace />} />
+          <Route path="/hr/metric-library" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/template-assignment-rules" element={<TemplateAssignmentRules />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
-          <Route path="/hr/assessment-scope" element={<AssessmentScopeSettings />} />
         </Route>
 
         {/* Admin routes */}

@@ -10,9 +10,13 @@ export const employeeController = {
     if (!req.user) {
       return res.status(401).json({ success: false, error: '未认证' });
     }
+    const includeDisabled = req.query.includeDisabled === 'true' || req.query.status === 'all';
     const employees = await EmployeeModel.findAll();
     const role = req.user.role;
     const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+    const scopedEmployees = includeDisabled && isPrivileged
+      ? employees
+      : (employees as any[]).filter((e) => !e.status || e.status === 'active');
 
     // 非特权用户仅返回“通讯录字段”（避免暴露直属关系、状态等管理字段）
     const toDirectory = (e: any) => ({
@@ -25,7 +29,7 @@ export const employeeController = {
       avatar: e.avatar,
     });
 
-    const sanitized = (employees as any[]).map((e) => {
+    const sanitized = (scopedEmployees as any[]).map((e) => {
       const { password, idCardLast6Hash, ...rest } = e || {};
       return isPrivileged ? rest : toDirectory(rest);
     });
@@ -88,7 +92,8 @@ export const employeeController = {
       });
     }
 
-    const subordinates = await EmployeeModel.findByManagerId(req.user.userId);
+    const subordinates = (await EmployeeModel.findByManagerId(req.user.userId))
+      .filter((e: any) => !e.status || e.status === 'active');
     res.json({
       success: true,
       data: (subordinates as any[]).map((e) => {
@@ -111,6 +116,7 @@ export const employeeController = {
         });
       }
 
+      const includeDisabled = req.query.includeDisabled === 'true' || req.query.status === 'all';
       const employees = await EmployeeModel.findByRole(req.params.role as EmployeeRole);
       const role = req.user?.role;
       const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
@@ -125,7 +131,9 @@ export const employeeController = {
       });
       res.json({
         success: true,
-        data: (employees as any[]).map((e) => {
+        data: (employees as any[])
+          .filter((e) => (includeDisabled && isPrivileged) || !e.status || e.status === 'active')
+          .map((e) => {
           const { password, idCardLast6Hash, ...rest } = e || {};
           return isPrivileged ? rest : toDirectory(rest);
         })
@@ -135,7 +143,8 @@ export const employeeController = {
 
   // 获取所有经理
   getAllManagers: asyncHandler(async (req: Request, res: Response) => {
-    const managers = await EmployeeModel.findByRole('manager');
+    const managers = (await EmployeeModel.findByRole('manager'))
+      .filter((e: any) => !e.status || e.status === 'active');
     const role = req.user?.role;
     const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
     const toDirectory = (e: any) => ({

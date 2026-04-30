@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS automation_templates (
     month_pattern VARCHAR(20) NOT NULL DEFAULT 'YYYY-MM',  -- e.g., 'YYYY-MM'
     enabled BOOLEAN DEFAULT TRUE,
     auto_generate_day INT DEFAULT 1,  -- day of month (1-28) to auto-generate tasks
-    task_types JSONB DEFAULT '[]'::jsonb,  -- e.g., ["self_review","manager_review","peer_review"]
+    task_types JSONB DEFAULT '[]'::jsonb,  -- e.g., ["self_review","manager_review"]
     deadline_days JSONB DEFAULT '{}'::jsonb,  -- e.g., {"self_review": 5, "manager_review": 10}
     reminder_schedule JSONB DEFAULT '[]'::jsonb,  -- e.g., [{"days_before": 3, "channel": "email"}, ...]
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

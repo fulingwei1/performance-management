@@ -273,7 +273,7 @@ export class SchedulerService {
     logger.info(`[Scheduler] ${month} 还有 ${pending.length} 人未提交总结`);
 
     // 站内通知
-    const notifications = pending.map((r: any) => ({
+    const notifications: CreateNotificationInput[] = pending.map((r: any) => ({
       userId: r.employeeId,
       type: isLastDay ? 'deadline' : 'reminder',
       title: `${urgency}请提交${month}月度工作总结（还剩${daysLeft}天）`,

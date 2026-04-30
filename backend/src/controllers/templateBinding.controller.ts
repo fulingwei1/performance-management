@@ -3,6 +3,16 @@ import { EmployeeTemplateBindingModel } from '../models/employeeTemplateBinding.
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 
+const getRouteParam = (value: string | string[] | undefined): string => {
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
+};
+
+const getQueryParam = (value: unknown): string | undefined => {
+  if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : undefined;
+  return typeof value === 'string' && value ? value : undefined;
+};
+
 /**
  * 为单个员工绑定模板
  * POST /api/template-bindings
@@ -59,7 +69,7 @@ export const batchBind = asyncHandler(async (req: Request, res: Response) => {
  * DELETE /api/template-bindings/:employeeId
  */
 export const unbindTemplate = asyncHandler(async (req: Request, res: Response) => {
-  const { employeeId } = req.params;
+  const employeeId = getRouteParam(req.params.employeeId);
 
   if (req.user?.role === 'manager') {
     const employee = await EmployeeModel.findById(employeeId);
@@ -77,7 +87,7 @@ export const unbindTemplate = asyncHandler(async (req: Request, res: Response) =
  * GET /api/template-bindings/employee/:employeeId
  */
 export const getEmployeeBinding = asyncHandler(async (req: Request, res: Response) => {
-  const { employeeId } = req.params;
+  const employeeId = getRouteParam(req.params.employeeId);
   const binding = await EmployeeTemplateBindingModel.findByEmployee(employeeId);
   res.json({ success: true, data: binding });
 });
@@ -102,8 +112,8 @@ export const getMyTeamBindings = asyncHandler(async (req: Request, res: Response
 export const getAllBindings = asyncHandler(async (req: Request, res: Response) => {
   const { department, templateId } = req.query;
   const bindings = await EmployeeTemplateBindingModel.findAll({
-    department: department as string,
-    templateId: templateId as string
+    department: getQueryParam(department),
+    templateId: getQueryParam(templateId)
   });
   res.json({ success: true, data: bindings });
 });
@@ -113,7 +123,7 @@ export const getAllBindings = asyncHandler(async (req: Request, res: Response) =
  * GET /api/template-bindings/resolve/:employeeId
  */
 export const resolveTemplate = asyncHandler(async (req: Request, res: Response) => {
-  const { employeeId } = req.params;
+  const employeeId = getRouteParam(req.params.employeeId);
   const employee = await EmployeeModel.findById(employeeId);
   if (!employee) {
     return res.status(404).json({ success: false, message: '员工不存在' });
@@ -122,7 +132,6 @@ export const resolveTemplate = asyncHandler(async (req: Request, res: Response) 
   const result = await EmployeeTemplateBindingModel.resolveTemplate(employeeId, {
     role: employee.role,
     level: employee.level,
-    position: employee.position,
     department: employee.department
   });
 

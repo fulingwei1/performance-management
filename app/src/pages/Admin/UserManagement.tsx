@@ -173,7 +173,7 @@ export function UserManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">用户管理</h2>
-          <p className="text-gray-500 mt-1">管理系统用户，支持批量导入、重置密码、启用/禁用</p>
+          <p className="text-gray-500 mt-1">管理当前有效用户，支持批量导入、重置密码、启用/禁用</p>
         </div>
         <div className="flex gap-3">
           <label htmlFor="admin-file-upload" className="cursor-pointer">
@@ -221,11 +221,10 @@ export function UserManagement() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-4">
-        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.length}</div><div className="text-sm text-gray-500">总用户数</div></CardContent></Card>
+      <div className="grid grid-cols-4 gap-4">
+        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.length}</div><div className="text-sm text-gray-500">当前有效用户</div></CardContent></Card>
         <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter(e => e.role === 'admin').length}</div><div className="text-sm text-gray-500">管理员</div></CardContent></Card>
         <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter(e => e.role === 'manager').length}</div><div className="text-sm text-gray-500">经理</div></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter(e => (e as any).status === 'disabled').length}</div><div className="text-sm text-gray-500">已禁用</div></CardContent></Card>
         <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter(e => e.role === 'employee').length}</div><div className="text-sm text-gray-500">普通员工</div></CardContent></Card>
       </div>
 

@@ -3,7 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, PeerReview, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, PeerReviewCycle, PeerReviewTask, BonusConfig, BonusResult, GoalProgress, Appeal, ObjectiveAdjustment } from '../types';
+import { Employee, PerformanceRecord, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, BonusConfig, BonusResult, GoalProgress, Appeal, ObjectiveAdjustment } from '../types';
 import { AIUsageLog } from '../models/aiUsageLog.model';
 import { Notification } from '../models/notification.model';
 import logger from './logger';
@@ -12,7 +12,6 @@ import logger from './logger';
 interface MemoryStore {
   employees: Map<string, Employee>;
   performanceRecords: Map<string, PerformanceRecord>;
-  peerReviews: Map<string, PeerReview>;
   quarterlySummaries: Map<string, QuarterlySummary>;
   promotionRequests: Map<string, PromotionRequest>;
   departments: Map<string, Department>;
@@ -30,8 +29,6 @@ interface MemoryStore {
   performanceInterviews: Map<string, PerformanceInterview>;
   okrAssignments: Map<string, OkrAssignment>;
   attachments: Map<string, Attachment>;
-  peerReviewCycles: Map<string, PeerReviewCycle>;
-  peerReviewTasks: Map<string, PeerReviewTask>;
   bonusConfig: Map<string, BonusConfig>;
   bonusResults: Map<string, BonusResult>;
   goalProgress?: Map<string, GoalProgress>;
@@ -54,7 +51,6 @@ interface MemoryStore {
 export const memoryStore: MemoryStore = {
   employees: new Map(),
   performanceRecords: new Map(),
-  peerReviews: new Map(),
   quarterlySummaries: new Map(),
   promotionRequests: new Map(),
   departments: new Map(),
@@ -72,8 +68,6 @@ export const memoryStore: MemoryStore = {
   performanceInterviews: new Map(),
   okrAssignments: new Map(),
   attachments: new Map(),
-  peerReviewCycles: new Map(),
-  peerReviewTasks: new Map(),
   bonusConfig: new Map(),
   bonusResults: new Map(),
   goalProgress: new Map(),
@@ -187,45 +181,6 @@ const performanceRecordOperations = {
   },
 };
 
-// 互评记录数据操作
-const peerReviewOperations = {
-  findById: (id: string): PeerReview | undefined => {
-    return memoryStore.peerReviews.get(id);
-  },
-
-  findByReviewerId: (reviewerId: string): PeerReview[] => {
-    return Array.from(memoryStore.peerReviews.values())
-      .filter(review => review.reviewerId === reviewerId);
-  },
-
-  findByRevieweeId: (revieweeId: string): PeerReview[] => {
-    return Array.from(memoryStore.peerReviews.values())
-      .filter(review => review.revieweeId === revieweeId);
-  },
-
-  findByRecordId: (recordId: string): PeerReview[] => {
-    return Array.from(memoryStore.peerReviews.values())
-      .filter(review => review.recordId === recordId);
-  },
-
-  create: (review: PeerReview): PeerReview => {
-    memoryStore.peerReviews.set(review.id, review);
-    return review;
-  },
-
-  update: (id: string, updates: Partial<PeerReview>): PeerReview | undefined => {
-    const existing = memoryStore.peerReviews.get(id);
-    if (!existing) return undefined;
-    const updated = { ...existing, ...updates, updatedAt: new Date() };
-    memoryStore.peerReviews.set(id, updated as PeerReview);
-    return updated as PeerReview;
-  },
-
-  delete: (id: string): boolean => {
-    return memoryStore.peerReviews.delete(id);
-  },
-};
-
 // 经理季度总结数据操作
 const quarterlySummaryOperations = {
   findById: (id: string): QuarterlySummary | undefined => {
@@ -316,7 +271,6 @@ const promotionRequestOperations = {
 export const memoryDB = {
   employees: employeeOperations,
   performanceRecords: performanceRecordOperations,
-  peerReviews: peerReviewOperations,
   quarterlySummaries: quarterlySummaryOperations,
   promotionRequests: promotionRequestOperations,
 };
@@ -386,7 +340,6 @@ export const initMemoryDB = (): void => {
   // 清空现有数据
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
-  memoryStore.peerReviews.clear();
   memoryStore.quarterlySummaries.clear();
   memoryStore.promotionRequests.clear();
   memoryStore.departments.clear();
@@ -404,8 +357,6 @@ export const initMemoryDB = (): void => {
   memoryStore.performanceInterviews.clear();
   memoryStore.okrAssignments.clear();
   memoryStore.attachments.clear();
-  memoryStore.peerReviewCycles.clear();
-  memoryStore.peerReviewTasks.clear();
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
   memoryStore.goalProgress?.clear();
@@ -443,7 +394,6 @@ export const initMemoryDB = (): void => {
 export const clearMemoryDB = (): void => {
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
-  memoryStore.peerReviews.clear();
   memoryStore.quarterlySummaries.clear();
   memoryStore.promotionRequests.clear();
   memoryStore.departments.clear();
@@ -461,8 +411,6 @@ export const clearMemoryDB = (): void => {
   memoryStore.performanceInterviews.clear();
   memoryStore.okrAssignments.clear();
   memoryStore.attachments.clear();
-  memoryStore.peerReviewCycles.clear();
-  memoryStore.peerReviewTasks.clear();
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
   memoryStore.goalProgress?.clear();
@@ -473,7 +421,6 @@ export const clearMemoryDB = (): void => {
 export const getMemoryDBStats = (): { 
   employees: number; 
   performanceRecords: number; 
-  peerReviews: number;
   quarterlySummaries: number;
   promotionRequests: number;
   departments: number;
@@ -491,15 +438,12 @@ export const getMemoryDBStats = (): {
   performanceInterviews: number;
   okrAssignments: number;
   attachments: number;
-  peerReviewCycles: number;
-  peerReviewTasks: number;
   bonusConfig: number;
   bonusResults: number;
 } => {
   return {
     employees: memoryStore.employees.size,
     performanceRecords: memoryStore.performanceRecords.size,
-    peerReviews: memoryStore.peerReviews.size,
     quarterlySummaries: memoryStore.quarterlySummaries.size,
     promotionRequests: memoryStore.promotionRequests.size,
     departments: memoryStore.departments.size,
@@ -517,8 +461,6 @@ export const getMemoryDBStats = (): {
     performanceInterviews: memoryStore.performanceInterviews.size,
     okrAssignments: memoryStore.okrAssignments.size,
     attachments: memoryStore.attachments.size,
-    peerReviewCycles: memoryStore.peerReviewCycles.size,
-    peerReviewTasks: memoryStore.peerReviewTasks.size,
     bonusConfig: memoryStore.bonusConfig.size,
     bonusResults: memoryStore.bonusResults.size,
   };

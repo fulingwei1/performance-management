@@ -15,7 +15,6 @@ const migrationFiles = [
   '../postgres-init/06-local-current-schema.sql',
   'migrations/001_add_objective_cycle_fields.sql',
   'migrations/002_attachments.sql',
-  'migrations/003_peer_reviews.sql',
   'migrations/004_bonus.sql',
   'migrations/009_system_settings.sql',
   'migrations/011_monthly_assessments.sql',

@@ -59,9 +59,6 @@ export interface PerformanceRecord {
   managerComment: string;
   nextMonthWorkArrangement: string;
   
-  // 360度评分
-  peerReviews?: PeerReview[];
-  
   // 分组排名
   groupType: 'high' | 'low';
   groupRank: number;
@@ -80,22 +77,6 @@ export interface PerformanceRecord {
   
   createdAt?: Date | string;
   updatedAt?: Date | string;
-}
-
-// 360度评分
-export interface PeerReview {
-  id: string;
-  reviewerId: string;
-  reviewerName?: string;
-  revieweeId: string;
-  revieweeName?: string;
-  recordId: string;
-  collaboration: number;
-  professionalism: number;
-  communication: number;
-  comment?: string;
-  month: string;
-  createdAt?: Date;
 }
 
 // 月度任务
@@ -525,38 +506,6 @@ export interface Attachment {
   uploadedBy: string;
   url?: string;
   createdAt?: Date | string;
-}
-
-// ============ 互评周期 ============
-export interface PeerReviewCycle {
-  id: string;
-  title: string;
-  year: number;
-  quarter: number;
-  startDate: string;
-  endDate: string;
-  participants: string[]; // employeeIds
-  status: 'draft' | 'active' | 'completed';
-  createdBy: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-}
-
-export interface PeerReviewTask {
-  id: string;
-  cycleId: string;
-  reviewerId: string;
-  revieweeId: string;
-  scores?: PeerReviewScore[];
-  status: 'pending' | 'submitted';
-  submittedAt?: Date | string;
-  createdAt?: Date | string;
-}
-
-export interface PeerReviewScore {
-  dimension: string;
-  score: number;
-  comment?: string;
 }
 
 // ============ 奖金管理 ============

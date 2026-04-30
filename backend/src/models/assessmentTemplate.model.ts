@@ -107,14 +107,16 @@ export class AssessmentTemplateModel {
       sql += ' ORDER BY department_type, is_default DESC, created_at DESC';
       
       const templates = await query(sql, params);
-      
+
+      const result = templates.map(this.mapTemplate);
+
       if (filters?.includeMetrics) {
-        for (const template of templates) {
+        for (const template of result) {
           template.metrics = await this.getTemplateMetrics(template.id);
         }
       }
-      
-      return templates.map(this.mapTemplate);
+
+      return result;
     } catch (error) {
       logger.error('Failed to find all templates: ' + (error instanceof Error ? error.message : String(error)));
       throw error;

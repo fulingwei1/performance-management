@@ -4,23 +4,14 @@ import {
   LayoutDashboard,
   BarChart3,
   LogOut,
-  Upload,
-  Download,
   Award,
   FileText,
-  Target,
   Crosshair,
-  Calendar,
   MessageSquare,
   Users,
-  Building2,
   Settings,
-  ShieldCheck,
-  Lock,
   Send,
   Database,
-  AlertCircle,
-  ClipboardCheck,
   BookTemplate,
   Zap
 } from 'lucide-react';
@@ -38,7 +29,6 @@ const employeeNavItems = [
   { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
   { path: '/employee/monthly-report', label: '月度汇报', icon: FileText },
   { path: '/employee/unified-assessment', label: '统一考核', icon: FileText },
-  { path: '/employee/peer-review', label: '360度互评', icon: Users },
   // HIDDEN: { path: '/employee/appeals', label: '绩效申诉', icon: AlertCircle },
 ];
 
@@ -52,7 +42,6 @@ const managerNavItems = [
   // HIDDEN: { path: '/manager/goal-approval', label: '目标审批', icon: ClipboardCheck },
   // HIDDEN: { path: '/manager/goal-dashboard', label: '进度仪表板', icon: BarChart3 },
   { path: '/manager/review-reports', label: '月报审阅', icon: MessageSquare },
-  { path: '/manager/peer-review-management', label: '360互评统计', icon: Users },
   // HIDDEN: { path: '/manager/interview-plans', label: '面谈计划', icon: Calendar },
   // HIDDEN: { path: '/manager/interview-records', label: '面谈记录', icon: FileText },
   { path: '/manager/quarterly-summary', label: '季度总结', icon: FileText },
@@ -69,20 +58,11 @@ const gmNavItems = [
 const hrNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/hr/data-import', label: '数据导入', icon: Upload },
-  { path: '/hr/data-management', label: '数据管理', icon: Database },
-  { path: '/hr/assessment-templates', label: '考核模板', icon: FileText },
-  { path: '/hr/metric-library', label: '指标库', icon: Target },
-  { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
-  { path: '/hr/assessment-scope', label: '考核范围', icon: Settings },
+  { path: '/hr/data-io', label: '数据导入导出', icon: Database },
+  { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
-  { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
-  { path: '/hr/performance-ranking-config', label: '绩效排名配置', icon: Award },
-  { path: '/hr/task-freeze', label: '任务冻结', icon: Lock },
-  { path: '/hr/assessment-export', label: '考核数据导出', icon: Download },
   { path: '/hr/monthly-automation', label: '月度自动化', icon: Zap },
   // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
-  { path: '/hr/system-settings', label: '系统设置', icon: Settings },
 ];
 
 const adminNavItems = [

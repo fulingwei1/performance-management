@@ -23,8 +23,8 @@ export function Login() {
     clearError();
     
     const success = await login({
-      username,
-      idCardLast6
+      username: username.trim().replace(/\s+/g, ''),
+      idCardLast6: idCardLast6.trim()
     });
     
     if (success) {

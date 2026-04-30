@@ -2,6 +2,11 @@ import { Request, Response } from 'express';
 import { LevelTemplateRuleModel } from '../models/levelTemplateRule.model';
 import { asyncHandler } from '../middleware/errorHandler';
 
+const getRouteParam = (value: string | string[] | undefined): string => {
+  if (Array.isArray(value)) return value[0] || '';
+  return value || '';
+};
+
 /**
  * 设置/更新规则
  * POST /api/level-template-rules
@@ -58,7 +63,7 @@ export const getAllRules = asyncHandler(async (_req: Request, res: Response) => 
  * GET /api/level-template-rules/:departmentType
  */
 export const getByDepartmentType = asyncHandler(async (req: Request, res: Response) => {
-  const rules = await LevelTemplateRuleModel.getByDepartmentType(req.params.departmentType);
+  const rules = await LevelTemplateRuleModel.getByDepartmentType(getRouteParam(req.params.departmentType));
   res.json({ success: true, data: rules });
 });
 
@@ -67,7 +72,7 @@ export const getByDepartmentType = asyncHandler(async (req: Request, res: Respon
  * DELETE /api/level-template-rules/:departmentType/:level
  */
 export const deleteRule = asyncHandler(async (req: Request, res: Response) => {
-  await LevelTemplateRuleModel.delete(req.params.departmentType, req.params.level);
+  await LevelTemplateRuleModel.delete(getRouteParam(req.params.departmentType), getRouteParam(req.params.level));
   res.json({ success: true, message: '规则已删除' });
 });
 
@@ -76,7 +81,7 @@ export const deleteRule = asyncHandler(async (req: Request, res: Response) => {
  * GET /api/level-template-rules/resolve/:employeeId
  */
 export const resolveTemplate = asyncHandler(async (req: Request, res: Response) => {
-  const result = await LevelTemplateRuleModel.resolveTemplate(req.params.employeeId);
+  const result = await LevelTemplateRuleModel.resolveTemplate(getRouteParam(req.params.employeeId));
   res.json({ success: true, data: result });
 });
 

@@ -126,8 +126,6 @@ export const createTaskActions = (set: any, get: any) => ({
       ];
       get().uploadMonthlyTasks(manager.id, month, defaultTasks);
     });
-    // 360度互评已切换为“周期 + 评价关系”模型；月度任务生成不再调用旧的自动分配接口。
-    // HR/Admin 可在互评管理中创建周期和评价关系。
   },
 
   generateGMTasks: (quarter: string) => {

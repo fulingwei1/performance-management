@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { usePerformanceStore } from './performanceStore';
 import { useHRStore } from './hrStore';
 
-export type TaskType = 'fill_summary' | 'manager_score' | 'peer_review';
+export type TaskType = 'fill_summary' | 'manager_score';
 
 export interface Task {
   id: string;

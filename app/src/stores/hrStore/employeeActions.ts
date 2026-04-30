@@ -3,7 +3,7 @@ import { hrApi } from '@/services/api';
 
 export const createEmployeeActions = (set: any, get: any) => ({
   fetchEmployees: async () => {
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, employeesList: [] });
     try {
       const response = await hrApi.getAllEmployees();
       if (response.success) {

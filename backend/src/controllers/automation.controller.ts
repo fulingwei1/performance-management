@@ -4,6 +4,7 @@ import { SchedulerService } from '../services/scheduler.service';
 import { ProgressMonitorService } from '../services/progressMonitor.service';
 import { ArchiveService } from '../services/archive.service';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
+import { EmployeeModel } from '../models/employee.model';
 import { WecomWebhookService } from '../services/wecomWebhook.service';
 import { EmailService } from '../services/email.service';
 import logger from '../config/logger';
@@ -257,7 +258,8 @@ export const automationController = {
    * 测试邮件发送连通性
    */
   testEmail: asyncHandler(async (req: Request, res: Response) => {
-    const targetEmail = req.body.email || req.user?.email;
+    const currentEmployee = req.user?.userId ? await EmployeeModel.findById(req.user.userId) : null;
+    const targetEmail = req.body.email || currentEmployee?.email;
     if (!targetEmail) {
       res.status(400).json({ success: false, message: '请提供 email 参数' });
       return;
