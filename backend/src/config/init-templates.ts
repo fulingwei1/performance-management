@@ -72,13 +72,29 @@ async function syncTemplatesToDatabase() {
       ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0
   `);
 
+  const arrayColumnTypes = await query(`
+    SELECT column_name, udt_name
+    FROM information_schema.columns
+    WHERE table_name = 'assessment_templates'
+      AND column_name IN ('applicable_roles', 'applicable_levels', 'applicable_positions')
+  `);
+  const columnTypeMap = new Map(arrayColumnTypes.map((row: any) => [row.column_name, row.udt_name]));
+  const castFor = (columnName: string) => columnTypeMap.get(columnName) === 'jsonb' ? '::jsonb' : '::text[]';
+  const valueFor = (columnName: string, value: string[]) => (
+    columnTypeMap.get(columnName) === 'jsonb' ? JSON.stringify(value || []) : (value || [])
+  );
+
   for (const t of templates) {
     await query(
       `INSERT INTO assessment_templates (
         id, name, description, department_type, is_default, status,
         applicable_roles, applicable_levels, applicable_positions, priority,
         created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11::timestamp, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6,
+        $7${castFor('applicable_roles')}, $8${castFor('applicable_levels')}, $9${castFor('applicable_positions')}, $10,
+        COALESCE($11::timestamp, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
+      )
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         description = EXCLUDED.description,
@@ -97,9 +113,9 @@ async function syncTemplatesToDatabase() {
         t.department_type,
         t.is_default,
         t.status || 'active',
-        t.applicable_roles || [],
-        t.applicable_levels || [],
-        t.applicable_positions || [],
+        valueFor('applicable_roles', t.applicable_roles || []),
+        valueFor('applicable_levels', t.applicable_levels || []),
+        valueFor('applicable_positions', t.applicable_positions || []),
         t.priority || 0,
         t.created_at || null,
       ]

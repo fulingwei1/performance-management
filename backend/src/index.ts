@@ -64,6 +64,8 @@ const PORT = process.env.PORT || 3001;
 
 export default app;
 
+app.set('trust proxy', 1);
+
 const expandLoopbackOrigins = (origins: Array<string | undefined>) => {
   const expanded = new Set<string>();
   const loopbackHosts = ['localhost', '127.0.0.1', '[::1]'];
