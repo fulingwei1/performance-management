@@ -12,6 +12,7 @@ const MyScores = lazy(() => import('@/pages/Employee/MyScores').then((module) =>
 const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
 const ScoringManagement = lazy(() => import('@/pages/Manager/Scoring').then((module) => ({ default: module.ScoringManagement })));
 const DifferentiatedScoring = lazy(() => import('@/pages/Manager/DifferentiatedScoring').then((module) => ({ default: module.DifferentiatedScoring })));
+const UnifiedAssessment = lazy(() => import('@/pages/Manager/UnifiedAssessment').then((module) => ({ default: module.UnifiedAssessment })));
 const TemplateAssignment = lazy(() => import('@/pages/Manager/TemplateAssignment'));
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
 const QuarterlySummary = lazy(() => import('@/pages/Manager/QuarterlySummary').then((module) => ({ default: module.QuarterlySummary })));
@@ -41,6 +42,7 @@ const TemplateAssignmentRules = lazy(() => import('@/pages/HR/TemplateAssignment
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const PerformanceRankingConfig = lazy(() => import('@/pages/HR/PerformanceRankingConfig').then((module) => ({ default: module.PerformanceRankingConfig })));
 const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
+const AssessmentScopeSettings = lazy(() => import('@/pages/HR/AssessmentScopeSettings'));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
 
@@ -202,6 +204,7 @@ function App() {
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
           <Route path="/employee/summary" element={<WorkSummary />} />
           <Route path="/employee/scores" element={<MyScores />} />
+          <Route path="/employee/unified-assessment" element={<UnifiedAssessment />} />
           <Route path="/employee/kpi" element={<MyKPI />} />
           <Route path="/employee/monthly-report" element={<MonthlyReport />} />
           <Route path="/employee/peer-review" element={<PeerReview />} />
@@ -213,6 +216,7 @@ function App() {
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/scoring" element={<ScoringManagement />} />
           <Route path="/manager/differentiated-scoring" element={<DifferentiatedScoring />} />
+          <Route path="/manager/unified-assessment" element={<UnifiedAssessment />} />
           <Route path="/manager/template-assignment" element={<TemplateAssignment />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
@@ -246,6 +250,7 @@ function App() {
           <Route path="/hr/task-freeze" element={<TaskFreezeManagement />} />
           <Route path="/hr/template-assignment-rules" element={<TemplateAssignmentRules />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
+          <Route path="/hr/assessment-scope" element={<AssessmentScopeSettings />} />
         </Route>
 
         {/* Admin routes */}

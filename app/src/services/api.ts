@@ -255,6 +255,34 @@ export const performanceApi = {
 
 // 月度差异化评分API
 export const monthlyAssessmentApi = {
+  // 获取当月考核列表
+  getMonthlyList: (month?: string) => {
+    const q = month ? `?month=${month}` : '';
+    return request(`/monthly-assessment/monthly-list${q}`);
+  },
+  // 员工自评提交
+  submitSelfAssessment: (data: {
+    employeeId: string;
+    month: string;
+    selfSummary: string;
+    nextMonthPlan: string;
+  }) => request('/monthly-assessment/self-assessment', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  // 主管评分
+  submitScore: (data: {
+    id: string;
+    scores: Array<{ metricName: string; metricCode: string; weight: number; level: string; score: number; comment?: string }>;
+    totalScore: number;
+    managerComment: string;
+    nextMonthWorkArrangement: string;
+    status?: string;
+  }) => request('/monthly-assessment/submit-score', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  // 创建或更新月度评分（兼容旧 API）
   createOrUpdate: (data: {
     employeeId: string;
     month: string;
@@ -273,10 +301,12 @@ export const monthlyAssessmentApi = {
   }) => request('/monthly-assessment/monthly', {
     method: 'POST',
     body: JSON.stringify(data)
-  })
+  }),
+  // 获取员工历史记录
+  getEmployeeHistory: (employeeId: string) => request(`/monthly-assessment/employee/${employeeId}`),
+  // 获取某月某员工记录
+  getByMonth: (employeeId: string, month: string) => request(`/monthly-assessment/employee/${employeeId}/month/${month}`),
 };
-
-// 考核模板API
 export const assessmentTemplateApi = {
   getAll: (params?: { departmentType?: string; includeMetrics?: boolean }) =>
     request(`/assessment-templates${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
@@ -1122,6 +1152,17 @@ export const dataImportApi = {
   importEmployees: async (formData: FormData) => {
     const token = getToken();
     const res = await fetch(`${API_BASE_URL}/data-import/employees`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (!res.ok) throw { response: { data } };
+    return data;
+  },
+  importHrArchive: async (formData: FormData) => {
+    const token = getToken();
+    const res = await fetch(`${API_BASE_URL}/data-import/hr-archive`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData,

@@ -37,6 +37,7 @@ const employeeNavItems = [
   // HIDDEN: { path: '/employee/my-objectives', label: '我的目标', icon: Target },
   { path: '/employee/kpi', label: '我的KPI', icon: Crosshair },
   { path: '/employee/monthly-report', label: '月度汇报', icon: FileText },
+  { path: '/employee/unified-assessment', label: '统一考核', icon: FileText },
   { path: '/employee/peer-review', label: '360度互评', icon: Users },
   // HIDDEN: { path: '/employee/appeals', label: '绩效申诉', icon: AlertCircle },
 ];
@@ -46,6 +47,7 @@ const managerNavItems = [
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/manager/template-assignment', label: '模板分配', icon: BookTemplate },
   { path: '/manager/differentiated-scoring', label: '差异化评分', icon: Award },
+  { path: '/manager/unified-assessment', label: '统一考核', icon: Award },
   // HIDDEN: { path: '/manager/team-objectives', label: '团队目标', icon: Target },
   // HIDDEN: { path: '/manager/goal-approval', label: '目标审批', icon: ClipboardCheck },
   // HIDDEN: { path: '/manager/goal-dashboard', label: '进度仪表板', icon: BarChart3 },
@@ -72,6 +74,7 @@ const hrNavItems = [
   { path: '/hr/assessment-templates', label: '考核模板', icon: FileText },
   { path: '/hr/metric-library', label: '指标库', icon: Target },
   { path: '/hr/department-classification', label: '部门分类', icon: Building2 },
+  { path: '/hr/assessment-scope', label: '考核范围', icon: Settings },
   { path: '/hr/assessment-publication', label: '考核结果发布', icon: Send },
   { path: '/hr/peer-review-management', label: '360互评管理', icon: Users },
   { path: '/hr/performance-ranking-config', label: '绩效排名配置', icon: Award },

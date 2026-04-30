@@ -120,7 +120,7 @@ export function Login() {
                     {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400">演示环境默认后六位：123456</p>
+
               </div>
 
               <Button

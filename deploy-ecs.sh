@@ -38,7 +38,21 @@ cd ..
 echo "📦 创建部署包..."
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 TAR_FILE="deploy-${TIMESTAMP}.tar.gz"
-tar czf "$TAR_FILE"     --exclude='node_modules'     --exclude='.env'     --exclude='deploy-*.sh'     --exclude='*.tar.gz'     backend/dist/     backend/package.json     backend/package-lock.json     app/dist/     app/package.json     app/package-lock.json     docker-compose.yml     postgres-init/     scripts/
+tar czf "$TAR_FILE" \
+    --exclude='node_modules' \
+    --exclude='.env' \
+    --exclude='deploy-*.sh' \
+    --exclude='*.tar.gz' \
+    backend/src/ \
+    backend/dist/ \
+    backend/package.json \
+    backend/package-lock.json \
+    app/dist/ \
+    app/package.json \
+    app/package-lock.json \
+    docker-compose.yml \
+    postgres-init/ \
+    scripts/
 
 # 4. 上传到 ECS
 echo "📤 上传到 ECS..."
