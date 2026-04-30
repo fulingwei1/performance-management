@@ -50,6 +50,11 @@ function getEmployeeUnitKey(employee: any): string {
   return dept || sub;
 }
 
+function displaySubDepartment(subDepartment?: string): string {
+  const normalized = String(subDepartment || '').trim();
+  return normalized && normalized !== '/' ? normalized : '直属/未分组';
+}
+
 function matchesParticipationScope(unitKey: string, enabledUnitKeys: string[]): boolean {
   if (!enabledUnitKeys.length) return true;
   if (enabledUnitKeys.includes(unitKey)) return true;
@@ -103,10 +108,10 @@ export function HRDashboard() {
   // Build department records hierarchy
   const deptRecords: DeptRecord[] = rootDepartments.map(rootDept => {
     const rootDeptEmployees = inScopeEmployees.filter(e => e.department === rootDept);
-    const subDepts = [...new Set(rootDeptEmployees.map(e => e.subDepartment || ''))].filter(Boolean);
+    const subDepts = [...new Set(rootDeptEmployees.map(e => displaySubDepartment(e.subDepartment)))];
     
     const subDeptRecords = subDepts.map(subDept => {
-      const subDeptEmployees = rootDeptEmployees.filter(e => e.subDepartment === subDept);
+      const subDeptEmployees = rootDeptEmployees.filter(e => displaySubDepartment(e.subDepartment) === subDept);
       const records = subDeptEmployees.map(emp => {
         const record = monthRecords.find(r => r.employeeId === emp.id);
         return { ...emp, record: record || null, totalScore: record?.totalScore || 0, status: record?.status || 'not_submitted' };

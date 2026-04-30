@@ -210,6 +210,15 @@ export const initializeData = async (): Promise<void> => {
       const allEmployees = memoryDB.employees.findAll();
       logger.info(`  📊 内存数据库中共有 ${allEmployees.length} 名员工`);
     } else {
+      const existing = await query('SELECT COUNT(*)::int AS count FROM employees');
+      const existingCount = Number((existing as any[])[0]?.count || 0);
+      if (existingCount > 0) {
+        await syncDepartmentsFromEmployees();
+        isInitialized = true;
+        logger.info(`✅ 已存在 ${existingCount} 名员工，跳过演示员工初始化`);
+        return;
+      }
+
       // PostgreSQL 模式：使用 batchInsert 做幂等同步
       await EmployeeModel.batchInsert(initialEmployees);
       await syncDepartmentsFromEmployees();

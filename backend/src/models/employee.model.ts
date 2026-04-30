@@ -193,7 +193,7 @@ export class EmployeeModel {
       return result || null;
     }
     
-    const allowedFields = ['name', 'department', 'sub_department', 'role', 'level', 'manager_id', 'avatar'];
+    const allowedFields = ['name', 'department', 'sub_department', 'position', 'role', 'level', 'manager_id', 'avatar', 'status'];
     const fields: string[] = [];
     const values: any[] = [];
     

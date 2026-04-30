@@ -7,6 +7,7 @@ import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../config/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { importHrArchive as importHrArchiveFile } from '../services/hrArchiveImport.service';
 
 const upload = multer({ dest: path.join(__dirname, '../../uploads/') });
 
@@ -184,6 +185,30 @@ export const importEmployees = [
         success: true,
         message: `成功导入 ${results.length} 个员工${createErrors.length > 0 ? `，${createErrors.length} 个失败` : ''}`,
         data: { imported: results.length, failed: createErrors.length, errors: createErrors },
+      });
+    } finally {
+      if (file && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+    }
+  }),
+];
+
+// POST /api/data-import/hr-archive
+export const importHrArchive = [
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, message: '请上传人事档案系统 Excel 文件' });
+    }
+
+    try {
+      const result = await importHrArchiveFile(file.path);
+      res.json({
+        success: true,
+        message: `已导入人事档案：在职/试用/实习 ${result.activeCount} 人，离职或非在职 ${result.disabledCount} 人已停用`,
+        data: result,
       });
     } finally {
       if (file && fs.existsSync(file.path)) {

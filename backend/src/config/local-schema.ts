@@ -43,6 +43,12 @@ export async function syncDepartmentsFromEmployees(): Promise<void> {
   if (USE_MEMORY_DB || !pool || !isLocalPostgres()) return;
 
   await query(`
+    UPDATE departments
+    SET status = 'inactive', updated_at = CURRENT_TIMESTAMP
+    WHERE id LIKE 'd-%' OR id LIKE 'sd-%'
+  `);
+
+  await query(`
     INSERT INTO departments (id, name, code, parent_id, sort_order, status, department_type)
     SELECT
       'd-' || md5(TRIM(department)) AS id,
@@ -62,6 +68,7 @@ export async function syncDepartmentsFromEmployees(): Promise<void> {
       SELECT DISTINCT department
       FROM employees
       WHERE COALESCE(TRIM(department), '') <> ''
+        AND (status = 'active' OR status IS NULL)
     ) d
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
@@ -86,6 +93,7 @@ export async function syncDepartmentsFromEmployees(): Promise<void> {
       FROM employees
       WHERE COALESCE(TRIM(department), '') <> ''
         AND COALESCE(TRIM(sub_department), '') <> ''
+        AND (status = 'active' OR status IS NULL)
     ) d
     JOIN departments p ON p.id = 'd-' || md5(TRIM(d.department))
     ON CONFLICT (id) DO UPDATE SET
