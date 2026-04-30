@@ -13,7 +13,6 @@ const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((mo
 const ScoringManagement = lazy(() => import('@/pages/Manager/Scoring').then((module) => ({ default: module.ScoringManagement })));
 const DifferentiatedScoring = lazy(() => import('@/pages/Manager/DifferentiatedScoring').then((module) => ({ default: module.DifferentiatedScoring })));
 const UnifiedAssessment = lazy(() => import('@/pages/Manager/UnifiedAssessment').then((module) => ({ default: module.UnifiedAssessment })));
-const TemplateAssignment = lazy(() => import('@/pages/Manager/TemplateAssignment'));
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
 const QuarterlySummary = lazy(() => import('@/pages/Manager/QuarterlySummary').then((module) => ({ default: module.QuarterlySummary })));
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
@@ -29,7 +28,6 @@ const MonthlyReport = lazy(() => import('@/pages/Employee/MonthlyReport').then((
 const ReviewReports = lazy(() => import('@/pages/Manager/ReviewReports').then((module) => ({ default: module.ReviewReports })));
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
-const TemplateAssignmentRules = lazy(() => import('@/pages/HR/TemplateAssignmentRules').then((module) => ({ default: module.TemplateAssignmentRules })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
@@ -89,6 +87,8 @@ const DISABLED_FEATURE_PATHS = [
   '/hr/peer-review-management',
   '/hr/performance-ranking-config',
   '/hr/task-freeze',
+  '/hr/template-assignment-rules',
+  '/manager/template-assignment',
 ];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
@@ -212,7 +212,6 @@ function App() {
           <Route path="/manager/scoring" element={<ScoringManagement />} />
           <Route path="/manager/differentiated-scoring" element={<DifferentiatedScoring />} />
           <Route path="/manager/unified-assessment" element={<UnifiedAssessment />} />
-          <Route path="/manager/template-assignment" element={<TemplateAssignment />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
           <Route path="/manager/quarterly-summary" element={<QuarterlySummary />} />
@@ -240,7 +239,6 @@ function App() {
           <Route path="/hr/assessment-scope" element={<AssessmentConfig defaultTab="scope" />} />
           <Route path="/hr/assessment-templates" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/metric-library" element={<Navigate to="/hr/assessment-config" replace />} />
-          <Route path="/hr/template-assignment-rules" element={<TemplateAssignmentRules />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
         </Route>
 

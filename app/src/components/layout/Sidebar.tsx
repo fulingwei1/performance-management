@@ -12,7 +12,6 @@ import {
   Settings,
   Send,
   Database,
-  BookTemplate,
   Zap
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -35,7 +34,6 @@ const employeeNavItems = [
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/manager/template-assignment', label: '模板分配', icon: BookTemplate },
   { path: '/manager/differentiated-scoring', label: '差异化评分', icon: Award },
   { path: '/manager/unified-assessment', label: '统一考核', icon: Award },
   // HIDDEN: { path: '/manager/team-objectives', label: '团队目标', icon: Target },
