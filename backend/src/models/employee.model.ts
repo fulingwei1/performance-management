@@ -20,7 +20,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, password, status,
+        position, role, level, manager_id as "managerId", avatar, password, status,
         id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -44,7 +44,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, password, status,
+        position, role, level, manager_id as "managerId", avatar, password, status,
         id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -64,7 +64,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, password, status,
+        position, role, level, manager_id as "managerId", avatar, password, status,
         id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -82,7 +82,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, email, status,
+        position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
       ORDER BY department, sub_department, role, name
@@ -99,7 +99,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, email, status,
+        position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
       WHERE role = ?
@@ -117,7 +117,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, email, status,
+        position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
       WHERE manager_id = ?
@@ -137,7 +137,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
-        role, level, manager_id as "managerId", avatar, email, status,
+        position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
       WHERE department = ? OR sub_department = ?

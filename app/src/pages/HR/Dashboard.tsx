@@ -39,7 +39,12 @@ const isScoredStatus = (status: string) => status === 'completed' || status === 
 
 type RankingConfig = {
   participation?: {
+    mode?: 'include' | 'exclude';
     enabledUnitKeys?: string[];
+    includedUnitKeys?: string[];
+    excludedUnitKeys?: string[];
+    includedEmployeeIds?: string[];
+    excludedEmployeeIds?: string[];
   };
 };
 
@@ -55,12 +60,60 @@ function displaySubDepartment(subDepartment?: string): string {
   return normalized && normalized !== '/' ? normalized : '直属/未分组';
 }
 
-function matchesParticipationScope(unitKey: string, enabledUnitKeys: string[]): boolean {
-  if (!enabledUnitKeys.length) return true;
-  if (enabledUnitKeys.includes(unitKey)) return true;
-  const slashIdx = unitKey.indexOf('/');
-  const root = slashIdx >= 0 ? unitKey.slice(0, slashIdx) : unitKey;
-  return Boolean(root && enabledUnitKeys.includes(root));
+function cleanList(values?: string[]): string[] {
+  return (values || []).map((value) => String(value || '').trim()).filter(Boolean);
+}
+
+function matchesConfiguredUnit(unitKey: string, configuredKey: string): boolean {
+  return configuredKey === unitKey || unitKey.startsWith(`${configuredKey}/`);
+}
+
+function resolveUnitDecision(
+  unitKey: string,
+  includedUnitKeys: string[],
+  excludedUnitKeys: string[]
+): 'include' | 'exclude' | null {
+  let bestLength = -1;
+  let decision: 'include' | 'exclude' | null = null;
+
+  for (const key of includedUnitKeys) {
+    if (matchesConfiguredUnit(unitKey, key) && key.length > bestLength) {
+      bestLength = key.length;
+      decision = 'include';
+    }
+  }
+
+  for (const key of excludedUnitKeys) {
+    if (matchesConfiguredUnit(unitKey, key) && key.length >= bestLength) {
+      bestLength = key.length;
+      decision = 'exclude';
+    }
+  }
+
+  return decision;
+}
+
+function isParticipatingEmployee(employee: any, config: RankingConfig | null): boolean {
+  const participation = config?.participation;
+  if (!participation) return true;
+
+  const legacyEnabledUnitKeys = cleanList(participation.enabledUnitKeys);
+  const includedUnitKeys = cleanList(
+    participation.includedUnitKeys?.length ? participation.includedUnitKeys : legacyEnabledUnitKeys
+  );
+  const excludedUnitKeys = cleanList(participation.excludedUnitKeys);
+  const includedEmployeeIds = cleanList(participation.includedEmployeeIds);
+  const excludedEmployeeIds = cleanList(participation.excludedEmployeeIds);
+  const mode = participation.mode || (legacyEnabledUnitKeys.length > 0 ? 'include' : 'exclude');
+  const employeeId = String(employee?.id || '').trim();
+
+  if (employeeId && excludedEmployeeIds.includes(employeeId)) return false;
+  if (employeeId && includedEmployeeIds.includes(employeeId)) return true;
+
+  const unitDecision = resolveUnitDecision(getEmployeeUnitKey(employee), includedUnitKeys, excludedUnitKeys);
+  if (unitDecision) return unitDecision === 'include';
+
+  return mode !== 'include';
 }
 
 export function HRDashboard() {
@@ -96,10 +149,9 @@ export function HRDashboard() {
     }).catch(() => {});
   }, []);
   
-  const enabledUnitKeys = rankingConfig?.participation?.enabledUnitKeys || [];
   const inScopeEmployees = employeesList.filter((employee: any) => {
     if (employee.status && employee.status !== 'active') return false;
-    return matchesParticipationScope(getEmployeeUnitKey(employee), enabledUnitKeys);
+    return isParticipatingEmployee(employee, rankingConfig);
   });
   const inScopeEmployeeIds = new Set(inScopeEmployees.map((employee: any) => employee.id));
   const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));

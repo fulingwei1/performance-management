@@ -26,7 +26,12 @@ export interface MergeRankGroup {
 export interface PerformanceRankingConfigV1 {
   version: 1;
   participation: {
-    enabledUnitKeys: string[]; // empty => all units
+    mode: 'include' | 'exclude'; // include: 只考核勾选范围；exclude: 默认全员考核，勾选范围不考核
+    enabledUnitKeys: string[]; // legacy: empty => all units
+    includedUnitKeys: string[];
+    excludedUnitKeys: string[];
+    includedEmployeeIds: string[];
+    excludedEmployeeIds: string[];
   };
   groupRank: {
     defaultStrategy: LevelGroupingStrategy;
@@ -68,9 +73,21 @@ const configSchema: z.ZodType<PerformanceRankingConfigV1> = z.object({
   version: z.literal(1),
   participation: z
     .object({
+      mode: z.enum(['include', 'exclude']).optional().default('exclude'),
       enabledUnitKeys: z.array(z.string()).default([]),
+      includedUnitKeys: z.array(z.string()).default([]),
+      excludedUnitKeys: z.array(z.string()).default([]),
+      includedEmployeeIds: z.array(z.string()).default([]),
+      excludedEmployeeIds: z.array(z.string()).default([]),
     })
-    .default({ enabledUnitKeys: [] }),
+    .default({
+      mode: 'exclude',
+      enabledUnitKeys: [],
+      includedUnitKeys: [],
+      excludedUnitKeys: [],
+      includedEmployeeIds: [],
+      excludedEmployeeIds: [],
+    }),
   groupRank: z
     .object({
       defaultStrategy: levelGroupingStrategySchema.default({ type: 'by_high_low' }),
@@ -84,7 +101,12 @@ export function buildDefaultPerformanceRankingConfig(): PerformanceRankingConfig
   return {
     version: 1,
     participation: {
+      mode: 'exclude',
       enabledUnitKeys: [],
+      includedUnitKeys: [],
+      excludedUnitKeys: [],
+      includedEmployeeIds: [],
+      excludedEmployeeIds: [],
     },
     groupRank: {
       defaultStrategy: { type: 'by_high_low' },
@@ -94,13 +116,36 @@ export function buildDefaultPerformanceRankingConfig(): PerformanceRankingConfig
   };
 }
 
+function uniqueStrings(values?: string[]): string[] {
+  return Array.from(new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+function normalizeConfig(config: PerformanceRankingConfigV1): PerformanceRankingConfigV1 {
+  const legacyEnabled = uniqueStrings(config.participation.enabledUnitKeys);
+  const includedUnitKeys = uniqueStrings(config.participation.includedUnitKeys);
+  const mode = config.participation.mode || (legacyEnabled.length > 0 ? 'include' : 'exclude');
+  const normalizedIncluded = includedUnitKeys.length > 0 ? includedUnitKeys : legacyEnabled;
+
+  return {
+    ...config,
+    participation: {
+      mode,
+      enabledUnitKeys: normalizedIncluded,
+      includedUnitKeys: normalizedIncluded,
+      excludedUnitKeys: uniqueStrings(config.participation.excludedUnitKeys),
+      includedEmployeeIds: uniqueStrings(config.participation.includedEmployeeIds),
+      excludedEmployeeIds: uniqueStrings(config.participation.excludedEmployeeIds),
+    },
+  };
+}
+
 export async function getPerformanceRankingConfig(): Promise<PerformanceRankingConfigV1> {
   try {
     const raw = await SystemSettingsModel.getValue(SETTING_KEY);
     if (!raw) return buildDefaultPerformanceRankingConfig();
 
     const parsed = configSchema.safeParse(raw);
-    if (parsed.success) return parsed.data;
+    if (parsed.success) return normalizeConfig(parsed.data);
 
     logger.warn(`[ranking-config] invalid config, fallback to default: ${parsed.error.message}`);
     return buildDefaultPerformanceRankingConfig();
@@ -120,7 +165,7 @@ export async function savePerformanceRankingConfig(
     throw new Error(message);
   }
 
-  const normalized = parsed.data;
+  const normalized = normalizeConfig(parsed.data);
   const existing = await SystemSettingsModel.getByKey(SETTING_KEY);
 
   if (existing) {
@@ -147,21 +192,56 @@ export function getOrgUnitKey(input: { department?: string; subDepartment?: stri
   return dept || sub;
 }
 
-function matchesUnitKey(unitKey: string, configuredUnitKeys: string[]): boolean {
-  if (!configuredUnitKeys || configuredUnitKeys.length === 0) return true;
-  if (configuredUnitKeys.includes(unitKey)) return true;
-
-  // 支持用一级部门作为前缀匹配（例如 "工程技术中心" 匹配 "工程技术中心/测试部"）
-  const slashIdx = unitKey.indexOf('/');
-  const deptPrefix = slashIdx >= 0 ? unitKey.slice(0, slashIdx) : unitKey;
-  if (deptPrefix && configuredUnitKeys.includes(deptPrefix)) return true;
-
-  return false;
+function matchesConfiguredUnit(unitKey: string, configuredKey: string): boolean {
+  return configuredKey === unitKey || unitKey.startsWith(`${configuredKey}/`);
 }
 
-export function isParticipatingRecord(record: Pick<PerformanceRecord, 'department' | 'subDepartment'>, config: PerformanceRankingConfigV1): boolean {
+function matchesAnyConfiguredUnit(unitKey: string, configuredUnitKeys: string[]): boolean {
+  return configuredUnitKeys.some((configuredKey) => (
+    Boolean(configuredKey) && matchesConfiguredUnit(unitKey, configuredKey)
+  ));
+}
+
+function resolveUnitDecision(
+  unitKey: string,
+  includedUnitKeys: string[],
+  excludedUnitKeys: string[]
+): 'include' | 'exclude' | null {
+  let bestLength = -1;
+  let decision: 'include' | 'exclude' | null = null;
+
+  for (const key of includedUnitKeys) {
+    if (matchesConfiguredUnit(unitKey, key) && key.length > bestLength) {
+      bestLength = key.length;
+      decision = 'include';
+    }
+  }
+
+  for (const key of excludedUnitKeys) {
+    if (matchesConfiguredUnit(unitKey, key) && key.length >= bestLength) {
+      bestLength = key.length;
+      decision = 'exclude';
+    }
+  }
+
+  return decision;
+}
+
+export function isParticipatingRecord(
+  record: Pick<PerformanceRecord, 'department' | 'subDepartment'> & { employeeId?: string; id?: string },
+  config: PerformanceRankingConfigV1
+): boolean {
+  const participation = normalizeConfig(config).participation;
   const unitKey = getOrgUnitKey(record);
-  return matchesUnitKey(unitKey, config.participation.enabledUnitKeys);
+  const employeeId = String(record.employeeId || record.id || '').trim();
+
+  if (employeeId && participation.excludedEmployeeIds.includes(employeeId)) return false;
+  if (employeeId && participation.includedEmployeeIds.includes(employeeId)) return true;
+
+  const unitDecision = resolveUnitDecision(unitKey, participation.includedUnitKeys, participation.excludedUnitKeys);
+  if (unitDecision) return unitDecision === 'include';
+
+  return participation.mode !== 'include';
 }
 
 export function resolveGroupName(level: EmployeeLevel | undefined, strategy: LevelGroupingStrategy): string {
@@ -208,7 +288,7 @@ export function matchMergeRankGroup(record: Pick<PerformanceRecord, 'department'
     const matchLevel = !group.levels || group.levels.length === 0 || group.levels.includes(level);
     if (!matchLevel) continue;
 
-    const matchUnit = matchesUnitKey(unitKey, group.unitKeys || []);
+    const matchUnit = !group.unitKeys || group.unitKeys.length === 0 || matchesAnyConfiguredUnit(unitKey, group.unitKeys || []);
     if (!matchUnit) continue;
 
     return group;
