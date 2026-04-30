@@ -126,6 +126,20 @@ CREATE TABLE IF NOT EXISTS department_templates (
 CREATE INDEX IF NOT EXISTS idx_dept_templates_dept ON department_templates(department_id);
 CREATE INDEX IF NOT EXISTS idx_dept_templates_template ON department_templates(template_id);
 
+CREATE TABLE IF NOT EXISTS level_template_rules (
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  department_type VARCHAR(50) NOT NULL,
+  level VARCHAR(50) NOT NULL,
+  template_id VARCHAR(36) NOT NULL REFERENCES assessment_templates(id) ON DELETE CASCADE,
+  set_by VARCHAR(50),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(department_type, level)
+);
+
+CREATE INDEX IF NOT EXISTS idx_level_template_rules_dept_type ON level_template_rules(department_type);
+CREATE INDEX IF NOT EXISTS idx_level_template_rules_template ON level_template_rules(template_id);
+
 INSERT INTO assessment_templates (id, name, description, department_type, is_default, status)
 VALUES
   ('template-sales-001', '销售部门标准模板', '适用于销售岗位的考核模板：业绩导向，70%量化指标+30%行为指标', 'sales', true, 'active'),

@@ -213,26 +213,38 @@ export default function AssessmentScopeSettings() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [empRes, tplRes, configRes, rulesRes] = await Promise.all([
+      const [empResult, tplResult, configResult, rulesResult] = await Promise.allSettled([
         employeeApi.getAll(),
         assessmentTemplateApi.getAll({ includeMetrics: false }),
         performanceConfigApi.getRankingConfig(),
         levelTemplateRuleApi.getAllRules(),
       ]);
-      if (empRes.success) setEmployees(empRes.data || []);
-      if (tplRes.success) setTemplates(tplRes.data || []);
-      if (configRes.success) {
+
+      if (empResult.status === 'fulfilled' && empResult.value.success) {
+        setEmployees(empResult.value.data || []);
+      } else {
+        const reason = empResult.status === 'rejected' ? empResult.reason?.message : empResult.value?.message;
+        toast.error('员工档案加载失败: ' + (reason || '未知错误'));
+      }
+
+      if (tplResult.status === 'fulfilled' && tplResult.value.success) {
+        setTemplates(tplResult.value.data || []);
+      }
+
+      if (configResult.status === 'fulfilled' && configResult.value.success) {
+        const configData = configResult.value.data || {};
         setRankingConfig({
           ...defaultConfig,
-          ...(configRes.data || {}),
+          ...configData,
           participation: {
             ...defaultConfig.participation,
-            ...(configRes.data?.participation || {}),
+            ...(configData.participation || {}),
           },
         });
       }
-      if (rulesRes.success) {
-        setRules((rulesRes.data || []).map((rule: any) => ({
+
+      if (rulesResult.status === 'fulfilled' && rulesResult.value.success) {
+        setRules((rulesResult.value.data || []).map((rule: any) => ({
           departmentType: rule.departmentType,
           level: rule.level,
           templateId: rule.templateId,

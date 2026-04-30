@@ -61,6 +61,7 @@ services:
       - ate_network
     volumes:
       - ./backend/logs:/app/logs
+      - ./postgres-init:/postgres-init:ro
 
   # 前端服务
   frontend:

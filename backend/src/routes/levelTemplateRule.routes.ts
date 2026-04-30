@@ -11,6 +11,7 @@ router.post('/', requireRole('manager', 'hr', 'admin'), ctrl.setRule);
 router.post('/batch', requireRole('manager', 'hr', 'admin'), ctrl.batchSetRules);
 
 // 静态路径在前
+router.get('/', requireRole('manager', 'hr', 'admin'), ctrl.getAllRules);
 router.get('/stats/coverage', requireRole('hr', 'admin'), ctrl.getCoverageStats);
 router.get('/resolve/:employeeId', ctrl.resolveTemplate);
 
