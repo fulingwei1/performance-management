@@ -1,24 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle,
   Building2,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  FileText,
   Save,
   Settings,
   UserRound,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { assessmentTemplateApi, employeeApi, levelTemplateRuleApi, performanceConfigApi } from '@/services/api';
+import { employeeApi, performanceConfigApi } from '@/services/api';
 
 interface Employee {
   id: string;
@@ -58,12 +55,6 @@ interface RankingConfig {
   mergeRankGroups: any[];
 }
 
-interface DeptTypeTemplate {
-  departmentType: string;
-  level: string;
-  templateId: string;
-}
-
 const defaultConfig: RankingConfig = {
   version: 1,
   participation: {
@@ -80,21 +71,6 @@ const defaultConfig: RankingConfig = {
   },
   mergeRankGroups: [],
 };
-
-const DEPARTMENT_TYPES = [
-  { key: 'engineering', label: '工程技术' },
-  { key: 'manufacturing', label: '生产制造' },
-  { key: 'sales', label: '销售营销' },
-  { key: 'support', label: '职能支持' },
-  { key: 'management', label: '管理层' },
-];
-
-const LEVELS = [
-  { key: 'senior', label: '高级/主管' },
-  { key: 'intermediate', label: '中级' },
-  { key: 'junior', label: '初级/普通员工' },
-  { key: 'assistant', label: '助理/实习' },
-];
 
 function cleanSegment(value?: string): string {
   const normalized = String(value || '').trim();
@@ -198,9 +174,7 @@ function buildOrgTree(employees: Employee[]): OrgNode[] {
 
 export default function AssessmentScopeSettings() {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [templates, setTemplates] = useState<any[]>([]);
   const [rankingConfig, setRankingConfig] = useState<RankingConfig>(defaultConfig);
-  const [rules, setRules] = useState<DeptTypeTemplate[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -213,11 +187,9 @@ export default function AssessmentScopeSettings() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [empResult, tplResult, configResult, rulesResult] = await Promise.allSettled([
+      const [empResult, configResult] = await Promise.allSettled([
         employeeApi.getAll(),
-        assessmentTemplateApi.getAll({ includeMetrics: false }),
         performanceConfigApi.getRankingConfig(),
-        levelTemplateRuleApi.getAllRules(),
       ]);
 
       if (empResult.status === 'fulfilled' && empResult.value.success) {
@@ -225,10 +197,6 @@ export default function AssessmentScopeSettings() {
       } else {
         const reason = empResult.status === 'rejected' ? empResult.reason?.message : empResult.value?.message;
         toast.error('员工档案加载失败: ' + (reason || '未知错误'));
-      }
-
-      if (tplResult.status === 'fulfilled' && tplResult.value.success) {
-        setTemplates(tplResult.value.data || []);
       }
 
       if (configResult.status === 'fulfilled' && configResult.value.success) {
@@ -241,14 +209,6 @@ export default function AssessmentScopeSettings() {
             ...(configData.participation || {}),
           },
         });
-      }
-
-      if (rulesResult.status === 'fulfilled' && rulesResult.value.success) {
-        setRules((rulesResult.value.data || []).map((rule: any) => ({
-          departmentType: rule.departmentType,
-          level: rule.level,
-          templateId: rule.templateId,
-        })));
       }
     } catch (error: any) {
       toast.error('加载数据失败: ' + (error.message || String(error)));
@@ -280,7 +240,6 @@ export default function AssessmentScopeSettings() {
 
   const participantCount = activeEmployees.filter(isParticipating).length;
   const selectedMarkCount = activeEmployees.filter(isMarked).length;
-  const ruleCount = rules.filter((rule) => rule.templateId).length;
 
   const setParticipation = (updater: (current: RankingConfig['participation']) => RankingConfig['participation']) => {
     setRankingConfig((prev) => ({
@@ -391,30 +350,11 @@ export default function AssessmentScopeSettings() {
     );
   };
 
-  const getRuleTemplateId = (deptType: string, level: string): string => (
-    rules.find((rule) => rule.departmentType === deptType && rule.level === level)?.templateId || ''
-  );
-
-  const setRule = (departmentType: string, level: string, templateId: string) => {
-    setRules((prev) => {
-      const existingIndex = prev.findIndex((rule) => rule.departmentType === departmentType && rule.level === level);
-      if (existingIndex >= 0) {
-        const next = [...prev];
-        next[existingIndex] = { departmentType, level, templateId };
-        return next;
-      }
-      return [...prev, { departmentType, level, templateId }];
-    });
-  };
-
-  const getTemplatesForDeptType = (deptType: string) => templates.filter((template) => template.departmentType === deptType);
-
   const handleSave = async () => {
     setSaving(true);
     try {
       await performanceConfigApi.updateRankingConfig(rankingConfig as unknown as Record<string, unknown>);
-      if (rules.length > 0) await levelTemplateRuleApi.batchSetRules(rules);
-      toast.success('配置已保存，后续生成任务和绩效看板会按这个范围生效');
+      toast.success('考核范围已保存，后续生成任务、绩效看板和排名会按这个范围生效');
       await loadData();
     } catch (error: any) {
       toast.error('保存失败: ' + (error.message || String(error)));
@@ -491,7 +431,7 @@ export default function AssessmentScopeSettings() {
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-bold">
               <Settings className="h-6 w-6" />
-              考核范围与模板配置
+              考核范围配置
             </h1>
             <p className="mt-1 text-muted-foreground">
               按一级/二级/三级部门或具体员工选择谁参与考核；也可以反过来只勾选不参与的人。
@@ -506,7 +446,6 @@ export default function AssessmentScopeSettings() {
           <Badge variant="outline" className="text-sm">参与考核：{participantCount} 人</Badge>
           <Badge variant="secondary" className="text-sm">不参与：{activeEmployees.length - participantCount} 人</Badge>
           <Badge variant="outline" className="text-sm">当前勾选：{selectedMarkCount} 人</Badge>
-          <Badge variant="default" className="text-sm">模板规则：{ruleCount} 条</Badge>
         </div>
       </motion.div>
 
@@ -562,52 +501,6 @@ export default function AssessmentScopeSettings() {
       </Card>
 
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4" />
-            部门类型 × 层级 → 考核模板
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {DEPARTMENT_TYPES.map((departmentType) => {
-              const availableTemplates = getTemplatesForDeptType(departmentType.key);
-              if (availableTemplates.length === 0) return null;
-
-              return (
-                <div key={departmentType.key} className="rounded-lg border p-4">
-                  <h3 className="mb-3 text-sm font-medium">{departmentType.label}（{departmentType.key}）</h3>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    {LEVELS.map((level) => {
-                      const selected = getRuleTemplateId(departmentType.key, level.key);
-                      return (
-                        <div key={`${departmentType.key}:${level.key}`} className="flex items-center gap-3 rounded border bg-gray-50 p-2">
-                          <span className="w-28 text-sm">{level.label}</span>
-                          <div className="flex-1">
-                            <Select value={selected} onValueChange={(value) => setRule(departmentType.key, level.key, value)}>
-                              <SelectTrigger className="h-8">
-                                <SelectValue placeholder="选择模板" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableTemplates.map((template) => (
-                                  <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {selected && <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-green-500" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardContent className="pt-4">
           <div className="space-y-1 text-sm text-muted-foreground">
             <p className="flex items-center gap-2">
@@ -619,11 +512,7 @@ export default function AssessmentScopeSettings() {
               勾选父级会作用到其下所有人员；需要少数人例外时，可以切换到“不参与”模式单独勾选。
             </p>
             <p className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              模板规则按「部门类型 × 层级」设置，员工会自动匹配对应模板。
-            </p>
-            <p className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
               保存后会影响后续任务生成、绩效看板统计和排名口径。
             </p>
           </div>

@@ -120,13 +120,22 @@ app.use(cors({
  origin: (origin, callback) => {
   if (!origin) return callback(null, true);
 
+  const extraOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
   const allowedOrigins = expandLoopbackOrigins([
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://8.138.230.46',
+    'http://8.138.230.46:5173',
     'https://performance-management-api-three.vercel.app',
     process.env.CORS_ORIGIN,  // 生产环境部署域名
-    process.env.FRONTEND_URL
+    process.env.FRONTEND_URL,
+    ...extraOrigins,
   ]);
 
   if (allowedOrigins.includes(origin)) {
