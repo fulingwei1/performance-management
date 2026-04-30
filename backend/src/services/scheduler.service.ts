@@ -12,7 +12,7 @@ import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
 import { EmailService } from './email.service';
 import { generateMonthlyReportCharts } from './chart.service';
-import { WecomWebhookService } from './wecomWebhook.service';
+import { WecomWebhookService, sendAppMessage } from './wecomWebhook.service';
 import logger from '../config/logger';
 
 export class SchedulerService {
@@ -33,14 +33,14 @@ export class SchedulerService {
       }
     });
 
-    // 每天早上 8:00 检查截止日期和过期待办
-    cron.schedule('0 8 * * *', async () => {
-      logger.info('[Scheduler] 执行每日定时任务...');
+    // 每天 9:00 执行催办（1-6号催员工写总结 + 催经理打分 + 部门完成率统计）
+    cron.schedule('0 9 * * *', async () => {
+      logger.info('[Scheduler] 执行每日催办任务...');
       try {
-        await this.checkDeadlines();
+        await this.dailyReminderWorkflow();
         await this.checkOverdueTodos();
       } catch (err) {
-        logger.error(`[Scheduler] 每日任务出错: ${err}`);
+        logger.error(`[Scheduler] 每日催办出错: ${err}`);
       }
     });
 
@@ -207,80 +207,274 @@ export class SchedulerService {
   }
 
   /**
-   * 检查绩效记录截止日期，发送提醒
+   * 每日催办工作流（1-6号）
+   * 1. 催员工写总结（draft → submitted）
+   * 2. 催经理打分（submitted → scored）
+   * 3. 统计部门完成率，推送到企业微信
    */
-  static async checkDeadlines() {
+  static async dailyReminderWorkflow(forceToday: boolean = false) {
     try {
-      const reminderDays = 3;
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const dayOfMonth = now.getDate();
 
-      // 查找所有未完成且快到 deadline 的绩效记录
-      const pendingRecords = await this.getPendingRecordsForReminder(reminderDays);
-
-      if (pendingRecords.length === 0) {
-        logger.info('[Scheduler] checkDeadlines: 无需催办的记录');
+      // 只在1-6号执行催办（手动触发时跳过日期检查）
+      if (!forceToday && dayOfMonth > 6) {
+        logger.info('[Scheduler] dailyReminderWorkflow: 非1-6号，跳过催办');
         return;
       }
 
-      // 按 month 分组
-      const byMonth: Record<string, any[]> = {};
-      for (const r of pendingRecords) {
-        const m = r.month;
-        if (!byMonth[m]) byMonth[m] = [];
-        byMonth[m].push(r);
-      }
+      // 计算上月月份
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const targetMonth = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
+      const deadlineDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-07`;
+      const daysLeft = 7 - dayOfMonth;
+      const isLastDay = dayOfMonth === 6;
 
-      for (const [month, records] of Object.entries(byMonth)) {
-        const deadline = records[0].deadline;
-        const deadlineDate = new Date(deadline).toLocaleDateString('zh-CN');
-        const diffDays = Math.ceil((new Date(deadline).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      logger.info(`[Scheduler] 催办 ${targetMonth}，今天是${dayOfMonth}号，距截止还有${daysLeft}天`);
 
-        const isUrgent = diffDays <= 1;
-        const label = isUrgent ? '【最后提醒】' : '【提醒】';
+      // ========== 第一阶段：催未写总结的员工 ==========
+      await this.remindEmployeesToSubmit(targetMonth, daysLeft, isLastDay, deadlineDate);
 
-        // 1. 站内通知
-        const notifications: CreateNotificationInput[] = records.map((r: any) => ({
-          userId: r.employeeId,
-          type: isUrgent ? 'deadline' as any : 'reminder' as any,
-          title: `${label}${month}月绩效考核还有${diffDays}天截止`,
-          content: `${month}月绩效考核将于${deadlineDate}截止，请及时完成自评。`,
-          link: '/performance/self-assessment',
-        }));
+      // ========== 第二阶段：催经理给已提交的员工打分 ==========
+      await this.remindManagersToScore(targetMonth, daysLeft, isLastDay, deadlineDate);
 
-        if (notifications.length > 0) {
-          await NotificationModel.createBatch(notifications);
-          logger.info(`[Scheduler] 发送了 ${notifications.length} 条 ${month} 绩效催办站内通知`);
-        }
+      // ========== 第三阶段：统计部门完成率并推送 ==========
+      await this.pushDepartmentProgress(targetMonth, dayOfMonth, daysLeft);
 
-        // 2. 邮件催办
-        let emailSent = 0;
-        for (const r of records) {
-          if (r.email) {
-            const ok = await EmailService.sendDeadlineReminder(
-              r.email, r.employeeName, `${month}月绩效`, 'self_assessment', deadlineDate, '/performance/self-assessment'
-            );
-            if (ok) emailSent++;
-          }
-        }
-        if (emailSent > 0) {
-          logger.info(`[Scheduler] 催办邮件已发送 ${emailSent}/${records.length} 封 (${month})`);
-        }
-
-        // 3. 企业微信催办
-        await WecomWebhookService.sendReminder({
-          cycleName: `${month}月绩效考核`,
-          taskType: '绩效自评',
-          daysLeft: diffDays,
-          deadlineDate,
-          pendingCount: records.length,
-          employeeNames: records.map((r: any) => r.employeeName),
-        });
-
-        logger.info(`[Scheduler] ${month} 催办完成: ${records.length} 人, 邮件 ${emailSent} 封`);
-      }
     } catch (err) {
-      logger.error(`[Scheduler] checkDeadlines 出错: ${err}`);
+      logger.error(`[Scheduler] dailyReminderWorkflow 出错: ${err}`);
+    }
+  }
+
+  /**
+   * 催未写总结的员工（draft 状态）
+   */
+  private static async remindEmployeesToSubmit(month: string, daysLeft: number, isLastDay: boolean, deadlineDate: string) {
+    if (USE_MEMORY_DB) return;
+
+    // 查找 draft 状态的记录
+    const sql = `
+      SELECT pr.employee_id as "employeeId", pr.id as "recordId",
+             e.name as "employeeName", e.email, e.department, e.manager_id as "managerId"
+      FROM performance_records pr
+      JOIN employees e ON e.id = pr.employee_id
+      WHERE pr.month = $1 AND pr.status = 'draft'
+        AND (e.status = 'active' OR e.status IS NULL)
+      ORDER BY e.department, e.name
+    `;
+    const pending = await query(sql, [month]);
+
+    if (pending.length === 0) {
+      logger.info(`[Scheduler] ${month} 所有员工已完成总结提交`);
+      return;
+    }
+
+    const urgency = isLastDay ? '🔴【最后一天】' : daysLeft <= 2 ? '🟠【紧急】' : '🟡【提醒】';
+    logger.info(`[Scheduler] ${month} 还有 ${pending.length} 人未提交总结`);
+
+    // 站内通知
+    const notifications = pending.map((r: any) => ({
+      userId: r.employeeId,
+      type: isLastDay ? 'deadline' : 'reminder',
+      title: `${urgency}请提交${month}月度工作总结（还剩${daysLeft}天）`,
+      content: `${month}月绩效考核截止日期临近，请尽快填写工作总结和下月计划。`,
+      link: '/employee/summary',
+    }));
+    await NotificationModel.createBatch(notifications);
+
+    // 邮件（测试模式只发汇总不逐人发，生产模式批量并发+限速）
+    const isTest = !!process.env.WECOM_TEST_USER;
+    let emailCount = 0;
+    if (isTest) {
+      // 测试模式：跳过逐人邮件，日志记录即可
+      logger.info(`[Scheduler] 测试模式: 跳过 ${pending.length} 人催办邮件`);
+    } else {
+      // 生产模式：批量并发（每批5封，间隔1秒避免限频）
+      const batchSize = 5;
+      for (let i = 0; i < pending.length; i += batchSize) {
+        const batch = pending.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+          batch.filter((r: any) => r.email).map((r: any) =>
+            EmailService.sendDeadlineReminder(
+              r.email, r.employeeName, `${month}月绩效`, 'work_summary',
+              deadlineDate || `${daysLeft}天后`, '/employee/summary'
+            )
+          )
+        );
+        emailCount += results.filter(r => r.status === 'fulfilled' && r.value).length;
+        if (i + batchSize < pending.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // 限速
+        }
+      }
+    }
+
+    // 企业微信通知未提交员工列表
+    await WecomWebhookService.sendReminder({
+      cycleName: `${month}月工作总结`,
+      taskType: '员工提交总结',
+      daysLeft,
+      deadlineDate: deadlineDate || '',
+      pendingCount: pending.length,
+      employeeNames: pending.map((r: any) => r.employeeName),
+    });
+
+    logger.info(`[Scheduler] 催员工提交: ${pending.length}人, 邮件${emailCount}封`);
+  }
+
+  /**
+   * 催经理给已提交的员工打分（submitted 状态）
+   * 按经理分组，列出其下属中待打分的人员
+   */
+  private static async remindManagersToScore(month: string, daysLeft: number, isLastDay: boolean, deadlineDate: string) {
+    if (USE_MEMORY_DB) return;
+
+    // 查找 submitted 状态的记录（员工已提交，等经理打分）
+    const sql = `
+      SELECT pr.employee_id as "employeeId", pr.assessor_id as "assessorId",
+             e.name as "employeeName", e.department,
+             mgr.name as "managerName", mgr.email as "managerEmail"
+      FROM performance_records pr
+      JOIN employees e ON e.id = pr.employee_id
+      LEFT JOIN employees mgr ON mgr.id = pr.assessor_id
+      WHERE pr.month = $1 AND pr.status = 'submitted'
+        AND (e.status = 'active' OR e.status IS NULL)
+      ORDER BY pr.assessor_id, e.department
+    `;
+    const submitted = await query(sql, [month]);
+
+    if (submitted.length === 0) {
+      logger.info(`[Scheduler] ${month} 无待打分记录`);
+      return;
+    }
+
+    logger.info(`[Scheduler] ${month} 有 ${submitted.length} 条待经理打分`);
+
+    // 按经理分组
+    const byManager: Record<string, { manager: any; employees: any[] }> = {};
+    for (const r of submitted) {
+      const mid = r.assessorId || 'gm001';
+      if (!byManager[mid]) {
+        byManager[mid] = {
+          manager: { id: mid, name: r.managerName, email: r.managerEmail },
+          employees: []
+        };
+      }
+      byManager[mid].employees.push(r);
+    }
+
+    const urgency = isLastDay ? '🔴【最后一天】' : daysLeft <= 2 ? '🟠【紧急】' : '🟡【提醒】';
+
+    for (const [managerId, group] of Object.entries(byManager)) {
+      const names = group.employees.map((e: any) => e.employeeName).join('、');
+      const count = group.employees.length;
+
+      // 站内通知经理
+      await NotificationModel.createBatch([{
+        userId: managerId,
+        type: isLastDay ? 'deadline' : 'reminder',
+        title: `${urgency}${count}名下属${month}月绩效待打分（还剩${daysLeft}天）`,
+        content: `以下员工已提交${month}月工作总结，请尽快完成评分：${names}`,
+        link: '/manager/scoring',
+      }]);
+
+      // 邮件通知经理（测试模式跳过）
+      if (!process.env.WECOM_TEST_USER && group.manager.email) {
+        try {
+          await EmailService.sendDeadlineReminder(
+            group.manager.email, group.manager.name, `${month}月绩效打分`,
+            'manager_scoring', deadlineDate || `${daysLeft}天后`, '/manager/scoring'
+          );
+        } catch (e) {
+          logger.warn(`[Scheduler] 经理催办邮件失败 ${group.manager.name}: ${e}`);
+        }
+      }
+
+      logger.info(`[Scheduler] 催经理 ${group.manager.name} 打分: ${count}人 (${names})`);
+    }
+
+    // 企业微信汇总
+    const summaryLines: string[] = [];
+    for (const [_, group] of Object.entries(byManager)) {
+      summaryLines.push(`**${group.manager.name}**：${group.employees.map((e: any) => e.employeeName).join('、')}（${group.employees.length}人）`);
+    }
+    await WecomWebhookService.sendReminder({
+      cycleName: `${month}月经理打分`,
+      taskType: '经理评分',
+      daysLeft,
+      deadlineDate: deadlineDate || '',
+      pendingCount: submitted.length,
+      employeeNames: submitted.map((r: any) => `${r.managerName}→${r.employeeName}`),
+    });
+  }
+
+  /**
+   * 统计部门完成率并推送到企业微信
+   */
+  private static async pushDepartmentProgress(month: string, dayOfMonth: number, daysLeft: number) {
+    if (USE_MEMORY_DB) return;
+
+    // 按部门统计各状态数量
+    const sql = `
+      SELECT e.department,
+             COUNT(*) FILTER (WHERE pr.status = 'draft') as "draftCount",
+             COUNT(*) FILTER (WHERE pr.status = 'submitted') as "submittedCount",
+             COUNT(*) FILTER (WHERE pr.status IN ('scored', 'completed')) as "doneCount",
+             COUNT(*) as total
+      FROM performance_records pr
+      JOIN employees e ON e.id = pr.employee_id
+      WHERE pr.month = $1
+        AND (e.status = 'active' OR e.status IS NULL)
+      GROUP BY e.department
+      ORDER BY e.department
+    `;
+    const deptStats = await query(sql, [month]);
+
+    if (deptStats.length === 0) return;
+
+    // 计算总完成率
+    let totalDone = 0, totalAll = 0;
+    for (const d of deptStats) {
+      // doneCount = 已打分 + 已完成 = 绩效流程走完
+      totalDone += parseInt(d.doneCount) + parseInt(d.submittedCount);
+      totalAll += parseInt(d.total);
+    }
+    const overallRate = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
+
+    // 构建消息
+    let lines = [`📊 **${month}月绩效考核进度**（${dayOfMonth}号，还剩${daysLeft}天）\n`];
+    lines.push(`总体完成率：**${overallRate}%**（${totalDone}/${totalAll}）\n`);
+
+    for (const d of deptStats) {
+      const done = parseInt(d.doneCount) + parseInt(d.submittedCount);
+      const total = parseInt(d.total);
+      const draft = parseInt(d.draftCount);
+      const rate = total > 0 ? Math.round((done / total) * 100) : 0;
+      const bar = '█'.repeat(Math.floor(rate / 10)) + '░'.repeat(10 - Math.floor(rate / 10));
+      let status = rate === 100 ? '✅' : draft > 0 ? '⚠️' : '🔄';
+      lines.push(`${status} **${d.department}** ${bar} ${rate}%（${done}/${total}，${draft}人未提交）`);
+    }
+
+    const content = lines.join('\n');
+
+    // 企业微信推送
+    await sendAppMessage('@all', content);
+    logger.info(`[Scheduler] 部门进度已推送: 总体${overallRate}%`);
+
+    // 如果是6号，发送最终催办
+    if (dayOfMonth === 6) {
+      const unfinished = deptStats.filter((d: any) => parseInt(d.draftCount) > 0 || parseInt(d.submittedCount) > 0);
+      if (unfinished.length > 0) {
+        let urgentLines = [`🚨 **${month}月绩效考核今日截止！以下部门尚未完成：\n`];
+        for (const d of unfinished) {
+          const draft = parseInt(d.draftCount);
+          const submitted = parseInt(d.submittedCount);
+          const parts: string[] = [];
+          if (draft > 0) parts.push(`${draft}人未提交总结`);
+          if (submitted > 0) parts.push(`${submitted}人待打分`);
+          urgentLines.push(`**${d.department}**：${parts.join('，')}`);
+        }
+        await sendAppMessage('@all', urgentLines.join('\n'));
+      }
     }
   }
 

@@ -18,6 +18,7 @@ const CORP_ID = () => process.env.WECOM_CORP_ID || '';
 const SECRET = () => process.env.WECOM_SECRET || '';
 const AGENT_ID = () => parseInt(process.env.WECOM_AGENT_ID || '0', 10);
 const ENABLED = () => !!(CORP_ID() && SECRET() && AGENT_ID());
+const TEST_USER = () => process.env.WECOM_TEST_USER || '';  // 测试模式：所有消息只发给此用户
 
 // ---- access_token 缓存 ----
 let cachedToken = '';
@@ -45,17 +46,23 @@ async function getAccessToken(): Promise<string> {
 }
 
 /** 发送应用消息（markdown 格式），touser: @all 或逗号分隔的用户ID */
-async function sendAppMessage(touser: string, content: string): Promise<boolean> {
+export async function sendAppMessage(touser: string, content: string): Promise<boolean> {
   if (!ENABLED()) {
     logger.debug('[Wecom] 未配置企业微信，跳过推送');
     return false;
+  }
+
+  // 测试模式：所有消息只发给测试用户
+  const actualTouser = TEST_USER() || touser;
+  if (TEST_USER() && touser !== TEST_USER()) {
+    logger.info(`[Wecom] 测试模式: 消息原定发给 ${touser}，改为发给 ${actualTouser}`);
   }
 
   try {
     const token = await getAccessToken();
     const url = `https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${token}`;
     const body = {
-      touser,
+      touser: actualTouser,
       msgtype: 'markdown',
       agentid: AGENT_ID(),
       markdown: { content },

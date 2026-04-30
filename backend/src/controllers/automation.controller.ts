@@ -104,7 +104,8 @@ export const automationController = {
    * 手动触发催办提醒检查
    */
   checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
-    await SchedulerService.checkDeadlines();
+    const force = req.query.force === 'true';
+    await SchedulerService.dailyReminderWorkflow(force);
     await SchedulerService.checkOverdueTodos();
 
     res.json({
