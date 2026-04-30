@@ -321,8 +321,12 @@ export async function importHrArchive(filePath: string) {
   const existingEmployees = await loadExistingEmployees();
   const employees = parseArchiveEmployees(rows, existingEmployees);
   const managerIds = resolveManagerIds(employees, existingEmployees);
+  const upsertOrder = [...employees].sort((left, right) => {
+    if (left.status === right.status) return 0;
+    return left.status === 'active' ? 1 : -1;
+  });
 
-  await upsertArchiveEmployees(employees, managerIds);
+  await upsertArchiveEmployees(upsertOrder, managerIds);
   await disableEmployeesMissingFromArchive(employees.map((employee) => employee.id));
   await syncDepartmentsFromEmployees();
   cache.invalidateByPrefix('employee:');
