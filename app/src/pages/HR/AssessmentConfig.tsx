@@ -1,19 +1,18 @@
 import { motion } from 'framer-motion';
-import { Building2, FileText, Target } from 'lucide-react';
+import { Building2, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AssessmentTemplates } from '@/pages/HR/AssessmentTemplates';
-import { MetricLibraryManagement } from '@/pages/HR/MetricLibraryManagement';
 import AssessmentScopeSettings from '@/pages/HR/AssessmentScopeSettings';
 
 interface AssessmentConfigProps {
   title?: string;
   description?: string;
-  defaultTab?: 'scope' | 'templates' | 'metrics';
+  defaultTab?: 'scope' | 'templates';
 }
 
 export function AssessmentConfig({
   title = '考核配置',
-  description = '统一管理考核范围、考核模板和指标库：先确定谁参与，再确定怎么考、考什么。',
+  description = '统一管理考核范围和考核模板：先确定谁参与，再在模板里维护怎么考、考什么。',
   defaultTab = 'scope',
 }: AssessmentConfigProps) {
   return (
@@ -33,10 +32,6 @@ export function AssessmentConfig({
             <FileText className="w-4 h-4" />
             考核模板
           </TabsTrigger>
-          <TabsTrigger value="metrics" className="flex items-center gap-2">
-            <Target className="w-4 h-4" />
-            指标库
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scope">
@@ -47,9 +42,6 @@ export function AssessmentConfig({
           <AssessmentTemplates />
         </TabsContent>
 
-        <TabsContent value="metrics">
-          <MetricLibraryManagement />
-        </TabsContent>
       </Tabs>
     </motion.div>
   );

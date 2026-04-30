@@ -237,7 +237,7 @@ function App() {
           <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
           <Route path="/hr/assessment-config" element={<AssessmentConfig />} />
           <Route path="/hr/assessment-scope" element={<AssessmentConfig defaultTab="scope" />} />
-          <Route path="/hr/assessment-templates" element={<Navigate to="/hr/assessment-config" replace />} />
+          <Route path="/hr/assessment-templates" element={<AssessmentConfig defaultTab="templates" />} />
           <Route path="/hr/metric-library" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
         </Route>
