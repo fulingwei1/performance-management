@@ -1,6 +1,7 @@
 import { query } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../config/logger';
+import { getConfiguredTemplateId, getOrgUnitKey, getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
 
 export interface LevelTemplateRule {
   id: string;
@@ -102,12 +103,12 @@ export class LevelTemplateRuleModel {
 
   /**
    * ★ 核心：解析员工的最终模板
-   * 优先级：个人绑定 > 部门×层级规则 > 自动匹配 > 兜底默认
+   * 优先级：个人绑定 > 参与部门指定模板 > 部门×层级规则 > 自动匹配 > 兜底默认
    */
   static async resolveTemplate(employeeId: string): Promise<{
     templateId: string;
     templateName: string;
-    source: 'personal_binding' | 'level_rule' | 'auto_match' | 'default';
+    source: 'personal_binding' | 'unit_config' | 'level_rule' | 'auto_match' | 'default';
     departmentType: string;
     level: string;
   }> {
@@ -119,6 +120,10 @@ export class LevelTemplateRuleModel {
     const employee = empResult[0];
     const departmentType = getDepartmentType(employee.department);
     const level = employee.level || 'junior';
+    const unitKey = getOrgUnitKey({
+      department: employee.department,
+      subDepartment: employee.sub_department || employee.subDepartment,
+    });
 
     // 2. 优先查个人绑定
     const bindingResult = await query(
@@ -141,7 +146,26 @@ export class LevelTemplateRuleModel {
       }
     }
 
-    // 3. 查部门×层级规则
+    // 3. 查参与部门指定模板（支持父级前缀继承）
+    const rankingConfig = await getPerformanceRankingConfig();
+    const configuredTemplateId = getConfiguredTemplateId(unitKey, rankingConfig);
+    if (configuredTemplateId) {
+      const configuredTemplateResult = await query(
+        `SELECT id, name FROM assessment_templates WHERE id = $1 AND status = 'active'`,
+        [configuredTemplateId]
+      );
+      if (configuredTemplateResult.length > 0) {
+        return {
+          templateId: configuredTemplateResult[0].id,
+          templateName: configuredTemplateResult[0].name,
+          source: 'unit_config',
+          departmentType,
+          level
+        };
+      }
+    }
+
+    // 4. 查部门×层级规则
     const ruleResult = await query(
       `SELECT r.*, t.name as template_name
        FROM level_template_rules r
@@ -159,7 +183,7 @@ export class LevelTemplateRuleModel {
       };
     }
 
-    // 4. 自动匹配（模板名含层级关键词）
+    // 5. 自动匹配（模板名含层级关键词）
     const autoResult = await query(
       `SELECT id, name FROM assessment_templates
        WHERE department_type = $1
@@ -185,7 +209,7 @@ export class LevelTemplateRuleModel {
       };
     }
 
-    // 5. 兜底：取部门类型的 default 模板
+    // 6. 兜底：取部门类型的 default 模板
     const defaultResult = await query(
       `SELECT id, name FROM assessment_templates
        WHERE department_type = $1 AND (name LIKE '%标准%' OR name LIKE '%default%')
@@ -202,7 +226,7 @@ export class LevelTemplateRuleModel {
       };
     }
 
-    // 6. 最终兜底
+    // 7. 最终兜底
     const anyResult = await query(
       'SELECT id, name FROM assessment_templates LIMIT 1'
     );

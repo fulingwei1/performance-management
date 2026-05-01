@@ -2,7 +2,8 @@ import { Users, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface Stats {
-  totalEmployees: number;
+  companyTotalEmployees: number;
+  participatingEmployees: number;
   completedScores: number;
   pendingScores: number;
 }
@@ -14,7 +15,21 @@ interface StatCardsProps {
 
 export function StatCards({ stats, onFilterChange }: StatCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-500">公司总人数</p>
+              <p className="text-2xl font-bold">{stats.companyTotalEmployees}</p>
+            </div>
+            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-slate-600" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card 
         className="cursor-pointer hover:shadow-md transition-shadow"
         onClick={() => onFilterChange('all')}
@@ -22,8 +37,8 @@ export function StatCards({ stats, onFilterChange }: StatCardsProps) {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500">本期参与人数</p>
-              <p className="text-2xl font-bold">{stats.totalEmployees}</p>
+              <p className="text-sm text-gray-500">参与考核人数</p>
+              <p className="text-2xl font-bold">{stats.participatingEmployees}</p>
             </div>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <Users className="w-5 h-5 text-blue-600" />

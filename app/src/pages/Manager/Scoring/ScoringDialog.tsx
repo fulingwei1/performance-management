@@ -25,6 +25,8 @@ interface ScoringDialogProps {
   setManagerComment: (v: string) => void;
   nextMonthWorkArrangement: string;
   setNextMonthWorkArrangement: (v: string) => void;
+  evaluationKeywords: string[];
+  setEvaluationKeywords: (keywords: string[]) => void;
   totalScore: number;
   loading: boolean;
   onSubmit: () => void;
@@ -34,9 +36,10 @@ export function ScoringDialog({
   open, onOpenChange, selectedRecord, isNoSummary,
   scores, setScores, managerComment, setManagerComment,
   nextMonthWorkArrangement, setNextMonthWorkArrangement,
+  evaluationKeywords, setEvaluationKeywords,
   totalScore, loading, onSubmit
 }: ScoringDialogProps) {
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
   
   // AI助手状态
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -87,6 +90,14 @@ export function ScoringDialog({
 
   // 当关键词变化时，自动更新评语
   useEffect(() => {
+    setSelectedKeywords(evaluationKeywords || []);
+  }, [evaluationKeywords, selectedRecord?.id, open]);
+
+  useEffect(() => {
+    setEvaluationKeywords(selectedKeywords);
+  }, [selectedKeywords, setEvaluationKeywords]);
+
+  useEffect(() => {
     if (selectedKeywords.length > 0) {
       const keywordText = getKeywordText(selectedKeywords);
       if (keywordText) {
@@ -101,6 +112,14 @@ export function ScoringDialog({
             setManagerComment(keywordText + '。\n\n' + managerComment);
           }
         }
+      }
+    } else if (managerComment.includes('优点：') || managerComment.includes('待改进：')) {
+      const cleaned = managerComment
+        .replace(/^优点：.*?(?:；待改进：.*?)?。\n\n/s, '')
+        .replace(/^待改进：.*?。\n\n/s, '')
+        .trimStart();
+      if (cleaned !== managerComment) {
+        setManagerComment(cleaned);
       }
     }
   }, [selectedKeywords]);

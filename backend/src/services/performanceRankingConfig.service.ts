@@ -37,6 +37,7 @@ export interface PerformanceRankingConfigV1 {
     defaultStrategy: LevelGroupingStrategy;
     perUnit: Record<string, LevelGroupingStrategy>;
   };
+  templateAssignments: Record<string, string>; // 参与考核的组织单元 -> 考核模板（支持父级前缀继承）
   mergeRankGroups: MergeRankGroup[]; // 用于 crossDeptRank（按顺序匹配，先命中优先）
 }
 
@@ -94,6 +95,7 @@ const configSchema: z.ZodType<PerformanceRankingConfigV1> = z.object({
       perUnit: z.record(z.string(), levelGroupingStrategySchema).default({}),
     })
     .default({ defaultStrategy: { type: 'by_high_low' }, perUnit: {} }),
+  templateAssignments: z.record(z.string(), z.string().min(1)).default({}),
   mergeRankGroups: z.array(mergeRankGroupSchema).default([]),
 });
 
@@ -112,6 +114,7 @@ export function buildDefaultPerformanceRankingConfig(): PerformanceRankingConfig
       defaultStrategy: { type: 'by_high_low' },
       perUnit: {},
     },
+    templateAssignments: {},
     mergeRankGroups: [],
   };
 }
@@ -123,8 +126,14 @@ function uniqueStrings(values?: string[]): string[] {
 function normalizeConfig(config: PerformanceRankingConfigV1): PerformanceRankingConfigV1 {
   const legacyEnabled = uniqueStrings(config.participation.enabledUnitKeys);
   const includedUnitKeys = uniqueStrings(config.participation.includedUnitKeys);
-  const mode = config.participation.mode || (legacyEnabled.length > 0 ? 'include' : 'exclude');
+  let mode = config.participation.mode || (legacyEnabled.length > 0 ? 'include' : 'exclude');
   const normalizedIncluded = includedUnitKeys.length > 0 ? includedUnitKeys : legacyEnabled;
+  const normalizedIncludedEmployeeIds = uniqueStrings(config.participation.includedEmployeeIds);
+  const normalizedExcludedEmployeeIds = uniqueStrings(config.participation.excludedEmployeeIds);
+
+  if (mode === 'include' && normalizedIncluded.length === 0 && normalizedIncludedEmployeeIds.length === 0) {
+    mode = 'exclude';
+  }
 
   return {
     ...config,
@@ -133,9 +142,14 @@ function normalizeConfig(config: PerformanceRankingConfigV1): PerformanceRanking
       enabledUnitKeys: normalizedIncluded,
       includedUnitKeys: normalizedIncluded,
       excludedUnitKeys: uniqueStrings(config.participation.excludedUnitKeys),
-      includedEmployeeIds: uniqueStrings(config.participation.includedEmployeeIds),
-      excludedEmployeeIds: uniqueStrings(config.participation.excludedEmployeeIds),
+      includedEmployeeIds: normalizedIncludedEmployeeIds,
+      excludedEmployeeIds: normalizedExcludedEmployeeIds,
     },
+    templateAssignments: Object.fromEntries(
+      Object.entries(config.templateAssignments || {})
+        .map(([key, value]) => [String(key || '').trim(), String(value || '').trim()])
+        .filter(([key, value]) => Boolean(key && value))
+    ),
   };
 }
 
@@ -166,6 +180,17 @@ export async function savePerformanceRankingConfig(
   }
 
   const normalized = normalizeConfig(parsed.data);
+  if (normalized.participation.mode === 'include') {
+    const missingTemplateUnitKeys = normalized.participation.includedUnitKeys.filter((unitKey) => (
+      !getConfiguredTemplateId(unitKey, normalized)
+    ));
+    if (missingTemplateUnitKeys.length > 0) {
+      const preview = missingTemplateUnitKeys.slice(0, 3).join('、');
+      const suffix = missingTemplateUnitKeys.length > 3 ? ` 等 ${missingTemplateUnitKeys.length} 个部门` : '';
+      throw new Error(`以下参与考核部门还没有选择模板：${preview}${suffix}`);
+    }
+  }
+
   const existing = await SystemSettingsModel.getByKey(SETTING_KEY);
 
   if (existing) {
@@ -242,6 +267,31 @@ export function isParticipatingRecord(
   if (unitDecision) return unitDecision === 'include';
 
   return participation.mode !== 'include';
+}
+
+export function getConfiguredTemplateId(
+  unitKey: string,
+  config: Pick<PerformanceRankingConfigV1, 'templateAssignments'>
+): string | null {
+  const normalizedUnitKey = String(unitKey || '').trim();
+  if (!normalizedUnitKey) return null;
+
+  let bestKey = '';
+  let bestTemplateId = '';
+
+  for (const [configuredKey, templateId] of Object.entries(config.templateAssignments || {})) {
+    const normalizedConfiguredKey = String(configuredKey || '').trim();
+    const normalizedTemplateId = String(templateId || '').trim();
+    if (!normalizedConfiguredKey || !normalizedTemplateId) continue;
+    if (!matchesConfiguredUnit(normalizedUnitKey, normalizedConfiguredKey)) continue;
+
+    if (normalizedConfiguredKey.length > bestKey.length) {
+      bestKey = normalizedConfiguredKey;
+      bestTemplateId = normalizedTemplateId;
+    }
+  }
+
+  return bestTemplateId || null;
 }
 
 export function resolveGroupName(level: EmployeeLevel | undefined, strategy: LevelGroupingStrategy): string {

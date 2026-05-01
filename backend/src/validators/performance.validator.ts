@@ -69,6 +69,15 @@ export const submitScoreValidation = [
   body('nextMonthWorkArrangement')
     .optional()
     .isLength({ max: 2000 }).withMessage('下月工作安排不能超过2000个字符'),
+
+  body('evaluationKeywords')
+    .optional()
+    .isArray({ max: 20 }).withMessage('评价标签最多20个'),
+
+  body('evaluationKeywords.*')
+    .optional()
+    .isString().withMessage('评价标签必须为字符串')
+    .isLength({ max: 50 }).withMessage('单个评价标签不能超过50个字符'),
 ];
 
 /**

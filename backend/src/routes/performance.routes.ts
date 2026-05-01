@@ -18,8 +18,8 @@ router.get('/my-records', authenticate, performanceController.getMyRecords);
 // 获取当前用户某月的绩效记录（需要认证）
 router.get('/my-record/:month', authenticate, performanceController.getMyRecordByMonth);
 
-// 获取经理的评分记录（下属）（需要经理权限）
-router.get('/team-records', authenticate, requireRole('manager'), performanceController.getTeamRecords);
+// 获取经理/兼任经理的评分记录（下属）
+router.get('/team-records', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), performanceController.getTeamRecords);
 
   // 获取某月份的所有记录（经理、总经理或HR）
   router.get('/month/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getRecordsByMonth);
@@ -37,10 +37,10 @@ router.get('/team-records', authenticate, requireRole('manager'), performanceCon
 router.post('/summary', authenticate, requireRole('employee'), validate(submitSummaryValidation), performanceController.submitSummary);
 
 // 创建空记录（经理给未提交的员工评分时使用）
-router.post('/create-empty-record', authenticate, requireRole('manager'), validate(createRecordValidation), performanceController.createEmptyRecord);
+router.post('/create-empty-record', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), validate(createRecordValidation), performanceController.createEmptyRecord);
 
-// 经理评分（需要经理权限）
-router.post('/score', authenticate, requireRole('manager'), validate(submitScoreValidation), performanceController.submitScore);
+// 经理评分（含 HR/管理员兼任经理视角）
+router.post('/score', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), validate(submitScoreValidation), performanceController.submitScore);
 
 // HR批量生成绩效任务
 router.post('/generate-tasks', authenticate, requireRole('hr'), validate(generateTasksValidation), performanceController.generateTasks);

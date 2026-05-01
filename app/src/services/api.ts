@@ -134,6 +134,9 @@ export const employeeApi = {
   
   // 获取下属
   getSubordinates: () => request('/employees/subordinates'),
+
+  // 获取当前用户/经理的绩效参与状态
+  getAssessmentParticipation: () => request('/employees/assessment-participation'),
   
   // 根据ID获取员工
   getById: (id: string) => request(`/employees/${id}`),
@@ -247,6 +250,7 @@ export const performanceApi = {
     qualityImprovement: number;
     managerComment: string;
     nextMonthWorkArrangement: string;
+    evaluationKeywords?: string[];
   }) => request('/performance/score', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -408,6 +412,11 @@ export const quarterlySummaryApi = {
     const query = params.toString();
     return request(`/quarterly-summaries/my${query ? `?${query}` : ''}`);
   }
+};
+
+export const employeeQuarterlyApi = {
+  getMy: (params?: { year?: number; quarter?: number }) =>
+    request(`/employee-quarterly/my${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
 };
 
 // AI相关API
@@ -1076,6 +1085,7 @@ export default {
   employee: employeeApi,
   performance: performanceApi,
   quarterlySummary: quarterlySummaryApi,
+  employeeQuarterly: employeeQuarterlyApi,
   ai: aiApi,
   objective: objectiveApi,
   strategicObjective: strategicObjectiveApi,

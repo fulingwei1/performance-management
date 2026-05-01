@@ -174,6 +174,7 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
   const { employeeIds } = req.body;
   
   const { EmployeeModel } = await import('../models/employee.model');
+  const { LevelTemplateRuleModel } = await import('../models/levelTemplateRule.model');
   
   let employees: any[];
   if (employeeIds && employeeIds.length > 0) {
@@ -184,16 +185,52 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
     const all = await EmployeeModel.findAll();
     employees = all.filter((e: any) => e.status !== 'inactive' && e.status !== 'disabled');
   }
-  
-  const assignments = await AssessmentTemplateModel.getTemplateAssignments(
-    employees.map((e: any) => ({
-      id: e.id,
-      name: e.name,
-      role: e.role,
-      level: e.level,
-      position: e.position,
-      department: e.department
-    }))
+
+  const sourceReasonMap: Record<string, string> = {
+    personal_binding: '员工单独指定模板',
+    unit_config: '参与部门指定模板',
+    level_rule: '部门类型 + 层级规则',
+    auto_match: '按模板适用范围自动匹配',
+    default: '默认模板兜底',
+  };
+
+  const assignments = await Promise.all(
+    employees.map(async (employee: any) => {
+      try {
+        const resolved = await LevelTemplateRuleModel.resolveTemplate(employee.id);
+        return {
+          employee: {
+            id: employee.id,
+            name: employee.name,
+            role: employee.role,
+            level: employee.level,
+            position: employee.position,
+            department: employee.department,
+          },
+          template: {
+            id: resolved.templateId,
+            name: resolved.templateName,
+            departmentType: resolved.departmentType,
+          },
+          matchScore: 100,
+          matchReason: sourceReasonMap[resolved.source] || resolved.source,
+        };
+      } catch (_error) {
+        return {
+          employee: {
+            id: employee.id,
+            name: employee.name,
+            role: employee.role,
+            level: employee.level,
+            position: employee.position,
+            department: employee.department,
+          },
+          template: null,
+          matchScore: 0,
+          matchReason: '无可用模板',
+        };
+      }
+    })
   );
   
   res.json({ success: true, data: assignments });

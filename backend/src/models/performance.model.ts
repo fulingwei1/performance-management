@@ -300,6 +300,7 @@ export class PerformanceModel {
     managerComment: string;
     nextMonthWorkArrangement: string;
     normalizedScore?: number;
+    evaluationKeywords?: string[];
   }): Promise<PerformanceRecord | null> {
     if (USE_MEMORY_DB) {
       const record = memoryDB.performanceRecords.findById(data.id);
@@ -328,6 +329,7 @@ export class PerformanceModel {
         level = ?,
         manager_comment = ?,
         next_month_work_arrangement = ?,
+        evaluation_keywords = ?,
         normalized_score = ?,
         status = 'completed',
         updated_at = CURRENT_TIMESTAMP
@@ -343,6 +345,7 @@ export class PerformanceModel {
       data.level || 'L3',
       data.managerComment,
       data.nextMonthWorkArrangement,
+      JSON.stringify(data.evaluationKeywords || []),
       data.normalizedScore || data.totalScore,
       data.id
     ]);
@@ -502,6 +505,9 @@ export class PerformanceModel {
       normalizedScore: row.normalized_score ? parseFloat(row.normalized_score) : undefined,
       managerComment: row.manager_comment,
       nextMonthWorkArrangement: row.next_month_work_arrangement,
+      evaluationKeywords: row.evaluation_keywords
+        ? (typeof row.evaluation_keywords === 'string' ? JSON.parse(row.evaluation_keywords) : row.evaluation_keywords)
+        : [],
       groupType: row.group_type,
       groupRank: row.group_rank,
       crossDeptRank: row.cross_dept_rank,

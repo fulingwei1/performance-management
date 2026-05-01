@@ -2,6 +2,7 @@ import { query } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../config/logger';
 import { getDepartmentType } from './levelTemplateRule.model';
+import { getConfiguredTemplateId, getOrgUnitKey, getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
 
 export interface EmployeeTemplateBinding {
   id: string;
@@ -76,12 +77,13 @@ export class EmployeeTemplateBindingModel {
   }
 
   /**
-   * 获取模板解析结果：优先绑定 → 自动匹配 → 默认兜底
+   * 获取模板解析结果：优先绑定 → 参与部门指定模板 → 自动匹配 → 默认兜底
    * 返回带完整指标数据的模板
    */
   static async resolveTemplate(employeeId: string, employee: {
     role?: string; level?: string; position?: string; department?: string;
-  }): Promise<{ source: 'binding' | 'matched' | 'default'; template: any } | null> {
+    subDepartment?: string;
+  }): Promise<{ source: 'binding' | 'unit_config' | 'matched' | 'default'; template: any } | null> {
     // 动态导入避免循环依赖
     const { AssessmentTemplateModel } = await import('./assessmentTemplate.model');
 
@@ -94,7 +96,23 @@ export class EmployeeTemplateBindingModel {
       }
     }
 
-    // 2. 自动匹配（岗位+层级+角色+部门）
+    // 2. 参与部门指定模板（支持父级前缀继承）
+    const rankingConfig = await getPerformanceRankingConfig();
+    const configuredTemplateId = getConfiguredTemplateId(
+      getOrgUnitKey({
+        department: employee.department,
+        subDepartment: employee.subDepartment,
+      }),
+      rankingConfig
+    );
+    if (configuredTemplateId) {
+      const configuredTemplate = await AssessmentTemplateModel.findById(configuredTemplateId, true);
+      if (configuredTemplate) {
+        return { source: 'unit_config', template: configuredTemplate };
+      }
+    }
+
+    // 3. 自动匹配（岗位+层级+角色+部门）
     const matched = await AssessmentTemplateModel.findMatchingTemplate(employee);
     if (matched) {
       const template = await AssessmentTemplateModel.findById(matched.id, true);
@@ -103,7 +121,7 @@ export class EmployeeTemplateBindingModel {
       }
     }
 
-    // 3. 部门类型默认模板兜底
+    // 4. 部门类型默认模板兜底
     const deptType = getDepartmentType(employee.department || '');
 
     const defaultTemplate = await AssessmentTemplateModel.getDefaultTemplate(deptType);

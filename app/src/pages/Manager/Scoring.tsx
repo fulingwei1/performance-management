@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 import { ScoringDialog } from './Scoring/ScoringDialog';
 import { ScoredRankingTable } from './Scoring/ScoredRankingTable';
 
-export function ScoringManagement() {
+export function ScoringManagement({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuthStore();
   const { records, fetchTeamRecords, submitScore, loading } = usePerformanceStore();
   const [searchParams] = useSearchParams();
@@ -42,6 +42,7 @@ export function ScoringManagement() {
   const [scores, setScores] = useState({ taskCompletion: 1.0, initiative: 1.0, projectFeedback: 1.0, qualityImprovement: 1.0 });
   const [managerComment, setManagerComment] = useState('');
   const [nextMonthWorkArrangement, setNextMonthWorkArrangement] = useState('');
+  const [evaluationKeywords, setEvaluationKeywords] = useState<string[]>([]);
   const [subordinates, setSubordinates] = useState<any[]>([]);
   
   useEffect(() => {
@@ -103,6 +104,7 @@ export function ScoringManagement() {
     setScores({ taskCompletion: record.taskCompletion || 1.0, initiative: record.initiative || 1.0, projectFeedback: record.projectFeedback || 1.0, qualityImprovement: record.qualityImprovement || 1.0 });
     setManagerComment(record.managerComment || '');
     setNextMonthWorkArrangement(record.nextMonthWorkArrangement || '');
+    setEvaluationKeywords(record.evaluationKeywords || []);
     setIsDrawerOpen(true);
   }, []);
   
@@ -113,9 +115,9 @@ export function ScoringManagement() {
     if (targetRecord) {
       handleOpenDrawer(targetRecord);
       hasHandledParams.current = true;
-      window.history.replaceState({}, '', '/manager/scoring');
-    } else if (noSummaryParam === 'true') {
-      employeeApi.getById(employeeParam).then(response => {
+        window.history.replaceState({}, '', '/manager/dashboard');
+      } else if (noSummaryParam === 'true') {
+        employeeApi.getById(employeeParam).then(response => {
         const employee = response.data;
         const tempRecord = {
           id: '', employeeId: employeeParam, employeeName: employee?.name || employeeParam,
@@ -126,7 +128,7 @@ export function ScoringManagement() {
         setIsNoSummary(true);
         handleOpenDrawer(tempRecord);
         hasHandledParams.current = true;
-        window.history.replaceState({}, '', '/manager/scoring');
+        window.history.replaceState({}, '', '/manager/dashboard');
       }).catch(() => toast.error('获取员工信息失败'));
     }
   }, [employeeParam, monthParam, noSummaryParam, records, handleOpenDrawer]);
@@ -144,7 +146,7 @@ export function ScoringManagement() {
       } catch (error: any) { toast.error(error.message || '创建记录失败'); return; }
     }
     
-    const success = await submitScore({ id: recordId, ...scores, managerComment, nextMonthWorkArrangement });
+    const success = await submitScore({ id: recordId, ...scores, managerComment, nextMonthWorkArrangement, evaluationKeywords });
     if (success) {
       setIsDrawerOpen(false); setSelectedRecord(null); setIsNoSummary(false);
       toast.success('评分提交成功');
@@ -178,31 +180,59 @@ export function ScoringManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">评分管理</h1>
-          <p className="text-gray-500 mt-1">分组评分 · 排名分析</p>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            {(totalEmployees - scoredCount) > 0
-              ? <AlertCircle className="w-5 h-5 text-yellow-500" />
-              : <CheckCircle2 className="w-5 h-5 text-green-500" />}
-            <div>
-              <p className="font-medium text-sm">
-                {(totalEmployees - scoredCount) > 0 ? `${totalEmployees - scoredCount} 位员工待评分` : '本月已完成'}
-              </p>
-              <p className="text-xs text-gray-500">{hasAnyRecords && <span className={deadlineInfo.color}>{deadlineInfo.message}</span>}</p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">评分管理</h1>
+            <p className="text-gray-500 mt-1">分组评分 · 排名分析</p>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
+              {(totalEmployees - scoredCount) > 0
+                ? <AlertCircle className="w-5 h-5 text-yellow-500" />
+                : <CheckCircle2 className="w-5 h-5 text-green-500" />}
+              <div>
+                <p className="font-medium text-sm">
+                  {(totalEmployees - scoredCount) > 0 ? `${totalEmployees - scoredCount} 位员工待评分` : '本月已完成'}
+                </p>
+                <p className="text-xs text-gray-500">{hasAnyRecords && <span className={deadlineInfo.color}>{deadlineInfo.message}</span>}</p>
+              </div>
             </div>
+            <div className="text-right">
+              <p className="text-xl font-bold">{scoredCount}/{totalEmployees}</p>
+              <p className="text-xs text-gray-500">已完成</p>
+            </div>
+            {hasAnyRecords && <div className="w-24"><Progress value={progress} className="h-2" /></div>}
           </div>
-          <div className="text-right">
-            <p className="text-xl font-bold">{scoredCount}/{totalEmployees}</p>
-            <p className="text-xs text-gray-500">已完成</p>
-          </div>
-          {hasAnyRecords && <div className="w-24"><Progress value={progress} className="h-2" /></div>}
         </div>
-      </div>
+      )}
+
+      {embedded && (
+        <Card className={cn(deadlineInfo.bgColor, "border border-gray-200")}>
+          <CardContent className="pt-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                {(totalEmployees - scoredCount) > 0
+                  ? <AlertCircle className="w-5 h-5 text-yellow-500" />
+                  : <CheckCircle2 className="w-5 h-5 text-green-500" />}
+                <div>
+                  <p className="font-medium text-sm">
+                    {(totalEmployees - scoredCount) > 0 ? `${totalEmployees - scoredCount} 位员工待评分` : '本月已完成'}
+                  </p>
+                  <p className="text-xs text-gray-500">{hasAnyRecords && <span className={deadlineInfo.color}>{deadlineInfo.message}</span>}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xl font-bold">{scoredCount}/{totalEmployees}</p>
+                  <p className="text-xs text-gray-500">月度评分进度</p>
+                </div>
+                {hasAnyRecords && <div className="w-28"><Progress value={progress} className="h-2" /></div>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Scored ranking */}
       <ScoredRankingTable records={records} onOpenDrawer={handleOpenDrawer} />
@@ -298,6 +328,8 @@ export function ScoringManagement() {
         setManagerComment={setManagerComment}
         nextMonthWorkArrangement={nextMonthWorkArrangement}
         setNextMonthWorkArrangement={setNextMonthWorkArrangement}
+        evaluationKeywords={evaluationKeywords}
+        setEvaluationKeywords={setEvaluationKeywords}
         totalScore={totalScore}
         loading={loading}
         onSubmit={handleSubmit}

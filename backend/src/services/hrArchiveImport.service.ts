@@ -34,13 +34,88 @@ type ExistingEmployee = {
   manager_id?: string | null;
 };
 
+type OrgLevelValues = {
+  department: string;
+  secondDepartment: string;
+  thirdDepartment: string;
+};
+
+const ORG_NAME_ALIASES: Record<string, string> = {
+  海尔治县: '海尔治具',
+};
+
+const THIRD_LEVEL_PARENT_OVERRIDES: Record<string, string> = {
+  结构二组: '新能源技术部',
+  海尔治具: '测试部',
+};
+
+function normalizeSubDepartmentPath(subDepartment: string): string {
+  const normalized = normalizeText(subDepartment);
+  if (!normalized) return '';
+
+  const segments = normalized
+    .split('/')
+    .map((segment) => normalizeOrgValue(segment))
+    .filter(Boolean);
+
+  if (segments.length === 0) return '';
+
+  if (segments.length === 1 && THIRD_LEVEL_PARENT_OVERRIDES[segments[0]]) {
+    return `${THIRD_LEVEL_PARENT_OVERRIDES[segments[0]]}/${segments[0]}`;
+  }
+
+  if (segments.length >= 2) {
+    let [secondDepartment, thirdDepartment] = segments;
+    if (THIRD_LEVEL_PARENT_OVERRIDES[thirdDepartment] && !secondDepartment) {
+      secondDepartment = THIRD_LEVEL_PARENT_OVERRIDES[thirdDepartment];
+    }
+    if (THIRD_LEVEL_PARENT_OVERRIDES[secondDepartment] && !thirdDepartment) {
+      thirdDepartment = secondDepartment;
+      secondDepartment = THIRD_LEVEL_PARENT_OVERRIDES[thirdDepartment];
+    }
+    return thirdDepartment ? `${secondDepartment}/${thirdDepartment}` : secondDepartment;
+  }
+
+  return segments[0];
+}
+
 function normalizeText(value: unknown): string {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
 function normalizeOrgValue(value: unknown): string {
   const normalized = normalizeText(value);
-  return EMPTY_MARKERS.has(normalized) ? '' : normalized;
+  if (EMPTY_MARKERS.has(normalized)) return '';
+  return ORG_NAME_ALIASES[normalized] || normalized;
+}
+
+function normalizeOrgLevels(row: WorksheetRow): OrgLevelValues {
+  const department = normalizeOrgValue(row['一级部门']);
+  let secondDepartment = normalizeOrgValue(row['二级部门']);
+  let thirdDepartment = normalizeOrgValue(row['三级部门']);
+
+  if (!thirdDepartment && secondDepartment && THIRD_LEVEL_PARENT_OVERRIDES[secondDepartment]) {
+    thirdDepartment = secondDepartment;
+    secondDepartment = THIRD_LEVEL_PARENT_OVERRIDES[secondDepartment];
+  }
+
+  if (thirdDepartment && !secondDepartment && THIRD_LEVEL_PARENT_OVERRIDES[thirdDepartment]) {
+    secondDepartment = THIRD_LEVEL_PARENT_OVERRIDES[thirdDepartment];
+  }
+
+  if (secondDepartment === department) {
+    secondDepartment = '';
+  }
+
+  if (thirdDepartment === secondDepartment || thirdDepartment === department) {
+    thirdDepartment = '';
+  }
+
+  return {
+    department,
+    secondDepartment,
+    thirdDepartment,
+  };
 }
 
 function decodeXml(value: string): string {
@@ -174,7 +249,7 @@ function resolveLevel(levelText: string, position: string): ArchiveEmployee['lev
 
 function resolveRole(row: WorksheetRow, existing?: ExistingEmployee): ArchiveEmployee['role'] {
   const name = normalizeText(row['姓名']);
-  const department = normalizeOrgValue(row['一级部门']);
+  const { department } = normalizeOrgLevels(row);
   const position = normalizeText(row['岗位']);
 
   if (existing && ['admin', 'hr', 'gm'].includes(existing.role)) return existing.role;
@@ -223,12 +298,12 @@ function parseArchiveEmployees(rows: WorksheetRow[], existingEmployees: Existing
       const existing = existingByName.get(name);
       const archiveStatus = normalizeText(row['在职离职状态']);
       const idCard = normalizeText(row['身份证号']).toUpperCase();
-      const department = normalizeOrgValue(row['一级部门']);
-      const secondDepartment = normalizeOrgValue(row['二级部门']);
-      const thirdDepartment = normalizeOrgValue(row['三级部门']);
+      const { department, secondDepartment, thirdDepartment } = normalizeOrgLevels(row);
       const position = normalizeText(row['岗位']);
       const levelText = normalizeText(row['级别']);
-      const subDepartment = thirdDepartment ? `${secondDepartment || department}/${thirdDepartment}` : secondDepartment;
+      const subDepartment = normalizeSubDepartmentPath(
+        thirdDepartment ? `${secondDepartment || department}/${thirdDepartment}` : secondDepartment
+      );
 
       return {
         id: existing?.id || makeStableId(row, rowIndex + 2),
@@ -316,6 +391,37 @@ async function disableEmployeesMissingFromArchive(importedIds: string[]) {
   );
 }
 
+async function normalizeEmployeeOrgPaths() {
+  if (USE_MEMORY_DB) return;
+
+  for (const [thirdDepartment, parentDepartment] of Object.entries(THIRD_LEVEL_PARENT_OVERRIDES)) {
+    const normalizedThirdDepartment = normalizeOrgValue(thirdDepartment);
+    const normalizedParentDepartment = normalizeOrgValue(parentDepartment);
+    const legacyThirdDepartment = Object.entries(ORG_NAME_ALIASES)
+      .find(([, alias]) => alias === normalizedThirdDepartment)?.[0];
+
+    await query(
+      `UPDATE employees
+       SET sub_department = $1, updated_at = CURRENT_TIMESTAMP
+       WHERE sub_department = $2`,
+      [`${normalizedParentDepartment}/${normalizedThirdDepartment}`, normalizedThirdDepartment]
+    );
+
+    if (legacyThirdDepartment) {
+      await query(
+        `UPDATE employees
+         SET sub_department = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE sub_department = $2 OR sub_department = $3`,
+        [
+          `${normalizedParentDepartment}/${normalizedThirdDepartment}`,
+          `${normalizedParentDepartment}/${legacyThirdDepartment}`,
+          legacyThirdDepartment,
+        ]
+      );
+    }
+  }
+}
+
 export async function importHrArchive(filePath: string) {
   const rows = await readWorksheetRows(filePath, '员工信息表');
   const existingEmployees = await loadExistingEmployees();
@@ -327,12 +433,16 @@ export async function importHrArchive(filePath: string) {
   });
 
   await upsertArchiveEmployees(upsertOrder, managerIds);
+  await normalizeEmployeeOrgPaths();
   await disableEmployeesMissingFromArchive(employees.map((employee) => employee.id));
   await syncDepartmentsFromEmployees();
   cache.invalidateByPrefix('employee:');
 
   const activeEmployees = employees.filter((employee) => employee.status === 'active');
-  const departmentCounts = activeEmployees.reduce<Record<string, number>>((acc, employee) => {
+  const assessmentEligibleEmployees = activeEmployees.filter((employee) => (
+    employee.role === 'employee' || employee.role === 'manager'
+  ));
+  const departmentCounts = assessmentEligibleEmployees.reduce<Record<string, number>>((acc, employee) => {
     const department = employee.department || '未分配部门';
     acc[department] = (acc[department] || 0) + 1;
     return acc;
@@ -341,7 +451,9 @@ export async function importHrArchive(filePath: string) {
   return {
     totalRows: rows.length,
     imported: employees.length,
-    activeCount: activeEmployees.length,
+    activeCount: assessmentEligibleEmployees.length,
+    assessmentEligibleCount: assessmentEligibleEmployees.length,
+    nonAssessmentRoleCount: 0,
     disabledCount: employees.length - activeEmployees.length,
     managerLinks: managerIds.size,
     departmentCounts,

@@ -9,7 +9,6 @@ import { performanceApi, employeeApi } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { RadarChart } from '@/components/charts/RadarChart';
 import { GrowthTable } from '@/components/stats/GrowthTable';
@@ -22,11 +21,11 @@ import {
   BarChart3,
   Calendar,
   AlertTriangle,
-  Sparkles,
-  RefreshCw
+  RefreshCw,
+  Tags
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import keywordsData from '@/data/evaluation-keywords.json';
 
 // 时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -42,9 +41,12 @@ export function Analytics() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('6');
   const [hasDemoData, setHasDemoData] = useState(false);
-  const [generatingDemo, setGeneratingDemo] = useState(false);
 
   const currentMonth = format(new Date(), 'yyyy-MM');
+  const keywordLabelMap = useMemo(() => {
+    const entries = [...(keywordsData.positive || []), ...(keywordsData.negative || [])].map((item: any) => [item.id, item.text]);
+    return new Map<string, string>(entries);
+  }, []);
 
   // 获取数据
   useEffect(() => {
@@ -70,47 +72,17 @@ export function Analytics() {
     fetchData();
   }, [user, timeRange]);
 
-  // 生成模拟数据
-  const handleGenerateDemo = async () => {
-    setGeneratingDemo(true);
-    try {
-      const res = await performanceApi.generateDemoData();
-      if (res.success) {
-        toast.success(res.message);
-        setHasDemoData(true);
-        // 重新获取数据
-        const recordsRes = await performanceApi.getTeamRecords(undefined, parseInt(timeRange));
-        if (recordsRes.success) setRecords(recordsRes.data);
-      }
-    } catch (error: any) {
-      toast.error(error.message || '生成失败');
-    } finally {
-      setGeneratingDemo(false);
-    }
-  };
-
-  // 清除模拟数据
-  const handleClearDemo = async () => {
-    try {
-      const res = await performanceApi.clearDemoData();
-      if (res.success) {
-        toast.success(res.message);
-        setHasDemoData(false);
-        // 重新获取数据
-        const recordsRes = await performanceApi.getTeamRecords(undefined, parseInt(timeRange));
-        if (recordsRes.success) setRecords(recordsRes.data);
-      }
-    } catch (error: any) {
-      toast.error(error.message || '清除失败');
-    }
-  };
+  const realRecords = useMemo(
+    () => records.filter((record) => !record.isDemo && !String(record.id || '').startsWith('demo-')),
+    [records]
+  );
 
   // 计算统计数据
   const stats = useMemo(() => {
     // 只获取有评分的记录（解决月初未评分问题）
-    const currentMonthRecords = records.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const currentMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     const previousMonth = format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM');
-    const previousMonthRecords = records.filter(r => r.month === previousMonth && r.totalScore > 0);
+    const previousMonthRecords = realRecords.filter(r => r.month === previousMonth && r.totalScore > 0);
     
     const currentAvg = currentMonthRecords.length > 0
       ? currentMonthRecords.reduce((sum, r) => sum + r.totalScore, 0) / currentMonthRecords.length
@@ -126,16 +98,16 @@ export function Analytics() {
       previousAvg,
       change: currentAvg - previousAvg
     };
-  }, [records, subordinates, currentMonth]);
+  }, [realRecords, subordinates, currentMonth]);
 
   // 生成趋势图数据
   const trendData = useMemo(() => {
-    const monthsSet = new Set(records.map(r => r.month));
+    const monthsSet = new Set(realRecords.map(r => r.month));
     const months = Array.from(monthsSet).sort();
     
     return months.map(month => {
       // 只获取有评分的记录（解决月初未评分问题）
-      const monthRecords = records.filter(r => r.month === month && r.totalScore > 0);
+      const monthRecords = realRecords.filter(r => r.month === month && r.totalScore > 0);
       const avgScore = monthRecords.length > 0
         ? monthRecords.reduce((sum, r) => sum + r.totalScore, 0) / monthRecords.length
         : null; // 没有评分数据时返回null，图表会断开
@@ -144,14 +116,14 @@ export function Analytics() {
         teamAvg: avgScore !== null ? Math.round(avgScore * 100) / 100 : null
       };
     });
-  }, [records]);
+  }, [realRecords]);
 
   // 四维分析数据
   const radarData = useMemo(() => {
     // 只获取有评分的记录（解决月初未评分问题）
-    const currentMonthRecords = records.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const currentMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     const previousMonth = format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM');
-    const previousMonthRecords = records.filter(r => r.month === previousMonth && r.totalScore > 0);
+    const previousMonthRecords = realRecords.filter(r => r.month === previousMonth && r.totalScore > 0);
     
     const calcAvg = (recs: any[], key: string) => 
       recs.length > 0 ? recs.reduce((sum, r) => sum + (r[key] || 0), 0) / recs.length : 0;
@@ -170,22 +142,22 @@ export function Analytics() {
         qualityImprovement: calcAvg(previousMonthRecords, 'qualityImprovement')
       }
     };
-  }, [records, currentMonth]);
+  }, [realRecords, currentMonth]);
 
   // 员工成长数据
   const growthData = useMemo(() => {
-    const monthsSet = new Set(records.map(r => r.month));
+    const monthsSet = new Set(realRecords.map(r => r.month));
     const months = Array.from(monthsSet).sort();
     
     // 找到最近有评分的月份（解决月初未评分问题）
     let currentMonth = months[months.length - 1];
     
     // 检查最新月份是否有评分数据
-    const latestMonthRecords = records.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const latestMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     if (latestMonthRecords.length === 0 && months.length >= 2) {
       // 如果最新月份没有评分，使用上一个有评分的月份
       for (let i = months.length - 1; i >= 0; i--) {
-        const monthRecords = records.filter(r => r.month === months[i] && r.totalScore > 0);
+        const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
         if (monthRecords.length > 0) {
           currentMonth = months[i];
           break;
@@ -195,7 +167,7 @@ export function Analytics() {
     
     // 按员工分组
     const employeeRecords = new Map<string, any[]>();
-    records.forEach(r => {
+    realRecords.forEach(r => {
       if (!employeeRecords.has(r.employeeId)) {
         employeeRecords.set(r.employeeId, []);
       }
@@ -238,13 +210,13 @@ export function Analytics() {
         history: sortedRecords.slice(-6).map(r => r.totalScore)
       };
     }).filter(emp => emp.currentScore > 0 || emp.history.length > 0);
-  }, [records, subordinates]);
+  }, [realRecords, subordinates]);
 
   // 九宫格数据
   const talentGridData = useMemo(() => {
     // 按员工分组
     const employeeRecords = new Map<string, any[]>();
-    records.forEach(r => {
+    realRecords.forEach(r => {
       if (!employeeRecords.has(r.employeeId)) {
         employeeRecords.set(r.employeeId, []);
       }
@@ -301,7 +273,36 @@ export function Analytics() {
         historyScores
       };
     }).filter(emp => emp.currentScore > 0);
-  }, [records, subordinates]);
+  }, [realRecords, subordinates]);
+
+  const keywordStats = useMemo(() => {
+    const currentMonthScored = realRecords.filter(
+      (record) =>
+        record.month === currentMonth &&
+        record.totalScore > 0 &&
+        (record.status === 'completed' || record.status === 'scored')
+    );
+    const positiveMap = new Map<string, number>();
+    const negativeMap = new Map<string, number>();
+
+    currentMonthScored.forEach((record) => {
+      (record.evaluationKeywords || []).forEach((keyword) => {
+        const target = keyword.startsWith('n') ? negativeMap : positiveMap;
+        target.set(keyword, (target.get(keyword) || 0) + 1);
+      });
+    });
+
+    const toSortedArray = (map: Map<string, number>) =>
+      Array.from(map.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6);
+
+    return {
+      currentMonthScoredCount: currentMonthScored.length,
+      positive: toSortedArray(positiveMap),
+      negative: toSortedArray(negativeMap),
+    };
+  }, [realRecords, currentMonth]);
 
   if (loading) {
     return (
@@ -322,8 +323,8 @@ export function Analytics() {
         <div className="flex items-center gap-3">
           {hasDemoData && (
             <Badge variant="outline" className="text-orange-600 border-orange-300">
-              <Sparkles className="w-3 h-3 mr-1" />
-              含示例数据
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              库里仍有示例数据，但本看板已忽略
             </Badge>
           )}
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -341,32 +342,20 @@ export function Analytics() {
       </div>
 
       {/* 没有数据时的提示 */}
-      {records.length === 0 && (
+      {realRecords.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无绩效数据</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无真实绩效数据</h3>
             <p className="text-gray-500 mb-4">
-              可以生成示例数据来预览看板效果
+              当前真实打分还不足以生成看板。等经理完成月度评分后，团队趋势、四维分析、员工成长都会自动出来。
             </p>
-            <Button onClick={handleGenerateDemo} disabled={generatingDemo}>
-              {generatingDemo ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  生成示例数据
-                </>
-              )}
-            </Button>
+            <div className="text-sm text-gray-400">本页现在只统计真实评分数据，不再建议用示例数据看分析结果。</div>
           </CardContent>
         </Card>
       )}
 
-      {records.length > 0 && (
+      {realRecords.length > 0 && (
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -444,6 +433,62 @@ export function Analytics() {
             </Card>
           </div>
 
+          {/* Keyword tag snapshot */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">本月高频正面标签</p>
+                    <p className="text-xs text-gray-400 mt-1">来自经理真实评分时勾选的标签</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                {keywordStats.positive.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {keywordStats.positive.map(([keyword, count]) => (
+                      <Badge key={keyword} className="bg-emerald-100 text-emerald-700">
+                        {keywordLabelMap.get(keyword) || keyword} · {count}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">本月经理还没有勾选正面标签。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">本月高频待改进标签</p>
+                    <p className="text-xs text-gray-400 mt-1">可用于看团队共性问题与辅导重点</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-orange-600" />
+                  </div>
+                </div>
+                {keywordStats.negative.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {keywordStats.negative.map(([keyword, count]) => (
+                      <Badge key={keyword} className="bg-orange-100 text-orange-700">
+                        {keywordLabelMap.get(keyword) || keyword} · {count}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    本月经理还没有勾选待改进标签。
+                    {keywordStats.currentMonthScoredCount > 0 ? ' 后续一边评分一边勾选，这里就会自动形成团队问题画像。' : ''}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 趋势图 */}
@@ -478,25 +523,6 @@ export function Analytics() {
             data={growthData}
             title="员工成长追踪"
           />
-
-          {/* 模拟数据管理 */}
-          {hasDemoData && (
-            <Card className="border-orange-200 bg-orange-50/50">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-orange-600" />
-                    <span className="text-sm text-orange-700">
-                      当前数据包含示例数据，仅供演示使用
-                    </span>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleClearDemo}>
-                    清除示例数据
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </>
       )}
     </div>

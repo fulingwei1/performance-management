@@ -369,7 +369,8 @@ export const performanceController = {
       projectFeedback,
       qualityImprovement,
       managerComment,
-      nextMonthWorkArrangement
+      nextMonthWorkArrangement,
+      evaluationKeywords
     } = req.body;
 
     // 验证 id
@@ -441,7 +442,10 @@ export const performanceController = {
       totalScore: parseFloat(totalScore.toFixed(2)),
       level: scoreToLevel(totalScore),
       managerComment,
-      nextMonthWorkArrangement
+      nextMonthWorkArrangement,
+      evaluationKeywords: Array.isArray(evaluationKeywords)
+        ? evaluationKeywords.map((item: unknown) => String(item).trim()).filter(Boolean)
+        : []
     });
 
     if (!record) {

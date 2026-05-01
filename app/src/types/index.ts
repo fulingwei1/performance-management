@@ -232,6 +232,7 @@ export interface PerformanceRecord {
   // 经理评价
   managerComment: string;
   nextMonthWorkArrangement: string;
+  evaluationKeywords?: string[];
   
   // 排名
   departmentRank: number;

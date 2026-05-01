@@ -15,8 +15,11 @@ router.get('/', authenticate, employeeController.getAllEmployees);
 // 获取所有经理（需要认证）
 router.get('/managers', authenticate, employeeController.getAllManagers);
 
-// 获取当前经理的下属（需要经理权限）
-router.get('/subordinates', authenticate, requireRole('manager'), employeeController.getSubordinates);
+// 获取当前用户/经理的绩效参与状态（需要认证）
+router.get('/assessment-participation', authenticate, employeeController.getAssessmentParticipation);
+
+// 获取当前经理/兼任经理的下属
+router.get('/subordinates', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), employeeController.getSubordinates);
 
 // 根据角色获取员工（需要认证）
 router.get('/role/:role', authenticate, employeeController.getEmployeesByRole);

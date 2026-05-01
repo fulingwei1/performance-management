@@ -35,6 +35,16 @@ export const employeeQuarterlyController = {
     }
 
     const { year, quarter } = req.query;
+    if (year && quarter) {
+      await EmployeeQuarterlyModel.generateForEmployeeIfMissing(
+        req.user.userId,
+        Number(year),
+        Number(quarter)
+      );
+    } else {
+      await EmployeeQuarterlyModel.generateAllMissingForEmployee(req.user.userId);
+    }
+
     const results = await EmployeeQuarterlyModel.findByEmployee(
       req.user.userId,
       year ? Number(year) : undefined,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Plus, Edit, Trash2, Copy, Eye, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,14 +47,11 @@ export function AssessmentTemplates() {
 
   useEffect(() => {
     loadTemplates();
-  }, [filterType]);
+  }, []);
 
   const loadTemplates = async () => {
     try {
-      const result = await assessmentTemplateApi.getAll({
-        departmentType: filterType !== 'all' ? filterType : undefined,
-        includeMetrics: true,
-      });
+      const result = await assessmentTemplateApi.getAll({ includeMetrics: true });
 
       if (result.success) {
         setTemplates(result.data || []);
@@ -129,6 +126,18 @@ export function AssessmentTemplates() {
     return `${metrics.length} 个指标 (总权重: ${totalWeight.toFixed(0)}%)`;
   };
 
+  const filteredTemplates = useMemo(() => {
+    if (filterType === 'all') return templates;
+    return templates.filter((template) => template.departmentType === filterType);
+  }, [filterType, templates]);
+
+  const templateCounts = useMemo(() => {
+    return DEPARTMENT_TYPES.reduce<Record<string, number>>((acc, type) => {
+      acc[type.value] = templates.filter((template) => template.departmentType === type.value).length;
+      return acc;
+    }, {});
+  }, [templates]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -160,7 +169,7 @@ export function AssessmentTemplates() {
           全部 ({templates.length})
         </Button>
         {DEPARTMENT_TYPES.map(type => {
-          const count = templates.filter(t => t.departmentType === type.value).length;
+          const count = templateCounts[type.value] || 0;
           return (
             <Button
               key={type.value}
@@ -177,7 +186,7 @@ export function AssessmentTemplates() {
 
       {/* 模板列表 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {templates.map(template => {
+        {filteredTemplates.map(template => {
           const typeConfig = getTypeConfig(template.departmentType);
           
           return (
@@ -260,15 +269,17 @@ export function AssessmentTemplates() {
         })}
       </div>
 
-      {templates.length === 0 && (
+      {filteredTemplates.length === 0 && (
         <Card className="p-12">
           <div className="text-center text-gray-500">
             <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p>暂无模板</p>
-            <Button onClick={handleCreate} className="mt-4">
-              <Plus className="w-4 h-4 mr-2" />
-              创建第一个模板
-            </Button>
+            <p>{filterType === 'all' ? '暂无模板' : '当前分类下暂无模板'}</p>
+            {filterType === 'all' ? (
+              <Button onClick={handleCreate} className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                创建第一个模板
+              </Button>
+            ) : null}
           </div>
         </Card>
       )}

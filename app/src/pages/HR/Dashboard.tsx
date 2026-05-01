@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
-  Plus,
   Download,
-  Trash2,
   ChevronDown,
   ChevronRight,
   ArrowUp,
@@ -15,9 +13,7 @@ import { useHRStore } from '@/stores/hrStore';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +27,6 @@ import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { StatCards } from './Dashboard/StatCards';
 import { DeptPerformanceTable, type DeptRecord } from './Dashboard/DeptPerformanceTable';
 import { EmployeeDetailDrawer } from './Dashboard/EmployeeDetailDrawer';
-import { DeleteRecordsDialog } from './Dashboard/DeleteRecordsDialog';
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { todoApi } from '@/services/api';
 
@@ -47,6 +42,8 @@ type RankingConfig = {
     excludedEmployeeIds?: string[];
   };
 };
+
+const ASSESSMENT_ROLES = new Set(['employee', 'manager']);
 
 function getEmployeeUnitKey(employee: any): string {
   const dept = String(employee?.department || '').trim();
@@ -121,22 +118,19 @@ export function HRDashboard() {
   const { 
     employeesList,
     fetchEmployees,
-    allPerformanceRecords,
-    fetchAllPerformanceRecords
+    allPerformanceRecords
   } = useHRStore();
   
   const [currentMonth, setCurrentMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [, setAssessmentScope] = useState<{ rootDepts: string[]; subDeptsByRoot: Record<string, string[]> }>({ rootDepts: [], subDeptsByRoot: {} });
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'status'>('score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [rankingConfig, setRankingConfig] = useState<RankingConfig | null>(null);
+  const todoRole = user?.role === 'admin' ? 'admin' : 'hr';
   
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
   
@@ -151,7 +145,12 @@ export function HRDashboard() {
   
   const inScopeEmployees = employeesList.filter((employee: any) => {
     if (employee.status && employee.status !== 'active') return false;
+    if (!ASSESSMENT_ROLES.has(employee.role)) return false;
     return isParticipatingEmployee(employee, rankingConfig);
+  });
+  const activeCompanyEmployees = employeesList.filter((employee: any) => {
+    if (employee.status && employee.status !== 'active') return false;
+    return ASSESSMENT_ROLES.has(employee.role);
   });
   const inScopeEmployeeIds = new Set(inScopeEmployees.map((employee: any) => employee.id));
   const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));
@@ -204,7 +203,8 @@ export function HRDashboard() {
   });
   
   const stats = {
-    totalEmployees: inScopeEmployees.length,
+    companyTotalEmployees: activeCompanyEmployees.length,
+    participatingEmployees: inScopeEmployees.length,
     completedScores: monthRecords.filter(r => isScoredStatus(r.status)).length,
     pendingScores: inScopeEmployees.length - monthRecords.filter(r => isScoredStatus(r.status)).length,
     averageScore: monthRecords.filter(r => isScoredStatus(r.status)).length > 0
@@ -237,22 +237,6 @@ export function HRDashboard() {
     }
   };
   
-  const handleGenerate = async () => {
-    setGenerating(true);
-    try {
-      const response = await performanceApi.generateTasks(currentMonth);
-      if (response.success) { alert(response.message); fetchAllPerformanceRecords(); }
-      else throw new Error(response.message || '生成失败');
-    } catch (error: any) {
-      alert('生成失败: ' + (error.message || '未知错误'));
-    } finally {
-      setGenerating(false);
-      setShowGenerateDialog(false);
-    }
-  };
-
-  const realCurrentMonth = format(new Date(), 'yyyy-MM');
-
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
   
@@ -260,7 +244,7 @@ export function HRDashboard() {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
       {/* 待办事项 */}
       <motion.div variants={itemVariants}>
-        <TodoSection role="hr" fetchSummary={todoApi.getSummary} />
+        <TodoSection role={todoRole} fetchSummary={todoApi.getSummary} />
       </motion.div>
 
       {/* Header */}
@@ -282,28 +266,6 @@ export function HRDashboard() {
           <Button variant="outline" onClick={handleExport} disabled={exporting}>
             <Download className="w-4 h-4 mr-2" />{exporting ? '导出中...' : '导出数据'}
           </Button>
-          <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-            <Trash2 className="w-4 h-4 mr-2" />删除记录
-          </Button>
-          <DeleteRecordsDialog
-            open={showDeleteDialog}
-            onOpenChange={setShowDeleteDialog}
-            currentMonth={currentMonth}
-            realCurrentMonth={realCurrentMonth}
-            onDeleted={() => fetchAllPerformanceRecords()}
-          />
-          <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700"><Plus className="w-4 h-4 mr-2" />生成打分任务</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>生成打分任务</DialogTitle></DialogHeader>
-              <div className="space-y-4 pt-4">
-                <div><Label>月份</Label><Input type="month" value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} /></div>
-                <Button onClick={handleGenerate} className="w-full" disabled={generating}>{generating ? '生成中...' : '确认生成'}</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </motion.div>
       

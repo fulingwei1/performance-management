@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Sparkles } from 'lucide-react';
+import { Save, Send, Calendar, FileText, Loader2, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { AIAssistant } from '@/components/AIAssistant';
 import { FrozenAlert } from '@/components/FrozenAlert';
 import { performanceApi } from '@/services/api';
 import { format } from 'date-fns';
@@ -42,10 +40,6 @@ export function WorkSummary() {
   const [frozen, setFrozen] = useState(false);
   const [deadline, setDeadline] = useState<string | undefined>(undefined);
   const [recordId, setRecordId] = useState<string | null>(null);
-  
-  // AI助手状态
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
-  const [aiType, setAiType] = useState<'self-summary' | 'next-month-plan'>('self-summary');
   
   // 加载该月份的记录（检测冻结状态）
   useEffect(() => {
@@ -110,22 +104,6 @@ export function WorkSummary() {
     }
 
     setIsSubmitting(false);
-  };
-  
-  // 打开AI助手
-  const handleOpenAI = (type: 'self-summary' | 'next-month-plan') => {
-    setAiType(type);
-    setAiDrawerOpen(true);
-  };
-  
-  // 采用AI建议
-  const handleAdoptAI = (content: string) => {
-    if (aiType === 'self-summary') {
-      setSelfSummary(content);
-    } else {
-      setNextMonthPlan(content);
-    }
-    setAiDrawerOpen(false);
   };
   
   const containerVariants = {
@@ -248,25 +226,12 @@ export function WorkSummary() {
                 </Popover>
               </div>
               
-              {/* Self Summary with AI */}
+              {/* Self Summary */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="summary">
-                    本月工作总结
-                    <span className="text-red-500">*</span>
-                  </Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenAI('self-summary')}
-                    disabled={frozen}
-                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                  >
-                    <Sparkles className="w-4 h-4 mr-1" />
-                    AI 帮我写
-                  </Button>
-                </div>
+                <Label htmlFor="summary">
+                  本月工作总结
+                  <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="summary"
                   placeholder="请描述本月完成的主要工作、项目经验与收获、遇到的困难与解决方案..."
@@ -280,25 +245,12 @@ export function WorkSummary() {
                 </p>
               </div>
               
-              {/* Next Month Plan with AI */}
+              {/* Next Month Plan */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="plan">
-                    下月工作计划
-                    <span className="text-red-500">*</span>
-                  </Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenAI('next-month-plan')}
-                    disabled={frozen}
-                    className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                  >
-                    <Sparkles className="w-4 h-4 mr-1" />
-                    AI 帮我写
-                  </Button>
-                </div>
+                <Label htmlFor="plan">
+                  下月工作计划
+                  <span className="text-red-500">*</span>
+                </Label>
                 <Textarea
                   id="plan"
                   placeholder="请描述下月工作目标、计划开展的项目、需要协调的资源..."
@@ -353,30 +305,11 @@ export function WorkSummary() {
                 <li>工作总结应客观真实，突出重点和亮点</li>
                 <li>计划应具体可行，明确目标和措施</li>
                 <li>可在提交前保存草稿，随时修改</li>
-                <li className="text-purple-700 font-medium">💡 点击"AI 帮我写"可以获取AI建议</li>
               </ul>
             </CardContent>
           </Card>
         </motion.div>
       </motion.div>
-
-      {/* AI Assistant Drawer */}
-      <Sheet open={aiDrawerOpen} onOpenChange={setAiDrawerOpen}>
-        <SheetContent side="right" className="w-[400px] sm:w-[540px] p-0">
-          <SheetHeader className="sr-only">
-            <SheetTitle>AI 助手</SheetTitle>
-          </SheetHeader>
-          <AIAssistant
-            type={aiType}
-            requestData={{
-              employeeId: user?.id,
-              month: format(month, 'yyyy-MM'),
-              currentSummary: aiType === 'next-month-plan' ? selfSummary : undefined
-            }}
-            onAdopt={handleAdoptAI}
-          />
-        </SheetContent>
-      </Sheet>
     </>
   );
 }

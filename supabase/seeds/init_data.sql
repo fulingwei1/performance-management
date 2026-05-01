@@ -71,7 +71,7 @@ VALUES
   ('e064', '杨明博', '工程技术中心', '测试部', 'employee', 'junior', 'm011', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
   ('e065', '蔡柯炳', '工程技术中心', 'PLC 部', 'employee', 'junior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
   ('e066', '张浩', '工程技术中心', '测试部', 'employee', 'junior', 'm011', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
-  ('hr001', '林作倩', '人力行政部', '人事组', 'hr', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
+  ('hr001', '林作倩', '人力行政部', '人事组', 'admin', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
   ('e067', '潘自栖', '工程技术中心', 'PLC 部', 'employee', 'junior', 'm008', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
   ('e068', '刘万成', '工程技术中心', '新能源技术部', 'employee', 'junior', 'm003', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),
   ('e069', '曾杰', '工程技术中心', '新能源技术部', 'employee', 'junior', 'm003', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', NOW(), NOW()),

@@ -345,6 +345,7 @@ CREATE TABLE IF NOT EXISTS performance_records (
   normalized_score DECIMAL(3,2),
   manager_comment TEXT,
   next_month_work_arrangement TEXT,
+  evaluation_keywords JSONB DEFAULT '[]'::jsonb,
   group_type group_type NOT NULL,
   group_rank INT DEFAULT 0,
   cross_dept_rank INT DEFAULT 0,

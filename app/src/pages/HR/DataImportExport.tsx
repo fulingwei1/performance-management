@@ -8,7 +8,7 @@ export function DataImportExport() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">数据导入导出</h2>
+        <h2 className="text-2xl font-bold text-gray-900">数据管理</h2>
         <p className="text-gray-500 mt-1">统一处理人事档案上传、员工模板导入和绩效数据导出。</p>
       </div>
 

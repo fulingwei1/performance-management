@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
+  AlertTriangle,
   Building2,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  FileText,
   Save,
   Settings,
   UserRound,
@@ -14,8 +16,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
-import { employeeApi, performanceConfigApi } from '@/services/api';
+import { assessmentTemplateApi, employeeApi, performanceConfigApi } from '@/services/api';
 
 interface Employee {
   id: string;
@@ -52,7 +64,26 @@ interface RankingConfig {
     defaultStrategy: any;
     perUnit: Record<string, any>;
   };
+  templateAssignments: Record<string, string>;
   mergeRankGroups: any[];
+}
+
+interface TemplateOption {
+  id: string;
+  name: string;
+  departmentType: string;
+  status?: string;
+}
+
+interface SelectedUnitSummary {
+  unitKey: string;
+  unitName: string;
+  employeeCount: number;
+  exactTemplateId: string | null;
+  effectiveTemplateId: string | null;
+  effectiveTemplateName: string | null;
+  inheritedFromUnitKey: string | null;
+  missingTemplate: boolean;
 }
 
 const defaultConfig: RankingConfig = {
@@ -69,8 +100,11 @@ const defaultConfig: RankingConfig = {
     defaultStrategy: { type: 'by_high_low' },
     perUnit: {},
   },
+  templateAssignments: {},
   mergeRankGroups: [],
 };
+
+const ASSESSMENT_ROLES = new Set(['employee', 'manager']);
 
 function cleanSegment(value?: string): string {
   const normalized = String(value || '').trim();
@@ -116,8 +150,85 @@ function unique(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
+function isParticipatingEmployee(
+  employee: Employee,
+  participation: RankingConfig['participation']
+): boolean {
+  const unitKey = getEmployeeUnitKey(employee);
+  if (participation.excludedEmployeeIds.includes(employee.id)) return false;
+  if (participation.includedEmployeeIds.includes(employee.id)) return true;
+  const unitDecision = resolveUnitDecision(unitKey, participation.includedUnitKeys, participation.excludedUnitKeys);
+  if (unitDecision) return unitDecision === 'include';
+  return participation.mode !== 'include';
+}
+
 function isDescendantKey(value: string, key: string): boolean {
   return value === key || value.startsWith(`${key}/`);
+}
+
+function getTemplateTypeLabel(departmentType?: string): string {
+  switch (departmentType) {
+    case 'sales':
+      return '销售类';
+    case 'engineering':
+      return '工程类';
+    case 'manufacturing':
+      return '生产类';
+    case 'management':
+      return '管理类';
+    default:
+      return '支持类';
+  }
+}
+
+function getDepartmentTypeByName(departmentName?: string): string {
+  const value = String(departmentName || '').trim();
+  if (/营销|销售/.test(value)) return 'sales';
+  if (/工程|技术|研发/.test(value)) return 'engineering';
+  if (/制造|生产|品质/.test(value)) return 'manufacturing';
+  if (/总经|管理|总办/.test(value)) return 'management';
+  return 'support';
+}
+
+function getPreferredDepartmentType(unitKey: string): string {
+  const rootDepartment = unitKey.split('/')[0] || unitKey;
+  return getDepartmentTypeByName(rootDepartment);
+}
+
+function getTemplateAssignmentDetail(
+  unitKey: string,
+  templateAssignments: Record<string, string>
+): {
+  exactTemplateId: string | null;
+  effectiveTemplateId: string | null;
+  inheritedFromUnitKey: string | null;
+} {
+  const exactTemplateId = templateAssignments[unitKey] || null;
+  if (exactTemplateId) {
+    return {
+      exactTemplateId,
+      effectiveTemplateId: exactTemplateId,
+      inheritedFromUnitKey: null,
+    };
+  }
+
+  let inheritedFromUnitKey: string | null = null;
+  let effectiveTemplateId: string | null = null;
+
+  for (const [configuredUnitKey, templateId] of Object.entries(templateAssignments)) {
+    if (!templateId) continue;
+    if (!matchesConfiguredUnit(unitKey, configuredUnitKey)) continue;
+    if (!inheritedFromUnitKey || configuredUnitKey.length > inheritedFromUnitKey.length) {
+      inheritedFromUnitKey = configuredUnitKey;
+      effectiveTemplateId = templateId;
+    }
+  }
+
+  return {
+    exactTemplateId: null,
+    effectiveTemplateId,
+    inheritedFromUnitKey,
+  };
 }
 
 function getNodeEmployees(node: OrgNode): Employee[] {
@@ -174,7 +285,9 @@ function buildOrgTree(employees: Employee[]): OrgNode[] {
 
 export default function AssessmentScopeSettings() {
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
   const [rankingConfig, setRankingConfig] = useState<RankingConfig>(defaultConfig);
+  const rankingConfigRef = useRef<RankingConfig>(defaultConfig);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -184,16 +297,29 @@ export default function AssessmentScopeSettings() {
     loadData();
   }, []);
 
+  const updateRankingConfig = (updater: (current: RankingConfig) => RankingConfig) => {
+    setRankingConfig((prev) => {
+      const next = updater(prev);
+      rankingConfigRef.current = next;
+      return next;
+    });
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
-      const [empResult, configResult] = await Promise.allSettled([
+      const [empResult, configResult, templateResult] = await Promise.allSettled([
         employeeApi.getAll(),
         performanceConfigApi.getRankingConfig(),
+        assessmentTemplateApi.getAll({ includeMetrics: false }),
       ]);
 
+      let nextEmployees: Employee[] = [];
+      let nextConfig: RankingConfig = defaultConfig;
+
       if (empResult.status === 'fulfilled' && empResult.value.success) {
-        setEmployees(empResult.value.data || []);
+        nextEmployees = empResult.value.data || [];
+        setEmployees(nextEmployees);
       } else {
         const reason = empResult.status === 'rejected' ? empResult.reason?.message : empResult.value?.message;
         toast.error('员工档案加载失败: ' + (reason || '未知错误'));
@@ -201,14 +327,31 @@ export default function AssessmentScopeSettings() {
 
       if (configResult.status === 'fulfilled' && configResult.value.success) {
         const configData = configResult.value.data || {};
-        setRankingConfig({
+        nextConfig = {
           ...defaultConfig,
           ...configData,
           participation: {
             ...defaultConfig.participation,
             ...(configData.participation || {}),
           },
-        });
+          templateAssignments: {
+            ...defaultConfig.templateAssignments,
+            ...(configData.templateAssignments || {}),
+          },
+        };
+        rankingConfigRef.current = nextConfig;
+        setRankingConfig(nextConfig);
+      }
+
+      if (templateResult.status === 'fulfilled' && templateResult.value.success) {
+        setTemplates(
+          (templateResult.value.data || []).filter((template: TemplateOption) => template.status !== 'archived')
+        );
+      } else {
+        const reason = templateResult.status === 'rejected'
+          ? templateResult.reason?.message
+          : templateResult.value?.message;
+        toast.error('考核模板加载失败: ' + (reason || '未知错误'));
       }
     } catch (error: any) {
       toast.error('加载数据失败: ' + (error.message || String(error)));
@@ -218,21 +361,29 @@ export default function AssessmentScopeSettings() {
   };
 
   const activeEmployees = useMemo(
-    () => employees.filter((employee) => !employee.status || employee.status === 'active'),
+    () => employees.filter((employee) => (
+      (!employee.status || employee.status === 'active') && ASSESSMENT_ROLES.has(employee.role)
+    )),
     [employees]
   );
   const orgTree = useMemo(() => buildOrgTree(activeEmployees), [activeEmployees]);
+  const orgNodeMap = useMemo(() => {
+    const map = new Map<string, OrgNode>();
+    const visit = (node: OrgNode) => {
+      map.set(node.key, node);
+      node.children.forEach(visit);
+    };
+    orgTree.forEach(visit);
+    return map;
+  }, [orgTree]);
+  const templateMap = useMemo(
+    () => new Map(templates.map((template) => [template.id, template])),
+    [templates]
+  );
 
   const participation = rankingConfig.participation;
 
-  const isParticipating = (employee: Employee): boolean => {
-    const unitKey = getEmployeeUnitKey(employee);
-    if (participation.excludedEmployeeIds.includes(employee.id)) return false;
-    if (participation.includedEmployeeIds.includes(employee.id)) return true;
-    const unitDecision = resolveUnitDecision(unitKey, participation.includedUnitKeys, participation.excludedUnitKeys);
-    if (unitDecision) return unitDecision === 'include';
-    return participation.mode !== 'include';
-  };
+  const isParticipating = (employee: Employee): boolean => isParticipatingEmployee(employee, participation);
 
   const isMarked = (employee: Employee): boolean => (
     participation.mode === 'include' ? isParticipating(employee) : !isParticipating(employee)
@@ -240,25 +391,61 @@ export default function AssessmentScopeSettings() {
 
   const participantCount = activeEmployees.filter(isParticipating).length;
   const selectedMarkCount = activeEmployees.filter(isMarked).length;
+  const requiredTemplateUnitKeys = useMemo(
+    () => participation.mode === 'include' ? unique(participation.includedUnitKeys) : [],
+    [participation.includedUnitKeys, participation.mode]
+  );
+  const selectedUnitSummaries = useMemo<SelectedUnitSummary[]>(() => (
+    requiredTemplateUnitKeys.map((unitKey) => {
+      const detail = getTemplateAssignmentDetail(unitKey, rankingConfig.templateAssignments);
+      const node = orgNodeMap.get(unitKey);
+      const employeeCount = node ? getNodeEmployees(node).length : 0;
+      const effectiveTemplate = detail.effectiveTemplateId ? templateMap.get(detail.effectiveTemplateId) : null;
+      return {
+        unitKey,
+        unitName: node?.name || unitKey.split('/').slice(-1)[0] || unitKey,
+        employeeCount,
+        exactTemplateId: detail.exactTemplateId,
+        effectiveTemplateId: detail.effectiveTemplateId,
+        effectiveTemplateName: effectiveTemplate?.name || null,
+        inheritedFromUnitKey:
+          detail.inheritedFromUnitKey && detail.inheritedFromUnitKey !== unitKey
+            ? detail.inheritedFromUnitKey
+            : null,
+        missingTemplate: !detail.effectiveTemplateId,
+      };
+    })
+  ).sort((a, b) => a.unitKey.localeCompare(b.unitKey, 'zh-Hans-CN')), [
+    orgNodeMap,
+    rankingConfig.templateAssignments,
+    requiredTemplateUnitKeys,
+    templateMap,
+  ]);
+  const missingTemplateUnits = selectedUnitSummaries.filter((summary) => summary.missingTemplate);
+  const selectedTemplateCount = Object.keys(rankingConfig.templateAssignments || {}).length;
 
   const setParticipation = (updater: (current: RankingConfig['participation']) => RankingConfig['participation']) => {
-    setRankingConfig((prev) => ({
+    updateRankingConfig((prev) => ({
       ...prev,
       participation: updater(prev.participation),
     }));
   };
 
   const setMode = (mode: ParticipationMode) => {
-    setParticipation((current) => {
-      if (current.mode === mode) return current;
+    updateRankingConfig((prev) => {
+      if (prev.participation.mode === mode) return prev;
       return {
-        ...current,
-        mode,
-        enabledUnitKeys: [],
-        includedUnitKeys: [],
-        excludedUnitKeys: [],
-        includedEmployeeIds: [],
-        excludedEmployeeIds: [],
+        ...prev,
+        participation: {
+          ...prev.participation,
+          mode,
+          enabledUnitKeys: [],
+          includedUnitKeys: [],
+          excludedUnitKeys: [],
+          includedEmployeeIds: [],
+          excludedEmployeeIds: [],
+        },
+        templateAssignments: {},
       };
     });
   };
@@ -274,34 +461,46 @@ export default function AssessmentScopeSettings() {
 
   const toggleUnit = (node: OrgNode, checked: boolean) => {
     const nodeEmployeeIds = new Set(getNodeEmployees(node).map((employee) => employee.id));
-    setParticipation((current) => {
+    updateRankingConfig((prev) => {
+      const current = prev.participation;
       const includeUnits = current.includedUnitKeys.filter((key) => !isDescendantKey(key, node.key));
       const excludeUnits = current.excludedUnitKeys.filter((key) => !isDescendantKey(key, node.key));
       const includedEmployeeIds = current.includedEmployeeIds.filter((id) => !nodeEmployeeIds.has(id));
       const excludedEmployeeIds = current.excludedEmployeeIds.filter((id) => !nodeEmployeeIds.has(id));
+      const nextTemplateAssignments = Object.fromEntries(
+        Object.entries(prev.templateAssignments || {}).filter(([key]) => !isDescendantKey(key, node.key))
+      );
 
       if (current.mode === 'include') {
         const isInheritedExcluded = current.excludedUnitKeys.some((key) => node.key.startsWith(`${key}/`));
         const nextIncludedUnits = checked || isInheritedExcluded ? unique([...includeUnits, node.key]) : includeUnits;
         return {
-          ...current,
-          includedUnitKeys: checked ? nextIncludedUnits : includeUnits,
-          enabledUnitKeys: checked ? nextIncludedUnits : includeUnits,
-          excludedUnitKeys: checked ? excludeUnits : unique([...excludeUnits, node.key]),
-          includedEmployeeIds,
-          excludedEmployeeIds,
+          ...prev,
+          participation: {
+            ...current,
+            includedUnitKeys: checked ? nextIncludedUnits : includeUnits,
+            enabledUnitKeys: checked ? nextIncludedUnits : includeUnits,
+            excludedUnitKeys: checked ? excludeUnits : unique([...excludeUnits, node.key]),
+            includedEmployeeIds,
+            excludedEmployeeIds,
+          },
+          templateAssignments: nextTemplateAssignments,
         };
       }
 
       const isInheritedExcluded = current.excludedUnitKeys.some((key) => node.key.startsWith(`${key}/`));
       const nextIncludedUnits = !checked && isInheritedExcluded ? unique([...includeUnits, node.key]) : includeUnits;
       return {
-        ...current,
-        includedUnitKeys: nextIncludedUnits,
-        enabledUnitKeys: nextIncludedUnits,
-        excludedUnitKeys: checked ? unique([...excludeUnits, node.key]) : excludeUnits,
-        includedEmployeeIds,
-        excludedEmployeeIds,
+        ...prev,
+        participation: {
+          ...current,
+          includedUnitKeys: nextIncludedUnits,
+          enabledUnitKeys: nextIncludedUnits,
+          excludedUnitKeys: checked ? unique([...excludeUnits, node.key]) : excludeUnits,
+          includedEmployeeIds,
+          excludedEmployeeIds,
+        },
+        templateAssignments: nextTemplateAssignments,
       };
     });
   };
@@ -332,6 +531,21 @@ export default function AssessmentScopeSettings() {
     });
   };
 
+  const setUnitTemplate = (unitKey: string, templateId: string) => {
+    updateRankingConfig((prev) => {
+      const nextAssignments = { ...(prev.templateAssignments || {}) };
+      if (!templateId || templateId === '__inherit__') {
+        delete nextAssignments[unitKey];
+      } else {
+        nextAssignments[unitKey] = templateId;
+      }
+      return {
+        ...prev,
+        templateAssignments: nextAssignments,
+      };
+    });
+  };
+
   const getNodeCheckState = (node: OrgNode): boolean | 'indeterminate' => {
     const nodeEmployees = getNodeEmployees(node);
     if (nodeEmployees.length === 0) return false;
@@ -351,10 +565,29 @@ export default function AssessmentScopeSettings() {
   };
 
   const handleSave = async () => {
+    const latestConfig = rankingConfigRef.current;
+    const latestParticipation = latestConfig.participation;
+    const latestRequiredTemplateUnitKeys = latestParticipation.mode === 'include'
+      ? unique(latestParticipation.includedUnitKeys)
+      : [];
+    const latestMissingTemplateUnits = latestRequiredTemplateUnitKeys.filter((unitKey) => (
+      !getTemplateAssignmentDetail(unitKey, latestConfig.templateAssignments).effectiveTemplateId
+    ));
+
+    if (latestParticipation.mode === 'include' && latestRequiredTemplateUnitKeys.length > 0 && latestMissingTemplateUnits.length > 0) {
+      const previewNames = latestMissingTemplateUnits
+        .slice(0, 3)
+        .map((unitKey) => orgNodeMap.get(unitKey)?.name || unitKey.split('/').slice(-1)[0] || unitKey)
+        .join('、');
+      const suffix = latestMissingTemplateUnits.length > 3 ? ` 等 ${latestMissingTemplateUnits.length} 个部门` : '';
+      toast.error(`还有参与考核的部门未选择模板：${previewNames}${suffix}`);
+      return;
+    }
+
     setSaving(true);
     try {
-      await performanceConfigApi.updateRankingConfig(rankingConfig as unknown as Record<string, unknown>);
-      toast.success('考核范围已保存，后续生成任务、绩效看板和排名会按这个范围生效');
+      await performanceConfigApi.updateRankingConfig(latestConfig as unknown as Record<string, unknown>);
+      toast.success('考核范围和部门模板已保存，后续生成任务、考核表单和排名都会按这个配置生效');
       await loadData();
     } catch (error: any) {
       toast.error('保存失败: ' + (error.message || String(error)));
@@ -446,8 +679,199 @@ export default function AssessmentScopeSettings() {
           <Badge variant="outline" className="text-sm">参与考核：{participantCount} 人</Badge>
           <Badge variant="secondary" className="text-sm">不参与：{activeEmployees.length - participantCount} 人</Badge>
           <Badge variant="outline" className="text-sm">当前勾选：{selectedMarkCount} 人</Badge>
+          <Badge variant="outline" className="text-sm">已选模板：{selectedTemplateCount} 个</Badge>
         </div>
       </motion.div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4" />
+            已保存配置摘要
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm text-muted-foreground">
+            保存后，这里会展示“参与考核的部门”和“该部门当前生效的考核模板”。模板内容请在“考核模板”页里维护，这里只负责选择使用哪个模板。
+          </div>
+
+          {participation.mode !== 'include' ? (
+            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
+              当前是“默认全员参与、勾选不参与”的模式，所以这里不单独展示参与部门模板。要按部门指定模板，请切换到“勾选参与考核”模式。
+            </div>
+          ) : selectedUnitSummaries.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {selectedUnitSummaries.map((summary) => {
+                const template = summary.effectiveTemplateId ? templateMap.get(summary.effectiveTemplateId) : null;
+                return (
+                  <div key={summary.unitKey} className="rounded-lg border bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-gray-900">{summary.unitName}</div>
+                        <div className="mt-1 text-xs text-gray-500">{summary.unitKey}</div>
+                        <div className="mt-1 text-xs text-gray-500">参与人数：{summary.employeeCount} 人</div>
+                      </div>
+                      <Badge variant={summary.missingTemplate ? 'outline' : 'secondary'}>
+                        {summary.missingTemplate ? '未选模板' : '已选模板'}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {template ? (
+                        <>
+                          <Badge variant="secondary" className="text-xs">
+                            {template.name}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {getTemplateTypeLabel(template.departmentType)}
+                          </Badge>
+                          {summary.inheritedFromUnitKey && (
+                            <Badge variant="outline" className="text-xs">
+                              继承自：{summary.inheritedFromUnitKey}
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-amber-700">
+                          还没有选择考核模板
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
+              当前还没有勾选参与考核的部门。先在下面组织树里勾选要参与考核的部门，再为这些部门选择模板。
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4" />
+            参与部门对应考核模板
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm text-muted-foreground">
+            这里不是新建模板的地方，只是为“已选参与考核的部门”指定要使用的模板。模板内容请到上面的“考核模板”页维护。
+          </div>
+
+          {participation.mode !== 'include' ? (
+            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
+              当前是“勾选不参与考核”模式，系统默认其他部门都参与，因此这里不强制逐个选模板。若你想明确指定参与部门和对应模板，请切换到“勾选参与考核”模式。
+            </div>
+          ) : selectedUnitSummaries.length > 0 ? (
+            <div className="space-y-3">
+              {selectedUnitSummaries.map((summary) => {
+                const inheritedTemplate = summary.inheritedFromUnitKey && summary.effectiveTemplateId
+                  ? templateMap.get(summary.effectiveTemplateId)
+                  : null;
+                const exactTemplate = summary.exactTemplateId ? templateMap.get(summary.exactTemplateId) : null;
+                const preferredDepartmentType = getPreferredDepartmentType(summary.unitKey);
+                const recommendedTemplates = templates.filter(
+                  (template) => template.departmentType === preferredDepartmentType
+                );
+                const otherTemplates = templates.filter(
+                  (template) => template.departmentType !== preferredDepartmentType
+                );
+                return (
+                  <div key={`assignment-${summary.unitKey}`} className="rounded-lg border bg-white p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900">{summary.unitName}</div>
+                        <div className="text-xs text-gray-500">{summary.unitKey}</div>
+                        <div className="mt-1 text-xs text-gray-500">参与人数：{summary.employeeCount} 人</div>
+                      </div>
+
+                      <div className="w-full lg:w-[360px]">
+                        <Select
+                          value={summary.exactTemplateId || '__inherit__'}
+                          onValueChange={(value) => setUnitTemplate(summary.unitKey, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="请选择考核模板" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__inherit__">
+                              {inheritedTemplate
+                                ? `继承上级模板：${inheritedTemplate.name}`
+                                : '未单独指定（请选择模板）'}
+                            </SelectItem>
+                            {recommendedTemplates.length > 0 && (
+                              <SelectGroup>
+                                <SelectLabel>
+                                  推荐模板：{getTemplateTypeLabel(preferredDepartmentType)}
+                                </SelectLabel>
+                                {recommendedTemplates.map((template) => (
+                                  <SelectItem key={template.id} value={template.id}>
+                                    {template.name} · {getTemplateTypeLabel(template.departmentType)}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            )}
+                            {otherTemplates.length > 0 && (
+                              <>
+                                <SelectSeparator />
+                                <SelectGroup>
+                                  <SelectLabel>其他类型模板</SelectLabel>
+                                  {otherTemplates.map((template) => (
+                                    <SelectItem key={template.id} value={template.id}>
+                                      {template.name} · {getTemplateTypeLabel(template.departmentType)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        推荐类型：{getTemplateTypeLabel(preferredDepartmentType)}
+                      </Badge>
+                      {exactTemplate ? (
+                        <Badge variant="secondary" className="text-xs">
+                          当前指定：{exactTemplate.name}
+                        </Badge>
+                      ) : inheritedTemplate ? (
+                        <Badge variant="outline" className="text-xs">
+                          当前继承：{inheritedTemplate.name}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-amber-700">
+                          这个参与部门还没有选择模板
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
+              先在下面组织树里勾选要参与考核的部门，这里才会出现模板选择框。
+            </div>
+          )}
+
+          {missingTemplateUnits.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  还有 {missingTemplateUnits.length} 个参与考核的部门没有选择模板，当前不能保存。请先到这里选好模板；如果模板本身还没有建好，请切到“考核模板”页先维护。
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">

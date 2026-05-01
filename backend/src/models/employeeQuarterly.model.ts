@@ -4,6 +4,43 @@ import { query } from '../config/database';
  * 员工季度绩效汇总 — 从 3 个月 performance_records 自动聚合
  */
 export class EmployeeQuarterlyModel {
+  static async generateForEmployeeIfMissing(employeeId: string, year: number, quarter: number): Promise<any> {
+    const existing = await query(
+      'SELECT id FROM employee_quarterly_summaries WHERE employee_id = ? AND year = ? AND quarter = ?',
+      [employeeId, year, quarter]
+    );
+    if (existing.length > 0) {
+      return this.findById(existing[0].id);
+    }
+    return this.generateForEmployee(employeeId, year, quarter);
+  }
+
+  static async generateAllMissingForEmployee(employeeId: string): Promise<void> {
+    const months = await query(
+      `SELECT DISTINCT month
+       FROM performance_records
+       WHERE employee_id = ?
+       ORDER BY month DESC`,
+      [employeeId]
+    );
+
+    const quarterKeys = new Set<string>();
+    months.forEach((row: any) => {
+      const monthValue = String(row.month || '');
+      const [yearText, monthText] = monthValue.split('-');
+      const year = Number(yearText);
+      const month = Number(monthText);
+      if (!year || !month) return;
+      const quarter = Math.ceil(month / 3);
+      quarterKeys.add(`${year}-Q${quarter}`);
+    });
+
+    for (const key of quarterKeys) {
+      const [yearText, quarterText] = key.split('-Q');
+      await this.generateForEmployeeIfMissing(employeeId, Number(yearText), Number(quarterText));
+    }
+  }
+
   /**
    * 为单个员工生成季度汇总
    */

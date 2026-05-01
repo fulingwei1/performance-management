@@ -188,7 +188,7 @@ export function AssessmentPublication() {
     >
       {/* Header */}
       <motion.div variants={itemVariants}>
-        <h1 className="text-2xl font-bold text-gray-900">考核结果发布</h1>
+        <h1 className="text-2xl font-bold text-gray-900">结果发布</h1>
         <p className="text-gray-500 mt-1">发布月度考核结果，员工可查看正式绩效</p>
       </motion.div>
 
@@ -198,7 +198,7 @@ export function AssessmentPublication() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Send className="w-5 h-5" />
-              发布考核结果
+              发布结果
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">

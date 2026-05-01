@@ -36,7 +36,19 @@ export function DataImport() {
 function HrArchiveImport() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<null | {
+    success: boolean;
+    totalRows?: number;
+    imported?: number;
+    activeCount?: number;
+    assessmentEligibleCount?: number;
+    nonAssessmentRoleCount?: number;
+    disabledCount?: number;
+    managerLinks?: number;
+    departmentCounts?: Record<string, number>;
+    message?: string;
+    errors?: Array<{ name?: string; message?: string }>;
+  }>(null);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -111,10 +123,39 @@ function HrArchiveImport() {
               )}
               <span className={`font-medium ${result.success ? 'text-green-700' : 'text-red-700'}`}>
                 {result.success
-                  ? `共 ${result.total} 条记录，更新 ${result.updated} 人，跳过 ${result.skipped} 人`
+                  ? '人事档案同步完成'
                   : '同步失败'}
               </span>
             </div>
+            {result.success && (
+              <div className="grid gap-3 md:grid-cols-4 mb-3">
+                <div className="rounded-lg bg-white/80 p-3 border border-green-100">
+                  <div className="text-xs text-gray-500">档案总人数</div>
+                  <div className="text-xl font-semibold text-gray-900">{result.imported ?? 0}</div>
+                </div>
+                <div className="rounded-lg bg-white/80 p-3 border border-green-100">
+                  <div className="text-xs text-gray-500">参与考核在职</div>
+                  <div className="text-xl font-semibold text-gray-900">{result.activeCount ?? 0}</div>
+                </div>
+                <div className="rounded-lg bg-white/80 p-3 border border-green-100">
+                  <div className="text-xs text-gray-500">参与考核人数</div>
+                  <div className="text-xl font-semibold text-gray-900">{result.assessmentEligibleCount ?? 0}</div>
+                </div>
+                <div className="rounded-lg bg-white/80 p-3 border border-green-100">
+                  <div className="text-xs text-gray-500">不参与考核角色</div>
+                  <div className="text-xl font-semibold text-gray-900">{result.nonAssessmentRoleCount ?? 0}</div>
+                </div>
+              </div>
+            )}
+            {result.success && (
+              <div className="space-y-1 text-sm text-green-800">
+                <p>离职/非在职已停用：{result.disabledCount ?? 0} 人</p>
+                <p>上下级关联匹配：{result.managerLinks ?? 0} 条</p>
+                <p className="text-green-700">
+                  说明：这里的在职人数口径，已经只保留真正参与绩效考核的人员，不再把虚拟权限账号算进来。
+                </p>
+              </div>
+            )}
             {result.errors && result.errors.length > 0 && (
               <div className="mt-2 space-y-1">
                 <p className="text-sm font-medium text-red-600">详细信息：</p>

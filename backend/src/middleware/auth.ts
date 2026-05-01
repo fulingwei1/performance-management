@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { JWTPayload, EmployeeRole } from '../types';
 import logger from '../config/logger';
+import { EmployeeModel } from '../models/employee.model';
 
 type AuthenticatedUser = JWTPayload & {
   id: string;
@@ -83,6 +84,36 @@ export const requireRole = (...roles: EmployeeRole[]) => {
     
     next();
   };
+};
+
+export const requireManagerCapability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: '未认证' });
+    return;
+  }
+
+  if (req.user.role === 'manager') {
+    next();
+    return;
+  }
+
+  if (!['hr', 'admin', 'gm'].includes(req.user.role)) {
+    res.status(403).json({ success: false, message: '权限不足' });
+    return;
+  }
+
+  try {
+    const subordinates = await EmployeeModel.findByManagerId(req.user.userId);
+    const activeSubordinates = (subordinates as any[]).filter((employee) => !employee.status || employee.status === 'active');
+    if (activeSubordinates.length > 0) {
+      next();
+      return;
+    }
+  } catch (error) {
+    logger.error(`manager capability check failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  res.status(403).json({ success: false, message: '当前账号没有经理视角或未绑定下属' });
 };
 
 // 可选认证（不强制要求登录，但如果有token会解析）

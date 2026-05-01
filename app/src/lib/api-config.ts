@@ -2,7 +2,7 @@ const isProd = import.meta.env.PROD;
 const isTest = import.meta.env.MODE === 'test';
 
 const getDefaultApiBaseUrl = () => {
-  if (!isProd && !isTest) return 'http://localhost:3001/api';
+  if (!isProd && !isTest) return 'http://localhost:3002/api';
 
   const basePath = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
   return `${basePath}/api`.replace(/^\/\//, '/');

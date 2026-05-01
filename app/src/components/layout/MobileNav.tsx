@@ -24,15 +24,11 @@ interface NavItem {
 const roleNavItems: Record<UserRole, NavItem[]> = {
   employee: [
     { name: '工作台', path: '/employee/dashboard', icon: HomeIcon },
-    { name: '我的绩效', path: '/employee/scores', icon: ChartBarIcon },
-    { name: '月报', path: '/employee/monthly-report', icon: DocumentTextIcon },
-    { name: '目标', path: '/employee/my-objectives', icon: Squares2X2Icon },
+    { name: '月度总结', path: '/employee/summary', icon: DocumentTextIcon },
   ],
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
     { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
-    { name: '评分', path: '/manager/differentiated-scoring', icon: DocumentTextIcon },
-    { name: '团队', path: '/manager/team', icon: UserGroupIcon },
   ],
   gm: [
     { name: '工作台', path: '/gm/dashboard', icon: HomeIcon },
@@ -41,12 +37,17 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   ],
   hr: [
     { name: '工作台', path: '/hr/dashboard', icon: HomeIcon },
+    { name: '部门评分', path: '/manager/dashboard', icon: UserGroupIcon },
     { name: '绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
-    { name: '数据', path: '/hr/data-io', icon: Squares2X2Icon },
+    { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
   ],
   admin: [
     { name: '工作台', path: '/admin/dashboard', icon: HomeIcon },
+    { name: '部门评分', path: '/manager/dashboard', icon: UserGroupIcon },
+    { name: '绩效看板', path: '/admin/analytics', icon: ChartBarIcon },
+    { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
+    { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '用户管理', path: '/admin/user-management', icon: UsersIcon },
     { name: '系统设置', path: '/admin/system-settings', icon: Cog6ToothIcon },
   ],

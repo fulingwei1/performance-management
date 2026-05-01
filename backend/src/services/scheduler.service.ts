@@ -662,17 +662,27 @@ export class SchedulerService {
       return { month: targetMonth, published: false, reason: '已归档' };
     }
 
-    // 获取所有 eligible 员工
+    // 只按“参与绩效考核”的在职员工自动发布
     const allEmployees = await EmployeeModel.findAll();
-    const eligibleEmployees = allEmployees.filter(
-      (e: any) => (e.role === 'employee' || e.role === 'manager') && e.status !== 'disabled'
-    );
+    const rankingConfig = await getPerformanceRankingConfig();
+    const eligibleEmployees = allEmployees
+      .filter((e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active'))
+      .filter((e: any) => isParticipatingRecord(e, rankingConfig));
+    const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
     // 检查所有员工是否都已完成
     const records = await PerformanceModel.findByMonth(targetMonth);
     const completedRecords = records.filter(
-      r => r.status === 'completed' || r.status === 'scored'
+      r => eligibleEmployeeIds.has(r.employeeId) && (r.status === 'completed' || r.status === 'scored')
     );
+
+    if (eligibleEmployees.length === 0) {
+      return {
+        month: targetMonth,
+        published: false,
+        reason: '当前没有参与考核的员工'
+      };
+    }
 
     if (completedRecords.length < eligibleEmployees.length) {
       return {

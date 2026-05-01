@@ -205,9 +205,13 @@ export const importHrArchive = [
 
     try {
       const result = await importHrArchiveFile(file.path);
+      const messageParts = [
+        `已导入人事档案：参与考核在职 ${result.assessmentEligibleCount} 人`,
+        `离职/非在职 ${result.disabledCount} 人已停用`,
+      ];
       res.json({
         success: true,
-        message: `已导入人事档案：在职/试用/实习 ${result.activeCount} 人，离职或非在职 ${result.disabledCount} 人已停用`,
+        message: messageParts.join('，'),
         data: result,
       });
     } finally {

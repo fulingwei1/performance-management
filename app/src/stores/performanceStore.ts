@@ -155,7 +155,8 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
         projectFeedback,
         qualityImprovement,
         managerComment: data.managerComment || '',
-        nextMonthWorkArrangement: data.nextMonthWorkArrangement || ''
+        nextMonthWorkArrangement: data.nextMonthWorkArrangement || '',
+        evaluationKeywords: data.evaluationKeywords || []
       });
       
       if (response.success) {

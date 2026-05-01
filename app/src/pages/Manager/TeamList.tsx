@@ -372,7 +372,7 @@ export function TeamList() {
                           </div>
                         </div>
                       ) : (
-                        <Link to={`/manager/scoring?employee=${employee.id}&month=${employee.month}&noSummary=${employee.status === 'not_submitted'}`}>
+                        <Link to={`/manager/dashboard?employee=${employee.id}&month=${employee.month}&noSummary=${employee.status === 'not_submitted'}`}>
                           <Button 
                             className={`mt-3 w-full ${employee.status === 'not_submitted' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}
                           >

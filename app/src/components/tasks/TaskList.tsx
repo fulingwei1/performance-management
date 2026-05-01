@@ -30,7 +30,7 @@ const taskTypeConfig = {
   manager_score: {
     icon: User,
     color: 'orange',
-    link: '/manager/scoring'
+    link: '/manager/dashboard'
   }
 };
 

@@ -4,6 +4,9 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+ALTER TABLE performance_records
+  ADD COLUMN IF NOT EXISTS evaluation_keywords JSONB DEFAULT '[]'::jsonb;
+
 ALTER TABLE employees
   ADD COLUMN IF NOT EXISTS id_card_last6_hash TEXT;
 

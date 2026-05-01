@@ -3,8 +3,79 @@ import { body, param, validationResult } from 'express-validator';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeRole, EmployeeLevel } from '../types';
+import { getOrgUnitKey, getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
 
 export const employeeController = {
+  getAssessmentParticipation: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
+
+    const currentEmployee = await EmployeeModel.findById(req.user.userId);
+    if (!currentEmployee) {
+      return res.status(404).json({ success: false, error: '员工不存在' });
+    }
+
+    const config = await getPerformanceRankingConfig();
+    const selfParticipating = isParticipatingRecord(
+      {
+        employeeId: currentEmployee.id,
+        department: currentEmployee.department,
+        subDepartment: currentEmployee.subDepartment,
+      },
+      config
+    );
+
+    const selfUnitKey = getOrgUnitKey(currentEmployee);
+    const responseData: Record<string, unknown> = {
+      self: {
+        employeeId: currentEmployee.id,
+        name: currentEmployee.name,
+        role: currentEmployee.role,
+        department: currentEmployee.department,
+        subDepartment: currentEmployee.subDepartment,
+        unitKey: selfUnitKey,
+        participating: selfParticipating,
+      },
+    };
+
+    const subordinates = (await EmployeeModel.findByManagerId(req.user.userId))
+      .filter((employee: any) => !employee.status || employee.status === 'active');
+    if (subordinates.length > 0) {
+      const members = subordinates.map((employee) => {
+        const participating = isParticipatingRecord(
+          {
+            employeeId: employee.id,
+            department: employee.department,
+            subDepartment: employee.subDepartment,
+          },
+          config
+        );
+
+        return {
+          employeeId: employee.id,
+          name: employee.name,
+          department: employee.department,
+          subDepartment: employee.subDepartment,
+          unitKey: getOrgUnitKey(employee),
+          participating,
+        };
+      });
+
+      responseData.team = {
+        totalCount: members.length,
+        participatingCount: members.filter((member) => member.participating).length,
+        excludedCount: members.filter((member) => !member.participating).length,
+        members,
+      };
+    }
+
+    res.json({
+      success: true,
+      data: responseData,
+    });
+  }),
+
   // 获取所有员工
   getAllEmployees: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {

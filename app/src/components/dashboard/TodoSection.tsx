@@ -47,10 +47,11 @@ const configMap: Record<string, TodoConfig[]> = {
   employee: employeeTodoConfigs,
   manager: managerTodoConfigs,
   hr: hrTodoConfigs,
+  admin: [],
 };
 
 interface TodoSectionProps {
-  role: 'employee' | 'manager' | 'hr';
+  role: 'employee' | 'manager' | 'hr' | 'admin';
   fetchSummary: () => Promise<any>;
 }
 

@@ -58,6 +58,7 @@ export interface PerformanceRecord {
   // 经理评价
   managerComment: string;
   nextMonthWorkArrangement: string;
+  evaluationKeywords?: string[];
   
   // 分组排名
   groupType: 'high' | 'low';

@@ -8,22 +8,50 @@ import { PerformanceChart } from '@/components/charts/PerformanceChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { assessmentPublicationApi } from '@/services/api';
+import { assessmentPublicationApi, employeeQuarterlyApi } from '@/services/api';
 
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
 import { toast } from 'sonner';
 
-export function MyScores() {
+interface QuarterlyRecord {
+  id: string;
+  year: number;
+  quarter: number;
+  avg_score: number | string;
+  max_score: number | string;
+  min_score: number | string;
+  best_level?: string;
+  trend?: 'up' | 'down' | 'flat';
+  record_count?: number;
+}
+
+export function MyScores({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuthStore();
   const { records, fetchMyRecords } = usePerformanceStore();
   const [publicationStatus, setPublicationStatus] = useState<Record<string, boolean>>({});
+  const [quarterlyRecords, setQuarterlyRecords] = useState<QuarterlyRecord[]>([]);
   
   useEffect(() => {
     if (user) {
       fetchMyRecords(user.id);
     }
   }, [user, fetchMyRecords]);
+
+  useEffect(() => {
+    const fetchQuarterly = async () => {
+      if (!user) return;
+      try {
+        const response = await employeeQuarterlyApi.getMy();
+        if (response.success) {
+          setQuarterlyRecords(response.data || []);
+        }
+      } catch (error) {
+        console.error('获取季度汇总失败:', error);
+      }
+    };
+    fetchQuarterly();
+  }, [user]);
 
   // 检查所有月份的发布状态
   useEffect(() => {
@@ -62,6 +90,7 @@ export function MyScores() {
   const latestGroupType = latestRecord
     ? resolveGroupType(latestRecord.groupType, latestRecord.employeeLevel)
     : null;
+  const latestQuarterlyRecord = quarterlyRecords[0];
   
   // 计算统计数据
   const stats = useMemo(() => {
@@ -104,11 +133,12 @@ export function MyScores() {
       animate="visible"
       className="space-y-6"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants}>
-        <h1 className="text-2xl font-bold text-gray-900">我的绩效</h1>
-        <p className="text-gray-500 mt-1">查看历史绩效考核记录及排名</p>
-      </motion.div>
+      {!embedded && (
+        <motion.div variants={itemVariants}>
+          <h1 className="text-2xl font-bold text-gray-900">我的绩效</h1>
+          <p className="text-gray-500 mt-1">查看历史绩效考核记录及排名</p>
+        </motion.div>
+      )}
       
       {/* Latest Performance Card */}
       {latestRecord && (
@@ -302,6 +332,66 @@ export function MyScores() {
           />
         </motion.div>
       )}
+
+      {/* Quarterly History */}
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">季度汇总得分</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {quarterlyRecords.length > 0 ? (
+              <div className="space-y-4">
+                {latestQuarterlyRecord && (
+                  <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-500">最新季度</p>
+                        <p className="text-xl font-semibold">{latestQuarterlyRecord.year}年 Q{latestQuarterlyRecord.quarter}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">季度平均得分</p>
+                        <p className="text-3xl font-bold text-purple-600">{Number(latestQuarterlyRecord.avg_score || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {quarterlyRecords.map((record) => (
+                    <div key={record.id} className="rounded-lg border p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-semibold">{record.year}年 Q{record.quarter}</span>
+                        <Badge className="bg-purple-100 text-purple-700">
+                          季度均分 {Number(record.avg_score || 0).toFixed(2)}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="rounded bg-gray-50 p-2">
+                          <p className="text-xs text-gray-500">最高</p>
+                          <p className="font-semibold text-green-600">{Number(record.max_score || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="rounded bg-gray-50 p-2">
+                          <p className="text-xs text-gray-500">最低</p>
+                          <p className="font-semibold text-orange-600">{Number(record.min_score || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="rounded bg-gray-50 p-2">
+                          <p className="text-xs text-gray-500">月数</p>
+                          <p className="font-semibold text-blue-600">{record.record_count || 0}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-10 text-gray-500">
+                暂无季度汇总得分
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
       
       {/* History Table */}
       <motion.div variants={itemVariants}>
