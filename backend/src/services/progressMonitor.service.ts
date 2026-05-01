@@ -6,6 +6,7 @@
 import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
+import { getPerformanceRankingConfig, isParticipatingRecord } from './performanceRankingConfig.service';
 import logger from '../config/logger';
 
 export interface ProgressSnapshot {
@@ -42,11 +43,18 @@ export class ProgressMonitorService {
    */
   static async getMonthProgress(month: string): Promise<ProgressSnapshot> {
     const allEmployees = await EmployeeModel.findAll();
-    const eligibleEmployees = allEmployees.filter(
+    const activeAssessableEmployees = allEmployees.filter(
       (e: any) => (e.role === 'employee' || e.role === 'manager') && e.status !== 'disabled'
     );
+    const rankingConfig = await getPerformanceRankingConfig();
+    const eligibleEmployees = activeAssessableEmployees.filter((employee: any) => (
+      isParticipatingRecord(employee, rankingConfig)
+    ));
+    const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
-    const records = await PerformanceModel.findByMonth(month);
+    const records = (await PerformanceModel.findByMonth(month)).filter((record) => (
+      eligibleEmployeeIds.has(record.employeeId)
+    ));
 
     // 按状态分组
     const draftCount = records.filter(r => r.status === 'draft').length;
@@ -116,7 +124,7 @@ export class ProgressMonitorService {
 
     return {
       month,
-      totalEmployees: allEmployees.length,
+      totalEmployees: activeAssessableEmployees.length,
       eligibleEmployees: totalRecords,
       draftCount,
       submittedCount,

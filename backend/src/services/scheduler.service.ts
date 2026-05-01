@@ -65,8 +65,8 @@ export class SchedulerService {
       }
     });
 
-    // 每月 10 日凌晨 3:00 自动发布（兜底）
-    cron.schedule('0 3 10 * *', async () => {
+    // 每月 8 日凌晨 3:00 自动发布（兜底）
+    cron.schedule('0 3 8 * *', async () => {
       logger.info('[Scheduler] 检查自动发布...');
       try {
         const result = await this.autoPublishPreviousMonth();
@@ -76,8 +76,8 @@ export class SchedulerService {
       }
     });
 
-    // 每季度首月（1/4/7/10）2 日凌晨 4:00 自动推送上季度绩效到薪资系统
-    cron.schedule('0 4 2 1,4,7,10 *', async () => {
+    // 每季度首月（1/4/7/10）10 日凌晨 4:00 自动推送上季度绩效到薪资系统
+    cron.schedule('0 4 10 1,4,7,10 *', async () => {
       logger.info('[Scheduler] 执行季度绩效推送...');
       try {
         const result = await this.pushPreviousQuarterResults();
@@ -308,17 +308,22 @@ export class SchedulerService {
       }
     }
 
-    // 企业微信通知未提交员工列表
-    await WecomWebhookService.sendReminder({
-      cycleName: `${month}月工作总结`,
-      taskType: '员工提交总结',
-      daysLeft,
-      deadlineDate: deadlineDate || '',
-      pendingCount: pending.length,
-      employeeNames: pending.map((r: any) => r.employeeName),
-    });
+    let wecomCount = 0;
+    for (const row of pending) {
+      const touser = String(row.employeeId || '').trim();
+      if (!touser) continue;
+      const sent = await WecomWebhookService.sendReminder({
+        cycleName: `${month}月工作总结`,
+        taskType: '员工提交总结',
+        daysLeft,
+        deadlineDate: deadlineDate || '',
+        pendingCount: 1,
+        employeeNames: [row.employeeName],
+      }, touser);
+      if (sent) wecomCount++;
+    }
 
-    logger.info(`[Scheduler] 催员工提交: ${pending.length}人, 邮件${emailCount}封`);
+    logger.info(`[Scheduler] 催员工提交: ${pending.length}人, 邮件${emailCount}封, 企业微信${wecomCount}条`);
   }
 
   /**
@@ -374,7 +379,7 @@ export class SchedulerService {
         type: isLastDay ? 'deadline' : 'reminder',
         title: `${urgency}${count}名下属${month}月绩效待打分（还剩${daysLeft}天）`,
         content: `以下员工已提交${month}月工作总结，请尽快完成评分：${names}`,
-        link: '/manager/scoring',
+        link: '/manager/dashboard',
       }]);
 
       // 邮件通知经理（测试模式跳过）
@@ -382,29 +387,27 @@ export class SchedulerService {
         try {
           await EmailService.sendDeadlineReminder(
             group.manager.email, group.manager.name, `${month}月绩效打分`,
-            'manager_scoring', deadlineDate || `${daysLeft}天后`, '/manager/scoring'
+            'manager_scoring', deadlineDate || `${daysLeft}天后`, '/manager/dashboard'
           );
         } catch (e) {
           logger.warn(`[Scheduler] 经理催办邮件失败 ${group.manager.name}: ${e}`);
         }
       }
 
+      const touser = String(managerId || '').trim();
+      if (touser) {
+        await WecomWebhookService.sendReminder({
+          cycleName: `${month}月经理打分`,
+          taskType: '经理评分',
+          daysLeft,
+          deadlineDate: deadlineDate || '',
+          pendingCount: count,
+          employeeNames: group.employees.map((e: any) => e.employeeName),
+        }, touser);
+      }
+
       logger.info(`[Scheduler] 催经理 ${group.manager.name} 打分: ${count}人 (${names})`);
     }
-
-    // 企业微信汇总
-    const summaryLines: string[] = [];
-    for (const [_, group] of Object.entries(byManager)) {
-      summaryLines.push(`**${group.manager.name}**：${group.employees.map((e: any) => e.employeeName).join('、')}（${group.employees.length}人）`);
-    }
-    await WecomWebhookService.sendReminder({
-      cycleName: `${month}月经理打分`,
-      taskType: '经理评分',
-      daysLeft,
-      deadlineDate: deadlineDate || '',
-      pendingCount: submitted.length,
-      employeeNames: submitted.map((r: any) => `${r.managerName}→${r.employeeName}`),
-    });
   }
 
   /**
@@ -639,7 +642,7 @@ export class SchedulerService {
   }
 
   /**
-   * 每月 10 日自动发布上月绩效（兜底）
+   * 每月 8 日自动发布上月绩效（兜底）
    * 条件：上月所有 eligible 员工的记录都是 completed/scored 状态，且未发布
    */
   static async autoPublishPreviousMonth(referenceDate: Date = new Date()): Promise<{
@@ -719,8 +722,8 @@ export class SchedulerService {
   }
 
   /**
-   * 季度首月自动推送上季度绩效到薪资系统
-   * 季度分数 = 该季度3个月度分数的平均值
+   * 季度首月 10 日自动推送上季度绩效到薪资系统
+   * 季度分数 = 该季度 3 个月已完成月度绩效的等权平均值
    */
   static async pushPreviousQuarterResults(referenceDate: Date = new Date()): Promise<{
     quarter: string;
@@ -758,26 +761,35 @@ export class SchedulerService {
     
     logger.info(`[Scheduler] 推送上季度绩效: ${prevQuarter} (${months.join(', ')})`);
     
-    // 获取所有员工
     const allEmployees = await EmployeeModel.findAll();
-    const eligibleEmployees = allEmployees.filter(
-      (e: any) => (e.role === 'employee' || e.role === 'manager') && e.status !== 'disabled'
-    );
-    
-    // 聚合季度分数
+    const rankingConfig = await getPerformanceRankingConfig();
+    const eligibleEmployees = allEmployees
+      .filter((e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active'))
+      .filter((e: any) => isParticipatingRecord(e, rankingConfig));
+    const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
+
+    if (eligibleEmployees.length === 0) {
+      return {
+        quarter: prevQuarter,
+        pushed: false,
+        count: 0,
+        reason: '当前季度没有参与考核的员工'
+      };
+    }
+
     const scoreAgg = new Map<string, {
       employeeExternalId: string;
       employeeName: string;
       department: string;
       subDepartment: string;
-      sum: number;
-      count: number;
+      monthScores: Record<string, number>;
     }>();
-    
+
     for (const monthStr of months) {
       const records = await PerformanceModel.findByMonth(monthStr);
       for (const record of records) {
-        if (record.status !== 'completed') continue;
+        if (!eligibleEmployeeIds.has(record.employeeId)) continue;
+        if (record.status !== 'completed' && record.status !== 'scored') continue;
         const empId = record.employeeId;
         if (!empId) continue;
         
@@ -793,35 +805,36 @@ export class SchedulerService {
             employeeName: empName,
             department: dept,
             subDepartment: subDept,
-            sum: totalScore,
-            count: 1
+            monthScores: { [monthStr]: totalScore }
           });
         } else {
-          prev.sum += totalScore;
-          prev.count += 1;
+          prev.monthScores[monthStr] = totalScore;
           prev.employeeName = empName || prev.employeeName;
           prev.department = dept || prev.department;
           prev.subDepartment = subDept || prev.subDepartment;
         }
       }
     }
-    
-    // 检查是否所有人都完成了
-    const completedEmployeeIds = new Set(scoreAgg.keys());
-    const incomplete = eligibleEmployees.filter((e: any) => !completedEmployeeIds.has(e.id));
-    
+
+    const incomplete = eligibleEmployees.filter((employee: any) => {
+      const summary = scoreAgg.get(employee.id);
+      if (!summary) return true;
+      return months.some((monthStr) => summary.monthScores[monthStr] === undefined);
+    });
+
     if (incomplete.length > 0) {
       return {
         quarter: prevQuarter,
         pushed: false,
         count: 0,
-        reason: `${incomplete.length} 名员工未完成季度考核`
+        reason: `${incomplete.length} 名员工月度绩效尚未全部完成，无法汇总季度结果`
       };
     }
     
     // 构建推送数据
     const results = Array.from(scoreAgg.values()).map(agg => {
-      const avg = agg.count > 0 ? agg.sum / agg.count : 0;
+      const monthScores = months.map((monthStr) => Number(agg.monthScores[monthStr] || 0));
+      const avg = monthScores.reduce((sum, score) => sum + score, 0) / months.length;
       const quarterScore = Math.round(avg * 100) / 100;
       const level = scoreToLevel(quarterScore) as 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
       const coefficient = levelToScore(level);
@@ -831,7 +844,7 @@ export class SchedulerService {
         department: agg.department,
         subDepartment: agg.subDepartment,
         quarterScore,
-        monthsCount: agg.count,
+        monthsCount: months.length,
         rank: 0,
         level,
         coefficient
@@ -863,7 +876,7 @@ export class SchedulerService {
     
     const payload = {
       quarter: prevQuarter,
-      effectiveQuarter: `${prevYear}-Q${prevQ + 1 > 4 ? 1 : prevQ + 1}`,
+      effectiveQuarter: prevQ === 4 ? `${prevYear + 1}-Q1` : `${prevYear}-Q${prevQ + 1}`,
       publishedAt: new Date().toISOString(),
       results
     };

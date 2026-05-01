@@ -140,15 +140,14 @@ export interface MonthlyStatsParams {
 
 // ---- 对外服务类 ----
 export class WecomWebhookService {
-  /** 发送催办提醒（推送给全员） */
-  static async sendReminder(params: ReminderParams): Promise<boolean> {
+  private static buildReminderMarkdown(params: ReminderParams): string {
     const { cycleName, taskType, daysLeft, deadlineDate, pendingCount, employeeNames } = params;
     const urgency = daysLeft === 1 ? '🔴 **最后一天**' : daysLeft <= 3 ? '🟠 **即将截止**' : '🟡 温馨提醒';
     const names = employeeNames.length <= 20
       ? employeeNames.join('、')
       : employeeNames.slice(0, 20).join('、') + ` 等${employeeNames.length}人`;
 
-    const md = [
+    return [
       `## ${urgency} 绩效考核催办`,
       `> 考核周期：**${cycleName}**`,
       `> 任务类型：**${taskType}**`,
@@ -160,8 +159,11 @@ export class WecomWebhookService {
       '',
       '请及时登录 [绩效管理系统](http://8.138.230.46) 完成。',
     ].join('\n');
+  }
 
-    return sendAppMessage('@all', md);
+  /** 发送催办提醒（默认推送给全员，可指定个人或逗号分隔用户） */
+  static async sendReminder(params: ReminderParams, touser: string = '@all'): Promise<boolean> {
+    return sendAppMessage(touser, this.buildReminderMarkdown(params));
   }
 
   /** 发送逾期通知（推送给全员） */
