@@ -12,7 +12,7 @@ router.get('/departments', authenticate, organizationController.getAllDepartment
 router.get('/departments/tree', authenticate, organizationController.getDepartmentTree);
 router.get('/departments/:id', authenticate, organizationController.getDepartmentById);
 router.post('/departments', authenticate, requireRole('hr'), organizationController.createDepartment);
-router.put('/departments/:id', authenticate, requireRole('hr'), organizationController.updateDepartment);
+router.put('/departments/:id', authenticate, requireRole('hr', 'admin'), organizationController.updateDepartment);
 router.delete('/departments/:id', authenticate, requireRole('hr'), organizationController.deleteDepartment);
 
 // 岗位管理

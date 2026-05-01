@@ -253,6 +253,11 @@ export class AssessmentTemplateModel {
         updates.push(`description = $${paramIndex++}`);
         params.push(data.description);
       }
+
+      if (data.departmentType !== undefined) {
+        updates.push(`department_type = $${paramIndex++}`);
+        params.push(data.departmentType);
+      }
       
       if (data.isDefault !== undefined) {
         updates.push(`is_default = $${paramIndex++}`);
@@ -395,6 +400,16 @@ export class AssessmentTemplateModel {
         updates.push(`metric_name = $${paramIndex++}`);
         params.push(data.metricName);
       }
+
+      if (data.metricCode !== undefined) {
+        updates.push(`metric_code = $${paramIndex++}`);
+        params.push(data.metricCode);
+      }
+
+      if (data.category !== undefined) {
+        updates.push(`category = $${paramIndex++}`);
+        params.push(data.category);
+      }
       
       if (data.weight !== undefined) {
         updates.push(`weight = $${paramIndex++}`);
@@ -409,6 +424,21 @@ export class AssessmentTemplateModel {
       if (data.sortOrder !== undefined) {
         updates.push(`sort_order = $${paramIndex++}`);
         params.push(data.sortOrder);
+      }
+
+      if (data.evaluationType !== undefined) {
+        updates.push(`evaluation_type = $${paramIndex++}`);
+        params.push(data.evaluationType);
+      }
+
+      if (data.targetValue !== undefined) {
+        updates.push(`target_value = $${paramIndex++}`);
+        params.push(data.targetValue);
+      }
+
+      if (data.measurementUnit !== undefined) {
+        updates.push(`measurement_unit = $${paramIndex++}`);
+        params.push(data.measurementUnit);
       }
       
       if (updates.length === 0) return null;
@@ -440,6 +470,22 @@ export class AssessmentTemplateModel {
       return true;
     } catch (error) {
       logger.error('Failed to delete metric: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  }
+
+  static async findMetricById(id: string): Promise<TemplateMetric | null> {
+    try {
+      if (USE_MEMORY_DB) {
+        const metric = memoryStore.templateMetrics?.get(id);
+        return metric ? this.mapMetric(metric) : null;
+      }
+
+      const sql = 'SELECT * FROM template_metrics WHERE id = $1';
+      const results = await query(sql, [id]);
+      return results.length > 0 ? this.mapMetric(results[0]) : null;
+    } catch (error) {
+      logger.error('Failed to find metric by id: ' + (error instanceof Error ? error.message : String(error)));
       throw error;
     }
   }

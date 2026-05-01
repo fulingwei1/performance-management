@@ -7,6 +7,7 @@ import { AssessmentPublicationModel } from '../models/assessmentPublication.mode
 import { EmployeeModel } from '../models/employee.model';
 import { WecomWebhookService } from '../services/wecomWebhook.service';
 import { EmailService } from '../services/email.service';
+import { formatPublicationReadinessMessage, validatePublicationReadiness } from '../services/publicationReadiness.service';
 import logger from '../config/logger';
 
 export const automationController = {
@@ -164,6 +165,15 @@ export const automationController = {
       return res.json({
         success: false,
         message: `${month} 已发布`
+      });
+    }
+
+    const readiness = await validatePublicationReadiness(month);
+    if (!readiness.ok) {
+      return res.status(400).json({
+        success: false,
+        message: formatPublicationReadinessMessage(readiness),
+        data: readiness
       });
     }
 

@@ -19,6 +19,7 @@ const SECRET = () => process.env.WECOM_SECRET || '';
 const AGENT_ID = () => parseInt(process.env.WECOM_AGENT_ID || '0', 10);
 const ENABLED = () => !!(CORP_ID() && SECRET() && AGENT_ID());
 const TEST_USER = () => process.env.WECOM_TEST_USER || '';  // 测试模式：所有消息只发给此用户
+const PERFORMANCE_SYSTEM_URL = () => process.env.PERFORMANCE_SYSTEM_URL || '';
 
 // ---- access_token 缓存 ----
 let cachedToken = '';
@@ -138,6 +139,71 @@ export interface MonthlyStatsParams {
   participationRate: string;
 }
 
+export interface DepartmentProgressParams {
+  month: string;
+  dayOfMonth: number;
+  daysLeft: number;
+  department: string;
+  totalCount: number;
+  completedCount: number;
+  submittedCount: number;
+  draftCount: number;
+}
+
+export interface DepartmentDeadlineParams extends DepartmentProgressParams {}
+
+function buildProgressBar(rate: number): string {
+  const clamped = Math.max(0, Math.min(rate, 100));
+  const filled = Math.floor(clamped / 10);
+  return '█'.repeat(filled) + '░'.repeat(10 - filled);
+}
+
+function buildSystemLoginUrl(): string {
+  const configured = PERFORMANCE_SYSTEM_URL().trim();
+  if (configured) {
+    return configured;
+  }
+
+  const frontendUrl = (process.env.FRONTEND_URL || '').trim();
+  if (frontendUrl) {
+    try {
+      const parsed = new URL(frontendUrl);
+      const normalizedPath = parsed.pathname.replace(/\/+$/, '');
+      if (
+        normalizedPath === '/performance-management'
+        || normalizedPath === '/performance-management/login'
+        || normalizedPath === '/login'
+      ) {
+        if (normalizedPath.endsWith('/login')) {
+          return parsed.toString().replace(/\/+$/, '');
+        }
+        parsed.pathname = `${normalizedPath || ''}/login`;
+        return parsed.toString().replace(/\/+$/, '');
+      }
+
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+        parsed.pathname = '/login';
+        return parsed.toString().replace(/\/+$/, '');
+      }
+
+      parsed.pathname = '/performance-management/login';
+      return parsed.toString().replace(/\/+$/, '');
+    } catch (error) {
+      logger.warn(`[Wecom] FRONTEND_URL 解析失败，使用默认登录地址: ${error}`);
+    }
+  }
+
+  return 'http://8.138.230.46/performance-management/login';
+}
+
+function buildLoginInstructions(): string[] {
+  const loginUrl = buildSystemLoginUrl();
+  return [
+    `系统地址：[绩效管理系统](${loginUrl})`,
+    '登录方式：姓名 + 身份证后6位',
+  ];
+}
+
 // ---- 对外服务类 ----
 export class WecomWebhookService {
   private static buildReminderMarkdown(params: ReminderParams): string {
@@ -157,7 +223,8 @@ export class WecomWebhookService {
       '',
       `未完成人员：${names}`,
       '',
-      '请及时登录 [绩效管理系统](http://8.138.230.46) 完成。',
+      ...buildLoginInstructions(),
+      '请及时登录系统完成待办任务。',
     ].join('\n');
   }
 
@@ -182,6 +249,7 @@ export class WecomWebhookService {
       '',
       `逾期人员：${names}`,
       '',
+      ...buildLoginInstructions(),
       '请相关人员尽快完成，或联系上级/HR协调处理。',
     ].join('\n');
 
@@ -197,6 +265,7 @@ export class WecomWebhookService {
       `> 生成任务数：**${totalCount} 条**`,
       `> 截止日期：**${dueDate}**`,
       '',
+      ...buildLoginInstructions(),
       '请各位员工及时登录系统完成工作总结填写。',
     ].join('\n');
 
@@ -212,6 +281,7 @@ export class WecomWebhookService {
       `> 完成人数：**${completedCount} 人**`,
       `> 平均得分：**${avgScore.toFixed(1)}**`,
       '',
+      ...buildLoginInstructions(),
       '请各位员工登录系统查看个人绩效结果。',
     ].join('\n');
 
@@ -228,10 +298,53 @@ export class WecomWebhookService {
       `> 参与率：**${participationRate}**`,
       `> 平均分：**${avgScore.toFixed(1)}**`,
       '',
+      ...buildLoginInstructions(),
       '详细报告请登录绩效管理系统查看。',
     ].join('\n');
 
     return sendAppMessage('@all', md);
+  }
+
+  /** 发送部门进度给部门负责人 */
+  static async sendDepartmentProgress(params: DepartmentProgressParams, touser: string): Promise<boolean> {
+    const { month, dayOfMonth, daysLeft, department, totalCount, completedCount, submittedCount, draftCount } = params;
+    const rate = totalCount > 0 ? Math.round(((completedCount + submittedCount) / totalCount) * 100) : 0;
+    const bar = buildProgressBar(rate);
+    const md = [
+      `## 📊 ${department} 绩效进度播报`,
+      `> 考核月份：**${month}**`,
+      `> 当前日期：**${dayOfMonth}号**（距截止还有 **${daysLeft} 天**）`,
+      '',
+      `进度概览：${bar} **${rate}%**`,
+      `- 已完成评分：**${completedCount} 人**`,
+      `- 已提交待评分：**${submittedCount} 人**`,
+      `- 未提交总结：**${draftCount} 人**`,
+      `- 应参与总人数：**${totalCount} 人**`,
+      '',
+      ...buildLoginInstructions(),
+      '请尽快跟进本部门未完成人员。',
+    ].join('\n');
+
+    return sendAppMessage(touser, md);
+  }
+
+  /** 发送部门最后截止提醒给部门负责人 */
+  static async sendDepartmentDeadlineAlert(params: DepartmentDeadlineParams, touser: string): Promise<boolean> {
+    const { month, department, totalCount, completedCount, submittedCount, draftCount } = params;
+    const pendingCount = draftCount + submittedCount;
+    const md = [
+      `## 🚨 ${department} 绩效今日截止`,
+      `> 考核月份：**${month}**`,
+      `> 已完成评分：**${completedCount} 人**`,
+      `> 已提交待评分：**${submittedCount} 人**`,
+      `> 未提交总结：**${draftCount} 人**`,
+      `> 尚未完成：**${pendingCount} 人 / 共 ${totalCount} 人**`,
+      '',
+      ...buildLoginInstructions(),
+      '请立即督促未完成人员，确保本部门考核按时完成。',
+    ].join('\n');
+
+    return sendAppMessage(touser, md);
   }
 
   /** 测试连接（发送测试消息） */

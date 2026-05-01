@@ -10,6 +10,7 @@
     "db:local:up": "docker compose -f ../docker-compose.yml up -d postgres",
     "db:migrate:local": "node run-migrations-pg.js",
     "db:local:reset": "docker compose -f ../docker-compose.yml down -v && docker compose -f ../docker-compose.yml up -d postgres",
+    "wecom:sync-users": "ts-node src/scripts/syncWecomUserMapping.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

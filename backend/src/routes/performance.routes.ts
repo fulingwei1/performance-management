@@ -30,6 +30,9 @@ router.get('/team-records', authenticate, requireRole('manager', 'hr', 'admin', 
   // 获取全公司所有记录（总经理或HR）支持 ?months=N 参数
   router.get('/all-records', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getAllRecords);
 
+  // 获取每月之星推荐汇总
+  router.get('/monthly-stars/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getMonthlyStars);
+
   // 删除全公司所有绩效记录（HR）
   router.delete('/all-records', authenticate, requireRole('hr', 'admin'), performanceController.deleteAllRecords);
 
@@ -83,6 +86,6 @@ router.get('/demo-data/status', authenticate, async (req: Request, res: Response
 router.get('/:id', authenticate, performanceController.getRecordById);
 
 // 删除记录（需要HR权限）- 注意：通配符路由必须放在最后
-router.delete('/:id', authenticate, requireRole('hr'), performanceController.deleteRecord);
+router.delete('/:id', authenticate, requireRole('hr', 'admin'), performanceController.deleteRecord);
 
 export default router;

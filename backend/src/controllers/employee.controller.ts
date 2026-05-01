@@ -5,6 +5,13 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeRole, EmployeeLevel } from '../types';
 import { getOrgUnitKey, getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
 
+function normalizeManagerId(value: unknown): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const normalized = String(value).trim();
+  return normalized ? normalized : null;
+}
+
 export const employeeController = {
   getAssessmentParticipation: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -245,6 +252,7 @@ export const employeeController = {
     body('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
     body('level').isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别错误'),
     body('password').optional().isLength({ min: 6 }).withMessage('密码至少6位'),
+    body('wecomUserId').optional().isLength({ max: 128 }).withMessage('企业微信用户ID不能超过128个字符'),
     body('idCardLast6')
       .optional()
       .isString()
@@ -260,7 +268,8 @@ export const employeeController = {
         });
       }
 
-      const { id, name, department, subDepartment, role, level, managerId, password, idCardLast6 } = req.body;
+      const { id, name, department, subDepartment, role, level, managerId, wecomUserId, password, idCardLast6 } = req.body;
+      const normalizedManagerId = normalizeManagerId(managerId);
 
       // 检查ID是否已存在
       const existing = await EmployeeModel.findById(id);
@@ -278,7 +287,8 @@ export const employeeController = {
         subDepartment,
         role,
         level,
-        managerId,
+        managerId: normalizedManagerId ?? undefined,
+        wecomUserId,
         password: password || '123456',
         idCardLast6
       });
@@ -308,6 +318,9 @@ export const employeeController = {
       }
 
       const { idCardLast6, ...restUpdates } = (req.body || {}) as any;
+      if (Object.prototype.hasOwnProperty.call(restUpdates, 'managerId')) {
+        restUpdates.managerId = normalizeManagerId(restUpdates.managerId);
+      }
       if (idCardLast6) {
         await EmployeeModel.updateIdCardLast6(req.params.id as string, String(idCardLast6));
       }

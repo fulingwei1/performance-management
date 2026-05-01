@@ -20,6 +20,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, password, status,
         id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
@@ -44,6 +45,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, password, status,
         id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
@@ -64,6 +66,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, password, status,
         id_card_last6_hash as "idCardLast6Hash",
         created_at as "createdAt", updated_at as "updatedAt"
@@ -82,6 +85,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -99,6 +103,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -117,6 +122,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -137,6 +143,7 @@ export class EmployeeModel {
     const sql = `
       SELECT
         id, name, department, sub_department as "subDepartment",
+        wecom_user_id as "wecomUserId",
         position, role, level, manager_id as "managerId", avatar, email, status,
         created_at as "createdAt", updated_at as "updatedAt"
       FROM employees
@@ -162,8 +169,8 @@ export class EmployeeModel {
     }
     
     const sql = `
-      INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, avatar, password, id_card_last6_hash)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, avatar, wecom_user_id, password, id_card_last6_hash)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     // 加密密码
@@ -179,6 +186,7 @@ export class EmployeeModel {
       employee.level,
       employee.managerId || null,
       employee.avatar || null,
+      employee.wecomUserId || null,
       hashedPassword,
       idCardLast6Hash
     ]);
@@ -193,7 +201,7 @@ export class EmployeeModel {
       return result || null;
     }
     
-    const allowedFields = ['name', 'department', 'sub_department', 'position', 'role', 'level', 'manager_id', 'avatar', 'status'];
+    const allowedFields = ['name', 'department', 'sub_department', 'position', 'role', 'level', 'manager_id', 'avatar', 'status', 'wecom_user_id'];
     const fields: string[] = [];
     const values: any[] = [];
     

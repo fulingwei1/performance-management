@@ -9,10 +9,25 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor, resolveGroupType } from '@/lib/config';
 import { KeywordSelector } from '@/components/KeywordSelector';
+import { StructuredTagSelector } from '@/components/StructuredTagSelector';
 import { AIAssistant } from '@/components/AIAssistant';
 import keywordsData from '@/data/evaluation-keywords.json';
+import analysisTagsData from '@/data/performance-analysis-tags.json';
+
+const monthlyStarCategories = [
+  '核心技术骨干',
+  '潜力人才之星',
+  '突出贡献之星',
+  '敬业付出之星',
+  '进步神速之星',
+  '技术创新之星',
+  '团队活跃之星'
+];
 
 interface ScoringDialogProps {
   open: boolean;
@@ -27,6 +42,30 @@ interface ScoringDialogProps {
   setNextMonthWorkArrangement: (v: string) => void;
   evaluationKeywords: string[];
   setEvaluationKeywords: (keywords: string[]) => void;
+  issueTypeTags: string[];
+  setIssueTypeTags: (tags: string[]) => void;
+  highlightTags: string[];
+  setHighlightTags: (tags: string[]) => void;
+  workTypeTags: string[];
+  setWorkTypeTags: (tags: string[]) => void;
+  improvementActionTags: string[];
+  setImprovementActionTags: (tags: string[]) => void;
+  issueAttributionTags: string[];
+  setIssueAttributionTags: (tags: string[]) => void;
+  workloadTags: string[];
+  setWorkloadTags: (tags: string[]) => void;
+  managerSuggestionTags: string[];
+  setManagerSuggestionTags: (tags: string[]) => void;
+  scoreEvidence: string;
+  setScoreEvidence: (value: string) => void;
+  monthlyStarRecommended: boolean;
+  setMonthlyStarRecommended: (value: boolean) => void;
+  monthlyStarCategory: string;
+  setMonthlyStarCategory: (value: string) => void;
+  monthlyStarReason: string;
+  setMonthlyStarReason: (value: string) => void;
+  monthlyStarPublic: boolean;
+  setMonthlyStarPublic: (value: boolean) => void;
   totalScore: number;
   loading: boolean;
   onSubmit: () => void;
@@ -37,6 +76,18 @@ export function ScoringDialog({
   scores, setScores, managerComment, setManagerComment,
   nextMonthWorkArrangement, setNextMonthWorkArrangement,
   evaluationKeywords, setEvaluationKeywords,
+  issueTypeTags, setIssueTypeTags,
+  highlightTags, setHighlightTags,
+  workTypeTags, setWorkTypeTags,
+  improvementActionTags, setImprovementActionTags,
+  issueAttributionTags, setIssueAttributionTags,
+  workloadTags, setWorkloadTags,
+  managerSuggestionTags, setManagerSuggestionTags,
+  scoreEvidence, setScoreEvidence,
+  monthlyStarRecommended, setMonthlyStarRecommended,
+  monthlyStarCategory, setMonthlyStarCategory,
+  monthlyStarReason, setMonthlyStarReason,
+  monthlyStarPublic, setMonthlyStarPublic,
   totalScore, loading, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
@@ -50,6 +101,9 @@ export function ScoringDialog({
     setAiType(type);
     setAiDrawerOpen(true);
   };
+
+  const requiresScoreEvidence = totalScore >= 1.4 || totalScore < 0.9;
+  const scoreEvidenceLabel = totalScore >= 1.4 ? '优秀/特别突出事例' : totalScore < 0.9 ? '低分/明显不足事例' : '评分事例说明';
   
   // 采用AI建议
   const handleAdoptAI = (content: string) => {
@@ -198,7 +252,19 @@ export function ScoringDialog({
                 </CardHeader>
                 <CardContent>
                   {selectedRecord?.selfSummary ? (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedRecord.selfSummary}</p>
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedRecord.selfSummary}</p>
+                      {(selectedRecord?.employeeIssueTags || []).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-gray-500">员工反馈问题标签</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedRecord.employeeIssueTags || []).map((tag: string) => (
+                              <Badge key={tag} className="bg-orange-100 text-orange-700">{tag}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="text-center py-6 text-gray-400"><Clock className="w-6 h-6 mx-auto mb-2" /><p className="text-sm">员工暂未填写</p></div>
                   )}
@@ -212,7 +278,19 @@ export function ScoringDialog({
                 </CardHeader>
                 <CardContent>
                   {selectedRecord?.nextMonthPlan ? (
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedRecord.nextMonthPlan}</p>
+                    <div className="space-y-3">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{selectedRecord.nextMonthPlan}</p>
+                      {(selectedRecord?.resourceNeedTags || []).length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-gray-500">员工资源诉求标签</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedRecord.resourceNeedTags || []).map((tag: string) => (
+                              <Badge key={tag} className="bg-blue-100 text-blue-700">{tag}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="text-center py-6 text-gray-400"><Clock className="w-6 h-6 mx-auto mb-2" /><p className="text-sm">员工暂未填写</p></div>
                   )}
@@ -307,6 +385,191 @@ export function ScoringDialog({
 
                   <Card className="shadow-sm">
                     <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">绩效分析标签</CardTitle>
+                      <p className="text-xs text-gray-500">为后续绩效分析报告沉淀结构化数据，经理可直接勾选。</p>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">问题类型标签</div>
+                          <div className="text-xs text-gray-500">记录本月主要短板，方便后续统计高频问题。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={issueTypeTags}
+                          onChange={setIssueTypeTags}
+                          groups={analysisTagsData.issueTypes}
+                          maxCount={4}
+                          emptyText="可选 1-4 个主要问题"
+                        />
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">亮点贡献标签</div>
+                          <div className="text-xs text-gray-500">沉淀员工优势，后续可做优秀案例和亮点复盘。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={highlightTags}
+                          onChange={setHighlightTags}
+                          groups={analysisTagsData.highlights}
+                          maxCount={4}
+                          emptyText="可选 1-4 个亮点贡献"
+                        />
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">项目 / 工作类型标签</div>
+                          <div className="text-xs text-gray-500">标记员工本月主要工作类型，后续可分析不同工作类型的得分差异。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={workTypeTags}
+                          onChange={setWorkTypeTags}
+                          groups={analysisTagsData.workTypes}
+                          maxCount={3}
+                          emptyText="可选 1-3 个主要工作类型"
+                        />
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">改进动作标签</div>
+                          <div className="text-xs text-gray-500">提前沉淀后续辅导动作，方便季度汇总时形成闭环。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={improvementActionTags}
+                          onChange={setImprovementActionTags}
+                          groups={analysisTagsData.improvementActions}
+                          maxCount={4}
+                          emptyText="可选 1-4 个后续改进动作"
+                        />
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">问题归因标签</div>
+                          <div className="text-xs text-gray-500">判断问题主要来自个人、协同、客户还是资源，为后续责任分析做准备。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={issueAttributionTags}
+                          onChange={setIssueAttributionTags}
+                          groups={analysisTagsData.issueAttributions}
+                          maxCount={2}
+                          emptyText="可选 1-2 个问题归因"
+                        />
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">工作负荷标签</div>
+                          <div className="text-xs text-gray-500">标记员工本月工作量感受，避免只看分数不看负荷。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={workloadTags}
+                          onChange={setWorkloadTags}
+                          groups={analysisTagsData.workloadLevels}
+                          maxCount={1}
+                          emptyText="请选择 1 个工作负荷判断"
+                        />
+                      </div>
+
+                      <div className="space-y-2 rounded-lg border border-gray-200 p-4 xl:col-span-2">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">经理建议等级</div>
+                          <div className="text-xs text-gray-500">帮助后续做季度人才盘点，区分保持、关注、重点辅导和重点培养对象。</div>
+                        </div>
+                        <StructuredTagSelector
+                          value={managerSuggestionTags}
+                          onChange={setManagerSuggestionTags}
+                          groups={analysisTagsData.managerSuggestionLevels}
+                          maxCount={1}
+                          emptyText="请选择 1 个经理建议等级"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className={requiresScoreEvidence ? 'shadow-sm border-amber-200 bg-amber-50/60' : 'shadow-sm'}>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium">
+                        {scoreEvidenceLabel}
+                        {requiresScoreEvidence && <span className="text-red-500 ml-1">*</span>}
+                      </CardTitle>
+                      <p className="text-xs text-gray-500">
+                        综合得分达到优秀（≥1.40）或低于合格线（&lt;0.90）时，必须补充具体事件、项目或行为依据。
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      <Textarea
+                        placeholder="请写清楚具体事实，例如：负责某项目提前交付、关键问题闭环、重大质量事故、反复延期等..."
+                        value={scoreEvidence}
+                        onChange={(event) => setScoreEvidence(event.target.value)}
+                        className="min-h-[110px] resize-none"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm border-purple-200 bg-purple-50/30">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <CardTitle className="text-sm font-medium">每月之星推荐</CardTitle>
+                          <p className="text-xs text-gray-500 mt-1">如本月表现突出，可顺手推荐；HR 后续汇总评选。</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="monthly-star-toggle" className="text-sm">推荐</Label>
+                          <Switch
+                            id="monthly-star-toggle"
+                            checked={monthlyStarRecommended}
+                            onCheckedChange={(checked) => {
+                              setMonthlyStarRecommended(checked);
+                              if (checked && !monthlyStarReason.trim()) {
+                                setMonthlyStarReason(scoreEvidence || managerComment || '');
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    {monthlyStarRecommended && (
+                      <CardContent className="space-y-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>推荐类型<span className="text-red-500 ml-1">*</span></Label>
+                            <Select value={monthlyStarCategory} onValueChange={setMonthlyStarCategory}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="选择每月之星类型" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {monthlyStarCategories.map((category) => (
+                                  <SelectItem key={category} value={category}>{category}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border bg-white px-4 py-3">
+                            <div>
+                              <Label htmlFor="monthly-star-public" className="text-sm">进入公示名单</Label>
+                              <p className="text-xs text-gray-500">关闭后仅作为内部推荐草稿</p>
+                            </div>
+                            <Switch id="monthly-star-public" checked={monthlyStarPublic} onCheckedChange={setMonthlyStarPublic} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>推荐理由<span className="text-red-500 ml-1">*</span></Label>
+                          <Textarea
+                            placeholder="请用具体事例说明推荐理由，例如：解决关键技术问题、主动支援项目、持续改进效率等..."
+                            value={monthlyStarReason}
+                            onChange={(event) => setMonthlyStarReason(event.target.value)}
+                            className="min-h-[110px] resize-none"
+                          />
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div>
                           <CardTitle className="text-sm font-medium">部门经理综合评价<span className="text-red-500 ml-1">*</span></CardTitle>
@@ -365,10 +628,30 @@ export function ScoringDialog({
                 <AlertCircle className="w-4 h-4" />请填写综合评价和下月工作安排后提交
               </span>
             )}
+            {requiresScoreEvidence && scoreEvidence.trim().length < 10 && managerComment && nextMonthWorkArrangement && (
+              <span className="text-orange-600 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />高分或低分需要补充具体事例说明
+              </span>
+            )}
+            {monthlyStarRecommended && (!monthlyStarCategory || monthlyStarReason.trim().length < 10) && managerComment && nextMonthWorkArrangement && (
+              <span className="text-orange-600 flex items-center gap-1">
+                <AlertCircle className="w-4 h-4" />每月之星推荐需要类型和推荐理由
+              </span>
+            )}
           </div>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button onClick={onSubmit} disabled={loading || !managerComment || !nextMonthWorkArrangement} className="min-w-[120px]">
+            <Button
+              onClick={onSubmit}
+              disabled={
+                loading ||
+                !managerComment ||
+                !nextMonthWorkArrangement ||
+                (requiresScoreEvidence && scoreEvidence.trim().length < 10) ||
+                (monthlyStarRecommended && (!monthlyStarCategory || monthlyStarReason.trim().length < 10))
+              }
+              className="min-w-[120px]"
+            >
               {loading ? '保存中...' : (selectedRecord?.status === 'completed' || selectedRecord?.status === 'scored') ? '保存修改' : '提交评分'}
               <Send className="w-4 h-4 ml-2" />
             </Button>

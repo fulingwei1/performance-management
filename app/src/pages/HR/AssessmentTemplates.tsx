@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { assessmentTemplateApi } from '@/services/api';
 import { TemplateEditor } from './TemplateEditor';
+import { useAuthStore } from '@/stores/authStore';
 
 const DEPARTMENT_TYPES = [
   { value: 'sales', label: '销售类', color: 'bg-green-100 text-green-700', icon: '💰' },
@@ -33,11 +34,17 @@ interface Template {
   departmentType: string;
   isDefault: boolean;
   status: string;
+  createdBy?: string;
   createdAt: string;
   metrics?: Metric[];
 }
 
-export function AssessmentTemplates() {
+interface AssessmentTemplatesProps {
+  mode?: 'hr' | 'manager';
+}
+
+export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
+  const { user } = useAuthStore();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -99,6 +106,10 @@ export function AssessmentTemplates() {
   };
 
   const handleEdit = (template: Template) => {
+    if (mode === 'manager' && (template.createdBy !== user?.id || template.isDefault)) {
+      toast.info('经理建议先复制模板，再编辑自己的模板版本');
+      return;
+    }
     setSelectedTemplate(template);
     setViewMode(false);
     setShowEditor(true);
@@ -151,11 +162,15 @@ export function AssessmentTemplates() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">考核模板管理</h2>
-          <p className="text-gray-500 mt-1">管理不同部门类型的考核指标模板</p>
+          <p className="text-gray-500 mt-1">
+            {mode === 'manager'
+              ? '经理可以复制标准模板，形成自己的部门模板版本，再绑定给本团队使用。'
+              : '管理不同部门类型的考核指标模板'}
+          </p>
         </div>
         <Button onClick={handleCreate}>
           <Plus className="w-4 h-4 mr-2" />
-          创建模板
+          {mode === 'manager' ? '创建自定义模板' : '创建模板'}
         </Button>
       </div>
 
@@ -211,6 +226,11 @@ export function AssessmentTemplates() {
                       <Badge variant={template.status === 'active' ? 'default' : 'secondary'}>
                         {template.status === 'active' ? '启用' : '归档'}
                       </Badge>
+                      {mode === 'manager' && template.createdBy === user?.id && (
+                        <Badge className="bg-emerald-100 text-emerald-700">
+                          我的模板
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -240,6 +260,7 @@ export function AssessmentTemplates() {
                     size="sm"
                     onClick={() => handleEdit(template)}
                     className="flex-1"
+                    disabled={mode === 'manager' && (template.createdBy !== user?.id || template.isDefault)}
                   >
                     <Edit className="w-3 h-3 mr-1" />
                     编辑
@@ -252,7 +273,7 @@ export function AssessmentTemplates() {
                   >
                     <Copy className="w-3 h-3" />
                   </Button>
-                  {!template.isDefault && (
+                  {(!template.isDefault && mode !== 'manager') || (mode === 'manager' && template.createdBy === user?.id && !template.isDefault) ? (
                     <Button
                       variant="outline"
                       size="sm"
@@ -261,7 +282,7 @@ export function AssessmentTemplates() {
                     >
                       <Trash2 className="w-3 h-3 text-red-500" />
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -295,6 +316,7 @@ export function AssessmentTemplates() {
           <TemplateEditor
             template={selectedTemplate}
             viewMode={viewMode}
+            managerMode={mode === 'manager'}
             onSave={handleSave}
             onCancel={() => setShowEditor(false)}
           />

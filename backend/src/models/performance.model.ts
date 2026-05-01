@@ -9,6 +9,22 @@ import {
   resolveGroupKey,
 } from '../services/performanceRankingConfig.service';
 
+const parseJsonArray = (value: unknown): string[] => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item)).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed.map((item) => String(item)).filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
+
 export class PerformanceModel {
   // 根据ID查找记录
   static async findById(id: string): Promise<PerformanceRecord | null> {
@@ -225,6 +241,8 @@ export class PerformanceModel {
     month: string;
     selfSummary: string;
     nextMonthPlan: string;
+    employeeIssueTags?: string[];
+    resourceNeedTags?: string[];
     groupType: 'high' | 'low';
     deadline?: Date;
   }): Promise<PerformanceRecord> {
@@ -238,6 +256,8 @@ export class PerformanceModel {
       month: data.month,
       selfSummary: data.selfSummary,
       nextMonthPlan: data.nextMonthPlan,
+      employeeIssueTags: data.employeeIssueTags || [],
+      resourceNeedTags: data.resourceNeedTags || [],
       taskCompletion: 1.0,
       initiative: 1.0,
       projectFeedback: 1.0,
@@ -262,12 +282,14 @@ export class PerformanceModel {
     
     const sql = `
       INSERT INTO performance_records (
-        id, employee_id, assessor_id, month, self_summary, next_month_plan, 
-        group_type, status, deadline
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, employee_id, assessor_id, month, self_summary, next_month_plan,
+        employee_issue_tags, resource_need_tags, group_type, status, deadline
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
         self_summary = EXCLUDED.self_summary,
         next_month_plan = EXCLUDED.next_month_plan,
+        employee_issue_tags = EXCLUDED.employee_issue_tags,
+        resource_need_tags = EXCLUDED.resource_need_tags,
         status = EXCLUDED.status,
         deadline = COALESCE(performance_records.deadline, EXCLUDED.deadline),
         updated_at = CURRENT_TIMESTAMP
@@ -280,6 +302,8 @@ export class PerformanceModel {
       data.month,
       data.selfSummary,
       data.nextMonthPlan,
+      JSON.stringify(data.employeeIssueTags || []),
+      JSON.stringify(data.resourceNeedTags || []),
       data.groupType,
       status,
       data.deadline || null
@@ -301,6 +325,18 @@ export class PerformanceModel {
     nextMonthWorkArrangement: string;
     normalizedScore?: number;
     evaluationKeywords?: string[];
+    issueTypeTags?: string[];
+    highlightTags?: string[];
+    workTypeTags?: string[];
+    improvementActionTags?: string[];
+    issueAttributionTags?: string[];
+    workloadTags?: string[];
+    managerSuggestionTags?: string[];
+    scoreEvidence?: string;
+    monthlyStarRecommended?: boolean;
+    monthlyStarCategory?: string;
+    monthlyStarReason?: string;
+    monthlyStarPublic?: boolean;
   }): Promise<PerformanceRecord | null> {
     if (USE_MEMORY_DB) {
       const record = memoryDB.performanceRecords.findById(data.id);
@@ -330,6 +366,18 @@ export class PerformanceModel {
         manager_comment = ?,
         next_month_work_arrangement = ?,
         evaluation_keywords = ?,
+        issue_type_tags = ?,
+        highlight_tags = ?,
+        work_type_tags = ?,
+        improvement_action_tags = ?,
+        issue_attribution_tags = ?,
+        workload_tags = ?,
+        manager_suggestion_tags = ?,
+        score_evidence = ?,
+        monthly_star_recommended = ?,
+        monthly_star_category = ?,
+        monthly_star_reason = ?,
+        monthly_star_public = ?,
         normalized_score = ?,
         status = 'completed',
         updated_at = CURRENT_TIMESTAMP
@@ -346,6 +394,18 @@ export class PerformanceModel {
       data.managerComment,
       data.nextMonthWorkArrangement,
       JSON.stringify(data.evaluationKeywords || []),
+      JSON.stringify(data.issueTypeTags || []),
+      JSON.stringify(data.highlightTags || []),
+      JSON.stringify(data.workTypeTags || []),
+      JSON.stringify(data.improvementActionTags || []),
+      JSON.stringify(data.issueAttributionTags || []),
+      JSON.stringify(data.workloadTags || []),
+      JSON.stringify(data.managerSuggestionTags || []),
+      data.scoreEvidence || '',
+      data.monthlyStarRecommended === true,
+      data.monthlyStarCategory || '',
+      data.monthlyStarReason || '',
+      data.monthlyStarPublic !== false,
       data.normalizedScore || data.totalScore,
       data.id
     ]);
@@ -496,6 +556,8 @@ export class PerformanceModel {
       month: row.month,
       selfSummary: row.self_summary,
       nextMonthPlan: row.next_month_plan,
+      employeeIssueTags: parseJsonArray(row.employee_issue_tags),
+      resourceNeedTags: parseJsonArray(row.resource_need_tags),
       taskCompletion: parseFloat(row.task_completion),
       initiative: parseFloat(row.initiative),
       projectFeedback: parseFloat(row.project_feedback),
@@ -505,9 +567,19 @@ export class PerformanceModel {
       normalizedScore: row.normalized_score ? parseFloat(row.normalized_score) : undefined,
       managerComment: row.manager_comment,
       nextMonthWorkArrangement: row.next_month_work_arrangement,
-      evaluationKeywords: row.evaluation_keywords
-        ? (typeof row.evaluation_keywords === 'string' ? JSON.parse(row.evaluation_keywords) : row.evaluation_keywords)
-        : [],
+      evaluationKeywords: parseJsonArray(row.evaluation_keywords),
+      issueTypeTags: parseJsonArray(row.issue_type_tags),
+      highlightTags: parseJsonArray(row.highlight_tags),
+      workTypeTags: parseJsonArray(row.work_type_tags),
+      improvementActionTags: parseJsonArray(row.improvement_action_tags),
+      issueAttributionTags: parseJsonArray(row.issue_attribution_tags),
+      workloadTags: parseJsonArray(row.workload_tags),
+      managerSuggestionTags: parseJsonArray(row.manager_suggestion_tags),
+      scoreEvidence: row.score_evidence || '',
+      monthlyStarRecommended: row.monthly_star_recommended === true || row.monthly_star_recommended === 1,
+      monthlyStarCategory: row.monthly_star_category || '',
+      monthlyStarReason: row.monthly_star_reason || '',
+      monthlyStarPublic: row.monthly_star_public !== false && row.monthly_star_public !== 0,
       groupType: row.group_type,
       groupRank: row.group_rank,
       crossDeptRank: row.cross_dept_rank,

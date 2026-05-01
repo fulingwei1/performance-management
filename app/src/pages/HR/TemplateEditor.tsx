@@ -48,11 +48,12 @@ interface Template {
 interface TemplateEditorProps {
   template: Template | null;
   viewMode: boolean;
+  managerMode?: boolean;
   onSave: () => void;
   onCancel: () => void;
 }
 
-export function TemplateEditor({ template, viewMode, onSave, onCancel }: TemplateEditorProps) {
+export function TemplateEditor({ template, viewMode, managerMode = false, onSave, onCancel }: TemplateEditorProps) {
   const [formData, setFormData] = useState<Template>({
     name: '',
     description: '',
@@ -239,9 +240,9 @@ export function TemplateEditor({ template, viewMode, onSave, onCancel }: Templat
             <Switch
               checked={formData.isDefault}
               onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked })}
-              disabled={viewMode}
+              disabled={viewMode || managerMode}
             />
-            <Label>设为默认模板</Label>
+            <Label>{managerMode ? '经理创建的模板默认不设为全局默认模板' : '设为默认模板'}</Label>
           </div>
           
           <div className="flex items-center gap-2">

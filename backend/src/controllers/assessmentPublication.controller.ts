@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
+import { formatPublicationReadinessMessage, validatePublicationReadiness } from '../services/publicationReadiness.service';
 
 export const assessmentPublicationController = {
   /**
@@ -22,6 +23,15 @@ export const assessmentPublicationController = {
       return res.status(400).json({
         success: false,
         message: `${month} 的考核结果已发布，无法重复发布`
+      });
+    }
+
+    const readiness = await validatePublicationReadiness(month);
+    if (!readiness.ok) {
+      return res.status(400).json({
+        success: false,
+        message: formatPublicationReadinessMessage(readiness),
+        data: readiness
       });
     }
 

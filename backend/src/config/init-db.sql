@@ -11,9 +11,10 @@ USE performance_db;
 CREATE TABLE IF NOT EXISTS employees (
   id VARCHAR(20) PRIMARY KEY,
   name VARCHAR(50) NOT NULL,
+  wecom_user_id VARCHAR(128),
   department VARCHAR(50) NOT NULL,
   sub_department VARCHAR(50) NOT NULL,
-  role ENUM('employee', 'manager', 'gm', 'hr') NOT NULL DEFAULT 'employee',
+  role ENUM('employee', 'manager', 'gm', 'hr', 'admin') NOT NULL DEFAULT 'employee',
   level ENUM('senior', 'intermediate', 'junior', 'assistant') NOT NULL DEFAULT 'junior',
   manager_id VARCHAR(20),
   avatar VARCHAR(255),
@@ -34,6 +35,8 @@ CREATE TABLE IF NOT EXISTS performance_records (
   month VARCHAR(7) NOT NULL,
   self_summary TEXT,
   next_month_plan TEXT,
+  employee_issue_tags JSON,
+  resource_need_tags JSON,
   task_completion DECIMAL(3,2) DEFAULT 1.00,
   initiative DECIMAL(3,2) DEFAULT 1.00,
   project_feedback DECIMAL(3,2) DEFAULT 1.00,
@@ -44,6 +47,18 @@ CREATE TABLE IF NOT EXISTS performance_records (
   manager_comment TEXT,
   next_month_work_arrangement TEXT,
   evaluation_keywords JSON,
+  issue_type_tags JSON,
+  highlight_tags JSON,
+  work_type_tags JSON,
+  improvement_action_tags JSON,
+  issue_attribution_tags JSON,
+  workload_tags JSON,
+  manager_suggestion_tags JSON,
+  score_evidence TEXT,
+  monthly_star_recommended BOOLEAN DEFAULT false,
+  monthly_star_category VARCHAR(50),
+  monthly_star_reason TEXT,
+  monthly_star_public BOOLEAN DEFAULT true,
   group_type ENUM('high', 'low') NOT NULL,
   group_rank INT DEFAULT 0,
   cross_dept_rank INT DEFAULT 0,
@@ -363,6 +378,6 @@ INSERT INTO employees (id, name, department, sub_department, role, level, manage
 ('e162', '刘孙伟', '工程技术中心', '测试部-现场支持', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e163', '谭章斌', '项目管理部', '项目管理组-/', 'employee', 'senior', 'm016', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e164', '谢朝良', '制造中心', '生产部-电子接线组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
-('hr002', '张小保', '人力行政部', '行政组-/', 'hr', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+('hr002', '符凌维', '总经办', '/-/', 'admin', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
 
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;

@@ -8,6 +8,7 @@ export interface Employee {
   name: string;
   department: string;
   subDepartment: string;
+  wecomUserId?: string;
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
   level: EmployeeLevel;
   managerId?: string;
@@ -208,6 +209,8 @@ export interface PerformanceRecord {
   // 员工填写
   selfSummary: string;
   nextMonthPlan: string;
+  employeeIssueTags?: string[];
+  resourceNeedTags?: string[];
   
   // AI建议
   aiSuggestion?: AISuggestion;
@@ -233,6 +236,13 @@ export interface PerformanceRecord {
   managerComment: string;
   nextMonthWorkArrangement: string;
   evaluationKeywords?: string[];
+  issueTypeTags?: string[];
+  highlightTags?: string[];
+  workTypeTags?: string[];
+  improvementActionTags?: string[];
+  issueAttributionTags?: string[];
+  workloadTags?: string[];
+  managerSuggestionTags?: string[];
   
   // 排名
   departmentRank: number;

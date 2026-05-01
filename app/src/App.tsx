@@ -10,6 +10,7 @@ const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((
 const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
 const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
+const TemplateManagement = lazy(() => import('@/pages/Manager/TemplateManagement').then((module) => ({ default: module.TemplateManagement })));
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
 const EmployeePerformanceHistory = lazy(() => import('@/pages/Manager/EmployeePerformanceHistory').then((module) => ({ default: module.EmployeePerformanceHistory })));
 const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => ({ default: module.TeamList })));
@@ -21,6 +22,7 @@ const AssessmentPublication = lazy(() => import('@/pages/HR/AssessmentPublicatio
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
+const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
 const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
@@ -87,7 +89,6 @@ const DISABLED_FEATURE_PATHS = [
   '/hr/performance-ranking-config',
   '/hr/task-freeze',
   '/hr/template-assignment-rules',
-  '/manager/template-assignment',
   '/admin/assessment-publication',
   '/admin/scoring',
 ];
@@ -214,6 +215,9 @@ function App() {
           <Route path="/manager/dashboard" element={<ManagerDashboard />} />
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/scoring" element={<RedirectToManagerDashboard />} />
+          <Route path="/manager/template-config" element={<TemplateManagement />} />
+          <Route path="/manager/template-assignment" element={<Navigate to="/manager/template-config" replace />} />
+          <Route path="/manager/assessment-templates" element={<Navigate to="/manager/template-config" replace />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
         </Route>
@@ -237,6 +241,7 @@ function App() {
           <Route path="/hr/assessment-config" element={<AssessmentConfig />} />
           <Route path="/hr/assessment-scope" element={<AssessmentConfig defaultTab="scope" />} />
           <Route path="/hr/assessment-templates" element={<AssessmentConfig defaultTab="templates" />} />
+          <Route path="/hr/monthly-stars" element={<MonthlyStars />} />
           <Route path="/hr/metric-library" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
         </Route>

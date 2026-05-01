@@ -35,7 +35,11 @@ interface Rule {
   templateName: string;
 }
 
-export default function TemplateAssignment() {
+interface TemplateAssignmentProps {
+  embedded?: boolean;
+}
+
+export function TemplateAssignment({ embedded = false }: TemplateAssignmentProps) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -123,7 +127,7 @@ export default function TemplateAssignment() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? 'space-y-6' : 'p-6 space-y-6'}>
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -214,3 +218,5 @@ export default function TemplateAssignment() {
     </div>
   );
 }
+
+export default TemplateAssignment;

@@ -7,8 +7,25 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ALTER TABLE performance_records
   ADD COLUMN IF NOT EXISTS evaluation_keywords JSONB DEFAULT '[]'::jsonb;
 
+ALTER TABLE performance_records
+  ADD COLUMN IF NOT EXISTS issue_type_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS highlight_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS work_type_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS improvement_action_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS issue_attribution_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS workload_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS manager_suggestion_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS score_evidence TEXT,
+  ADD COLUMN IF NOT EXISTS monthly_star_recommended BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS monthly_star_category VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS monthly_star_reason TEXT,
+  ADD COLUMN IF NOT EXISTS monthly_star_public BOOLEAN DEFAULT true,
+  ADD COLUMN IF NOT EXISTS employee_issue_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS resource_need_tags JSONB DEFAULT '[]'::jsonb;
+
 ALTER TABLE employees
-  ADD COLUMN IF NOT EXISTS id_card_last6_hash TEXT;
+  ADD COLUMN IF NOT EXISTS id_card_last6_hash TEXT,
+  ADD COLUMN IF NOT EXISTS wecom_user_id VARCHAR(128);
 
 CREATE TABLE IF NOT EXISTS departments (
   id VARCHAR(36) PRIMARY KEY,

@@ -29,6 +29,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
     { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
+    { name: '模板配置', path: '/manager/template-config', icon: DocumentTextIcon },
   ],
   gm: [
     { name: '工作台', path: '/gm/dashboard', icon: HomeIcon },

@@ -2,6 +2,54 @@ import { Request, Response } from 'express';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { asyncHandler } from '../middleware/errorHandler';
 
+async function assertManagerOwnTemplateAccess(req: Request, templateId: string) {
+  if (req.user?.role !== 'manager') return null;
+
+  const template = await AssessmentTemplateModel.findById(templateId, false);
+  if (!template) return null;
+
+  const isOwner = template.createdBy === req.user.userId;
+  if (!isOwner || template.isDefault) {
+    const error = new Error('经理只能编辑自己创建的非默认模板');
+    (error as any).statusCode = 403;
+    throw error;
+  }
+
+  return template;
+}
+
+async function syncTemplateMetrics(templateId: string, metrics: any[] = []) {
+  const existingMetrics = await AssessmentTemplateModel.getTemplateMetrics(templateId);
+  const incomingMetrics = Array.isArray(metrics) ? metrics : [];
+  const incomingIds = new Set(incomingMetrics.map((metric) => metric.id).filter(Boolean));
+
+  for (const metric of incomingMetrics) {
+    const payload = {
+      metricName: metric.metricName,
+      metricCode: metric.metricCode,
+      category: metric.category,
+      weight: metric.weight,
+      description: metric.description,
+      evaluationType: metric.evaluationType,
+      targetValue: metric.targetValue,
+      measurementUnit: metric.measurementUnit,
+      sortOrder: metric.sortOrder ?? 0,
+    };
+
+    if (metric.id) {
+      await AssessmentTemplateModel.updateMetric(metric.id, payload);
+    } else {
+      await AssessmentTemplateModel.addMetric({
+        templateId,
+        ...payload,
+      });
+    }
+  }
+
+  const toDelete = existingMetrics.filter((metric) => !incomingIds.has(metric.id));
+  await Promise.all(toDelete.map((metric) => AssessmentTemplateModel.deleteMetric(metric.id)));
+}
+
 /**
  * 获取所有模板
  */
@@ -55,8 +103,17 @@ export const getDefaultTemplate = asyncHandler(async (req: Request, res: Respons
  * 创建模板
  */
 export const createTemplate = asyncHandler(async (req: Request, res: Response) => {
-  const template = await AssessmentTemplateModel.create(req.body);
-  res.status(201).json({ success: true, data: template });
+  const metrics = Array.isArray(req.body.metrics) ? req.body.metrics : [];
+  const payload = {
+    ...req.body,
+    createdBy: req.user?.userId || req.body.createdBy,
+    isDefault: req.user?.role === 'manager' ? false : Boolean(req.body.isDefault),
+  };
+
+  const template = await AssessmentTemplateModel.create(payload);
+  await syncTemplateMetrics(template.id, metrics);
+  const fullTemplate = await AssessmentTemplateModel.findById(template.id, true);
+  res.status(201).json({ success: true, data: fullTemplate || template });
 });
 
 /**
@@ -64,14 +121,26 @@ export const createTemplate = asyncHandler(async (req: Request, res: Response) =
  */
 export const updateTemplate = asyncHandler(async (req: Request, res: Response) => {
   const id = req.params.id as string;
-  
-  const template = await AssessmentTemplateModel.update(id, req.body);
+  await assertManagerOwnTemplateAccess(req, id);
+
+  const metrics = Array.isArray(req.body.metrics) ? req.body.metrics : undefined;
+  const payload = { ...req.body };
+  if (req.user?.role === 'manager') {
+    payload.isDefault = false;
+  }
+
+  const template = await AssessmentTemplateModel.update(id, payload);
   
   if (!template) {
     return res.status(404).json({ success: false, message: 'Template not found' });
   }
+
+  if (metrics) {
+    await syncTemplateMetrics(id, metrics);
+  }
   
-  res.json({ success: true, data: template });
+  const fullTemplate = await AssessmentTemplateModel.findById(id, true);
+  res.json({ success: true, data: fullTemplate || template });
 });
 
 /**
@@ -79,6 +148,7 @@ export const updateTemplate = asyncHandler(async (req: Request, res: Response) =
  */
 export const deleteTemplate = asyncHandler(async (req: Request, res: Response) => {
   const id = req.params.id as string;
+  await assertManagerOwnTemplateAccess(req, id);
   
   await AssessmentTemplateModel.delete(id);
   res.json({ success: true, message: 'Template deleted successfully' });
@@ -99,6 +169,7 @@ export const getTemplateMetrics = asyncHandler(async (req: Request, res: Respons
  */
 export const addMetric = asyncHandler(async (req: Request, res: Response) => {
   const id = req.params.id as string;
+  await assertManagerOwnTemplateAccess(req, id);
   
   const metric = await AssessmentTemplateModel.addMetric({
     ...req.body,
@@ -113,14 +184,19 @@ export const addMetric = asyncHandler(async (req: Request, res: Response) => {
  */
 export const updateMetric = asyncHandler(async (req: Request, res: Response) => {
   const metricId = req.params.metricId as string;
-  
-  const metric = await AssessmentTemplateModel.updateMetric(metricId, req.body);
-  
+  const metric = await AssessmentTemplateModel.findMetricById(metricId);
   if (!metric) {
     return res.status(404).json({ success: false, message: 'Metric not found' });
   }
+  await assertManagerOwnTemplateAccess(req, metric.templateId);
   
-  res.json({ success: true, data: metric });
+  const updatedMetric = await AssessmentTemplateModel.updateMetric(metricId, req.body);
+  
+  if (!updatedMetric) {
+    return res.status(404).json({ success: false, message: 'Metric not found' });
+  }
+  
+  res.json({ success: true, data: updatedMetric });
 });
 
 /**
@@ -128,6 +204,11 @@ export const updateMetric = asyncHandler(async (req: Request, res: Response) => 
  */
 export const deleteMetric = asyncHandler(async (req: Request, res: Response) => {
   const metricId = req.params.metricId as string;
+  const metric = await AssessmentTemplateModel.findMetricById(metricId);
+  if (!metric) {
+    return res.status(404).json({ success: false, message: 'Metric not found' });
+  }
+  await assertManagerOwnTemplateAccess(req, metric.templateId);
   
   await AssessmentTemplateModel.deleteMetric(metricId);
   res.json({ success: true, message: 'Metric deleted successfully' });
@@ -139,6 +220,11 @@ export const deleteMetric = asyncHandler(async (req: Request, res: Response) => 
 export const addScoringCriteria = asyncHandler(async (req: Request, res: Response) => {
   const metricId = req.params.metricId as string;
   const { criteria } = req.body;
+  const metric = await AssessmentTemplateModel.findMetricById(metricId);
+  if (!metric) {
+    return res.status(404).json({ success: false, message: 'Metric not found' });
+  }
+  await assertManagerOwnTemplateAccess(req, metric.templateId);
   
   const result = await AssessmentTemplateModel.addScoringCriteria(metricId, criteria);
   res.status(201).json({ success: true, data: result });

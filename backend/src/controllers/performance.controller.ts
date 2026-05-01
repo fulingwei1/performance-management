@@ -7,6 +7,11 @@ import type { ScoreLevel } from '../types';
 import { getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
 import '../middleware/auth'; // Request type extension
 
+const normalizeStringArray = (input: unknown): string[] => {
+  if (!Array.isArray(input)) return [];
+  return input.map((item) => String(item).trim()).filter(Boolean);
+};
+
 export const performanceController = {
   // 获取当前用户的绩效记录
   getMyRecords: asyncHandler(async (req: Request, res: Response) => {
@@ -89,7 +94,7 @@ export const performanceController = {
   // 获取某月份的所有记录
   getRecordsByMonth: asyncHandler(async (req: Request, res: Response) => {
       const month = req.params.month as string;
-      if (!/^\\d{4}-\\d{2}$/.test(month)) {
+      if (!/^\d{4}-\d{2}$/.test(month)) {
         return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
       }
       const records = await PerformanceModel.findByMonth(month);
@@ -122,6 +127,28 @@ export const performanceController = {
     res.json({
       success: true,
       data: records
+    });
+  }),
+
+  // 获取某月每月之星推荐汇总（HR/Admin/GM）
+  getMonthlyStars: asyncHandler(async (req: Request, res: Response) => {
+    const month = req.params.month as string;
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
+    }
+
+    const records = await PerformanceModel.findByMonth(month);
+    const monthlyStars = records
+      .filter((record) => record.monthlyStarRecommended)
+      .sort((a, b) => {
+        const scoreDiff = (b.totalScore || 0) - (a.totalScore || 0);
+        if (scoreDiff !== 0) return scoreDiff;
+        return String(a.employeeName || a.employeeId).localeCompare(String(b.employeeName || b.employeeId));
+      });
+
+    res.json({
+      success: true,
+      data: monthlyStars
     });
   }),
 
@@ -181,7 +208,7 @@ export const performanceController = {
 
   // 员工提交工作总结
   submitSummary: asyncHandler(async (req: Request, res: Response) => {
-    const { month, summary, selfSummary, achievements, issues, nextMonthPlan } = req.body;
+    const { month, summary, selfSummary, achievements, issues, nextMonthPlan, employeeIssueTags, resourceNeedTags } = req.body;
 
     // 验证 month 格式
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -282,6 +309,8 @@ export const performanceController = {
       month,
       selfSummary: finalSelfSummary,
       nextMonthPlan: finalNextMonthPlan,
+      employeeIssueTags: normalizeStringArray(employeeIssueTags),
+      resourceNeedTags: normalizeStringArray(resourceNeedTags),
       groupType
     });
 
@@ -370,7 +399,19 @@ export const performanceController = {
       qualityImprovement,
       managerComment,
       nextMonthWorkArrangement,
-      evaluationKeywords
+      evaluationKeywords,
+      issueTypeTags,
+      highlightTags,
+      workTypeTags,
+      improvementActionTags,
+      issueAttributionTags,
+      workloadTags,
+      managerSuggestionTags,
+      scoreEvidence,
+      monthlyStarRecommended,
+      monthlyStarCategory,
+      monthlyStarReason,
+      monthlyStarPublic
     } = req.body;
 
     // 验证 id
@@ -432,6 +473,26 @@ export const performanceController = {
       ini * 0.3 + 
       pf * 0.2 + 
       qi * 0.1;
+    const roundedTotalScore = parseFloat(totalScore.toFixed(2));
+    const evidenceText = typeof scoreEvidence === 'string' ? scoreEvidence.trim() : '';
+    const starRecommended = monthlyStarRecommended === true;
+    const starCategory = typeof monthlyStarCategory === 'string' ? monthlyStarCategory.trim() : '';
+    const starReason = typeof monthlyStarReason === 'string' ? monthlyStarReason.trim() : '';
+    const starPublic = monthlyStarPublic !== false;
+
+    if ((roundedTotalScore >= 1.4 || roundedTotalScore < 0.9) && evidenceText.length < 10) {
+      return res.status(400).json({
+        success: false,
+        error: '评分特别优秀或明显偏低时，必须填写不少于10个字的具体事例说明'
+      });
+    }
+
+    if (starRecommended && (!starCategory || starReason.length < 10)) {
+      return res.status(400).json({
+        success: false,
+        error: '推荐每月之星时，必须选择推荐类型并填写不少于10个字的推荐理由'
+      });
+    }
 
     const record = await PerformanceModel.submitScore({
       id,
@@ -439,13 +500,23 @@ export const performanceController = {
       initiative: ini,
       projectFeedback: pf,
       qualityImprovement: qi,
-      totalScore: parseFloat(totalScore.toFixed(2)),
+      totalScore: roundedTotalScore,
       level: scoreToLevel(totalScore),
       managerComment,
       nextMonthWorkArrangement,
-      evaluationKeywords: Array.isArray(evaluationKeywords)
-        ? evaluationKeywords.map((item: unknown) => String(item).trim()).filter(Boolean)
-        : []
+      evaluationKeywords: normalizeStringArray(evaluationKeywords),
+      issueTypeTags: normalizeStringArray(issueTypeTags),
+      highlightTags: normalizeStringArray(highlightTags),
+      workTypeTags: normalizeStringArray(workTypeTags),
+      improvementActionTags: normalizeStringArray(improvementActionTags),
+      issueAttributionTags: normalizeStringArray(issueAttributionTags),
+      workloadTags: normalizeStringArray(workloadTags),
+      managerSuggestionTags: normalizeStringArray(managerSuggestionTags),
+      scoreEvidence: evidenceText,
+      monthlyStarRecommended: starRecommended,
+      monthlyStarCategory: starRecommended ? starCategory : '',
+      monthlyStarReason: starRecommended ? starReason : '',
+      monthlyStarPublic: starPublic
     });
 
     if (!record) {

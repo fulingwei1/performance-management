@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import keywordsData from '@/data/evaluation-keywords.json';
+import { topTagEntries } from '@/lib/performanceTagAnalytics';
 
 // 时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -304,6 +305,28 @@ export function Analytics() {
     };
   }, [realRecords, currentMonth]);
 
+  const structuredStats = useMemo(() => {
+    const currentMonthScored = realRecords.filter(
+      (record) =>
+        record.month === currentMonth &&
+        record.totalScore > 0 &&
+        (record.status === 'completed' || record.status === 'scored')
+    );
+
+    return {
+      issueTypes: topTagEntries(currentMonthScored, 'issueTypeTags'),
+      highlights: topTagEntries(currentMonthScored, 'highlightTags'),
+      employeeIssues: topTagEntries(currentMonthScored, 'employeeIssueTags'),
+      resourceNeeds: topTagEntries(currentMonthScored, 'resourceNeedTags'),
+      issueAttributions: topTagEntries(currentMonthScored, 'issueAttributionTags'),
+      workloads: topTagEntries(currentMonthScored, 'workloadTags', 4),
+      managerSuggestions: topTagEntries(currentMonthScored, 'managerSuggestionTags', 4),
+      improvementActions: topTagEntries(currentMonthScored, 'improvementActionTags'),
+      workTypes: topTagEntries(currentMonthScored, 'workTypeTags'),
+      currentMonthScoredCount: currentMonthScored.length,
+    };
+  }, [realRecords, currentMonth]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -484,6 +507,147 @@ export function Analytics() {
                     本月经理还没有勾选待改进标签。
                     {keywordStats.currentMonthScoredCount > 0 ? ' 后续一边评分一边勾选，这里就会自动形成团队问题画像。' : ''}
                   </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">高频问题类型</p>
+                    <p className="text-xs text-gray-400 mt-1">来自经理本月结构化勾选</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-red-600" />
+                  </div>
+                </div>
+                {structuredStats.issueTypes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.issueTypes.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-red-100 text-red-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">本月还没有沉淀问题类型标签。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">高频亮点贡献</p>
+                    <p className="text-xs text-gray-400 mt-1">后续可沉淀优秀案例</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                {structuredStats.highlights.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.highlights.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-emerald-100 text-emerald-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">本月还没有亮点贡献标签。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">员工反馈问题</p>
+                    <p className="text-xs text-gray-400 mt-1">来自员工工作总结页的直接反馈</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-orange-600" />
+                  </div>
+                </div>
+                {structuredStats.employeeIssues.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.employeeIssues.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-orange-100 text-orange-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">员工本月还没有勾选反馈问题。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">员工资源诉求</p>
+                    <p className="text-xs text-gray-400 mt-1">便于提前安排培训、协同和资源</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                {structuredStats.resourceNeeds.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.resourceNeeds.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-blue-100 text-blue-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">员工本月还没有填写资源诉求标签。</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-500 mb-4">问题归因分布</p>
+                {structuredStats.issueAttributions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.issueAttributions.map(([tag, count]) => (
+                      <Badge key={tag} variant="outline">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂未形成问题归因分布。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-500 mb-4">工作负荷判断</p>
+                {structuredStats.workloads.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.workloads.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-slate-100 text-slate-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">本月还没有工作负荷标签。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-500 mb-4">经理建议分布</p>
+                {structuredStats.managerSuggestions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.managerSuggestions.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-violet-100 text-violet-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">本月还没有经理建议等级。</p>
                 )}
               </CardContent>
             </Card>

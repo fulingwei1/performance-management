@@ -41,8 +41,12 @@ export const createEmployeeValidation = [
     .withMessage('身份证后六位格式错误'),
   
   body('managerId')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 50 }).withMessage('经理ID不能超过50个字符'),
+
+  body('wecomUserId')
+    .optional()
+    .isLength({ max: 128 }).withMessage('企业微信用户ID不能超过128个字符'),
 ];
 
 /**
@@ -70,8 +74,12 @@ export const updateEmployeeValidation = [
     .isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别值无效'),
   
   body('managerId')
-    .optional()
+    .optional({ values: 'falsy' })
     .isLength({ max: 50 }).withMessage('经理ID不能超过50个字符'),
+
+  body('wecomUserId')
+    .optional()
+    .isLength({ max: 128 }).withMessage('企业微信用户ID不能超过128个字符'),
 
   body('idCardLast6')
     .optional()

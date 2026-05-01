@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { query, USE_MEMORY_DB } from '../config/database';
 import { cache } from '../config/cache';
 import { syncDepartmentsFromEmployees } from '../config/local-schema';
+import { syncWecomUserIdsForEmployees } from './wecomDirectory.service';
 
 const JSZip = require('jszip');
 
@@ -436,6 +437,13 @@ export async function importHrArchive(filePath: string) {
   await normalizeEmployeeOrgPaths();
   await disableEmployeesMissingFromArchive(employees.map((employee) => employee.id));
   await syncDepartmentsFromEmployees();
+  const wecomSyncResult = await syncWecomUserIdsForEmployees(
+    employees.map((employee) => ({
+      id: employee.id,
+      name: employee.name,
+      status: employee.status,
+    }))
+  );
   cache.invalidateByPrefix('employee:');
 
   const activeEmployees = employees.filter((employee) => employee.status === 'active');
@@ -456,6 +464,7 @@ export async function importHrArchive(filePath: string) {
     nonAssessmentRoleCount: 0,
     disabledCount: employees.length - activeEmployees.length,
     managerLinks: managerIds.size,
+    wecomMappedCount: wecomSyncResult.updated,
     departmentCounts,
   };
 }

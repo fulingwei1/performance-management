@@ -27,6 +27,7 @@ const employeeNavItems = [
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/manager/template-config', label: '模板配置', icon: FileText },
 ];
 
 const gmNavItems = [
@@ -42,6 +43,7 @@ const hrNavItems = [
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/data-io', label: '数据管理', icon: Database },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
+  { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
   { path: '/hr/assessment-publication', label: '结果发布', icon: Send },
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
   // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
@@ -53,6 +55,7 @@ const adminNavItems = [
   { path: '/admin/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/data-io', label: '数据管理', icon: Database },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
+  { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
   { path: '/admin/user-management', label: '用户管理', icon: Users },
   { path: '/admin/system-settings', label: '系统设置', icon: Settings },

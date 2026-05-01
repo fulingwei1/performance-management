@@ -13,6 +13,9 @@ import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.servic
 import { EmailService } from './email.service';
 import { generateMonthlyReportCharts } from './chart.service';
 import { WecomWebhookService, sendAppMessage } from './wecomWebhook.service';
+import { resolveEmployeeWecomUserId } from './wecomDirectory.service';
+import { OrganizationModel } from '../models/organization.model';
+import { formatPublicationReadinessMessage, validatePublicationReadiness } from './publicationReadiness.service';
 import logger from '../config/logger';
 
 export class SchedulerService {
@@ -255,7 +258,8 @@ export class SchedulerService {
     // 查找 draft 状态的记录
     const sql = `
       SELECT pr.employee_id as "employeeId", pr.id as "recordId",
-             e.name as "employeeName", e.email, e.department, e.manager_id as "managerId"
+             e.name as "employeeName", e.email, e.department, e.manager_id as "managerId",
+             e.wecom_user_id as "wecomUserId"
       FROM performance_records pr
       JOIN employees e ON e.id = pr.employee_id
       WHERE pr.month = $1 AND pr.status = 'draft'
@@ -310,7 +314,11 @@ export class SchedulerService {
 
     let wecomCount = 0;
     for (const row of pending) {
-      const touser = String(row.employeeId || '').trim();
+      const touser = await resolveEmployeeWecomUserId({
+        id: String(row.employeeId || '').trim(),
+        name: String(row.employeeName || '').trim(),
+        wecomUserId: String(row.wecomUserId || '').trim(),
+      });
       if (!touser) continue;
       const sent = await WecomWebhookService.sendReminder({
         cycleName: `${month}月工作总结`,
@@ -337,7 +345,8 @@ export class SchedulerService {
     const sql = `
       SELECT pr.employee_id as "employeeId", pr.assessor_id as "assessorId",
              e.name as "employeeName", e.department,
-             mgr.name as "managerName", mgr.email as "managerEmail"
+             mgr.name as "managerName", mgr.email as "managerEmail",
+             mgr.wecom_user_id as "managerWecomUserId"
       FROM performance_records pr
       JOIN employees e ON e.id = pr.employee_id
       LEFT JOIN employees mgr ON mgr.id = pr.assessor_id
@@ -360,7 +369,7 @@ export class SchedulerService {
       const mid = r.assessorId || 'gm001';
       if (!byManager[mid]) {
         byManager[mid] = {
-          manager: { id: mid, name: r.managerName, email: r.managerEmail },
+          manager: { id: mid, name: r.managerName, email: r.managerEmail, managerWecomUserId: r.managerWecomUserId },
           employees: []
         };
       }
@@ -394,7 +403,11 @@ export class SchedulerService {
         }
       }
 
-      const touser = String(managerId || '').trim();
+      const touser = await resolveEmployeeWecomUserId({
+        id: String(managerId || '').trim(),
+        name: String(group.manager.name || '').trim(),
+        wecomUserId: String(group.manager.managerWecomUserId || '').trim(),
+      });
       if (touser) {
         await WecomWebhookService.sendReminder({
           cycleName: `${month}月经理打分`,
@@ -434,6 +447,10 @@ export class SchedulerService {
 
     if (deptStats.length === 0) return;
 
+    const allEmployees = await EmployeeModel.findAll();
+    const activeEmployees = allEmployees.filter((employee: any) => !employee.status || employee.status === 'active');
+    const allDepartments = await OrganizationModel.findAllDepartments();
+
     // 计算总完成率
     let totalDone = 0, totalAll = 0;
     for (const d of deptStats) {
@@ -443,41 +460,98 @@ export class SchedulerService {
     }
     const overallRate = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
 
-    // 构建消息
-    let lines = [`📊 **${month}月绩效考核进度**（${dayOfMonth}号，还剩${daysLeft}天）\n`];
-    lines.push(`总体完成率：**${overallRate}%**（${totalDone}/${totalAll}）\n`);
+    const recipientsCache = new Map<string, string[]>();
+    const resolveDepartmentRecipients = async (departmentName: string) => {
+      if (recipientsCache.has(departmentName)) {
+        return recipientsCache.get(departmentName)!;
+      }
+
+      const matchedTopDepartment = allDepartments.find((department: any) => department.name === departmentName && !department.parentId);
+      const recipientIds = new Set<string>();
+
+      if (matchedTopDepartment?.managerId) {
+        recipientIds.add(matchedTopDepartment.managerId);
+      }
+
+      activeEmployees
+        .filter((employee: any) => employee.department === departmentName && employee.role === 'manager')
+        .forEach((employee: any) => recipientIds.add(employee.id));
+
+      const recipients = await Promise.all(
+        Array.from(recipientIds).map(async (employeeId) => {
+          const employee = activeEmployees.find((candidate: any) => candidate.id === employeeId);
+          if (!employee) return null;
+          return resolveEmployeeWecomUserId({
+            id: String(employee.id || '').trim(),
+            name: String(employee.name || '').trim(),
+            wecomUserId: String(employee.wecomUserId || '').trim(),
+          });
+        }),
+      );
+
+      const resolvedRecipients = Array.from(new Set(recipients.filter((item): item is string => Boolean(item))));
+      recipientsCache.set(departmentName, resolvedRecipients);
+      return resolvedRecipients;
+    };
+
+    const summaryRecipients = await Promise.all(
+      activeEmployees
+        .filter((employee: any) => ['hr', 'admin', 'gm'].includes(employee.role))
+        .map(async (employee: any) => resolveEmployeeWecomUserId({
+          id: String(employee.id || '').trim(),
+          name: String(employee.name || '').trim(),
+          wecomUserId: String(employee.wecomUserId || '').trim(),
+        })),
+    );
+    const resolvedSummaryRecipients = Array.from(new Set(summaryRecipients.filter((item): item is string => Boolean(item))));
+
+    const summaryLines = [`📊 **${month}月绩效考核进度**（${dayOfMonth}号，还剩${daysLeft}天）\n`];
+    summaryLines.push(`总体完成率：**${overallRate}%**（${totalDone}/${totalAll}）\n`);
 
     for (const d of deptStats) {
-      const done = parseInt(d.doneCount) + parseInt(d.submittedCount);
-      const total = parseInt(d.total);
-      const draft = parseInt(d.draftCount);
-      const rate = total > 0 ? Math.round((done / total) * 100) : 0;
+      const completedCount = parseInt(d.doneCount);
+      const submittedCount = parseInt(d.submittedCount);
+      const draftCount = parseInt(d.draftCount);
+      const totalCount = parseInt(d.total);
+      const done = completedCount + submittedCount;
+      const rate = totalCount > 0 ? Math.round((done / totalCount) * 100) : 0;
       const bar = '█'.repeat(Math.floor(rate / 10)) + '░'.repeat(10 - Math.floor(rate / 10));
-      let status = rate === 100 ? '✅' : draft > 0 ? '⚠️' : '🔄';
-      lines.push(`${status} **${d.department}** ${bar} ${rate}%（${done}/${total}，${draft}人未提交）`);
+      const status = rate === 100 ? '✅' : draftCount > 0 ? '⚠️' : '🔄';
+      summaryLines.push(`${status} **${d.department}** ${bar} ${rate}%（${done}/${totalCount}，${draftCount}人未提交）`);
+
+      const departmentRecipients = await resolveDepartmentRecipients(String(d.department || '').trim());
+      if (departmentRecipients.length > 0) {
+        await WecomWebhookService.sendDepartmentProgress({
+          month,
+          dayOfMonth,
+          daysLeft,
+          department: String(d.department || ''),
+          totalCount,
+          completedCount,
+          submittedCount,
+          draftCount,
+        }, departmentRecipients.join(','));
+
+        if (dayOfMonth === 6 && (draftCount > 0 || submittedCount > 0)) {
+          await WecomWebhookService.sendDepartmentDeadlineAlert({
+            month,
+            dayOfMonth,
+            daysLeft,
+            department: String(d.department || ''),
+            totalCount,
+            completedCount,
+            submittedCount,
+            draftCount,
+          }, departmentRecipients.join(','));
+        }
+      }
     }
 
-    const content = lines.join('\n');
-
-    // 企业微信推送
-    await sendAppMessage('@all', content);
-    logger.info(`[Scheduler] 部门进度已推送: 总体${overallRate}%`);
-
-    // 如果是6号，发送最终催办
-    if (dayOfMonth === 6) {
-      const unfinished = deptStats.filter((d: any) => parseInt(d.draftCount) > 0 || parseInt(d.submittedCount) > 0);
-      if (unfinished.length > 0) {
-        let urgentLines = [`🚨 **${month}月绩效考核今日截止！以下部门尚未完成：\n`];
-        for (const d of unfinished) {
-          const draft = parseInt(d.draftCount);
-          const submitted = parseInt(d.submittedCount);
-          const parts: string[] = [];
-          if (draft > 0) parts.push(`${draft}人未提交总结`);
-          if (submitted > 0) parts.push(`${submitted}人待打分`);
-          urgentLines.push(`**${d.department}**：${parts.join('，')}`);
-        }
-        await sendAppMessage('@all', urgentLines.join('\n'));
-      }
+    if (resolvedSummaryRecipients.length > 0) {
+      await sendAppMessage(resolvedSummaryRecipients.join(','), summaryLines.join('\n'));
+      logger.info(`[Scheduler] 部门进度汇总已精准发送给 HR/Admin/GM: ${resolvedSummaryRecipients.length} 人`);
+    } else {
+      logger.warn('[Scheduler] 未找到可接收部门进度汇总的 HR/Admin/GM 企业微信账号');
     }
   }
 
@@ -692,6 +766,15 @@ export class SchedulerService {
         month: targetMonth,
         published: false,
         reason: `未完成: ${completedRecords.length}/${eligibleEmployees.length}`
+      };
+    }
+
+    const readiness = await validatePublicationReadiness(targetMonth);
+    if (!readiness.ok) {
+      return {
+        month: targetMonth,
+        published: false,
+        reason: formatPublicationReadinessMessage(readiness)
       };
     }
 

@@ -343,7 +343,8 @@ describe('Performance API', () => {
           projectFeedback: 1.5,
           qualityImprovement: 1.5,
           managerComment: '表现优秀',
-          nextMonthWorkArrangement: '继续当前工作'
+          nextMonthWorkArrangement: '继续当前工作',
+          scoreEvidence: '连续完成关键交付并主动支援团队解决问题'
         });
 
       expect(response.status).toBe(200);
@@ -428,7 +429,8 @@ describe('Performance API', () => {
           projectFeedback: 1.5,
           qualityImprovement: 1.5,
           managerComment: '优秀表现',
-          nextMonthWorkArrangement: '继续当前项目'
+          nextMonthWorkArrangement: '继续当前项目',
+          scoreEvidence: '承担核心项目并提前完成交付，客户反馈优秀'
         });
 
       expect(response.status).toBe(200);
@@ -472,7 +474,8 @@ describe('Performance API', () => {
           projectFeedback: 0.5,
           qualityImprovement: 0.5,
           managerComment: '需要改进',
-          nextMonthWorkArrangement: '加强培训'
+          nextMonthWorkArrangement: '加强培训',
+          scoreEvidence: '多次延期且质量问题反复出现，需要重点辅导'
         });
 
       expect(response.status).toBe(200);

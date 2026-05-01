@@ -43,10 +43,22 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
   const [managerComment, setManagerComment] = useState('');
   const [nextMonthWorkArrangement, setNextMonthWorkArrangement] = useState('');
   const [evaluationKeywords, setEvaluationKeywords] = useState<string[]>([]);
+  const [issueTypeTags, setIssueTypeTags] = useState<string[]>([]);
+  const [highlightTags, setHighlightTags] = useState<string[]>([]);
+  const [workTypeTags, setWorkTypeTags] = useState<string[]>([]);
+  const [improvementActionTags, setImprovementActionTags] = useState<string[]>([]);
+  const [issueAttributionTags, setIssueAttributionTags] = useState<string[]>([]);
+  const [workloadTags, setWorkloadTags] = useState<string[]>([]);
+  const [managerSuggestionTags, setManagerSuggestionTags] = useState<string[]>([]);
+  const [scoreEvidence, setScoreEvidence] = useState('');
+  const [monthlyStarRecommended, setMonthlyStarRecommended] = useState(false);
+  const [monthlyStarCategory, setMonthlyStarCategory] = useState('');
+  const [monthlyStarReason, setMonthlyStarReason] = useState('');
+  const [monthlyStarPublic, setMonthlyStarPublic] = useState(true);
   const [subordinates, setSubordinates] = useState<any[]>([]);
   
   useEffect(() => {
-    if (user && user.role === 'manager') {
+    if (user && ['manager', 'hr', 'admin', 'gm'].includes(user.role)) {
       employeeApi.getSubordinates().then(r => { if (r.success) setSubordinates(r.data); }).catch((error) => { console.error(error); toast.error('获取下属列表失败'); });
     }
   }, [user]);
@@ -97,6 +109,26 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
       return matchesSearch && matchesStatus && matchesGroup;
     });
   }, [allEmployeeRecords, searchQuery, statusFilter, groupFilter]);
+
+  const distributionStats = useMemo(() => {
+    if (allEmployeeRecords.length <= 10) return null;
+    const scoredRecords = allEmployeeRecords.filter(record =>
+      (record.status === 'completed' || record.status === 'scored') && Number(record.totalScore) > 0
+    );
+    const topCount = scoredRecords.filter(record => Number(record.totalScore) >= 1.4).length;
+    const bottomCount = scoredRecords.filter(record => Number(record.totalScore) < 0.9).length;
+    const topQuota = Math.ceil(allEmployeeRecords.length * 0.2);
+    const bottomRequired = Math.max(1, Math.floor(allEmployeeRecords.length * 0.1));
+    return {
+      topCount,
+      bottomCount,
+      middleCount: Math.max(0, scoredRecords.length - topCount - bottomCount),
+      topQuota,
+      bottomRequired,
+      total: allEmployeeRecords.length,
+      scored: scoredRecords.length
+    };
+  }, [allEmployeeRecords]);
   
   const handleOpenDrawer = useCallback((record: any) => {
     setIsNoSummary(!record.selfSummary && !record.nextMonthPlan);
@@ -105,6 +137,18 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
     setManagerComment(record.managerComment || '');
     setNextMonthWorkArrangement(record.nextMonthWorkArrangement || '');
     setEvaluationKeywords(record.evaluationKeywords || []);
+    setIssueTypeTags(record.issueTypeTags || []);
+    setHighlightTags(record.highlightTags || []);
+    setWorkTypeTags(record.workTypeTags || []);
+    setImprovementActionTags(record.improvementActionTags || []);
+    setIssueAttributionTags(record.issueAttributionTags || []);
+    setWorkloadTags(record.workloadTags || []);
+    setManagerSuggestionTags(record.managerSuggestionTags || []);
+    setScoreEvidence(record.scoreEvidence || '');
+    setMonthlyStarRecommended(record.monthlyStarRecommended === true);
+    setMonthlyStarCategory(record.monthlyStarCategory || '');
+    setMonthlyStarReason(record.monthlyStarReason || '');
+    setMonthlyStarPublic(record.monthlyStarPublic !== false);
     setIsDrawerOpen(true);
   }, []);
   
@@ -145,8 +189,36 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
         else { toast.error(response.message || response.error || '创建记录失败'); return; }
       } catch (error: any) { toast.error(error.message || '创建记录失败'); return; }
     }
+
+    if (requiresScoreEvidence && scoreEvidence.trim().length < 10) {
+      toast.error('评分特别优秀或明显偏低时，请填写不少于10个字的具体事例说明');
+      return;
+    }
+
+    if (monthlyStarRecommended && (!monthlyStarCategory || monthlyStarReason.trim().length < 10)) {
+      toast.error('推荐每月之星时，请选择类型并填写不少于10个字的推荐理由');
+      return;
+    }
     
-    const success = await submitScore({ id: recordId, ...scores, managerComment, nextMonthWorkArrangement, evaluationKeywords });
+    const success = await submitScore({
+      id: recordId,
+      ...scores,
+      managerComment,
+      nextMonthWorkArrangement,
+      evaluationKeywords,
+      issueTypeTags,
+      highlightTags,
+      workTypeTags,
+      improvementActionTags,
+      issueAttributionTags,
+      workloadTags,
+      managerSuggestionTags,
+      scoreEvidence,
+      monthlyStarRecommended,
+      monthlyStarCategory,
+      monthlyStarReason,
+      monthlyStarPublic
+    });
     if (success) {
       setIsDrawerOpen(false); setSelectedRecord(null); setIsNoSummary(false);
       toast.success('评分提交成功');
@@ -157,6 +229,8 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
   };
   
   const totalScore = calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
+
+  const requiresScoreEvidence = totalScore >= 1.4 || totalScore < 0.9;
   
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string }> = {
@@ -228,6 +302,26 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
                   <p className="text-xs text-gray-500">月度评分进度</p>
                 </div>
                 {hasAnyRecords && <div className="w-28"><Progress value={progress} className="h-2" /></div>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {distributionStats && (
+        <Card className="border-amber-200 bg-amber-50/60">
+          <CardContent className="pt-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="font-semibold text-amber-900">本部门 {distributionStats.total} 人，发布前需满足 2-7-1 区分度</p>
+                <p className="text-sm text-amber-700">
+                  优秀最多 {distributionStats.topQuota} 人，末位至少 {distributionStats.bottomRequired} 人；当前已评分 {distributionStats.scored} 人。
+                </p>
+              </div>
+              <div className="flex gap-2 text-sm">
+                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">优秀 {distributionStats.topCount}/{distributionStats.topQuota}</Badge>
+                <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">中间 {distributionStats.middleCount}</Badge>
+                <Badge className="bg-red-100 text-red-800 hover:bg-red-100">末位 {distributionStats.bottomCount}/{distributionStats.bottomRequired}</Badge>
               </div>
             </div>
           </CardContent>
@@ -330,6 +424,30 @@ export function ScoringManagement({ embedded = false }: { embedded?: boolean }) 
         setNextMonthWorkArrangement={setNextMonthWorkArrangement}
         evaluationKeywords={evaluationKeywords}
         setEvaluationKeywords={setEvaluationKeywords}
+        issueTypeTags={issueTypeTags}
+        setIssueTypeTags={setIssueTypeTags}
+        highlightTags={highlightTags}
+        setHighlightTags={setHighlightTags}
+        workTypeTags={workTypeTags}
+        setWorkTypeTags={setWorkTypeTags}
+        improvementActionTags={improvementActionTags}
+        setImprovementActionTags={setImprovementActionTags}
+        issueAttributionTags={issueAttributionTags}
+        setIssueAttributionTags={setIssueAttributionTags}
+        workloadTags={workloadTags}
+        setWorkloadTags={setWorkloadTags}
+        managerSuggestionTags={managerSuggestionTags}
+        setManagerSuggestionTags={setManagerSuggestionTags}
+        scoreEvidence={scoreEvidence}
+        setScoreEvidence={setScoreEvidence}
+        monthlyStarRecommended={monthlyStarRecommended}
+        setMonthlyStarRecommended={setMonthlyStarRecommended}
+        monthlyStarCategory={monthlyStarCategory}
+        setMonthlyStarCategory={setMonthlyStarCategory}
+        monthlyStarReason={monthlyStarReason}
+        setMonthlyStarReason={setMonthlyStarReason}
+        monthlyStarPublic={monthlyStarPublic}
+        setMonthlyStarPublic={setMonthlyStarPublic}
         totalScore={totalScore}
         loading={loading}
         onSubmit={handleSubmit}

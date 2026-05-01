@@ -1,49 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Building2,
-  ChevronUp,
-  Edit,
-  GitBranch,
-  KeyRound,
-  Plus,
-  Save,
-  Search,
-  ShieldCheck,
-  ShieldOff,
-  Trash2,
-  Upload,
-  Users,
-} from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Building2, GitBranch, Save, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EmployeeForm } from '@/pages/HR/EmployeeManagement/EmployeeForm';
-import { employeeApi, organizationApi, DEFAULT_EMPLOYEE_PASSWORD } from '@/services/api';
-import type { Department, Employee, EmployeeLevel } from '@/types';
+import { employeeApi, organizationApi } from '@/services/api';
+import type { Department, Employee } from '@/types';
 
 const NO_MANAGER = '__none__';
-
-type EmployeeFormState = {
-  id: string;
-  name: string;
-  department: string;
-  subDepartment: string;
-  role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
-  level: EmployeeLevel;
-  managerId: string;
-  idCardLast6: string;
-  wecomUserId: string;
-};
 
 type DepartmentGroup = {
   key: string;
@@ -83,104 +54,80 @@ function getDepartmentPathMap(departments: Department[]) {
   return new Map<string, string[]>(departments.map((dept) => [dept.id, resolvePath(dept)]));
 }
 
-export function UserManagement() {
+interface RelationshipManagementPanelProps {
+  refreshSignal?: number;
+  title?: string;
+  description?: string;
+}
+
+export function RelationshipManagementPanel({
+  refreshSignal = 0,
+  title = '上下级 / 部门经理关系维护',
+  description = '上传人事档案后，如果直属上级或部门负责人还需要人工调整，可以直接在这里维护。',
+}: RelationshipManagementPanelProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
   const [relationshipSearch, setRelationshipSearch] = useState('');
   const [showMissingManagersOnly, setShowMissingManagersOnly] = useState(false);
   const [departmentRelationshipSearch, setDepartmentRelationshipSearch] = useState('');
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [detailEmployee, setDetailEmployee] = useState<Employee | null>(null);
-  const [reportChain, setReportChain] = useState<Employee[]>([]);
-  const [subordinates, setSubordinates] = useState<Employee[]>([]);
   const [pendingEmployeeManagers, setPendingEmployeeManagers] = useState<Record<string, string>>({});
   const [pendingDepartmentManagers, setPendingDepartmentManagers] = useState<Record<string, string>>({});
   const [syncDepartmentAssignments, setSyncDepartmentAssignments] = useState<Record<string, boolean>>({});
   const [savingEmployeeId, setSavingEmployeeId] = useState<string | null>(null);
   const [savingDepartmentKey, setSavingDepartmentKey] = useState<string | null>(null);
 
-  const [employeeForm, setEmployeeForm] = useState<EmployeeFormState>({
-    id: '',
-    name: '',
-    department: '',
-    subDepartment: '',
-    role: 'employee',
-    level: 'intermediate',
-    managerId: '',
-    idCardLast6: '',
-    wecomUserId: '',
-  });
-
   const syncPendingManagers = (list: Employee[]) => {
     setPendingEmployeeManagers(
       list.reduce<Record<string, string>>((acc, employee) => {
         acc[employee.id] = employee.managerId || NO_MANAGER;
         return acc;
-      }, {})
+      }, {}),
     );
   };
 
-  const fetchEmployees = async () => {
+  const fetchData = async () => {
     setLoading(true);
-    setLoadError(null);
     try {
       const [employeeRes, departmentRes] = await Promise.all([
         employeeApi.getAll({ includeDisabled: true }),
         organizationApi.getAllDepartments(),
       ]);
 
-      if (employeeRes.success && Array.isArray(employeeRes.data)) {
-        setEmployees(employeeRes.data);
-        syncPendingManagers(employeeRes.data);
-      } else {
-        setEmployees([]);
-        setLoadError(employeeRes?.message || '用户数据加载失败');
-      }
+      const employeeList = employeeRes.success && Array.isArray(employeeRes.data) ? employeeRes.data : [];
+      const departmentList = departmentRes.success && Array.isArray(departmentRes.data) ? departmentRes.data : [];
 
-      if (departmentRes.success && Array.isArray(departmentRes.data)) {
-        setDepartments(departmentRes.data);
-      } else {
-        setDepartments([]);
-      }
+      setEmployees(employeeList);
+      setDepartments(departmentList);
+      syncPendingManagers(employeeList);
     } catch (error: any) {
       console.error(error);
+      toast.error(error?.message || '加载组织关系失败');
       setEmployees([]);
       setDepartments([]);
-      setLoadError(error?.message || '用户数据加载失败');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    fetchData();
+  }, [refreshSignal]);
 
   const activeEmployees = useMemo(() => employees.filter(isActiveEmployee), [employees]);
   const managerCandidates = useMemo(
     () => activeEmployees
       .filter((employee) => ['manager', 'gm', 'hr', 'admin'].includes(employee.role))
       .sort((a, b) => `${a.department}-${a.name}`.localeCompare(`${b.department}-${b.name}`, 'zh-CN')),
-    [activeEmployees]
+    [activeEmployees],
   );
 
   const managerMap = useMemo(
     () => new Map(managerCandidates.map((employee) => [employee.id, employee])),
-    [managerCandidates]
+    [managerCandidates],
   );
 
   const departmentPathMap = useMemo(() => getDepartmentPathMap(departments), [departments]);
-
-  const filteredEmployees = employees.filter((employee) => {
-    return employee.name.toLowerCase().includes(searchQuery.toLowerCase())
-      && (filterRole === 'all' || employee.role === filterRole);
-  });
 
   const relationshipEmployees = useMemo(() => {
     const keyword = relationshipSearch.trim().toLowerCase();
@@ -198,7 +145,7 @@ export function UserManagement() {
 
   const missingManagerCount = useMemo(
     () => activeEmployees.filter((employee) => !employee.managerId || !employees.some((item) => item.id === employee.managerId)).length,
-    [activeEmployees, employees]
+    [activeEmployees, employees],
   );
 
   const departmentGroups = useMemo<DepartmentGroup[]>(() => {
@@ -278,134 +225,6 @@ export function UserManagement() {
     });
   };
 
-  const handleSaveEmployee = async () => {
-    try {
-      if (editingEmployee) {
-        await employeeApi.updateEmployee(editingEmployee.id, employeeForm);
-        toast.success('员工信息已更新');
-      } else {
-        await employeeApi.create({ ...employeeForm, password: DEFAULT_EMPLOYEE_PASSWORD });
-        toast.success('员工已添加');
-      }
-      setShowAddDialog(false);
-      setEditingEmployee(null);
-      resetForm();
-      fetchEmployees();
-    } catch (error: any) {
-      toast.error(error.message || '操作失败');
-    }
-  };
-
-  const handleEdit = (employee: Employee) => {
-    setEditingEmployee(employee);
-    setEmployeeForm({
-      id: employee.id,
-      name: employee.name,
-      department: employee.department,
-      subDepartment: employee.subDepartment,
-      role: employee.role,
-      level: employee.level,
-      managerId: employee.managerId || '',
-      idCardLast6: '',
-      wecomUserId: employee.wecomUserId || '',
-    });
-    setShowAddDialog(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('确定要删除该员工吗？')) return;
-    try {
-      await employeeApi.deleteEmployee(id);
-      toast.success('员工已删除');
-      fetchEmployees();
-    } catch (error: any) {
-      toast.error(error.message || '删除失败');
-    }
-  };
-
-  const handleResetPassword = async (id: string, name: string) => {
-    if (!confirm(`确定要重置 ${name} 的密码为默认密码(见系统配置)吗？`)) return;
-    try {
-      await employeeApi.resetPassword(id);
-      toast.success('密码已重置');
-    } catch (error: any) {
-      toast.error(error.message || '重置失败');
-    }
-  };
-
-  const handleToggleStatus = async (id: string) => {
-    try {
-      await employeeApi.toggleStatus(id);
-      toast.success('状态已更新');
-      fetchEmployees();
-    } catch (error: any) {
-      toast.error(error.message || '操作失败');
-    }
-  };
-
-  const handleShowDetail = (employee: Employee) => {
-    setDetailEmployee(employee);
-    const chain: Employee[] = [];
-    let current = employee;
-    const visited = new Set<string>();
-    while (current.managerId && !visited.has(current.managerId)) {
-      visited.add(current.managerId);
-      const manager = employees.find((item) => item.id === current.managerId);
-      if (manager) {
-        chain.push(manager);
-        current = manager;
-      } else {
-        break;
-      }
-    }
-    setReportChain(chain);
-    setSubordinates(employees.filter((item) => item.managerId === employee.id));
-    setShowDetailDialog(true);
-  };
-
-  const resetForm = () => setEmployeeForm({
-    id: '',
-    name: '',
-    department: '',
-    subDepartment: '',
-    role: 'employee',
-    level: 'intermediate',
-    managerId: '',
-    idCardLast6: '',
-    wecomUserId: '',
-  });
-
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    const lines = text.split('\n').slice(1);
-    let successCount = 0;
-    let failCount = 0;
-    for (const line of lines) {
-      const values = line.split(',').map((value) => value.trim().replace(/^"|"$/g, ''));
-      if (values.length >= 2 && values[1]) {
-        try {
-          await employeeApi.create({
-            id: values[0] || `emp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            name: values[1],
-            department: values[2] || '总公司',
-            subDepartment: values[3] || '',
-            role: values[4] || 'employee',
-            level: values[5] || 'intermediate',
-            managerId: values[6] || undefined,
-            password: DEFAULT_EMPLOYEE_PASSWORD,
-          });
-          successCount++;
-        } catch {
-          failCount++;
-        }
-      }
-    }
-    toast.success(`导入完成: 成功${successCount}名, 失败${failCount}名`);
-    fetchEmployees();
-  };
-
   const handleSaveDirectManager = async (employee: Employee) => {
     const selectedManagerId = pendingEmployeeManagers[employee.id] || employee.managerId || NO_MANAGER;
     if (selectedManagerId === employee.id) {
@@ -423,7 +242,7 @@ export function UserManagement() {
     try {
       await employeeApi.updateEmployee(employee.id, { managerId: normalizedManagerId });
       toast.success(`已更新 ${employee.name} 的直属上级`);
-      await fetchEmployees();
+      await fetchData();
     } catch (error: any) {
       toast.error(error.message || '直属上级保存失败');
     } finally {
@@ -467,7 +286,7 @@ export function UserManagement() {
       const saveTargetText = updatedDepartmentRecord ? '部门经理关系' : '直属上级关系';
       const syncText = syncEmployees ? `，已同步 ${syncedEmployees} 名普通员工` : '';
       toast.success(`${group.displayName} 的${saveTargetText}已保存${syncText}`);
-      await fetchEmployees();
+      await fetchData();
     } catch (error: any) {
       toast.error(error.message || '部门经理关系保存失败');
     } finally {
@@ -475,52 +294,19 @@ export function UserManagement() {
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const map: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-      employee: { label: '员工', variant: 'secondary' },
-      manager: { label: '经理', variant: 'default' },
-      hr: { label: 'HR', variant: 'outline' },
-      gm: { label: '总经理', variant: 'default' },
-      admin: { label: '管理员', variant: 'destructive' },
-    };
-    const info = map[role] || { label: role, variant: 'secondary' as const };
-    return <Badge variant={info.variant}>{info.label}</Badge>;
-  };
-
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">用户管理</h2>
-          <p className="text-gray-500 mt-1">管理员工、直属上级关系和部门经理关系</p>
-        </div>
-        <div className="flex gap-3">
-          <label htmlFor="admin-file-upload" className="cursor-pointer">
-            <Button variant="outline" asChild><span><Upload className="w-4 h-4 mr-2" />批量导入</span></Button>
-            <input id="admin-file-upload" type="file" accept=".csv" onChange={handleFileImport} className="hidden" />
-          </label>
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { resetForm(); setEditingEmployee(null); }}>
-                <Plus className="w-4 h-4 mr-2" />新增用户
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl" aria-describedby="admin-emp-form-desc">
-              <DialogHeader>
-                <DialogTitle>{editingEmployee ? '编辑用户' : '新增用户'}</DialogTitle>
-                <p id="admin-emp-form-desc" className="text-sm text-gray-600">请填写用户信息</p>
-              </DialogHeader>
-              <EmployeeForm form={employeeForm} setForm={setEmployeeForm} onSave={handleSaveEmployee} onCancel={() => { setShowAddDialog(false); setEditingEmployee(null); resetForm(); }} />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><GitBranch className="w-5 h-5" />上下级 / 部门经理关系维护</CardTitle>
-        </CardHeader>
-        <CardContent>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <GitBranch className="w-5 h-5" />
+          {title}
+        </CardTitle>
+        <p className="text-sm text-gray-500">{description}</p>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="py-12 text-center text-sm text-gray-500">正在加载组织关系...</div>
+        ) : (
           <Tabs defaultValue="employee-relationship" className="space-y-4">
             <TabsList>
               <TabsTrigger value="employee-relationship">直属上级维护</TabsTrigger>
@@ -610,7 +396,8 @@ export function UserManagement() {
                               onClick={() => handleSaveDirectManager(employee)}
                               disabled={savingEmployeeId === employee.id}
                             >
-                              <Save className="w-4 h-4 mr-1" />保存
+                              <Save className="w-4 h-4 mr-1" />
+                              保存
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -713,7 +500,8 @@ export function UserManagement() {
                             onClick={() => handleSaveDepartmentManager(group)}
                             disabled={savingDepartmentKey === group.key}
                           >
-                            <Save className="w-4 h-4 mr-1" />保存关系
+                            <Save className="w-4 h-4 mr-1" />
+                            保存关系
                           </Button>
                         </div>
                       </CardContent>
@@ -726,149 +514,9 @@ export function UserManagement() {
               </div>
             </TabsContent>
           </Tabs>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input placeholder="搜索用户姓名..." value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="pl-10" />
-            </div>
-            <Select value={filterRole} onValueChange={setFilterRole}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="角色" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部角色</SelectItem>
-                <SelectItem value="employee">员工</SelectItem>
-                <SelectItem value="manager">经理</SelectItem>
-                <SelectItem value="hr">HR</SelectItem>
-                <SelectItem value="gm">总经理</SelectItem>
-                <SelectItem value="admin">管理员</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-4 gap-4">
-        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.length}</div><div className="text-sm text-gray-500">当前有效用户</div></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter((employee) => employee.role === 'admin').length}</div><div className="text-sm text-gray-500">管理员</div></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter((employee) => employee.role === 'manager').length}</div><div className="text-sm text-gray-500">经理</div></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><div className="text-2xl font-bold">{employees.filter((employee) => employee.role === 'employee').length}</div><div className="text-sm text-gray-500">普通员工</div></CardContent></Card>
-      </div>
-
-      <Card>
-        <CardHeader><CardTitle>用户列表 ({filteredEmployees.length})</CardTitle></CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="py-12 text-center text-sm text-gray-500">正在加载用户数据...</div>
-          ) : loadError ? (
-            <div className="py-12 text-center space-y-3">
-              <p className="text-sm text-red-600">{loadError}</p>
-              <Button type="button" variant="outline" onClick={fetchEmployees}>重新加载</Button>
-            </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>姓名</TableHead>
-                    <TableHead>部门</TableHead>
-                    <TableHead>角色</TableHead>
-                    <TableHead>级别</TableHead>
-                    <TableHead>状态</TableHead>
-                    <TableHead className="text-right">操作</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.slice(0, 50).map((employee) => (
-                    <TableRow key={employee.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleShowDetail(employee)}>
-                      <TableCell className="text-xs text-gray-400">{employee.id}</TableCell>
-                      <TableCell className="font-medium">{employee.name}</TableCell>
-                      <TableCell>{employee.department}</TableCell>
-                      <TableCell>{getRoleBadge(employee.role)}</TableCell>
-                      <TableCell>{employee.level}</TableCell>
-                      <TableCell>
-                        <Badge variant={(employee as any).status === 'disabled' ? 'destructive' : 'outline'}>
-                          {(employee as any).status === 'disabled' ? '已禁用' : '正常'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
-                        <div className="flex justify-end gap-1">
-                          <Button size="sm" variant="ghost" title="编辑" onClick={() => handleEdit(employee)}><Edit className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" title="重置密码" onClick={() => handleResetPassword(employee.id, employee.name)}><KeyRound className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" title={(employee as any).status === 'disabled' ? '启用' : '禁用'} onClick={() => handleToggleStatus(employee.id)}>
-                            {(employee as any).status === 'disabled' ? <ShieldCheck className="w-4 h-4 text-green-500" /> : <ShieldOff className="w-4 h-4 text-orange-500" />}
-                          </Button>
-                          <Button size="sm" variant="ghost" title="删除" onClick={() => handleDelete(employee.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredEmployees.length === 0 && (
-                <div className="py-8 text-center text-sm text-gray-500">当前筛选条件下没有匹配的用户。</div>
-              )}
-            </>
-          )}
-          {filteredEmployees.length > 50 && (
-            <p className="text-sm text-gray-400 mt-2 text-center">显示前50条，共{filteredEmployees.length}条</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-lg" aria-describedby="detail-desc">
-          <DialogHeader>
-            <DialogTitle>员工详情 - {detailEmployee?.name}</DialogTitle>
-            <p id="detail-desc" className="text-sm text-gray-600">查看上下级关系</p>
-          </DialogHeader>
-          {detailEmployee && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-500">ID：</span>{detailEmployee.id}</div>
-                <div><span className="text-gray-500">部门：</span>{detailEmployee.department}</div>
-                <div><span className="text-gray-500">角色：</span>{detailEmployee.role}</div>
-                <div><span className="text-gray-500">级别：</span>{detailEmployee.level}</div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-1"><ChevronUp className="w-4 h-4" />汇报链（向上追溯）</h4>
-                {reportChain.length > 0 ? (
-                  <div className="space-y-1">
-                    {reportChain.map((manager, index) => (
-                      <div key={manager.id} className="flex items-center gap-2 text-sm" style={{ paddingLeft: `${index * 16}px` }}>
-                        <span className="text-gray-400">↑</span>
-                        <span className="font-medium">{manager.name}</span>
-                        <Badge variant="outline" className="text-xs">{manager.role}</Badge>
-                        <span className="text-gray-400">({manager.department})</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <p className="text-sm text-gray-400">无上级</p>}
-              </div>
-
-              <div>
-                <h4 className="font-medium text-sm mb-2 flex items-center gap-1"><Users className="w-4 h-4" />直接下属 ({subordinates.length})</h4>
-                {subordinates.length > 0 ? (
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {subordinates.map((employee) => (
-                      <div key={employee.id} className="flex items-center gap-2 text-sm">
-                        <span className="font-medium">{employee.name}</span>
-                        <Badge variant="secondary" className="text-xs">{employee.role}</Badge>
-                        <span className="text-gray-400">({employee.department})</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : <p className="text-sm text-gray-400">无直接下属</p>}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </motion.div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
+

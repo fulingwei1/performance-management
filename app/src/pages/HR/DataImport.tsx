@@ -33,7 +33,11 @@ export function DataImport() {
   );
 }
 
-function HrArchiveImport() {
+interface HrArchiveImportProps {
+  onImported?: () => void;
+}
+
+export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<null | {
@@ -61,6 +65,7 @@ function HrArchiveImport() {
       const response = await dataImportApi.importHrArchive(formData);
       toast.success(response.message);
       setResult({ success: true, ...response.data });
+      onImported?.();
     } catch (error: any) {
       const errData = error?.response?.data;
       toast.error(errData?.message || '导入失败');
@@ -178,7 +183,7 @@ function HrArchiveImport() {
   );
 }
 
-function EmployeeTemplateImport() {
+export function EmployeeTemplateImport() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);

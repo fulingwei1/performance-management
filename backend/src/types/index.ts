@@ -13,6 +13,7 @@ export interface Employee {
   name: string;
   department: string;
   subDepartment: string;
+  wecomUserId?: string;
   role: EmployeeRole;
   level: EmployeeLevel;
   managerId?: string;
@@ -41,6 +42,8 @@ export interface PerformanceRecord {
   // 员工填写
   selfSummary: string;
   nextMonthPlan: string;
+  employeeIssueTags?: string[];
+  resourceNeedTags?: string[];
   
   // 经理评分
   taskCompletion: number;
@@ -59,6 +62,18 @@ export interface PerformanceRecord {
   managerComment: string;
   nextMonthWorkArrangement: string;
   evaluationKeywords?: string[];
+  issueTypeTags?: string[];
+  highlightTags?: string[];
+  workTypeTags?: string[];
+  improvementActionTags?: string[];
+  issueAttributionTags?: string[];
+  workloadTags?: string[];
+  managerSuggestionTags?: string[];
+  scoreEvidence?: string;
+  monthlyStarRecommended?: boolean;
+  monthlyStarCategory?: string;
+  monthlyStarReason?: string;
+  monthlyStarPublic?: boolean;
   
   // 分组排名
   groupType: 'high' | 'low';

@@ -110,7 +110,9 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       const response = await performanceApi.submitSummary({
         month: data.month || '',
         selfSummary: data.selfSummary || '',
-        nextMonthPlan: data.nextMonthPlan || ''
+        nextMonthPlan: data.nextMonthPlan || '',
+        employeeIssueTags: data.employeeIssueTags || [],
+        resourceNeedTags: data.resourceNeedTags || []
       });
       
       if (response.success) {
@@ -156,7 +158,19 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
         qualityImprovement,
         managerComment: data.managerComment || '',
         nextMonthWorkArrangement: data.nextMonthWorkArrangement || '',
-        evaluationKeywords: data.evaluationKeywords || []
+        evaluationKeywords: data.evaluationKeywords || [],
+        issueTypeTags: data.issueTypeTags || [],
+        highlightTags: data.highlightTags || [],
+        workTypeTags: data.workTypeTags || [],
+        improvementActionTags: data.improvementActionTags || [],
+        issueAttributionTags: data.issueAttributionTags || [],
+        workloadTags: data.workloadTags || [],
+        managerSuggestionTags: data.managerSuggestionTags || [],
+        scoreEvidence: data.scoreEvidence || '',
+        monthlyStarRecommended: data.monthlyStarRecommended === true,
+        monthlyStarCategory: data.monthlyStarCategory || '',
+        monthlyStarReason: data.monthlyStarReason || '',
+        monthlyStarPublic: data.monthlyStarPublic !== false
       });
       
       if (response.success) {

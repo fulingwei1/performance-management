@@ -133,7 +133,7 @@ const initialEmployees = [
   { id: 'e118', name: '谢欢', department: '财务部', subDepartment: '会计组', role: 'employee' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
   { id: 'e119', name: '代亚平', department: '采购部', subDepartment: '采购组', role: 'employee' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
   { id: 'e120', name: '刘启勇', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
-  { id: 'hr002', name: '符凌维', department: '总经办', subDepartment: '', role: 'hr' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
+  { id: 'hr002', name: '符凌维', department: '总经办', subDepartment: '', role: 'admin' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
   { id: 'e121', name: '卢俊宏', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
   { id: 'e122', name: '陈思', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
   { id: 'e123', name: '周志锐', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },

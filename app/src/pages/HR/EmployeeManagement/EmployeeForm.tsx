@@ -86,6 +86,15 @@ export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOption
         />
         <p className="mt-1 text-xs text-gray-400">仅保存加密值；留空不会修改原登录口令</p>
       </div>
+      <div>
+        <Label>企业微信用户ID</Label>
+        <Input
+          value={form.wecomUserId || ''}
+          onChange={(e) => setForm({ ...form, wecomUserId: e.target.value })}
+          placeholder="例如：FuLingWei"
+        />
+        <p className="mt-1 text-xs text-gray-400">用于企业微信精准催办；留空时系统会按姓名自动匹配并回填</p>
+      </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label>部门 *</Label>

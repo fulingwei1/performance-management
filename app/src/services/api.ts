@@ -198,6 +198,9 @@ export const performanceApi = {
     const query = months ? `?months=${months}` : '';
     return request(`/performance/all-records${query}`);
   },
+
+  // 获取某月每月之星推荐汇总
+  getMonthlyStars: (month: string) => request(`/performance/monthly-stars/${month}`),
   
   // 模拟数据管理
   generateDemoData: () => request('/performance/demo-data/generate', { method: 'POST' }),
@@ -228,7 +231,13 @@ export const performanceApi = {
     }),
 
   // 提交工作总结
-  submitSummary: (data: { month: string; selfSummary: string; nextMonthPlan: string }) =>
+  submitSummary: (data: {
+    month: string;
+    selfSummary: string;
+    nextMonthPlan: string;
+    employeeIssueTags?: string[];
+    resourceNeedTags?: string[];
+  }) =>
     request('/performance/summary', {
       method: 'POST',
       body: JSON.stringify(data)
@@ -251,6 +260,18 @@ export const performanceApi = {
     managerComment: string;
     nextMonthWorkArrangement: string;
     evaluationKeywords?: string[];
+    issueTypeTags?: string[];
+    highlightTags?: string[];
+    workTypeTags?: string[];
+    improvementActionTags?: string[];
+    issueAttributionTags?: string[];
+    workloadTags?: string[];
+    managerSuggestionTags?: string[];
+    scoreEvidence?: string;
+    monthlyStarRecommended?: boolean;
+    monthlyStarCategory?: string;
+    monthlyStarReason?: string;
+    monthlyStarPublic?: boolean;
   }) => request('/performance/score', {
     method: 'POST',
     body: JSON.stringify(data)

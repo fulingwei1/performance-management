@@ -25,10 +25,12 @@ import {
   Sparkles,
   RefreshCw,
   Award,
-  Target
+  Target,
+  Tags
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { topTagEntries } from '@/lib/performanceTagAnalytics';
 
 // 时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -47,6 +49,10 @@ export function GMAnalytics() {
   const [generatingDemo, setGeneratingDemo] = useState(false);
 
   const currentMonth = format(new Date(), 'yyyy-MM');
+  const realRecords = useMemo(
+    () => records.filter((record) => !record.isDemo && !String(record.id || '').startsWith('demo-')),
+    [records]
+  );
 
   // 获取数据
   useEffect(() => {
@@ -114,10 +120,29 @@ export function GMAnalytics() {
     return map;
   }, [employees]);
 
+  const structuredStats = useMemo(() => {
+    const currentMonthScored = realRecords.filter(
+      (record) =>
+        record.month === currentMonth &&
+        record.totalScore > 0 &&
+        (record.status === 'completed' || record.status === 'scored')
+    );
+
+    return {
+      issueTypes: topTagEntries(currentMonthScored, 'issueTypeTags'),
+      highlights: topTagEntries(currentMonthScored, 'highlightTags'),
+      employeeIssues: topTagEntries(currentMonthScored, 'employeeIssueTags'),
+      resourceNeeds: topTagEntries(currentMonthScored, 'resourceNeedTags'),
+      issueAttributions: topTagEntries(currentMonthScored, 'issueAttributionTags'),
+      workloads: topTagEntries(currentMonthScored, 'workloadTags', 4),
+      managerSuggestions: topTagEntries(currentMonthScored, 'managerSuggestionTags', 4),
+    };
+  }, [realRecords, currentMonth]);
+
   // 计算全公司统计数据
   const stats = useMemo(() => {
     // 找到最近有评分的月份（解决月初未评分问题）
-    const monthsSet = new Set(records.map(r => r.month));
+    const monthsSet = new Set(realRecords.map(r => r.month));
     const months = Array.from(monthsSet).sort();
     
     let currentMonthWithScore = currentMonth;
@@ -125,7 +150,7 @@ export function GMAnalytics() {
     
     // 找最近有评分的月份
     for (let i = months.length - 1; i >= 0; i--) {
-      const monthRecords = records.filter(r => r.month === months[i] && r.totalScore > 0);
+      const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
       if (monthRecords.length > 0) {
         if (!currentMonthWithScore || currentMonthWithScore === currentMonth) {
           currentMonthWithScore = months[i];
@@ -137,9 +162,9 @@ export function GMAnalytics() {
     }
     
     // 只获取有评分的记录
-    const currentMonthRecords = records.filter(r => r.month === currentMonthWithScore && r.totalScore > 0);
+    const currentMonthRecords = realRecords.filter(r => r.month === currentMonthWithScore && r.totalScore > 0);
     const previousMonthRecords = previousMonthWithScore 
-      ? records.filter(r => r.month === previousMonthWithScore && r.totalScore > 0)
+      ? realRecords.filter(r => r.month === previousMonthWithScore && r.totalScore > 0)
       : [];
     
     const currentAvg = currentMonthRecords.length > 0
@@ -166,21 +191,21 @@ export function GMAnalytics() {
       change: currentAvg - previousAvg,
       excellentRate
     };
-  }, [records, employees, currentMonth]);
+  }, [realRecords, employees, currentMonth]);
 
   // 部门对比数据
   const departmentData = useMemo(() => {
     // 找到最近有评分的月份（解决月初未评分问题）
-    const monthsSet = new Set(records.map(r => r.month));
+    const monthsSet = new Set(realRecords.map(r => r.month));
     const months = Array.from(monthsSet).sort();
     let targetMonth = currentMonth;
     
     // 检查当前月份是否有评分数据
-    const currentMonthScored = records.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const currentMonthScored = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     if (currentMonthScored.length === 0) {
       // 如果当前月份没有评分，找最近有评分的月份
       for (let i = months.length - 1; i >= 0; i--) {
-        const monthRecords = records.filter(r => r.month === months[i] && r.totalScore > 0);
+        const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
         if (monthRecords.length > 0) {
           targetMonth = months[i];
           break;
@@ -188,7 +213,7 @@ export function GMAnalytics() {
       }
     }
     
-    const targetMonthRecords = records.filter(r => r.month === targetMonth && r.totalScore > 0);
+    const targetMonthRecords = realRecords.filter(r => r.month === targetMonth && r.totalScore > 0);
     const deptMap = new Map<string, { scores: number[]; count: number }>();
     
     targetMonthRecords.forEach(r => {
@@ -207,17 +232,17 @@ export function GMAnalytics() {
       avgScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
       count: data.count
     }));
-  }, [records, employeeMap, currentMonth]);
+  }, [realRecords, employeeMap, currentMonth]);
 
   // 部门趋势数据（多线折线图）
   const departmentTrendData = useMemo(() => {
-    const monthsSet = new Set(records.map(r => r.month));
+    const monthsSet = new Set(realRecords.map(r => r.month));
     const months = Array.from(monthsSet).sort();
     const departments = [...new Set(employees.map(e => e.department).filter(Boolean))];
     
     return months.map(month => {
       // 只获取有评分的记录（解决月初未评分问题）
-      const monthRecords = records.filter(r => r.month === month && r.totalScore > 0);
+      const monthRecords = realRecords.filter(r => r.month === month && r.totalScore > 0);
       const result: any = { month };
       
       departments.forEach(dept => {
@@ -237,7 +262,7 @@ export function GMAnalytics() {
       
       return result;
     });
-  }, [records, employees, employeeMap]);
+  }, [realRecords, employees, employeeMap]);
 
   // 部门趋势线配置
   const trendLines = useMemo(() => {
@@ -256,12 +281,12 @@ export function GMAnalytics() {
 
   // 人才梯队数据
   const talentData = useMemo(() => {
-    const monthsSet = new Set(records.map(r => r.month));
+    const monthsSet = new Set(realRecords.map(r => r.month));
     const months = Array.from(monthsSet).sort();
     
     // 按员工分组
     const employeeRecords = new Map<string, any[]>();
-    records.forEach(r => {
+    realRecords.forEach(r => {
       if (!employeeRecords.has(r.employeeId)) {
         employeeRecords.set(r.employeeId, []);
       }
@@ -272,11 +297,11 @@ export function GMAnalytics() {
     let currentMonth = months[months.length - 1];
     
     // 检查最新月份是否有评分数据
-    const latestMonthRecords = records.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const latestMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     if (latestMonthRecords.length === 0 && months.length >= 2) {
       // 如果最新月份没有评分，使用上一个有评分的月份
       for (let i = months.length - 1; i >= 0; i--) {
-        const monthRecords = records.filter(r => r.month === months[i] && r.totalScore > 0);
+        const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
         if (monthRecords.length > 0) {
           currentMonth = months[i];
           break;
@@ -354,13 +379,13 @@ export function GMAnalytics() {
       potentialStars,
       allEmployeeData // 用于九宫格
     };
-  }, [records, employees]);
+  }, [realRecords, employees]);
 
   // 九宫格数据（从talentData转换）
   const talentGridData = useMemo(() => {
     return talentData.allEmployeeData?.map(emp => {
       // 按员工分组获取历史记录
-      const empRecords = records.filter(r => r.employeeId === emp.employeeId);
+      const empRecords = realRecords.filter(r => r.employeeId === emp.employeeId);
       const sortedRecords = empRecords.sort((a, b) => a.month.localeCompare(b.month));
       const historyScores = sortedRecords.map(r => r.totalScore);
       const avgScore = historyScores.length > 0 
@@ -380,12 +405,12 @@ export function GMAnalytics() {
         historyScores
       };
     }) || [];
-  }, [talentData, records]);
+  }, [talentData, realRecords]);
 
   // 异常检测
   const anomalies = useMemo(() => {
     // 只获取有评分的记录（解决月初未评分问题）
-    const currentMonthRecords = records.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const currentMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     const result: { type: string; message: string; severity: 'warning' | 'error' }[] = [];
     
     // 部门差异过大
@@ -422,7 +447,7 @@ export function GMAnalytics() {
     }
     
     return result;
-  }, [records, departmentData, stats, currentMonth]);
+  }, [realRecords, departmentData, stats, currentMonth]);
 
   if (loading) {
     return (
@@ -444,7 +469,7 @@ export function GMAnalytics() {
           {hasDemoData && (
             <Badge variant="outline" className="text-orange-600 border-orange-300">
               <Sparkles className="w-3 h-3 mr-1" />
-              含示例数据
+              库中存在示例数据，当前已自动排除
             </Badge>
           )}
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -462,32 +487,34 @@ export function GMAnalytics() {
       </div>
 
       {/* 没有数据时的提示 */}
-      {records.length === 0 && (
+      {realRecords.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无绩效数据</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无真实绩效数据</h3>
             <p className="text-gray-500 mb-4">
-              可以生成示例数据来预览看板效果
+              {hasDemoData ? '当前库里有示例数据，但看板已自动排除，请以真实打分数据为准。' : '当前还没有可用于统计的真实绩效记录。'}
             </p>
-            <Button onClick={handleGenerateDemo} disabled={generatingDemo}>
-              {generatingDemo ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  生成中...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  生成示例数据
-                </>
-              )}
-            </Button>
+            {!hasDemoData && (
+              <Button onClick={handleGenerateDemo} disabled={generatingDemo}>
+                {generatingDemo ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    生成示例数据
+                  </>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {records.length > 0 && (
+      {realRecords.length > 0 && (
         <>
           {/* Stats Cards - 5 columns */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -607,6 +634,147 @@ export function GMAnalytics() {
             </Card>
           )}
 
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">公司高频问题类型</p>
+                    <p className="text-xs text-gray-400 mt-1">经理结构化评分勾选结果</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-red-600" />
+                  </div>
+                </div>
+                {structuredStats.issueTypes.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.issueTypes.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-red-100 text-red-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无高频问题类型数据。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">公司高频亮点贡献</p>
+                    <p className="text-xs text-gray-400 mt-1">可用于沉淀优秀案例</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+                {structuredStats.highlights.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.highlights.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-emerald-100 text-emerald-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无亮点贡献数据。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">员工反馈问题</p>
+                    <p className="text-xs text-gray-400 mt-1">来自员工工作总结页</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-orange-600" />
+                  </div>
+                </div>
+                {structuredStats.employeeIssues.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.employeeIssues.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-orange-100 text-orange-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无员工反馈问题标签。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-sm text-gray-500">员工资源诉求</p>
+                    <p className="text-xs text-gray-400 mt-1">便于看共性资源瓶颈</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Tags className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                {structuredStats.resourceNeeds.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.resourceNeeds.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-blue-100 text-blue-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无资源诉求标签。</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-500 mb-4">问题归因分布</p>
+                {structuredStats.issueAttributions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.issueAttributions.map(([tag, count]) => (
+                      <Badge key={tag} variant="outline">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无问题归因分布。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-500 mb-4">工作负荷判断</p>
+                {structuredStats.workloads.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.workloads.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-slate-100 text-slate-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无工作负荷判断数据。</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-sm text-gray-500 mb-4">经理建议等级</p>
+                {structuredStats.managerSuggestions.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {structuredStats.managerSuggestions.map(([tag, count]) => (
+                      <Badge key={tag} className="bg-violet-100 text-violet-700">{tag} · {count}</Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">暂无经理建议等级数据。</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* 部门对比柱状图 */}
@@ -649,7 +817,7 @@ export function GMAnalytics() {
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5 text-orange-600" />
                     <span className="text-sm text-orange-700">
-                      当前数据包含示例数据，仅供演示使用
+                      当前库中存在示例数据，但本看板已默认排除，仅统计真实绩效记录
                     </span>
                   </div>
                   <Button variant="outline" size="sm" onClick={handleClearDemo}>

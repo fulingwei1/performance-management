@@ -12,7 +12,9 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { FrozenAlert } from '@/components/FrozenAlert';
+import { StructuredTagSelector } from '@/components/StructuredTagSelector';
 import { performanceApi } from '@/services/api';
+import analysisTagsData from '@/data/performance-analysis-tags.json';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -32,6 +34,8 @@ export function WorkSummary() {
   const [month, setMonth] = useState<Date>(initialMonth);
   const [selfSummary, setSelfSummary] = useState('');
   const [nextMonthPlan, setNextMonthPlan] = useState('');
+  const [employeeIssueTags, setEmployeeIssueTags] = useState<string[]>([]);
+  const [resourceNeedTags, setResourceNeedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, _setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
@@ -58,6 +62,8 @@ export function WorkSummary() {
           // 如果记录已存在，加载已保存的内容；空草稿要清空旧月份遗留输入
           setSelfSummary(record.selfSummary || '');
           setNextMonthPlan(record.nextMonthPlan || '');
+          setEmployeeIssueTags(record.employeeIssueTags || []);
+          setResourceNeedTags(record.resourceNeedTags || []);
         } else {
           // 该月份无记录，清空状态
           setRecordId(null);
@@ -65,6 +71,8 @@ export function WorkSummary() {
           setDeadline(undefined);
           setSelfSummary('');
           setNextMonthPlan('');
+          setEmployeeIssueTags([]);
+          setResourceNeedTags([]);
         }
       } catch (error) {
         console.error('加载记录失败:', error);
@@ -93,6 +101,8 @@ export function WorkSummary() {
       month: monthStr,
       selfSummary,
       nextMonthPlan,
+      employeeIssueTags,
+      resourceNeedTags,
       status: isDraft ? 'draft' : 'submitted'
     });
     
@@ -243,6 +253,19 @@ export function WorkSummary() {
                 <p className="text-xs text-gray-400">
                   建议包含：主要完成工作、项目经验、困难与解决方案
                 </p>
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <div className="mb-2">
+                    <div className="text-sm font-medium text-gray-900">本月问题反馈标签</div>
+                    <div className="text-xs text-gray-500 mt-1">如果本月有明显阻碍，直接勾选，后面可以自动分析员工高频反馈问题。</div>
+                  </div>
+                  <StructuredTagSelector
+                    value={employeeIssueTags}
+                    onChange={setEmployeeIssueTags}
+                    groups={analysisTagsData.employeeIssueFeedbacks}
+                    maxCount={4}
+                    emptyText="可选 1-4 个本月主要问题"
+                  />
+                </div>
               </div>
               
               {/* Next Month Plan */}
@@ -262,6 +285,19 @@ export function WorkSummary() {
                 <p className="text-xs text-gray-400">
                   建议包含：工作目标、计划项目、资源需求
                 </p>
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <div className="mb-2">
+                    <div className="text-sm font-medium text-gray-900">下月资源诉求标签</div>
+                    <div className="text-xs text-gray-500 mt-1">提前告诉经理你下月最需要的支持，便于后续协同和分析。</div>
+                  </div>
+                  <StructuredTagSelector
+                    value={resourceNeedTags}
+                    onChange={setResourceNeedTags}
+                    groups={analysisTagsData.resourceNeedTags}
+                    maxCount={4}
+                    emptyText="可选 1-4 个资源诉求"
+                  />
+                </div>
               </div>
               
               {/* Actions */}
