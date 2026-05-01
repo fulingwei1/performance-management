@@ -1,18 +1,80 @@
 import ExcelJS from 'exceljs';
 import { exportMonthlyAssessments } from '../../services/assessmentExport.service';
-import { MonthlyAssessmentModel } from '../../models/monthlyAssessment.model';
+import { memoryStore } from '../../config/database';
 
 describe('assessmentExport.service', () => {
+  beforeEach(() => {
+    memoryStore.performanceRecords = new Map();
+    memoryStore.employees = new Map([
+      ['m-export-001', {
+        id: 'm-export-001',
+        name: '导出经理',
+        role: 'manager',
+        department: '工程技术中心',
+        level: 'senior',
+        status: 'active'
+      } as any],
+    ]);
+  });
+
+  const createPerformanceRecord = (data: {
+    employeeId: string;
+    employeeName: string;
+    month: string;
+    departmentType: string;
+    templateId: string;
+    templateName: string;
+    totalScore: number;
+    scores?: any[];
+  }) => {
+    memoryStore.employees.set(data.employeeId, {
+      id: data.employeeId,
+      name: data.employeeName,
+      role: 'employee',
+      department: data.departmentType,
+      position: '工程师',
+      level: 'junior',
+      managerId: 'm-export-001',
+      status: 'active'
+    } as any);
+
+    memoryStore.performanceRecords.set(`record-${data.employeeId}-${data.month}`, {
+      id: `record-${data.employeeId}-${data.month}`,
+      employeeId: data.employeeId,
+      assessorId: 'm-export-001',
+      month: data.month,
+      selfSummary: '工作总结',
+      nextMonthPlan: '下月计划',
+      taskCompletion: data.totalScore,
+      initiative: data.totalScore,
+      projectFeedback: data.totalScore,
+      qualityImprovement: data.totalScore,
+      totalScore: data.totalScore,
+      managerComment: '评价',
+      nextMonthWorkArrangement: '安排',
+      groupType: 'low',
+      groupRank: 0,
+      crossDeptRank: 0,
+      departmentRank: 0,
+      companyRank: 0,
+      status: 'completed',
+      departmentType: data.departmentType,
+      templateId: data.templateId,
+      templateName: data.templateName,
+      scores: data.scores || [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    } as any);
+  };
+
   it('exports monthly assessment detail rows and metric score rows from stored assessments', async () => {
-    await MonthlyAssessmentModel.create({
+    createPerformanceRecord({
       employeeId: 'e-export-001',
       employeeName: '导出员工',
       month: '2026-03',
       templateId: 'template-export-001',
       templateName: '导出模板',
       departmentType: 'engineering',
-      evaluatorId: 'm-export-001',
-      evaluatorName: '导出经理',
       totalScore: 1.2,
       scores: [
         {
@@ -46,27 +108,23 @@ describe('assessmentExport.service', () => {
   });
 
   it('applies department type and employee filters when exporting assessments', async () => {
-    await MonthlyAssessmentModel.create({
+    createPerformanceRecord({
       employeeId: 'e-export-filtered',
       employeeName: '应导出员工',
       month: '2026-04',
       templateId: 'template-export-002',
       templateName: '工程模板',
       departmentType: 'engineering',
-      evaluatorId: 'm-export-001',
-      evaluatorName: '导出经理',
       totalScore: 1.1,
       scores: []
     });
-    await MonthlyAssessmentModel.create({
+    createPerformanceRecord({
       employeeId: 'e-export-excluded',
       employeeName: '不应导出员工',
       month: '2026-04',
       templateId: 'template-export-003',
       templateName: '销售模板',
       departmentType: 'sales',
-      evaluatorId: 'm-export-001',
-      evaluatorName: '导出经理',
       totalScore: 1.0,
       scores: []
     });

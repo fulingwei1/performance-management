@@ -1,33 +1,56 @@
 import { memoryStore } from '../../config/database';
-import { MonthlyAssessmentModel } from '../../models/monthlyAssessment.model';
 import { getMonthlyStats, getScoreDistribution } from '../../services/assessmentStats.service';
 
 describe('AssessmentStatsService', () => {
   beforeEach(() => {
-    memoryStore.monthlyAssessments = new Map();
+    memoryStore.performanceRecords = new Map();
+    memoryStore.employees = new Map([
+      ['manager-1', {
+        id: 'manager-1',
+        name: '经理A',
+        role: 'manager',
+        department: '生产部',
+        level: 'senior',
+        status: 'active'
+      } as any],
+    ]);
   });
 
   const createAssessment = (month: string, employeeId: string, totalScore: number) => {
-    return MonthlyAssessmentModel.create({
+    memoryStore.employees.set(employeeId, {
       employeeId,
-      employeeName: `员工${employeeId}`,
+      id: employeeId,
+      name: `员工${employeeId}`,
+      role: 'employee',
+      department: '生产部',
+      level: 'junior',
+      managerId: 'manager-1',
+      status: 'active'
+    } as any);
+
+    memoryStore.performanceRecords.set(`record-${employeeId}-${month}`, {
+      id: `record-${employeeId}-${month}`,
+      employeeId,
+      assessorId: 'manager-1',
       month,
-      templateId: 'template-1',
-      templateName: '月度绩效模板',
-      departmentType: 'production',
-      scores: [
-        {
-          metricName: '质量',
-          metricCode: 'quality',
-          weight: 1,
-          level: 'L3',
-          score: totalScore
-        }
-      ],
+      selfSummary: '完成工作',
+      nextMonthPlan: '继续推进',
+      taskCompletion: totalScore,
+      initiative: totalScore,
+      projectFeedback: totalScore,
+      qualityImprovement: totalScore,
       totalScore,
-      evaluatorId: 'manager-1',
-      evaluatorName: '经理A'
-    });
+      managerComment: '评价',
+      nextMonthWorkArrangement: '安排',
+      groupType: 'low',
+      groupRank: 0,
+      crossDeptRank: 0,
+      departmentRank: 0,
+      companyRank: 0,
+      status: 'completed',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    } as any);
   };
 
   it('should calculate monthly stats and level distribution from monthly assessments', async () => {

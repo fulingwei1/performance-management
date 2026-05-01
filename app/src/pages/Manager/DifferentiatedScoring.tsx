@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { DifferentiatedScoringHelp } from '@/components/help/DifferentiatedScoringHelp';
-import { assessmentTemplateApi, employeeApi, monthlyAssessmentApi, organizationApi } from '@/services/api';
+import { assessmentTemplateApi, employeeApi, levelTemplateRuleApi, monthlyAssessmentApi, organizationApi } from '@/services/api';
 
 const DEPARTMENT_TYPES = {
   sales: { label: '销售类', icon: '💰', color: 'bg-green-100 text-green-700' },
@@ -101,16 +101,12 @@ export function DifferentiatedScoring() {
       setLoading(true);
       
       // 优先使用 resolve API：个人绑定 → 层级规则 → 自动匹配 → 兜底默认
-      const resolveResult = await fetch(`/api/level-template-rules/resolve/${employee.id}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      }).then(r => r.json());
+      const resolveResult = await levelTemplateRuleApi.resolve(employee.id);
 
       if (resolveResult.success && resolveResult.data) {
         const { templateId, templateName, source } = resolveResult.data;
         // 加载完整模板数据
-        const tplResult = await fetch(`/api/assessment-templates/${templateId}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }).then(r => r.json());
+        const tplResult = await assessmentTemplateApi.getById(templateId);
         
         if (tplResult.success && tplResult.data) {
           setTemplate(tplResult.data);

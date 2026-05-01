@@ -16,6 +16,8 @@ const apiMocks = vi.hoisted(() => ({
   getEmployees: vi.fn(),
   getDepartmentTree: vi.fn(),
   getDefaultTemplate: vi.fn(),
+  getTemplateById: vi.fn(),
+  resolveLevelTemplate: vi.fn(),
   createOrUpdateMonthlyAssessment: vi.fn(),
 }));
 
@@ -35,7 +37,11 @@ vi.mock('@/services/api', () => ({
     getDepartmentTree: apiMocks.getDepartmentTree,
   },
   assessmentTemplateApi: {
+    getById: apiMocks.getTemplateById,
     getDefault: apiMocks.getDefaultTemplate,
+  },
+  levelTemplateRuleApi: {
+    resolve: apiMocks.resolveLevelTemplate,
   },
   monthlyAssessmentApi: {
     createOrUpdate: apiMocks.createOrUpdateMonthlyAssessment,
@@ -84,6 +90,10 @@ describe('DifferentiatedScoring', () => {
           children: [],
         },
       ],
+    });
+    apiMocks.resolveLevelTemplate.mockResolvedValue({
+      success: false,
+      data: null,
     });
     apiMocks.getDefaultTemplate.mockResolvedValue({
       success: true,

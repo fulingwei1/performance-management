@@ -338,6 +338,7 @@ export const monthlyAssessmentApi = {
 export const assessmentTemplateApi = {
   getAll: (params?: { departmentType?: string; includeMetrics?: boolean }) =>
     request(`/assessment-templates${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+  getById: (id: string) => request(`/assessment-templates/${id}`),
   getDefault: (departmentType: string) => request(`/assessment-templates/default/${departmentType}`),
   create: (data: Record<string, unknown>) => request('/assessment-templates', {
     method: 'POST',

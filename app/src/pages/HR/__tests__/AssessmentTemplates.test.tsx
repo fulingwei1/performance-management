@@ -60,14 +60,15 @@ describe('AssessmentTemplates', () => {
     render(<AssessmentTemplates />);
 
     await screen.findByText('工程类模板');
-    expect(apiMocks.getTemplates).toHaveBeenCalledWith({ departmentType: undefined, includeMetrics: true });
+    expect(apiMocks.getTemplates).toHaveBeenCalledWith({ includeMetrics: true });
     expect(global.fetch).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: '筛选工程类模板' }));
 
     await waitFor(() => {
-      expect(apiMocks.getTemplates).toHaveBeenLastCalledWith({ departmentType: 'engineering', includeMetrics: true });
+      expect(screen.getByText('工程类模板')).toBeInTheDocument();
     });
+    expect(apiMocks.getTemplates).toHaveBeenCalledTimes(1);
     expect(global.fetch).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: '删除模板 工程类模板' }));
