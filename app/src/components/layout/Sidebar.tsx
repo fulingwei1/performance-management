@@ -56,7 +56,6 @@ const adminNavItems = [
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
   { path: '/admin/user-management', label: '用户管理', icon: Users },
   { path: '/admin/system-settings', label: '系统设置', icon: Settings },
-  { path: '/admin/scoring', label: '总经理评分', icon: Award },
   { path: '/admin/data-export', label: '数据导出', icon: LogOut },
 ];
 

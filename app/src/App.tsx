@@ -89,6 +89,7 @@ const DISABLED_FEATURE_PATHS = [
   '/hr/template-assignment-rules',
   '/manager/template-assignment',
   '/admin/assessment-publication',
+  '/admin/scoring',
 ];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
@@ -250,7 +251,6 @@ function App() {
           <Route path="/admin/user-management" element={<UserManagement />} />
           <Route path="/admin/system-settings" element={<HRSystemSettings />} />
           <Route path="/admin/analytics" element={<GMAnalytics />} />
-          <Route path="/admin/scoring" element={<GMScoring />} />
           <Route path="/admin/data-export" element={<GMDataExport />} />
         </Route>
 
