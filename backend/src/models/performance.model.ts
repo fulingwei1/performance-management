@@ -247,6 +247,10 @@ export class PerformanceModel {
     suggestionAnonymous?: boolean;
     groupType: 'high' | 'low';
     deadline?: Date;
+    // 模板绑定
+    templateId?: string | null;
+    templateName?: string | null;
+    departmentType?: string | null;
   }): Promise<PerformanceRecord> {
     // 根据内容判断状态：空总结为draft，有内容为submitted
     const status = data.selfSummary && data.selfSummary.length > 0 ? 'submitted' : 'draft';
@@ -270,6 +274,9 @@ export class PerformanceModel {
       managerComment: '',
       nextMonthWorkArrangement: '',
       groupType: data.groupType,
+      templateId: data.templateId || null,
+      templateName: data.templateName || null,
+      departmentType: data.departmentType || null,
       groupRank: 0,
       crossDeptRank: 0,
       departmentRank: 0,
@@ -288,8 +295,8 @@ export class PerformanceModel {
       INSERT INTO performance_records (
         id, employee_id, assessor_id, month, self_summary, next_month_plan,
         employee_issue_tags, resource_need_tags, improvement_suggestion, suggestion_anonymous,
-        group_type, status, deadline
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        group_type, template_id, template_name, department_type, status, deadline
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
         self_summary = EXCLUDED.self_summary,
         next_month_plan = EXCLUDED.next_month_plan,
@@ -314,6 +321,9 @@ export class PerformanceModel {
       data.improvementSuggestion || '',
       data.suggestionAnonymous === true,
       data.groupType,
+      data.templateId || null,
+      data.templateName || null,
+      data.departmentType || null,
       status,
       data.deadline || null
     ]);

@@ -5,7 +5,6 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { getGroupType, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
 import { getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
-import { getDepartmentType } from '../models/levelTemplateRule.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import '../middleware/auth'; // Request type extension
 
@@ -276,7 +275,7 @@ export const performanceController = {
       return res.status(404).json({ success: false, error: '记录不存在' });
     }
 
-    // 如果记录已有模板信息，直接返回
+    // 记录上已有模板ID，直接返回
     if (record.templateId) {
       const template = await AssessmentTemplateModel.findById(record.templateId, true);
       if (template) {
@@ -284,26 +283,8 @@ export const performanceController = {
       }
     }
 
-    // 否则根据员工的岗位、部门、层级、角色自动匹配最佳模板
-    const employee = await EmployeeModel.findById(record.employeeId);
-    if (!employee) {
-      return res.status(404).json({ success: false, error: '员工不存在' });
-    }
-
-    const template = await AssessmentTemplateModel.findMatchingTemplate({
-      role: employee.role || '',
-      level: employee.level || '',
-      position: employee.subDepartment || employee.department || '',
-      department: employee.department || ''
-    });
-
-    if (!template) {
-      return res.json({ success: true, data: null, message: '未找到匹配的模板，请检查模板配置' });
-    }
-
-    // 返回带指标的完整模板
-    const fullTemplate = await AssessmentTemplateModel.findById(template.id, true);
-    res.json({ success: true, data: fullTemplate });
+    // 记录没有模板ID（旧数据），返回null，前端降级为固定4项
+    return res.json({ success: true, data: null, message: '该记录未绑定模板，使用默认评分项' });
   }),
 
   // 员工提交工作总结
@@ -824,6 +805,14 @@ export const performanceController = {
         }
       }
       
+      // 根据员工岗位自动匹配模板
+      const template = await AssessmentTemplateModel.findMatchingTemplate({
+        role: employee.role || '',
+        level: employee.level || '',
+        position: employee.subDepartment || employee.department || '',
+        department: employee.department || ''
+      });
+      
       const recordId = `rec-${employee.id}-${month}`;
       
       await PerformanceModel.saveSummary({
@@ -833,7 +822,10 @@ export const performanceController = {
         month,
         selfSummary: '',
         nextMonthPlan: '',
-        groupType
+        groupType,
+        templateId: template?.id || null,
+        templateName: template?.name || null,
+        departmentType: template?.departmentType || null
       });
       
       createdCount++;
