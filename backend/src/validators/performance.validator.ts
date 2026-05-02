@@ -55,6 +55,15 @@ export const submitSummaryValidation = [
     .optional()
     .isString().withMessage('资源诉求标签必须为字符串')
     .isLength({ max: 50 }).withMessage('单个资源诉求标签不能超过50个字符'),
+
+  body('improvementSuggestion')
+    .optional()
+    .isString().withMessage('合理化建议必须为字符串')
+    .isLength({ max: 3000 }).withMessage('合理化建议不能超过3000个字符'),
+
+  body('suggestionAnonymous')
+    .optional()
+    .isBoolean().withMessage('合理化建议匿名状态必须为布尔值'),
 ];
 
 /**

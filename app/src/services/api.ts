@@ -201,6 +201,10 @@ export const performanceApi = {
 
   // 获取某月每月之星推荐汇总
   getMonthlyStars: (month: string) => request(`/performance/monthly-stars/${month}`),
+
+  // 获取合理化建议汇总
+  getImprovementSuggestions: (params?: { month?: string; scope?: 'team' | 'all' }) =>
+    request(`/performance/improvement-suggestions${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
   
   // 模拟数据管理
   generateDemoData: () => request('/performance/demo-data/generate', { method: 'POST' }),
@@ -237,6 +241,8 @@ export const performanceApi = {
     nextMonthPlan: string;
     employeeIssueTags?: string[];
     resourceNeedTags?: string[];
+    improvementSuggestion?: string;
+    suggestionAnonymous?: boolean;
   }) =>
     request('/performance/summary', {
       method: 'POST',
@@ -685,13 +691,53 @@ export const exportApi = {
 
   // 考核数据导出
   exportMonthlyAssessments: (params: URLSearchParams) =>
-    secureDownload(`/assessment-export/monthly-assessments?${params.toString()}`, `月度评分记录_${Date.now()}.xlsx`),
+    secureDownload(`${API_BASE_URL}/assessment-export/monthly-assessments?${params.toString()}`, `月度绩效考核数据_${Date.now()}.xlsx`),
 
   exportDepartmentStats: () =>
-    secureDownload('/assessment-export/department-stats', `部门类型统计_${Date.now()}.xlsx`),
+    secureDownload(`${API_BASE_URL}/assessment-export/department-stats`, `部门类型统计_${Date.now()}.xlsx`),
 
   exportScoreTrend: (employeeId: string) =>
-    secureDownload(`/assessment-export/score-trend/${employeeId}`, `评分趋势_${employeeId}_${Date.now()}.xlsx`),
+    secureDownload(`${API_BASE_URL}/assessment-export/score-trend/${employeeId}`, `评分趋势_${employeeId}_${Date.now()}.xlsx`),
+};
+
+export const salaryIntegrationApi = {
+  pushResults: (data: {
+    periodType: 'monthly' | 'quarterly';
+    year: number;
+    month?: number;
+    quarter?: number;
+  }) => request('/integrations/salary/push', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  pushMonthly: (year: number, month: number) => request('/integrations/salary/push-monthly', {
+    method: 'POST',
+    body: JSON.stringify({ year, month }),
+  }),
+
+  pushQuarterly: (year: number, quarter: number) => request('/integrations/salary/push-quarterly', {
+    method: 'POST',
+    body: JSON.stringify({ year, quarter }),
+  }),
+
+  getSalaryForecast: (data: {
+    periodType: 'monthly' | 'quarterly';
+    year: number;
+    month?: number;
+    quarter?: number;
+    employees: Array<{
+      employeeExternalId: string;
+      employeeName: string;
+      department?: string;
+      subDepartment?: string;
+      draftScore?: number;
+      draftCoefficient?: number;
+    }>;
+  }) => request('/integrations/salary/salary-forecast', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };
 
 // 晋升/加薪申请

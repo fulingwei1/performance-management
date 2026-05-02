@@ -243,6 +243,8 @@ export class PerformanceModel {
     nextMonthPlan: string;
     employeeIssueTags?: string[];
     resourceNeedTags?: string[];
+    improvementSuggestion?: string;
+    suggestionAnonymous?: boolean;
     groupType: 'high' | 'low';
     deadline?: Date;
   }): Promise<PerformanceRecord> {
@@ -258,6 +260,8 @@ export class PerformanceModel {
       nextMonthPlan: data.nextMonthPlan,
       employeeIssueTags: data.employeeIssueTags || [],
       resourceNeedTags: data.resourceNeedTags || [],
+      improvementSuggestion: data.improvementSuggestion || '',
+      suggestionAnonymous: data.suggestionAnonymous === true,
       taskCompletion: 1.0,
       initiative: 1.0,
       projectFeedback: 1.0,
@@ -283,13 +287,16 @@ export class PerformanceModel {
     const sql = `
       INSERT INTO performance_records (
         id, employee_id, assessor_id, month, self_summary, next_month_plan,
-        employee_issue_tags, resource_need_tags, group_type, status, deadline
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        employee_issue_tags, resource_need_tags, improvement_suggestion, suggestion_anonymous,
+        group_type, status, deadline
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (id) DO UPDATE SET
         self_summary = EXCLUDED.self_summary,
         next_month_plan = EXCLUDED.next_month_plan,
         employee_issue_tags = EXCLUDED.employee_issue_tags,
         resource_need_tags = EXCLUDED.resource_need_tags,
+        improvement_suggestion = EXCLUDED.improvement_suggestion,
+        suggestion_anonymous = EXCLUDED.suggestion_anonymous,
         status = EXCLUDED.status,
         deadline = COALESCE(performance_records.deadline, EXCLUDED.deadline),
         updated_at = CURRENT_TIMESTAMP
@@ -304,6 +311,8 @@ export class PerformanceModel {
       data.nextMonthPlan,
       JSON.stringify(data.employeeIssueTags || []),
       JSON.stringify(data.resourceNeedTags || []),
+      data.improvementSuggestion || '',
+      data.suggestionAnonymous === true,
       data.groupType,
       status,
       data.deadline || null
@@ -558,6 +567,8 @@ export class PerformanceModel {
       nextMonthPlan: row.next_month_plan,
       employeeIssueTags: parseJsonArray(row.employee_issue_tags),
       resourceNeedTags: parseJsonArray(row.resource_need_tags),
+      improvementSuggestion: row.improvement_suggestion || '',
+      suggestionAnonymous: row.suggestion_anonymous === true || row.suggestion_anonymous === 1,
       taskCompletion: parseFloat(row.task_completion),
       initiative: parseFloat(row.initiative),
       projectFeedback: parseFloat(row.project_feedback),

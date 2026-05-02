@@ -2,11 +2,25 @@ import ExcelJS from 'exceljs';
 import { PerformanceModel } from '../models/performance.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import logger from '../config/logger';
+import { PerformanceRecord } from '../types';
 
 interface ExportOptions {
   month?: string;
   departmentType?: string;
   employeeIds?: string[];
+}
+
+const booleanLabel = (value?: boolean): string => value ? '是' : '否';
+
+const joinTags = (tags?: string[]): string => Array.isArray(tags) ? tags.join('、') : '';
+
+function styleHeader(sheet: ExcelJS.Worksheet, color = 'FF4472C4') {
+  sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  sheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: color },
+  };
 }
 
 /**
@@ -28,23 +42,29 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
       { header: '评分ID', key: 'id', width: 20 },
       { header: '员工姓名', key: 'employeeName', width: 15 },
       { header: '部门', key: 'department', width: 20 },
+      { header: '三级/小组', key: 'subDepartment', width: 22 },
       { header: '岗位', key: 'position', width: 20 },
       { header: '月份', key: 'month', width: 10 },
       { header: '部门类型', key: 'departmentType', width: 15 },
       { header: '模板名称', key: 'templateName', width: 30 },
       { header: '总分', key: 'totalScore', width: 10 },
+      { header: '等级', key: 'level', width: 10 },
+      { header: '部门排名', key: 'departmentRank', width: 10 },
+      { header: '组内排名', key: 'groupRank', width: 10 },
+      { header: '公司排名', key: 'companyRank', width: 10 },
       { header: '评分人', key: 'evaluatorName', width: 15 },
+      { header: '经理评价', key: 'managerComment', width: 40 },
+      { header: '特别高/低分事例说明', key: 'scoreEvidence', width: 40 },
+      { header: '正向标签', key: 'highlightTags', width: 30 },
+      { header: '问题标签', key: 'issueTypeTags', width: 30 },
+      { header: '每月之星推荐', key: 'monthlyStarRecommended', width: 14 },
+      { header: '每月之星类别', key: 'monthlyStarCategory', width: 18 },
+      { header: '每月之星理由', key: 'monthlyStarReason', width: 40 },
       { header: '评分时间', key: 'createdAt', width: 20 }
     ];
     
     // 样式设置
-    detailSheet.getRow(1).font = { bold: true };
-    detailSheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF4472C4' }
-    };
-    detailSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    styleHeader(detailSheet);
     
     const assessments = await loadMonthlyAssessments(options);
 
@@ -54,12 +74,24 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
         id: assessment.id,
         employeeName: assessment.employeeName || assessment.employeeId,
         department: assessment.department || '',
+        subDepartment: assessment.subDepartment || '',
         position: a.position || '',
         month: assessment.month,
         departmentType: a.departmentType || assessment.department || '',
         templateName: a.templateName || '',
         totalScore: assessment.totalScore,
+        level: assessment.level || '',
+        departmentRank: assessment.departmentRank || '',
+        groupRank: assessment.groupRank || '',
+        companyRank: assessment.companyRank || '',
         evaluatorName: a.evaluatorName || a.assessorName || '',
+        managerComment: assessment.managerComment || '',
+        scoreEvidence: assessment.scoreEvidence || '',
+        highlightTags: joinTags(assessment.highlightTags),
+        issueTypeTags: joinTags(assessment.issueTypeTags),
+        monthlyStarRecommended: booleanLabel(assessment.monthlyStarRecommended),
+        monthlyStarCategory: assessment.monthlyStarCategory || '',
+        monthlyStarReason: assessment.monthlyStarReason || '',
         createdAt: assessment.createdAt ? new Date(assessment.createdAt).toLocaleString('zh-CN') : ''
       });
     });
@@ -81,13 +113,7 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
       { header: '评价说明', key: 'comment', width: 40 }
     ];
     
-    metricsSheet.getRow(1).font = { bold: true };
-    metricsSheet.getRow(1).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'FF70AD47' }
-    };
-    metricsSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    styleHeader(metricsSheet, 'FF70AD47');
 
     assessments.forEach((assessment) => {
       const a = assessment as any;
@@ -106,8 +132,43 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
         });
       });
     });
+
+    // Sheet 3: 每月之星
+    const starSheet = workbook.addWorksheet('每月之星', {
+      views: [{ state: 'frozen', xSplit: 0, ySplit: 1 }]
+    });
+    starSheet.columns = [
+      { header: '月份', key: 'month', width: 10 },
+      { header: '员工姓名', key: 'employeeName', width: 15 },
+      { header: '部门', key: 'department', width: 20 },
+      { header: '三级/小组', key: 'subDepartment', width: 22 },
+      { header: '总分', key: 'totalScore', width: 10 },
+      { header: '公司排名', key: 'companyRank', width: 10 },
+      { header: '推荐类别', key: 'monthlyStarCategory', width: 18 },
+      { header: '推荐理由', key: 'monthlyStarReason', width: 45 },
+      { header: '是否公开展示', key: 'monthlyStarPublic', width: 14 },
+      { header: '评分经理', key: 'assessorName', width: 15 },
+    ];
+    styleHeader(starSheet, 'FFF4B183');
+
+    assessments
+      .filter((assessment) => assessment.monthlyStarRecommended)
+      .forEach((assessment) => {
+        starSheet.addRow({
+          month: assessment.month,
+          employeeName: assessment.employeeName || assessment.employeeId,
+          department: assessment.department || '',
+          subDepartment: assessment.subDepartment || '',
+          totalScore: assessment.totalScore,
+          companyRank: assessment.companyRank || '',
+          monthlyStarCategory: assessment.monthlyStarCategory || '',
+          monthlyStarReason: assessment.monthlyStarReason || '',
+          monthlyStarPublic: booleanLabel(assessment.monthlyStarPublic),
+          assessorName: assessment.assessorName || '',
+        });
+      });
     
-    // Sheet 3: 统计汇总
+    // Sheet 4: 统计汇总
     const summarySheet = workbook.addWorksheet('统计汇总');
     
     summarySheet.mergeCells('A1:D1');
@@ -120,13 +181,15 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
     
     summarySheet.getCell('A4').value = '统计月份:';
     summarySheet.getCell('B4').value = options.month || '全部';
-    summarySheet.getCell('A5').value = '评分记录数:';
-    summarySheet.getCell('B5').value = assessments.length;
-    if (assessments.length > 0) {
-      const avgScore = assessments.reduce((sum, item) => sum + item.totalScore, 0) / assessments.length;
-      summarySheet.getCell('A6').value = '平均总分:';
-      summarySheet.getCell('B6').value = Number(avgScore.toFixed(2));
-    }
+	    summarySheet.getCell('A5').value = '评分记录数:';
+	    summarySheet.getCell('B5').value = assessments.length;
+	    summarySheet.getCell('A6').value = '每月之星推荐数:';
+	    summarySheet.getCell('B6').value = assessments.filter((item) => item.monthlyStarRecommended).length;
+	    if (assessments.length > 0) {
+	      const avgScore = assessments.reduce((sum, item) => sum + item.totalScore, 0) / assessments.length;
+	      summarySheet.getCell('A7').value = '平均总分:';
+	      summarySheet.getCell('B7').value = Number(avgScore.toFixed(2));
+	    }
     
     summarySheet.columns = [
       { width: 20 },
@@ -144,7 +207,7 @@ export async function exportMonthlyAssessments(options: ExportOptions = {}): Pro
   }
 }
 
-async function loadMonthlyAssessments(options: ExportOptions) {
+async function loadMonthlyAssessments(options: ExportOptions): Promise<PerformanceRecord[]> {
   const assessments = options.month
     ? await PerformanceModel.findByMonth(options.month)
     : await PerformanceModel.findAll();

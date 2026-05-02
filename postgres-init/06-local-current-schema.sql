@@ -21,7 +21,9 @@ ALTER TABLE performance_records
   ADD COLUMN IF NOT EXISTS monthly_star_reason TEXT,
   ADD COLUMN IF NOT EXISTS monthly_star_public BOOLEAN DEFAULT true,
   ADD COLUMN IF NOT EXISTS employee_issue_tags JSONB DEFAULT '[]'::jsonb,
-  ADD COLUMN IF NOT EXISTS resource_need_tags JSONB DEFAULT '[]'::jsonb;
+  ADD COLUMN IF NOT EXISTS resource_need_tags JSONB DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS improvement_suggestion TEXT,
+  ADD COLUMN IF NOT EXISTS suggestion_anonymous BOOLEAN DEFAULT false;
 
 ALTER TABLE employees
   ADD COLUMN IF NOT EXISTS id_card_last6_hash TEXT,

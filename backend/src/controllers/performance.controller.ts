@@ -12,6 +12,11 @@ const normalizeStringArray = (input: unknown): string[] => {
   return input.map((item) => String(item).trim()).filter(Boolean);
 };
 
+const normalizeOptionalText = (input: unknown): string => {
+  if (typeof input !== 'string') return '';
+  return input.trim();
+};
+
 export const performanceController = {
   // 获取当前用户的绩效记录
   getMyRecords: asyncHandler(async (req: Request, res: Response) => {
@@ -152,6 +157,57 @@ export const performanceController = {
     });
   }),
 
+  // 获取合理化建议汇总（匿名建议不返回提交人）
+  getImprovementSuggestions: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
+
+    const month = typeof req.query.month === 'string' ? req.query.month : undefined;
+    const scope = typeof req.query.scope === 'string' ? req.query.scope : 'team';
+    if (month && !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
+    }
+
+    const role = req.user.role;
+    const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+    const useTeamScope = role === 'manager' || scope !== 'all' || !isPrivileged;
+    const records = useTeamScope
+      ? await PerformanceModel.findByAssessorId(req.user.userId, month)
+      : month
+        ? await PerformanceModel.findByMonth(month)
+        : await PerformanceModel.findAll();
+
+    const suggestions = records
+      .map((record) => ({
+        id: record.id,
+        month: record.month,
+        suggestion: normalizeOptionalText(record.improvementSuggestion),
+        anonymous: record.suggestionAnonymous === true,
+        employeeId: record.suggestionAnonymous ? '' : record.employeeId,
+        employeeName: record.suggestionAnonymous ? '匿名提交' : (record.employeeName || ''),
+        department: record.department || '',
+        subDepartment: record.subDepartment || '',
+        status: record.status,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt
+      }))
+      .filter((item) => item.suggestion.length > 0)
+      .sort((a, b) => String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || '')));
+
+    res.json({
+      success: true,
+      data: {
+        month: month || null,
+        scope: useTeamScope ? 'team' : 'all',
+        totalCount: suggestions.length,
+        namedCount: suggestions.filter((item) => !item.anonymous).length,
+        anonymousCount: suggestions.filter((item) => item.anonymous).length,
+        suggestions
+      }
+    });
+  }),
+
   // 根据ID获取记录
   getRecordById: asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id as string;
@@ -208,7 +264,18 @@ export const performanceController = {
 
   // 员工提交工作总结
   submitSummary: asyncHandler(async (req: Request, res: Response) => {
-    const { month, summary, selfSummary, achievements, issues, nextMonthPlan, employeeIssueTags, resourceNeedTags } = req.body;
+    const {
+      month,
+      summary,
+      selfSummary,
+      achievements,
+      issues,
+      nextMonthPlan,
+      employeeIssueTags,
+      resourceNeedTags,
+      improvementSuggestion,
+      suggestionAnonymous
+    } = req.body;
 
     // 验证 month 格式
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -230,6 +297,12 @@ export const performanceController = {
     }
     if (nextMonthPlan !== undefined && typeof nextMonthPlan !== 'string') {
       return res.status(400).json({ success: false, error: 'nextMonthPlan 必须是字符串' });
+    }
+    if (improvementSuggestion !== undefined && typeof improvementSuggestion !== 'string') {
+      return res.status(400).json({ success: false, error: '合理化建议必须是字符串' });
+    }
+    if (suggestionAnonymous !== undefined && typeof suggestionAnonymous !== 'boolean') {
+      return res.status(400).json({ success: false, error: '合理化建议匿名状态必须是布尔值' });
     }
 
     if (!req.user) {
@@ -311,6 +384,8 @@ export const performanceController = {
       nextMonthPlan: finalNextMonthPlan,
       employeeIssueTags: normalizeStringArray(employeeIssueTags),
       resourceNeedTags: normalizeStringArray(resourceNeedTags),
+      improvementSuggestion: normalizeOptionalText(improvementSuggestion),
+      suggestionAnonymous: suggestionAnonymous === true,
       groupType
     });
 

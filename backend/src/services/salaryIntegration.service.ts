@@ -2,14 +2,163 @@ import axios from 'axios';
 import { EmployeeQuarterlyModel } from '../models/employeeQuarterly.model';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
+import { PerformanceRecord } from '../types';
+import { levelToScore, scoreToLevel } from '../utils/helpers';
+import {
+  getPerformanceRankingConfig,
+  isParticipatingRecord,
+} from './performanceRankingConfig.service';
 
-const SALARY_API_BASE = process.env.SALARY_API_URL || 'http://host.docker.internal:8000';
+type PushPeriodType = 'monthly' | 'quarterly';
+
+interface PushResultsOptions {
+  periodType: PushPeriodType;
+  year: number;
+  month?: number;
+  quarter?: number;
+}
+
+interface SalaryForecastEmployee {
+  employeeExternalId?: string;
+  employeeId?: string;
+  employeeName?: string;
+  department?: string;
+  subDepartment?: string;
+  draftScore?: number;
+  draftCoefficient?: number;
+}
+
+interface SalaryForecastPayload {
+  periodType: PushPeriodType;
+  year: number;
+  month?: number;
+  quarter?: number;
+  employees: SalaryForecastEmployee[];
+}
+
+const getSalaryBaseUrl = (): string => (
+  process.env.SALARY_SYSTEM_BASE_URL ||
+  process.env.SALARY_API_URL ||
+  'http://host.docker.internal:8000'
+).trim().replace(/\/+$/, '');
+
+const getSalaryPushToken = (): string => (process.env.SALARY_SYSTEM_PUSH_TOKEN || '').trim();
+
+const isCompletedRecord = (record: PerformanceRecord): boolean => (
+  record.status === 'completed' || record.status === 'scored'
+);
+
+const monthLabel = (year: number, month: number): string => `${year}-${String(month).padStart(2, '0')}`;
+
+const getNextMonthLabel = (year: number, month: number): string => {
+  const next = new Date(year, month, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getEffectiveQuarter = (year: number, quarter: number): string => (
+  quarter === 4 ? `${year + 1}-Q1` : `${year}-Q${quarter + 1}`
+);
 
 export class SalaryIntegrationService {
+  static async buildAuthorizedForecastPayload(payload: any, user: any): Promise<{
+    success: boolean;
+    payload?: SalaryForecastPayload;
+    message?: string;
+    status?: number;
+  }> {
+    const periodType = payload?.periodType === 'quarterly' ? 'quarterly' : 'monthly';
+    const year = Number(payload?.year);
+    const month = payload?.month !== undefined ? Number(payload.month) : undefined;
+    const quarter = payload?.quarter !== undefined ? Number(payload.quarter) : undefined;
+    const employees = Array.isArray(payload?.employees) ? payload.employees : [];
+
+    if (!year || Number.isNaN(year)) {
+      return { success: false, status: 400, message: '请提供有效的年份' };
+    }
+    if (periodType === 'monthly' && (!month || month < 1 || month > 12)) {
+      return { success: false, status: 400, message: '请提供有效的月份' };
+    }
+    if (periodType === 'quarterly' && (!quarter || quarter < 1 || quarter > 4)) {
+      return { success: false, status: 400, message: '请提供有效的季度' };
+    }
+    if (!employees.length) {
+      return { success: false, status: 400, message: '请至少选择一名员工' };
+    }
+
+    const normalizedPayload: SalaryForecastPayload = {
+      periodType,
+      year,
+      ...(month ? { month } : {}),
+      ...(quarter ? { quarter } : {}),
+      employees,
+    };
+
+    if (user?.role !== 'manager') {
+      return { success: true, payload: normalizedPayload };
+    }
+
+    const managerId = user.userId || user.id;
+    const authorizedEmployees: SalaryForecastEmployee[] = [];
+
+    for (const item of employees) {
+      const employeeId = String(item?.employeeExternalId || item?.employeeId || '').trim();
+      if (!employeeId) continue;
+
+      const employee = await EmployeeModel.findById(employeeId);
+      if (!employee || employee.managerId !== managerId) continue;
+      if (employee.status && employee.status !== 'active') continue;
+
+      authorizedEmployees.push({
+        ...item,
+        employeeExternalId: employee.id,
+        employeeName: item.employeeName || employee.name,
+        department: item.department || employee.department,
+        subDepartment: item.subDepartment || employee.subDepartment,
+      });
+    }
+
+    if (!authorizedEmployees.length) {
+      return { success: false, status: 403, message: '只能查看自己直属下属的绩效工资预测' };
+    }
+
+    return {
+      success: true,
+      payload: {
+        ...normalizedPayload,
+        employees: authorizedEmployees,
+      },
+    };
+  }
+
+  static async fetchSalaryForecast(payload: SalaryForecastPayload): Promise<any> {
+    try {
+      const response = await this.postToSalary('/api/integrations/performance/salary-forecast', payload as unknown as Record<string, unknown>);
+      return response.data;
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `读取薪资系统绩效工资预测失败：${error?.response?.data?.message || error.message}`,
+      };
+    }
+  }
+
+  static async pushResults(options: PushResultsOptions): Promise<any> {
+    if (options.periodType === 'monthly') {
+      if (!options.month || options.month < 1 || options.month > 12) {
+        return { success: false, message: '请选择有效的月份' };
+      }
+      return this.pushMonthlyResults(options.year, options.month);
+    }
+
+    if (!options.quarter || options.quarter < 1 || options.quarter > 4) {
+      return { success: false, message: '请选择有效的季度' };
+    }
+    return this.pushQuarterlyResults(options.year, options.quarter);
+  }
   
   static async pushQuarterlyResults(year: number, quarter: number): Promise<any> {
     try {
-      const summaries = await EmployeeQuarterlyModel.findByQuarter(year, quarter);
+      const summaries = await this.loadOrGenerateQuarterlySummaries(year, quarter);
       
       if (!summaries || summaries.length === 0) {
         return {
@@ -19,42 +168,45 @@ export class SalaryIntegrationService {
       }
       
       const results: any[] = [];
-      for (let idx = 0; idx < summaries.length; idx++) {
-        const summary = summaries[idx];
+      const sortedSummaries = [...summaries].sort((a: any, b: any) => Number(b.avg_score || 0) - Number(a.avg_score || 0));
+
+      for (let idx = 0; idx < sortedSummaries.length; idx++) {
+        const summary = sortedSummaries[idx];
         const employee = await EmployeeModel.findById(summary.employee_id);
         if (!employee) continue;
+
+        const quarterScore = Number(Number(summary.avg_score || 0).toFixed(2));
+        const level = scoreToLevel(quarterScore);
         
         results.push({
           employeeExternalId: summary.employee_id,
           employeeName: employee.name || '',
           department: employee.department || '',
           subDepartment: employee.subDepartment || '',
-          quarterScore: parseFloat(summary.avg_score || 0),
+          quarterScore,
           monthsCount: parseInt(summary.record_count || 0),
           rank: idx + 1,
-          level: summary.best_level || '',
-          coefficient: this.scoreToCoefficient(parseFloat(summary.avg_score || 0))
+          level,
+          coefficient: this.scoreToCoefficient(quarterScore)
         });
       }
       
       const payload = {
         quarter: `${year}-Q${quarter}`,
-        effectiveQuarter: `${year}-Q${quarter}`,
+        effectiveQuarter: getEffectiveQuarter(year, quarter),
+        periodType: 'quarterly',
         publishedAt: new Date().toISOString(),
         results: results
       };
       
-      const response = await axios.post(
-        `${SALARY_API_BASE}/api/integrations/performance/quarter-results`,
-        payload,
-        { timeout: 30000 }
-      );
+      const response = await this.postToSalary('/api/integrations/performance/quarter-results', payload);
       
       return {
         success: true,
-        message: `已推送 ${results.length} 条季度绩效数据`,
+        message: `已推送 ${year}-Q${quarter} 季度绩效数据 ${results.length} 条到薪资系统`,
         data: {
           quarter: `${year}-Q${quarter}`,
+          effectiveQuarter: payload.effectiveQuarter,
           sent_count: results.length,
           salary_response: response.data
         }
@@ -70,54 +222,60 @@ export class SalaryIntegrationService {
   
   static async pushMonthlyResults(year: number, month: number): Promise<any> {
     try {
-      const monthStr = `${year}-${String(month).padStart(2, '0')}`;
-      const records = await PerformanceModel.findByMonth(monthStr);
+      const monthStr = monthLabel(year, month);
+      const rankingConfig = await getPerformanceRankingConfig();
+      const records = (await PerformanceModel.findByMonth(monthStr))
+        .filter(isCompletedRecord)
+        .filter((record) => isParticipatingRecord(record, rankingConfig))
+        .sort((a, b) => {
+          const scoreDiff = Number(b.totalScore || 0) - Number(a.totalScore || 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          return String(a.employeeId || '').localeCompare(String(b.employeeId || ''));
+        });
       
       if (!records || records.length === 0) {
         return {
           success: false,
-          message: `未找到 ${monthStr} 的月度绩效数据`
+          message: `未找到 ${monthStr} 已完成且参与考核的月度绩效数据`
         };
       }
       
-      const results: any[] = [];
-      for (let idx = 0; idx < records.length; idx++) {
-        const record = records[idx];
-        const employee = await EmployeeModel.findById(record.employeeId);
-        if (!employee) continue;
-        
-        results.push({
+      const results = records.map((record, idx) => {
+        const monthlyScore = Number(Number(record.totalScore || 0).toFixed(2));
+        const level = record.level || scoreToLevel(monthlyScore);
+
+        return {
           employeeExternalId: record.employeeId,
-          employeeName: employee.name || '',
-          department: employee.department || '',
-          subDepartment: employee.subDepartment || '',
-          quarterScore: parseFloat(String(record.totalScore || 0)),
-          monthsCount: 1,
+          employeeName: record.employeeName || '',
+          department: record.department || '',
+          subDepartment: record.subDepartment || '',
+          monthScore: monthlyScore,
+          monthlyScore,
           rank: idx + 1,
-          level: record.level || '',
-          coefficient: this.scoreToCoefficient(parseFloat(String(record.totalScore || 0)))
-        });
-      }
-      
-      const quarter = this.monthToQuarter(month);
+          departmentRank: record.departmentRank || 0,
+          groupRank: record.groupRank || 0,
+          companyRank: record.companyRank || 0,
+          level,
+          coefficient: this.scoreToCoefficient(monthlyScore),
+        };
+      });
+
       const payload = {
-        quarter: `${year}-Q${quarter}`,
-        effectiveQuarter: `${year}-Q${quarter}`,
+        month: monthStr,
+        effectiveMonth: getNextMonthLabel(year, month),
+        periodType: 'monthly',
         publishedAt: new Date().toISOString(),
-        results: results
+        results
       };
       
-      const response = await axios.post(
-        `${SALARY_API_BASE}/api/integrations/performance/quarter-results`,
-        payload,
-        { timeout: 30000 }
-      );
+      const response = await this.postToSalary('/api/integrations/performance/month-results', payload);
       
       return {
         success: true,
-        message: `已推送 ${results.length} 条月度绩效数据`,
+        message: `已推送 ${monthStr} 月度绩效数据 ${results.length} 条到薪资系统`,
         data: {
           month: monthStr,
+          effectiveMonth: payload.effectiveMonth,
           sent_count: results.length,
           salary_response: response.data
         }
@@ -132,15 +290,37 @@ export class SalaryIntegrationService {
   }
   
   static scoreToCoefficient(score: number): number {
-    if (score >= 4.5) return 1.2;
-    if (score >= 4.0) return 1.1;
-    if (score >= 3.5) return 1.0;
-    if (score >= 3.0) return 0.9;
-    if (score >= 2.5) return 0.8;
-    return 0.7;
+    return levelToScore(scoreToLevel(score));
   }
   
   static monthToQuarter(month: number): number {
     return Math.floor((month - 1) / 3) + 1;
+  }
+
+  private static async loadOrGenerateQuarterlySummaries(year: number, quarter: number): Promise<any[]> {
+    const existing = await EmployeeQuarterlyModel.findByQuarter(year, quarter);
+    if (existing?.length > 0) return existing;
+
+    const generated = await EmployeeQuarterlyModel.generateForQuarter(year, quarter);
+    return generated.details || [];
+  }
+
+  private static async postToSalary(path: string, payload: Record<string, unknown>) {
+    const salaryBaseUrl = getSalaryBaseUrl();
+    const pushToken = getSalaryPushToken();
+
+    if (!salaryBaseUrl) {
+      throw new Error('未配置薪资系统地址 SALARY_SYSTEM_BASE_URL');
+    }
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (pushToken) {
+      headers['X-Performance-Push-Token'] = pushToken;
+    }
+
+    return axios.post(`${salaryBaseUrl}${path}`, payload, {
+      headers,
+      timeout: 30000,
+    });
   }
 }

@@ -110,10 +110,12 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       const response = await performanceApi.submitSummary({
         month: data.month || '',
         selfSummary: data.selfSummary || '',
-        nextMonthPlan: data.nextMonthPlan || '',
-        employeeIssueTags: data.employeeIssueTags || [],
-        resourceNeedTags: data.resourceNeedTags || []
-      });
+	        nextMonthPlan: data.nextMonthPlan || '',
+	        employeeIssueTags: data.employeeIssueTags || [],
+	        resourceNeedTags: data.resourceNeedTags || [],
+	        improvementSuggestion: data.improvementSuggestion || '',
+	        suggestionAnonymous: data.suggestionAnonymous === true
+	      });
       
       if (response.success) {
         const { records } = get();

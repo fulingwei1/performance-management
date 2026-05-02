@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, TrendingUp, CheckCircle, Clock, Calendar, FileText, Award, ClipboardCheck, AlertCircle } from 'lucide-react';
+import { Users, TrendingUp, CheckCircle, Clock, Calendar, FileText, Award, ClipboardCheck, AlertCircle, DollarSign, Lightbulb } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { useHRStore } from '@/stores/hrStore';
 import { format } from 'date-fns';
-import { employeeApi, performanceApi, employeeQuarterlyApi } from '@/services/api';
+import { employeeApi, performanceApi, employeeQuarterlyApi, salaryIntegrationApi } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -53,6 +53,50 @@ interface ParticipationSummary {
   };
 }
 
+interface SalaryForecastRow {
+  employeeExternalId: string;
+  employeeName: string;
+  department?: string;
+  subDepartment?: string;
+  currentPerformanceSalary?: number;
+  draftCoefficient?: number;
+  forecastPerformanceSalary?: number;
+  changeAmount?: number;
+  dataStatus?: string;
+  message?: string;
+}
+
+interface SalaryForecastData {
+  rows: SalaryForecastRow[];
+  summary?: {
+    employeeCount: number;
+    readyCount: number;
+    missingPayrollCount: number;
+    currentTotal: number;
+    forecastTotal: number;
+    changeTotal: number;
+    avgCoefficient: number;
+  };
+}
+
+interface ImprovementSuggestion {
+  id: string;
+  month: string;
+  suggestion: string;
+  anonymous: boolean;
+  employeeName: string;
+  department?: string;
+  subDepartment?: string;
+  updatedAt?: string;
+}
+
+interface ImprovementSuggestionSummary {
+  totalCount: number;
+  namedCount: number;
+  anonymousCount: number;
+  suggestions: ImprovementSuggestion[];
+}
+
 // 月份选项
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
   const date = new Date();
@@ -62,6 +106,12 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
     label: format(date, 'yyyy年M月')
   };
 });
+
+const formatMoney = (value?: number) => {
+  const amount = Number(value || 0);
+  if (amount === 0) return '¥0';
+  return `¥${amount.toLocaleString('zh-CN', { maximumFractionDigits: 0 })}`;
+};
 
 export function ManagerDashboard() {
   const { user } = useAuthStore();
@@ -75,6 +125,10 @@ export function ManagerDashboard() {
   const [todoSummary, setTodoSummary] = useState<Record<string, TodoGroup>>({});
   const [participationSummary, setParticipationSummary] = useState<ParticipationSummary | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [salaryForecast, setSalaryForecast] = useState<SalaryForecastData | null>(null);
+  const [salaryForecastLoading, setSalaryForecastLoading] = useState(false);
+  const [salaryForecastError, setSalaryForecastError] = useState('');
+  const [suggestionSummary, setSuggestionSummary] = useState<ImprovementSuggestionSummary | null>(null);
   
   // 使用选择的月份
   const currentMonth = selectedMonth;
@@ -149,6 +203,86 @@ export function ManagerDashboard() {
     };
     if (user) fetchTodoSummary();
   }, [user]);
+
+  useEffect(() => {
+    const fetchSalaryForecast = async () => {
+      if (!user) return;
+
+      const members = participationSummary?.team?.members?.length
+        ? participationSummary.team.members
+        : subordinates.map((employee) => ({
+            employeeId: employee.id,
+            name: employee.name,
+            department: employee.department,
+            subDepartment: employee.subDepartment,
+            participating: true,
+          }));
+      const participatingMembers = members.filter((member) => member.participating !== false);
+      if (participatingMembers.length === 0) {
+        setSalaryForecast(null);
+        setSalaryForecastError('');
+        return;
+      }
+
+      const [yearText, monthText] = currentMonth.split('-');
+      const year = Number(yearText);
+      const monthNumber = Number(monthText);
+      const recordMap = new Map(
+        records
+          .filter((record) => record.month === currentMonth)
+          .map((record) => [record.employeeId, record])
+      );
+
+      setSalaryForecastLoading(true);
+      setSalaryForecastError('');
+      try {
+        const response = await salaryIntegrationApi.getSalaryForecast({
+          periodType: 'monthly',
+          year,
+          month: monthNumber,
+          employees: participatingMembers.map((member) => {
+            const record = recordMap.get(member.employeeId);
+            const draftScore = Number(record?.totalScore || 0) > 0 ? Number(record?.totalScore || 0) : 1;
+            return {
+              employeeExternalId: member.employeeId,
+              employeeName: member.name,
+              department: member.department,
+              subDepartment: member.subDepartment,
+              draftScore,
+            };
+          }),
+        });
+        if (response.success) {
+          setSalaryForecast(response.data || null);
+        } else {
+          setSalaryForecast(null);
+          setSalaryForecastError(response.message || response.error || '读取薪酬预测失败');
+        }
+      } catch (error: any) {
+        setSalaryForecast(null);
+        setSalaryForecastError(error.message || '读取薪酬预测失败');
+      } finally {
+        setSalaryForecastLoading(false);
+      }
+    };
+
+    fetchSalaryForecast();
+  }, [user, currentMonth, records, participationSummary, subordinates]);
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!user) return;
+      try {
+        const response = await performanceApi.getImprovementSuggestions({ month: currentMonth, scope: 'team' });
+        if (response.success) {
+          setSuggestionSummary(response.data || null);
+        }
+      } catch (error) {
+        console.error('获取合理化建议汇总失败:', error);
+      }
+    };
+    fetchSuggestions();
+  }, [user, currentMonth]);
   
   // 获取当前月份的绩效记录
   const currentMonthRecords = records.filter(r => r.month === currentMonth);
@@ -196,6 +330,12 @@ export function ManagerDashboard() {
   const pendingTodoCount = todoCards.reduce((sum, item) => sum + (todoSummary[item.key]?.count || 0), 0);
   const participationCount = participationSummary?.team?.participatingCount ?? 0;
   const excludedCount = participationSummary?.team?.excludedCount ?? 0;
+  const salaryRows = salaryForecast?.rows || [];
+  const salaryRowMap = new Map(salaryRows.map((row) => [row.employeeExternalId, row]));
+  const readySalaryRows = salaryRows.filter((row) => row.dataStatus === 'ready');
+  const salaryIncreaseCount = readySalaryRows.filter((row) => Number(row.changeAmount || 0) > 0).length;
+  const salaryDecreaseCount = readySalaryRows.filter((row) => Number(row.changeAmount || 0) < 0).length;
+  const salaryFlatCount = readySalaryRows.length - salaryIncreaseCount - salaryDecreaseCount;
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -419,27 +559,132 @@ export function ManagerDashboard() {
         {participationSummary?.team && (
           <Card className="border border-gray-200">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">本部门参与考核名单</CardTitle>
+              <CardTitle className="text-base">本部门参与考核名单与薪酬预测</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {participationSummary.team.members.length === 0 ? (
                 <p className="text-sm text-gray-500">当前没有挂到你名下的下属。</p>
               ) : (
-                participationSummary.team.members.map((member) => (
-                  <div key={member.employeeId} className="flex items-center justify-between rounded-lg border px-3 py-2">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{member.name}</p>
-                      <p className="text-xs text-gray-500">{member.unitKey}</p>
+                participationSummary.team.members.map((member) => {
+                  const salaryRow = salaryRowMap.get(member.employeeId);
+                  const changeAmount = Number(salaryRow?.changeAmount || 0);
+                  return (
+                    <div key={member.employeeId} className="grid gap-3 rounded-lg border px-3 py-2 md:grid-cols-[1fr_180px_120px] md:items-center">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{member.name}</p>
+                        <p className="text-xs text-gray-500">{member.unitKey}</p>
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {member.participating ? (
+                          salaryRow ? (
+                            <div className="space-y-0.5">
+                              <p>预测绩效工资：<span className="font-semibold text-gray-900">{formatMoney(salaryRow.forecastPerformanceSalary)}</span></p>
+                              <p>当前：{formatMoney(salaryRow.currentPerformanceSalary)} · 系数 {Number(salaryRow.draftCoefficient || 0).toFixed(2)}</p>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">{salaryForecastLoading ? '读取预测中…' : '暂无薪资基数'}</span>
+                          )
+                        ) : (
+                          <span className="text-gray-400">不参与本期预测</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-start gap-2 md:justify-end">
+                        {salaryRow?.dataStatus === 'ready' && (
+                          <Badge className={changeAmount > 0 ? 'bg-red-100 text-red-700' : changeAmount < 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}>
+                            {changeAmount > 0 ? '+' : ''}{formatMoney(changeAmount)}
+                          </Badge>
+                        )}
+                        <Badge className={member.participating ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                          {member.participating ? '参与考核' : '不参与考核'}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge className={member.participating ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
-                      {member.participating ? '参与考核' : '不参与考核'}
-                    </Badge>
-                  </div>
-                ))
+                  );
+                })
               )}
             </CardContent>
           </Card>
         )}
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <Card className="border border-gray-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+                部门人员薪酬预测分布
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {salaryForecastError ? (
+                <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">{salaryForecastError}</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    <div className="rounded-lg bg-gray-50 p-3">
+                      <p className="text-xs text-gray-500">可预测人数</p>
+                      <p className="mt-1 text-xl font-bold text-gray-900">{salaryForecast?.summary?.readyCount || 0}</p>
+                    </div>
+                    <div className="rounded-lg bg-red-50 p-3">
+                      <p className="text-xs text-gray-500">预计上调</p>
+                      <p className="mt-1 text-xl font-bold text-red-700">{salaryIncreaseCount}</p>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 p-3">
+                      <p className="text-xs text-gray-500">预计下调</p>
+                      <p className="mt-1 text-xl font-bold text-blue-700">{salaryDecreaseCount}</p>
+                    </div>
+                    <div className="rounded-lg bg-green-50 p-3">
+                      <p className="text-xs text-gray-500">总变化</p>
+                      <p className="mt-1 text-xl font-bold text-green-700">{formatMoney(salaryForecast?.summary?.changeTotal)}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    预测只读取薪资系统“绩效工资”部分，不显示个人完整工资；未评分员工按默认系数 1.00 估算。
+                    {salaryFlatCount > 0 ? ` 预计持平 ${salaryFlatCount} 人。` : ''}
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border border-gray-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Lightbulb className="h-4 w-4 text-amber-500" />
+                合理化建议汇总
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-amber-50 p-3">
+                  <p className="text-xs text-gray-500">建议数</p>
+                  <p className="mt-1 text-xl font-bold text-amber-700">{suggestionSummary?.totalCount || 0}</p>
+                </div>
+                <div className="rounded-lg bg-blue-50 p-3">
+                  <p className="text-xs text-gray-500">显名</p>
+                  <p className="mt-1 text-xl font-bold text-blue-700">{suggestionSummary?.namedCount || 0}</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">匿名</p>
+                  <p className="mt-1 text-xl font-bold text-gray-700">{suggestionSummary?.anonymousCount || 0}</p>
+                </div>
+              </div>
+              {(suggestionSummary?.suggestions || []).slice(0, 3).map((item) => (
+                <div key={item.id} className="rounded-lg border px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-gray-900">{item.employeeName}</p>
+                    <Badge className={item.anonymous ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'}>
+                      {item.anonymous ? '匿名' : '可追溯奖励'}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-600">{item.suggestion}</p>
+                </div>
+              ))}
+              {(suggestionSummary?.totalCount || 0) === 0 && (
+                <p className="text-sm text-gray-500">本月团队暂未提交合理化建议。</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
         <ScoringManagement embedded />
       </motion.div>
     </motion.div>

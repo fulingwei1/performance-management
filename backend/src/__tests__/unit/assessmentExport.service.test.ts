@@ -98,13 +98,13 @@ describe('assessmentExport.service', () => {
     expect(detailSheet).toBeDefined();
     expect(metricsSheet).toBeDefined();
     expect(detailSheet!.rowCount).toBeGreaterThan(1);
-    expect(metricsSheet!.rowCount).toBeGreaterThan(1);
-    expect(detailSheet!.getRow(2).getCell(2).value).toBe('导出员工');
-    expect(detailSheet!.getRow(2).getCell(5).value).toBe('2026-03');
-    expect(detailSheet!.getRow(2).getCell(7).value).toBe('导出模板');
-    expect(detailSheet!.getRow(2).getCell(8).value).toBe(1.2);
-    expect(metricsSheet!.getRow(2).getCell(3).value).toBe('项目按时完成率');
-    expect(metricsSheet!.getRow(2).getCell(8).value).toBe(0.48);
+	    expect(metricsSheet!.rowCount).toBeGreaterThan(1);
+	    expect(detailSheet!.getRow(2).getCell(2).value).toBe('导出员工');
+	    expect(detailSheet!.getRow(2).getCell(6).value).toBe('2026-03');
+	    expect(detailSheet!.getRow(2).getCell(8).value).toBe('导出模板');
+	    expect(detailSheet!.getRow(2).getCell(9).value).toBe(1.2);
+	    expect(metricsSheet!.getRow(2).getCell(3).value).toBe('项目按时完成率');
+	    expect(metricsSheet!.getRow(2).getCell(8).value).toBe(0.48);
   });
 
   it('applies department type and employee filters when exporting assessments', async () => {

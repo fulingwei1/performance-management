@@ -5,6 +5,7 @@ import {
   Play, Bell, Archive, Send, FileText, CheckCircle,
   Users, RefreshCw, Calendar, TrendingUp, Zap
 } from 'lucide-react';
+import { salaryIntegrationApi } from '@/services/api';
 
 const API_BASE = '/api/automation';
 
@@ -42,6 +43,7 @@ export default function MonthlyAutomation() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [salaryPushMode, setSalaryPushMode] = useState<'monthly' | 'quarterly'>('quarterly');
 
   const loadProgress = useCallback(async (month?: string) => {
     const m = month || selectedMonth;
@@ -80,6 +82,30 @@ export default function MonthlyAutomation() {
   const completionRate = progress?.eligibleEmployees
     ? (progress.completedCount / progress.eligibleEmployees) * 100
     : 0;
+  const selectedYear = Number(selectedMonth.slice(0, 4));
+  const selectedMonthNumber = Number(selectedMonth.slice(5, 7));
+  const selectedQuarter = Math.ceil(selectedMonthNumber / 3);
+
+  const pushToSalary = async () => {
+    setLoading(true);
+    try {
+      const result = await salaryIntegrationApi.pushResults({
+        periodType: salaryPushMode,
+        year: selectedYear,
+        month: salaryPushMode === 'monthly' ? selectedMonthNumber : undefined,
+        quarter: salaryPushMode === 'quarterly' ? selectedQuarter : undefined,
+      });
+      if (result.success) {
+        toast.success(result.message || '已推送到薪资系统');
+      } else {
+        toast.error(result.message || '推送失败');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '推送失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0f1117] p-6 space-y-6">
@@ -156,6 +182,52 @@ export default function MonthlyAutomation() {
           )}
         </motion.div>
       )}
+
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">薪资系统对接</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            管理员可以选择按月或按季度推送；季度默认影响下一季度，月度默认影响下个月。
+          </p>
+        </div>
+
+        <div className="bg-gray-900 rounded-lg p-6 flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
+            <div>
+              <label className="text-xs text-gray-400">推送口径</label>
+              <select
+                value={salaryPushMode}
+                onChange={(event) => setSalaryPushMode(event.target.value as 'monthly' | 'quarterly')}
+                className="mt-1 w-full bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700"
+              >
+                <option value="quarterly">按季度汇总推送</option>
+                <option value="monthly">按月度结果推送</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400">当前选择月份</label>
+              <div className="mt-1 bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700">
+                {selectedMonth}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400">实际推送周期</label>
+              <div className="mt-1 bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700">
+                {salaryPushMode === 'monthly' ? selectedMonth : `${selectedYear}-Q${selectedQuarter}`}
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={pushToSalary}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+            推送到薪资系统
+          </button>
+        </div>
+      </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
         <div>

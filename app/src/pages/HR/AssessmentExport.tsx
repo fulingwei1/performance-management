@@ -27,22 +27,12 @@ export function AssessmentExport() {
   const handleExportMonthly = async () => {
     try {
       setLoading(true);
-      
+
       const params = new URLSearchParams();
       if (month) params.append('month', month);
       if (departmentType !== 'all') params.append('departmentType', departmentType);
-      
-      const blob = await exportApi.exportMonthlyAssessments(params);
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `月度评分记录_${month || '全部'}_${new Date().getTime()}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
+
+      await exportApi.exportMonthlyAssessments(params);
       toast.success('导出成功');
     } catch (error) {
       console.error('导出失败:', error);
@@ -55,18 +45,8 @@ export function AssessmentExport() {
   const handleExportDepartmentStats = async () => {
     try {
       setLoading(true);
-      
-      const blob = await exportApi.exportDepartmentStats();
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `部门类型统计_${new Date().getTime()}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
+
+      await exportApi.exportDepartmentStats();
       toast.success('导出成功');
     } catch (error) {
       console.error('导出失败:', error);
@@ -84,18 +64,8 @@ export function AssessmentExport() {
     
     try {
       setLoading(true);
-      
-      const blob = await exportApi.exportScoreTrend(employeeId);
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `评分趋势_${employeeId}_${new Date().getTime()}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
+
+      await exportApi.exportScoreTrend(employeeId);
       toast.success('导出成功');
     } catch (error) {
       console.error('导出失败:', error);
@@ -108,8 +78,8 @@ export function AssessmentExport() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">差异化考核数据导出</h2>
-        <p className="text-gray-500 mt-1">导出评分记录、统计报表和趋势分析</p>
+        <h2 className="text-2xl font-bold text-gray-900">绩效考核数据导出</h2>
+        <p className="text-gray-500 mt-1">导出月度绩效数据、每月之星、统计报表和趋势分析</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -121,7 +91,7 @@ export function AssessmentExport() {
               月度评分记录
             </CardTitle>
             <CardDescription>
-              导出指定月份和部门类型的所有评分记录
+              导出指定月份的绩效考核数据，并包含每月之星推荐明细
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -163,8 +133,9 @@ export function AssessmentExport() {
             <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded">
               <p className="font-medium mb-1">包含内容：</p>
               <ul className="list-disc list-inside space-y-0.5">
-                <li>评分明细（员工、总分、评分人等）</li>
+                <li>评分明细（员工、总分、排名、经理评价、标签等）</li>
                 <li>指标评分详情（每项指标的等级和得分）</li>
+                <li>每月之星（推荐人、类别、理由、是否公开）</li>
                 <li>统计汇总（总体统计信息）</li>
               </ul>
             </div>

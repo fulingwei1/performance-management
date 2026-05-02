@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Save, Send, Calendar, FileText, Loader2, CheckCircle } from 'lucide-react';
+import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Lightbulb } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { Button } from '@/components/ui/button';
@@ -36,6 +36,8 @@ export function WorkSummary() {
   const [nextMonthPlan, setNextMonthPlan] = useState('');
   const [employeeIssueTags, setEmployeeIssueTags] = useState<string[]>([]);
   const [resourceNeedTags, setResourceNeedTags] = useState<string[]>([]);
+  const [improvementSuggestion, setImprovementSuggestion] = useState('');
+  const [suggestionAnonymous, setSuggestionAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, _setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
@@ -64,6 +66,8 @@ export function WorkSummary() {
           setNextMonthPlan(record.nextMonthPlan || '');
           setEmployeeIssueTags(record.employeeIssueTags || []);
           setResourceNeedTags(record.resourceNeedTags || []);
+          setImprovementSuggestion(record.improvementSuggestion || '');
+          setSuggestionAnonymous(record.suggestionAnonymous === true);
         } else {
           // 该月份无记录，清空状态
           setRecordId(null);
@@ -73,6 +77,8 @@ export function WorkSummary() {
           setNextMonthPlan('');
           setEmployeeIssueTags([]);
           setResourceNeedTags([]);
+          setImprovementSuggestion('');
+          setSuggestionAnonymous(false);
         }
       } catch (error) {
         console.error('加载记录失败:', error);
@@ -103,6 +109,8 @@ export function WorkSummary() {
       nextMonthPlan,
       employeeIssueTags,
       resourceNeedTags,
+      improvementSuggestion,
+      suggestionAnonymous,
       status: isDraft ? 'draft' : 'submitted'
     });
     
@@ -290,18 +298,54 @@ export function WorkSummary() {
                     <div className="text-sm font-medium text-gray-900">下月资源诉求标签</div>
                     <div className="text-xs text-gray-500 mt-1">提前告诉经理你下月最需要的支持，便于后续协同和分析。</div>
                   </div>
-                  <StructuredTagSelector
-                    value={resourceNeedTags}
-                    onChange={setResourceNeedTags}
-                    groups={analysisTagsData.resourceNeedTags}
-                    maxCount={4}
-                    emptyText="可选 1-4 个资源诉求"
-                  />
-                </div>
-              </div>
-              
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t">
+	                  <StructuredTagSelector
+	                    value={resourceNeedTags}
+	                    onChange={setResourceNeedTags}
+	                    groups={analysisTagsData.resourceNeedTags}
+	                    maxCount={4}
+	                    emptyText="可选 1-4 个资源诉求"
+	                  />
+	                </div>
+	              </div>
+
+	              {/* Improvement Suggestion */}
+	              <div className="space-y-2">
+	                <div className="flex items-start justify-between gap-3">
+	                  <div>
+	                    <Label htmlFor="improvement-suggestion" className="flex items-center gap-2">
+	                      <Lightbulb className="h-4 w-4 text-amber-500" />
+	                      合理化建议（选填）
+	                    </Label>
+	                    <p className="mt-1 text-xs text-gray-500">
+	                      可写流程改进、降本增效、安全质量、工具设备、协同机制等建议；显名建议被采纳落地后可追溯奖励。
+	                    </p>
+	                  </div>
+	                  <label className="flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-xs text-gray-600">
+	                    <input
+	                      type="checkbox"
+	                      checked={suggestionAnonymous}
+	                      onChange={(event) => setSuggestionAnonymous(event.target.checked)}
+	                      disabled={frozen}
+	                      className="h-4 w-4 rounded border-gray-300"
+	                    />
+	                    匿名提交
+	                  </label>
+	                </div>
+	                <Textarea
+	                  id="improvement-suggestion"
+	                  placeholder="例如：建议优化某流程、减少重复录入、提升交付效率或降低质量风险……"
+	                  value={improvementSuggestion}
+	                  onChange={(e) => setImprovementSuggestion(e.target.value)}
+	                  disabled={frozen}
+	                  className="min-h-[110px] resize-none"
+	                />
+	                <p className="text-xs text-gray-400">
+	                  匿名提交后，经理侧汇总只显示“匿名提交”；不填写则不会生成建议记录。
+	                </p>
+	              </div>
+	              
+	              {/* Actions */}
+	              <div className="flex gap-3 pt-4 border-t">
                 <Button
                   variant="outline"
                   onClick={() => handleSave(true)}

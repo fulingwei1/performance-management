@@ -30,8 +30,11 @@ router.get('/team-records', authenticate, requireRole('manager', 'hr', 'admin', 
   // 获取全公司所有记录（总经理或HR）支持 ?months=N 参数
   router.get('/all-records', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getAllRecords);
 
-  // 获取每月之星推荐汇总
-  router.get('/monthly-stars/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getMonthlyStars);
+	  // 获取每月之星推荐汇总
+	  router.get('/monthly-stars/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getMonthlyStars);
+
+	  // 获取员工合理化建议汇总（经理默认看团队；HR/Admin/GM 可传 scope=all）
+	  router.get('/improvement-suggestions', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), performanceController.getImprovementSuggestions);
 
   // 删除全公司所有绩效记录（HR）
   router.delete('/all-records', authenticate, requireRole('hr', 'admin'), performanceController.deleteAllRecords);

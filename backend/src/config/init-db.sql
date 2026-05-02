@@ -37,6 +37,8 @@ CREATE TABLE IF NOT EXISTS performance_records (
   next_month_plan TEXT,
   employee_issue_tags JSON,
   resource_need_tags JSON,
+  improvement_suggestion TEXT,
+  suggestion_anonymous BOOLEAN DEFAULT false,
   task_completion DECIMAL(3,2) DEFAULT 1.00,
   initiative DECIMAL(3,2) DEFAULT 1.00,
   project_feedback DECIMAL(3,2) DEFAULT 1.00,

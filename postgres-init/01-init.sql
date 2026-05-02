@@ -339,6 +339,8 @@ CREATE TABLE IF NOT EXISTS performance_records (
   next_month_plan TEXT,
   employee_issue_tags JSONB DEFAULT '[]'::jsonb,
   resource_need_tags JSONB DEFAULT '[]'::jsonb,
+  improvement_suggestion TEXT,
+  suggestion_anonymous BOOLEAN DEFAULT false,
   task_completion DECIMAL(3,2) DEFAULT 1.00,
   initiative DECIMAL(3,2) DEFAULT 1.00,
   project_feedback DECIMAL(3,2) DEFAULT 1.00,

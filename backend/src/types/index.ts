@@ -44,6 +44,8 @@ export interface PerformanceRecord {
   nextMonthPlan: string;
   employeeIssueTags?: string[];
   resourceNeedTags?: string[];
+  improvementSuggestion?: string;
+  suggestionAnonymous?: boolean;
   
   // 经理评分
   taskCompletion: number;

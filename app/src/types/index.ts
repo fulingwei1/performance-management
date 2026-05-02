@@ -211,6 +211,8 @@ export interface PerformanceRecord {
   nextMonthPlan: string;
   employeeIssueTags?: string[];
   resourceNeedTags?: string[];
+  improvementSuggestion?: string;
+  suggestionAnonymous?: boolean;
   
   // AI建议
   aiSuggestion?: AISuggestion;

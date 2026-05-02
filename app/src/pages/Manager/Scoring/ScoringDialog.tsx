@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Send, X, AlertCircle, TrendingUp, Clock, Sparkles } from 'lucide-react';
+import { FileText, Send, X, AlertCircle, TrendingUp, Clock, Sparkles, WalletCards } from 'lucide-react';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor, resolveGroupType } from '@/lib/config';
+import { levelToScore, scoreToLevel } from '@/lib/calculateScore';
 import { KeywordSelector } from '@/components/KeywordSelector';
 import { StructuredTagSelector } from '@/components/StructuredTagSelector';
 import { AIAssistant } from '@/components/AIAssistant';
+import { salaryIntegrationApi } from '@/services/api';
 import keywordsData from '@/data/evaluation-keywords.json';
 import analysisTagsData from '@/data/performance-analysis-tags.json';
 
@@ -28,6 +30,40 @@ const monthlyStarCategories = [
   '技术创新之星',
   '团队活跃之星'
 ];
+
+interface SalaryForecastRow {
+  employeeExternalId: string;
+  employeeName: string;
+  periodLabel: string;
+  basePerformanceSalary: number;
+  currentPerformanceSalary: number;
+  currentCoefficient: number;
+  draftScore: number;
+  draftCoefficient: number;
+  adjustmentAmount: number;
+  forecastPerformanceSalary: number;
+  changeAmount: number;
+  dataStatus: 'ready' | 'missing_payroll' | string;
+  message?: string;
+}
+
+const parseAssessmentMonth = (month?: string): { year: number; month: number } | null => {
+  const text = String(month || '').trim();
+  const match = text.match(/(\d{4})[-年/](\d{1,2})/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const parsedMonth = Number(match[2]);
+  if (!year || parsedMonth < 1 || parsedMonth > 12) return null;
+  return { year, month: parsedMonth };
+};
+
+const formatCurrency = (value?: number) => (
+  new Intl.NumberFormat('zh-CN', {
+    style: 'currency',
+    currency: 'CNY',
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0))
+);
 
 interface ScoringDialogProps {
   open: boolean;
@@ -91,6 +127,9 @@ export function ScoringDialog({
   totalScore, loading, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
+  const [salaryForecast, setSalaryForecast] = useState<SalaryForecastRow | null>(null);
+  const [salaryForecastLoading, setSalaryForecastLoading] = useState(false);
+  const [salaryForecastError, setSalaryForecastError] = useState('');
   
   // AI助手状态
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -104,6 +143,7 @@ export function ScoringDialog({
 
   const requiresScoreEvidence = totalScore >= 1.4 || totalScore < 0.9;
   const scoreEvidenceLabel = totalScore >= 1.4 ? '优秀/特别突出事例' : totalScore < 0.9 ? '低分/明显不足事例' : '评分事例说明';
+  const draftCoefficient = levelToScore(scoreToLevel(Number(totalScore || 0)));
   
   // 采用AI建议
   const handleAdoptAI = (content: string) => {
@@ -150,6 +190,71 @@ export function ScoringDialog({
   useEffect(() => {
     setEvaluationKeywords(selectedKeywords);
   }, [selectedKeywords, setEvaluationKeywords]);
+
+  useEffect(() => {
+    setSalaryForecast(null);
+    setSalaryForecastError('');
+
+    if (!open) return;
+    const parsedMonth = parseAssessmentMonth(selectedRecord?.month);
+    if (!selectedRecord?.employeeId || !selectedRecord?.employeeName || !parsedMonth) {
+      setSalaryForecastLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSalaryForecastLoading(true);
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await salaryIntegrationApi.getSalaryForecast({
+          periodType: 'monthly',
+          year: parsedMonth.year,
+          month: parsedMonth.month,
+          employees: [
+            {
+              employeeExternalId: selectedRecord.employeeId,
+              employeeName: selectedRecord.employeeName,
+              department: selectedRecord.department,
+              subDepartment: selectedRecord.subDepartment,
+              draftScore: Number(totalScore || 0),
+              draftCoefficient,
+            },
+          ],
+        });
+
+        if (cancelled) return;
+        if (!response?.success) {
+          setSalaryForecastError(response?.message || '薪资预测读取失败');
+          return;
+        }
+
+        setSalaryForecast(response?.data?.rows?.[0] || null);
+      } catch (error: any) {
+        if (!cancelled) {
+          setSalaryForecastError(error?.message || '薪资预测读取失败');
+        }
+      } finally {
+        if (!cancelled) {
+          setSalaryForecastLoading(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    open,
+    selectedRecord?.employeeId,
+    selectedRecord?.employeeName,
+    selectedRecord?.department,
+    selectedRecord?.subDepartment,
+    selectedRecord?.month,
+    totalScore,
+    draftCoefficient,
+  ]);
 
   useEffect(() => {
     if (selectedKeywords.length > 0) {
@@ -336,6 +441,60 @@ export function ScoringDialog({
                       </div>
                     </div>
                   </div>
+                  <Card className="shadow-sm border-emerald-100 bg-emerald-50/40">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2">
+                        <WalletCards className="w-4 h-4 text-emerald-600" />
+                        绩效工资预测（只读）
+                      </CardTitle>
+                      <p className="text-xs text-gray-500">
+                        从薪资系统读取绩效工资基数，仅预测绩效工资部分，不显示实发工资、税前工资等敏感字段。
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      {salaryForecastLoading && (
+                        <div className="text-sm text-gray-500">正在读取薪资系统预测值...</div>
+                      )}
+                      {!salaryForecastLoading && salaryForecastError && (
+                        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                          <span>{salaryForecastError}</span>
+                        </div>
+                      )}
+                      {!salaryForecastLoading && !salaryForecastError && salaryForecast && (
+                        salaryForecast.dataStatus === 'missing_payroll' ? (
+                          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                            <span>{salaryForecast.message || '薪资系统暂无该月份工资基数，暂不能预测。'}</span>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                            <div className="rounded-lg bg-white px-3 py-2 border">
+                              <p className="text-xs text-gray-500">绩效工资基数</p>
+                              <p className="mt-1 text-base font-semibold text-gray-900">{formatCurrency(salaryForecast.basePerformanceSalary)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white px-3 py-2 border">
+                              <p className="text-xs text-gray-500">本次草稿系数</p>
+                              <p className="mt-1 text-base font-semibold text-blue-600">{salaryForecast.draftCoefficient.toFixed(2)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white px-3 py-2 border">
+                              <p className="text-xs text-gray-500">预计绩效工资</p>
+                              <p className="mt-1 text-base font-semibold text-emerald-700">{formatCurrency(salaryForecast.forecastPerformanceSalary)}</p>
+                            </div>
+                            <div className="rounded-lg bg-white px-3 py-2 border">
+                              <p className="text-xs text-gray-500">较当前变化</p>
+                              <p className={`mt-1 text-base font-semibold ${salaryForecast.changeAmount >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                                {salaryForecast.changeAmount >= 0 ? '+' : ''}{formatCurrency(salaryForecast.changeAmount)}
+                              </p>
+                              {salaryForecast.adjustmentAmount !== 0 && (
+                                <p className="mt-1 text-[11px] text-gray-500">含调整额 {formatCurrency(salaryForecast.adjustmentAmount)}</p>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </CardContent>
+                  </Card>
                   <div className="grid grid-cols-2 gap-5">
                     {scoreDimensions.map((dim, index) => {
                       const colors = ['#3B82F6', '#10B981', '#8B5CF6', '#F97316'];
