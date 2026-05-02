@@ -550,51 +550,6 @@ export const aiApi = {
   })
 };
 
-// 目标管理API
-export const objectiveApi = {
-  getAll: (params?: { year?: number; ownerId?: string; level?: string; department?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.year) query.set('year', String(params.year));
-    if (params?.ownerId) query.set('ownerId', params.ownerId);
-    if (params?.level) query.set('level', params.level);
-    if (params?.department) query.set('department', params.department);
-    const search = query.toString();
-    return request(`/objectives${search ? `?${search}` : ''}`);
-  },
-  getById: (id: string) => request(`/objectives/${id}`),
-  create: (data: Record<string, unknown>) => request('/objectives', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  update: (id: string, data: Record<string, unknown>) => request(`/objectives/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-  delete: (id: string) => request(`/objectives/${id}`, { method: 'DELETE' }),
-  submitForApproval: (id: string) => request(`/objectives/${id}/submit`, { method: 'POST' }),
-  getTree: (year?: number) => {
-    const query = year ? `?year=${year}` : '';
-    return request(`/objectives/tree${query}`);
-  }
-};
-
-// 战略目标API
-export const strategicObjectiveApi = {
-  getAll: (params?: { year?: number }) => {
-    const query = params?.year ? `?year=${params.year}` : '';
-    return request(`/strategic-objectives${query}`);
-  },
-  create: (data: Record<string, unknown>) => request('/strategic-objectives', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  update: (id: string, data: Record<string, unknown>) => request(`/strategic-objectives/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-  delete: (id: string) => request(`/strategic-objectives/${id}`, { method: 'DELETE' })
-};
-
 // HR管理API
 export const hrApi = {
   // 获取所有员工
@@ -1155,8 +1110,6 @@ export default {
   quarterlySummary: quarterlySummaryApi,
   employeeQuarterly: employeeQuarterlyApi,
   ai: aiApi,
-  objective: objectiveApi,
-  strategicObjective: strategicObjectiveApi,
   assessmentTemplate: assessmentTemplateApi,
   monthlyAssessment: monthlyAssessmentApi,
   assessmentPublication: assessmentPublicationApi,

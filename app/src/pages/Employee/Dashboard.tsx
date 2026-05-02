@@ -8,7 +8,6 @@ import { useHRStore } from '@/stores/hrStore';
 import { TaskList } from '@/components/tasks/TaskList';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { StrategicGoalsDisplay } from '@/components/StrategicGoalsDisplay';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { employeeApi, todoApi } from '@/services/api';
@@ -122,11 +121,6 @@ export function EmployeeDashboard() {
             )}
           </CardContent>
         </Card>
-      </motion.div>
-
-      {/* 战略目标展示 */}
-      <motion.div variants={itemVariants}>
-        <StrategicGoalsDisplay showDepartment={true} />
       </motion.div>
 
       {/* Main Content */}

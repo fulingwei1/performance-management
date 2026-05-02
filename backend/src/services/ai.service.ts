@@ -34,10 +34,6 @@ interface AIResponse {
 async function callKimiAPI(request: AIRequest): Promise<AIResponse> {
   const kimiApiKey = process.env.KIMI_API_KEY || process.env.MOONSHOT_API_KEY;
   
-  console.log('[DEBUG] KIMI_API_KEY exists:', !!process.env.KIMI_API_KEY);
-  console.log('[DEBUG] MOONSHOT_API_KEY exists:', !!process.env.MOONSHOT_API_KEY);
-  console.log('[DEBUG] kimiApiKey length:', kimiApiKey?.length || 0);
-  
   if (!kimiApiKey) {
     throw new Error('Kimi API Key not configured');
   }

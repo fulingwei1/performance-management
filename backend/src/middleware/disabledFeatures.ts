@@ -3,9 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 const DISABLED_API_PREFIXES = [
   // 已停用的功能模块
   { prefix: '/api/notifications', label: '消息中心' },
-  { prefix: '/api/strategic-objectives', label: '战略目标' },
-  // { prefix: '/api/okr', label: 'OKR总览' }, // 已启用
-  { prefix: '/api/objectives', label: 'OKR目标' },
+  // OKR/目标模块已移除
   { prefix: '/api/goal-progress', label: '目标进度' },
   { prefix: '/api/goal-approval', label: '目标审批' },
   { prefix: '/api/goal-dashboard', label: '目标看板' },

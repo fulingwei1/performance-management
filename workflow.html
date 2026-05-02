@@ -1,0 +1,116 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+body { font-family: -apple-system, "Segoe UI", sans-serif; background: #f5f7fa; padding: 20px; }
+.mermaid { max-width: 1400px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+h1 { text-align: center; color: #1a1a2e; margin-bottom: 5px; }
+.sub { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<h1>绩效考核系统 · 月度自动化工作流</h1>
+<p class="sub">Performance Management System — Monthly Appraisal Cycle</p>
+<div class="mermaid">
+graph TB
+    subgraph A["📅 月初任务生成（每月1日 08:00）"]
+        A1["Scheduler: generatePreviousMonthPerformanceTasks"] 
+        A2["筛选可考核员工<br/>(employee/manager, active, rankingConfig)"]
+        A3["检查是否已存在记录"]
+        A4["创建 performance_records<br/>status=draft"]
+        A5["发送通知: 站内+Todo+邮件+企微"]
+        A1 --> A2 --> A3 -->|不存在| A4 --> A5
+        A3 -->|已存在| A_SKIP["跳过"]
+    end
+
+    subgraph B["🔔 每日催办（1-6号 09:00）"]
+        B1["Scheduler: dailyReminderWorkflow"]
+        B2["催员工写总结<br/>(draft → submitted)"]
+        B3["催经理打分<br/>(submitted → scored)"]
+        B4["统计部门完成率<br/>推送企微"]
+        B1 --> B2
+        B1 --> B3
+        B1 --> B4
+    end
+
+    subgraph C["📊 评分与审批"]
+        C1["员工提交工作总结<br/>(selfSummary + nextMonthPlan)"]
+        C2["经理评分<br/>(totalScore 0-2.0)"]
+        C3["强制分布校验 2-7-1<br/>优秀≤20%, 末位≥10%"]
+        C4["状态流转: draft → submitted → scored → completed"]
+        C1 --> C2 --> C3 --> C4
+    end
+
+    subgraph D["📋 发布准备检查"]
+        D1["publicationReadiness.validate"]
+        D2["检查全部完成?"]
+        D3["检查强制分布?"]
+        D4["可发布 / 阻断"]
+        D1 --> D2 -->|否| D4
+        D2 -->|是| D3 -->|不满足| D4
+        D3 -->|满足| D_OK["✅ 通过"]
+    end
+
+    subgraph E["🚀 结果发布"]
+        E1["autoPublishPreviousMonth<br/>(每月8日 03:00 兜底)"]
+        E2["创建 assessment_publications"]
+        E3["员工可查看结果"]
+        E1 --> E2 --> E3
+    end
+
+    subgraph F["💰 薪资系统集成"]
+        F1["季度推送<br/>(每季度10日 04:00)"]
+        F2["SalaryIntegrationService"]
+        F3["推送员工绩效系数到薪资系统"]
+        F4["薪资预报 forecast API"]
+        F1 --> F2 --> F3
+        F2 --> F4
+    end
+
+    subgraph G["📈 统计与报告"]
+        G1["月度统计报告<br/>(每月6日 02:00)"]
+        G2["异常分数检测"]
+        G3["生成图表+报告"]
+        G1 --> G2 --> G3
+    end
+
+    subgraph H["⚙️ 持续运维"]
+        H1["每小时: 过期待办检查"]
+        H2["HR档案导入<br/>hrArchiveImport"]
+        H3["企业微信目录同步<br/>wecomDirectory"]
+        H4["绩效排名配置<br/>rankingConfig"]
+    end
+
+    A5 --> B1
+    B2 --> C1
+    B3 --> C2
+    C4 --> D1
+    D_OK --> E1
+    E3 --> F1
+    G1 -.独立触发.-> G3
+    H1 -.持续运行.-> H1
+    H2 -.数据源.-> A2
+    H3 -.组织架构.-> A2
+    H4 -.参与范围.-> A2
+
+    classDef blue fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef green fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    classDef orange fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef red fill:#fce4ec,stroke:#c62828,stroke-width:2px
+    classDef purple fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef teal fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+    classDef gray fill:#f5f5f5,stroke:#757575,stroke-width:2px
+
+    class A1,A2,A3,A4,A5 blue
+    class B1,B2,B3,B4 green
+    class C1,C2,C3,C4 orange
+    class D1,D2,D3,D4,D_OK red
+    class E1,E2,E3 purple
+    class F1,F2,F3,F4 teal
+    class G1,G2,G3 gray
+    class H1,H2,H3,H4 gray
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:'default',flowchart:{useMaxWidth:true,htmlLabels:true,curve:'basis'}});</script>
+</body>
+</html>

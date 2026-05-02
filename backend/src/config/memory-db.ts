@@ -3,7 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, StrategicObjective, Objective, KeyResult, KpiAssignment, PerformanceContract, MonthlyReport, PerformanceInterview, OkrAssignment, Attachment, BonusConfig, BonusResult, GoalProgress, Appeal, ObjectiveAdjustment } from '../types';
+import { Employee, PerformanceRecord, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, PerformanceContract, MonthlyReport, PerformanceInterview, Attachment, BonusConfig, BonusResult, GoalProgress, Appeal } from '../types';
 import { AIUsageLog } from '../models/aiUsageLog.model';
 import { Notification } from '../models/notification.model';
 import logger from './logger';
@@ -20,14 +20,13 @@ interface MemoryStore {
   holidays: Map<string, Holiday>;
   performanceMetrics: Map<string, PerformanceMetric>;
   metricTemplates: Map<string, MetricTemplate>;
-  strategicObjectives: Map<string, StrategicObjective>;
-  objectives: Map<string, Objective>;
-  keyResults: Map<string, KeyResult>;
-  kpiAssignments: Map<string, KpiAssignment>;
+  strategicObjectives: Map<string, any>;
+  objectives: Map<string, any>;
+  keyResults: Map<string, any>;
+  kpiAssignments: Map<string, any>;
   performanceContracts: Map<string, PerformanceContract>;
   monthlyReports: Map<string, MonthlyReport>;
   performanceInterviews: Map<string, PerformanceInterview>;
-  okrAssignments: Map<string, OkrAssignment>;
   attachments: Map<string, Attachment>;
   bonusConfig: Map<string, BonusConfig>;
   bonusResults: Map<string, BonusResult>;
@@ -35,7 +34,6 @@ interface MemoryStore {
   aiUsageLogs: Map<string, AIUsageLog>;
   appeals?: Map<string, Appeal>;
   notifications?: Map<string, Notification>;
-  objectiveAdjustments?: Map<string, ObjectiveAdjustment>;
   todos?: Map<string, any>;
   assessmentTemplates?: Map<string, any>;
   templateMetrics?: Map<string, any>;
@@ -66,7 +64,6 @@ export const memoryStore: MemoryStore = {
   performanceContracts: new Map(),
   monthlyReports: new Map(),
   performanceInterviews: new Map(),
-  okrAssignments: new Map(),
   attachments: new Map(),
   bonusConfig: new Map(),
   bonusResults: new Map(),
@@ -74,7 +71,7 @@ export const memoryStore: MemoryStore = {
   aiUsageLogs: new Map(),
   appeals: new Map(),
   notifications: new Map(),
-  objectiveAdjustments: new Map(),
+
   assessmentTemplates: new Map(),
   templateMetrics: new Map(),
   metricScoringCriteria: new Map(),
@@ -355,7 +352,7 @@ export const initMemoryDB = (): void => {
   memoryStore.performanceContracts.clear();
   memoryStore.monthlyReports.clear();
   memoryStore.performanceInterviews.clear();
-  memoryStore.okrAssignments.clear();
+
   memoryStore.attachments.clear();
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
@@ -409,7 +406,7 @@ export const clearMemoryDB = (): void => {
   memoryStore.performanceContracts.clear();
   memoryStore.monthlyReports.clear();
   memoryStore.performanceInterviews.clear();
-  memoryStore.okrAssignments.clear();
+
   memoryStore.attachments.clear();
   memoryStore.bonusConfig.clear();
   memoryStore.bonusResults.clear();
@@ -436,7 +433,6 @@ export const getMemoryDBStats = (): {
   performanceContracts: number;
   monthlyReports: number;
   performanceInterviews: number;
-  okrAssignments: number;
   attachments: number;
   bonusConfig: number;
   bonusResults: number;
@@ -459,7 +455,6 @@ export const getMemoryDBStats = (): {
     performanceContracts: memoryStore.performanceContracts.size,
     monthlyReports: memoryStore.monthlyReports.size,
     performanceInterviews: memoryStore.performanceInterviews.size,
-    okrAssignments: memoryStore.okrAssignments.size,
     attachments: memoryStore.attachments.size,
     bonusConfig: memoryStore.bonusConfig.size,
     bonusResults: memoryStore.bonusResults.size,

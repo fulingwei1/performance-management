@@ -33,13 +33,13 @@ import attachmentRoutes from './routes/attachment.routes';
 import departmentRoutes from './routes/department.routes';
 import goalProgressRoutes from './routes/goalProgress.routes';
 import aiRoutes from './routes/ai.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+
 import automationRoutes from './routes/automation.routes';
 import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
 import notificationRoutes from './routes/notification.routes';
 import appealRoutes from './routes/appeal.routes';
-import goalApprovalRoutes from './routes/goalApproval.routes';
-import goalDashboardRoutes from './routes/goalDashboard.routes';
+
+
 import auditLogRoutes from './routes/auditLog.routes';
 import todoRoutes from './routes/todo.routes';
 import dataImportRoutes from './routes/dataImport.routes';
@@ -185,8 +185,6 @@ app.use('/api/cycles', assessmentCycleRoutes);
 app.use('/api/metrics', metricLibraryRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
-// OKR 模块 (routes not yet implemented)
-// app.use('/api/okr', okrRoutes);
 app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
 app.use('/api/monthly-reports', monthlyReportRoutes);
 app.use('/api/interviews', performanceInterviewRoutes);
@@ -195,13 +193,12 @@ app.use('/api/attachments', attachmentRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/goal-progress', goalProgressRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+
 app.use('/api/automation', automationRoutes);
 app.use('/api/assessment-publications', assessmentPublicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/appeals', appealRoutes);
-app.use('/api/goal-approval', goalApprovalRoutes);
-app.use('/api/goal-dashboard', goalDashboardRoutes);
+
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/todos', todoRoutes);
 app.use('/api/data-import', dataImportRoutes);
