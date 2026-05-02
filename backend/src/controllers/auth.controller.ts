@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { EmployeeModel } from '../models/employee.model';
+import { LoginLogModel } from '../models/loginLog.model';
 import { generateToken } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 
@@ -43,11 +44,28 @@ export const authController = {
       const idCardLast6 = (req.body.idCardLast6 ?? '').toString();
       const password = (req.body.password ?? '').toString();
 
+      // 获取请求信息用于日志
+      const loginIp = req.ip || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.get('User-Agent') || 'unknown';
+
       // 查找员工（先尝试工号/ID，再尝试姓名；若同名则要求使用工号登录）
       let employee = await EmployeeModel.findById(username);
       if (!employee) {
         const matches = await EmployeeModel.findAllByName(username);
         if (matches.length > 1) {
+          // 记录登录失败日志（用户名不明确）
+          await LoginLogModel.create({
+            employeeId: username,
+            employeeName: username,
+            role: 'employee',
+            department: '',
+            subDepartment: '',
+            loginMethod: idCardLast6 ? 'idCard' : 'password',
+            loginIp,
+            userAgent,
+            success: false,
+            failureReason: '存在同名用户',
+          });
           return res.status(409).json({
             success: false,
             message: '存在同名用户，请使用工号登录'
@@ -57,6 +75,19 @@ export const authController = {
       }
 
       if (!employee) {
+        // 记录登录失败日志（用户不存在）
+        await LoginLogModel.create({
+          employeeId: username,
+          employeeName: username,
+          role: 'employee',
+          department: '',
+          subDepartment: '',
+          loginMethod: idCardLast6 ? 'idCard' : 'password',
+          loginIp,
+          userAgent,
+          success: false,
+          failureReason: '用户不存在',
+        });
         return res.status(401).json({
           success: false,
           message: '用户名或登录口令错误'
@@ -77,6 +108,19 @@ export const authController = {
       }
 
       if (!isValidPassword) {
+        // 记录登录失败日志（密码错误）
+        await LoginLogModel.create({
+          employeeId: employee.id,
+          employeeName: employee.name,
+          role: employee.role,
+          department: employee.department,
+          subDepartment: employee.subDepartment,
+          loginMethod: idCardLast6 ? 'idCard' : 'password',
+          loginIp,
+          userAgent,
+          success: false,
+          failureReason: '密码错误',
+        });
         return res.status(401).json({
           success: false,
           message: '用户名或登录口令错误'
@@ -85,11 +129,37 @@ export const authController = {
 
       // 检查用户状态
       if ((employee as any).status === 'disabled') {
+        // 记录登录失败日志（账号被禁用）
+        await LoginLogModel.create({
+          employeeId: employee.id,
+          employeeName: employee.name,
+          role: employee.role,
+          department: employee.department,
+          subDepartment: employee.subDepartment,
+          loginMethod: idCardLast6 ? 'idCard' : 'password',
+          loginIp,
+          userAgent,
+          success: false,
+          failureReason: '账号被禁用',
+        });
         return res.status(403).json({
           success: false,
           message: '该账号已被禁用，请联系管理员'
         });
       }
+
+      // 记录登录成功日志
+      await LoginLogModel.create({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        role: employee.role,
+        department: employee.department,
+        subDepartment: employee.subDepartment,
+        loginMethod: idCardLast6 ? 'idCard' : 'password',
+        loginIp,
+        userAgent,
+        success: true,
+      });
 
       // 生成JWT Token
       const token = generateToken({
@@ -188,5 +258,45 @@ export const authController = {
         message: '密码修改成功'
       });
     })
-  ]
+  ],
+
+  // 查询登录日志（管理员/HR）
+  getLoginLogs: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: '未认证'
+      });
+    }
+
+    // 仅管理员和 HR 可以查看登录日志
+    if (!['admin', 'hr'].includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: '权限不足'
+      });
+    }
+
+    const { employeeId, startDate, endDate, success, page = 1, limit = 50 } = req.query as any;
+
+    const result = await LoginLogModel.find({
+      employeeId,
+      startDate,
+      endDate,
+      success: success !== undefined ? success === 'true' : undefined,
+      limit: parseInt(limit, 10),
+      offset: (parseInt(page, 10) - 1) * parseInt(limit, 10),
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      pagination: {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        total: result.total,
+        totalPages: Math.ceil(result.total / parseInt(limit, 10)),
+      }
+    });
+  })
 };

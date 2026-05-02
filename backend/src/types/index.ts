@@ -640,3 +640,19 @@ export interface AutomationLog {
   startedAt: Date | string;
   completedAt?: Date | string;
 }
+
+// ============ 登录日志 ============
+export interface LoginLog {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  role: EmployeeRole;
+  department: string;
+  subDepartment: string;
+  loginTime: Date;
+  loginMethod: 'idCard' | 'password';
+  loginIp: string;
+  userAgent: string;
+  success: boolean;
+  failureReason?: string;
+}
