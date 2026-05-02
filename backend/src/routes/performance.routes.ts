@@ -45,6 +45,9 @@ router.post('/summary', authenticate, requireRole('employee'), validate(submitSu
 // 创建空记录（经理给未提交的员工评分时使用）
 router.post('/create-empty-record', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), validate(createRecordValidation), performanceController.createEmptyRecord);
 
+// 获取记录对应的评分模板（用于前端动态渲染评分表单）
+router.get('/:id/template', authenticate, performanceController.getRecordTemplate);
+
 // 经理评分（含 HR/管理员兼任经理视角）
 router.post('/score', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), validate(submitScoreValidation), performanceController.submitScore);
 

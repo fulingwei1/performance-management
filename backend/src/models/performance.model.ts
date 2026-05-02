@@ -1,5 +1,5 @@
 import { query, transaction, memoryDB, USE_MEMORY_DB, memoryStore } from '../config/database';
-import { PerformanceRecord, RecordStatus } from '../types';
+import { PerformanceRecord, RecordStatus, MetricScore } from '../types';
 import { EmployeeModel } from './employee.model';
 import {
   getPerformanceRankingConfig,
@@ -346,13 +346,45 @@ export class PerformanceModel {
     monthlyStarCategory?: string;
     monthlyStarReason?: string;
     monthlyStarPublic?: boolean;
+    // 动态模板评分
+    templateId?: string;
+    templateName?: string;
+    departmentType?: string;
+    metricScores?: MetricScore[];
   }): Promise<PerformanceRecord | null> {
     if (USE_MEMORY_DB) {
       const record = memoryDB.performanceRecords.findById(data.id);
       if (!record) return null;
       
+      const existing = memoryDB.performanceRecords.findById(data.id);
+      if (!existing) return null;
       const updated = memoryDB.performanceRecords.update(data.id, {
-        ...data,
+        taskCompletion: data.taskCompletion,
+        initiative: data.initiative,
+        projectFeedback: data.projectFeedback,
+        qualityImprovement: data.qualityImprovement,
+        totalScore: data.totalScore,
+        level: data.level,
+        managerComment: data.managerComment,
+        nextMonthWorkArrangement: data.nextMonthWorkArrangement,
+        normalizedScore: data.normalizedScore,
+        evaluationKeywords: data.evaluationKeywords,
+        issueTypeTags: data.issueTypeTags,
+        highlightTags: data.highlightTags,
+        workTypeTags: data.workTypeTags,
+        improvementActionTags: data.improvementActionTags,
+        issueAttributionTags: data.issueAttributionTags,
+        workloadTags: data.workloadTags,
+        managerSuggestionTags: data.managerSuggestionTags,
+        scoreEvidence: data.scoreEvidence,
+        monthlyStarRecommended: data.monthlyStarRecommended,
+        monthlyStarCategory: data.monthlyStarCategory,
+        monthlyStarReason: data.monthlyStarReason,
+        monthlyStarPublic: data.monthlyStarPublic,
+        templateId: data.templateId,
+        templateName: data.templateName,
+        departmentType: data.departmentType,
+        metricScores: data.metricScores,
         status: 'completed',
         updatedAt: new Date()
       });
@@ -388,11 +420,15 @@ export class PerformanceModel {
         monthly_star_reason = ?,
         monthly_star_public = ?,
         normalized_score = ?,
+        template_id = ?,
+        template_name = ?,
+        department_type = ?,
+        metric_scores = ?,
         status = 'completed',
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
-    
+
     await query(sql, [
       data.taskCompletion,
       data.initiative,
@@ -416,6 +452,10 @@ export class PerformanceModel {
       data.monthlyStarReason || '',
       data.monthlyStarPublic !== false,
       data.normalizedScore || data.totalScore,
+      data.templateId || null,
+      data.templateName || null,
+      data.departmentType || null,
+      data.metricScores ? JSON.stringify(data.metricScores) : null,
       data.id
     ]);
     
@@ -599,6 +639,11 @@ export class PerformanceModel {
       status: row.status,
       frozen: row.frozen,
       deadline: row.deadline,
+      // 动态模板评分
+      templateId: row.template_id || undefined,
+      templateName: row.template_name || undefined,
+      departmentType: row.department_type || undefined,
+      metricScores: row.metric_scores ? (typeof row.metric_scores === 'string' ? JSON.parse(row.metric_scores) : row.metric_scores) : undefined,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };

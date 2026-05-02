@@ -256,13 +256,16 @@ export const performanceApi = {
       body: JSON.stringify(data)
     }),
   
+  // 获取绩效记录对应的评分模板（用于动态渲染评分表单）
+  getRecordTemplate: (id: string) => request(`/performance/${id}/template`),
+  
   // 经理评分
   submitScore: (data: {
     id: string;
-    taskCompletion: number;
-    initiative: number;
-    projectFeedback: number;
-    qualityImprovement: number;
+    taskCompletion?: number;
+    initiative?: number;
+    projectFeedback?: number;
+    qualityImprovement?: number;
     managerComment: string;
     nextMonthWorkArrangement: string;
     evaluationKeywords?: string[];
@@ -278,6 +281,19 @@ export const performanceApi = {
     monthlyStarCategory?: string;
     monthlyStarReason?: string;
     monthlyStarPublic?: boolean;
+    // 动态模板评分
+    templateId?: string;
+    templateName?: string;
+    departmentType?: string;
+    metricScores?: Array<{
+      metricId: string;
+      metricName: string;
+      metricCode: string;
+      weight: number;
+      score: number;
+      level: string;
+      comment?: string;
+    }>;
   }) => request('/performance/score', {
     method: 'POST',
     body: JSON.stringify(data)

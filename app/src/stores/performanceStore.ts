@@ -147,17 +147,14 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
     set({ loading: true, error: null });
     
     try {
-      const taskCompletion = data.taskCompletion || 1.0;
-      const initiative = data.initiative || 1.0;
-      const projectFeedback = data.projectFeedback || 1.0;
-      const qualityImprovement = data.qualityImprovement || 1.0;
+      const hasMetricScores = Array.isArray((data as any).metricScores) && (data as any).metricScores.length > 0;
       
       const response = await performanceApi.submitScore({
         id: data.id || '',
-        taskCompletion,
-        initiative,
-        projectFeedback,
-        qualityImprovement,
+        taskCompletion: hasMetricScores ? undefined : data.taskCompletion || 1.0,
+        initiative: hasMetricScores ? undefined : data.initiative || 1.0,
+        projectFeedback: hasMetricScores ? undefined : data.projectFeedback || 1.0,
+        qualityImprovement: hasMetricScores ? undefined : data.qualityImprovement || 1.0,
         managerComment: data.managerComment || '',
         nextMonthWorkArrangement: data.nextMonthWorkArrangement || '',
         evaluationKeywords: data.evaluationKeywords || [],
@@ -172,7 +169,12 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
         monthlyStarRecommended: data.monthlyStarRecommended === true,
         monthlyStarCategory: data.monthlyStarCategory || '',
         monthlyStarReason: data.monthlyStarReason || '',
-        monthlyStarPublic: data.monthlyStarPublic !== false
+        monthlyStarPublic: data.monthlyStarPublic !== false,
+        // 动态模板评分
+        templateId: (data as any).templateId,
+        templateName: (data as any).templateName,
+        departmentType: (data as any).departmentType,
+        metricScores: hasMetricScores ? (data as any).metricScores : undefined
       });
       
       if (response.success) {

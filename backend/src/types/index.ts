@@ -27,6 +27,17 @@ export interface Employee {
   updatedAt?: Date;
 }
 
+// 指标评分（动态模板评分）
+export interface MetricScore {
+  metricId: string;
+  metricName: string;
+  metricCode: string;
+  weight: number;
+  score: number;     // 0.5-1.5 (L1-L5)
+  level: ScoreLevel; // L1-L5
+  comment?: string;
+}
+
 // 绩效记录
 export interface PerformanceRecord {
   id: string;
@@ -38,7 +49,13 @@ export interface PerformanceRecord {
   assessorId: string;
   assessorName?: string;
   month: string;
-  
+
+  // 模板相关（动态指标）
+  templateId?: string;
+  templateName?: string;
+  departmentType?: string;
+  metricScores?: MetricScore[];
+
   // 员工填写
   selfSummary: string;
   nextMonthPlan: string;
@@ -46,8 +63,8 @@ export interface PerformanceRecord {
   resourceNeedTags?: string[];
   improvementSuggestion?: string;
   suggestionAnonymous?: boolean;
-  
-  // 经理评分
+
+  // 经理评分（旧版：兼容4项固定维度）
   taskCompletion: number;
   initiative: number;
   projectFeedback: number;

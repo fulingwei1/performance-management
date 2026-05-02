@@ -5,6 +5,8 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { getGroupType, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
 import { getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
+import { LevelTemplateRuleModel, getDepartmentType } from '../models/levelTemplateRule.model';
+import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -262,6 +264,45 @@ export const performanceController = {
     });
   }),
 
+  // 获取记录对应的评分模板（用于前端动态渲染评分表单）
+  getRecordTemplate: asyncHandler(async (req: Request, res: Response) => {
+    const id = req.params.id as string;
+    if (!id || id.trim() === '') {
+      return res.status(400).json({ success: false, error: '记录ID不能为空' });
+    }
+
+    const record = await PerformanceModel.findById(id);
+    if (!record) {
+      return res.status(404).json({ success: false, error: '记录不存在' });
+    }
+
+    // 如果记录已有模板信息，直接返回
+    if (record.templateId) {
+      const template = await AssessmentTemplateModel.findById(record.templateId, true);
+      if (template) {
+        return res.json({ success: true, data: template });
+      }
+    }
+
+    // 否则根据员工部门+级别匹配模板
+    const employee = await EmployeeModel.findById(record.employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: '员工不存在' });
+    }
+
+    const deptType = getDepartmentType(employee.department || '');
+    const level = employee.level || 'junior';
+
+    const rules = await LevelTemplateRuleModel.getByDepartmentType(deptType);
+    const rule = rules.find((r: any) => r.level === level);
+    if (!rule) {
+      return res.json({ success: true, data: null, message: '未找到匹配的模板规则' });
+    }
+
+    const template = await AssessmentTemplateModel.findById(rule.templateId, true);
+    res.json({ success: true, data: template });
+  }),
+
   // 员工提交工作总结
   submitSummary: asyncHandler(async (req: Request, res: Response) => {
     const {
@@ -486,7 +527,9 @@ export const performanceController = {
       monthlyStarRecommended,
       monthlyStarCategory,
       monthlyStarReason,
-      monthlyStarPublic
+      monthlyStarPublic,
+      // 动态模板评分
+      metricScores,
     } = req.body;
 
     // 验证 id
@@ -494,22 +537,81 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '记录ID不能为空' });
     }
 
-    // 验证各分数字段 (0.5-1.5)
-    const tc = Number(taskCompletion);
-    if (isNaN(tc) || tc < 0.5 || tc > 1.5) {
-      return res.status(400).json({ success: false, error: '任务完成分数范围0.5-1.5' });
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
     }
-    const ini = Number(initiative);
-    if (isNaN(ini) || ini < 0.5 || ini > 1.5) {
-      return res.status(400).json({ success: false, error: '主动性分数范围0.5-1.5' });
+
+    // 权限边界：只能评分自己负责的记录
+    const existing = await PerformanceModel.findById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: '记录不存在' });
     }
-    const pf = Number(projectFeedback);
-    if (isNaN(pf) || pf < 0.5 || pf > 1.5) {
-      return res.status(400).json({ success: false, error: '项目反馈分数范围0.5-1.5' });
+    if (existing.assessorId !== req.user.userId) {
+      return res.status(403).json({ success: false, error: '只能评分自己负责的员工' });
     }
-    const qi = Number(qualityImprovement);
-    if (isNaN(qi) || qi < 0.5 || qi > 1.5) {
-      return res.status(400).json({ success: false, error: '质量改进分数范围0.5-1.5' });
+
+    // 判断使用新版动态指标还是旧版固定4项
+    let tc: number, ini: number, pf: number, qi: number;
+    let totalScore: number;
+    let processedMetricScores = existing.metricScores;
+
+    if (Array.isArray(metricScores) && metricScores.length > 0) {
+      // 新版：动态指标评分
+      for (const ms of metricScores) {
+        const score = Number(ms.score);
+        if (isNaN(score) || score < 0.5 || score > 1.5) {
+          return res.status(400).json({
+            success: false,
+            error: `指标"${ms.metricName}"分数范围0.5-1.5`
+          });
+        }
+      }
+
+      // 计算加权总分
+      let weightedSum = 0;
+      let totalWeight = 0;
+      processedMetricScores = metricScores.map((ms: any) => {
+        const score = Number(ms.score);
+        const weight = Number(ms.weight) || 0;
+        weightedSum += score * weight;
+        totalWeight += weight;
+        return {
+          metricId: ms.metricId || '',
+          metricName: ms.metricName || '',
+          metricCode: ms.metricCode || '',
+          weight,
+          score,
+          level: ms.level || 'L3',
+          comment: ms.comment || ''
+        };
+      });
+
+      if (totalWeight === 0) {
+        return res.status(400).json({ success: false, error: '指标权重总和不能为0' });
+      }
+
+      totalScore = parseFloat((weightedSum / totalWeight).toFixed(2));
+      // 兼容旧版字段：填默认值
+      tc = 1.0; ini = 1.0; pf = 1.0; qi = 1.0;
+    } else {
+      // 旧版：固定4项评分
+      tc = Number(taskCompletion);
+      if (isNaN(tc) || tc < 0.5 || tc > 1.5) {
+        return res.status(400).json({ success: false, error: '任务完成分数范围0.5-1.5' });
+      }
+      ini = Number(initiative);
+      if (isNaN(ini) || ini < 0.5 || ini > 1.5) {
+        return res.status(400).json({ success: false, error: '主动性分数范围0.5-1.5' });
+      }
+      pf = Number(projectFeedback);
+      if (isNaN(pf) || pf < 0.5 || pf > 1.5) {
+        return res.status(400).json({ success: false, error: '项目反馈分数范围0.5-1.5' });
+      }
+      qi = Number(qualityImprovement);
+      if (isNaN(qi) || qi < 0.5 || qi > 1.5) {
+        return res.status(400).json({ success: false, error: '质量改进分数范围0.5-1.5' });
+      }
+      totalScore = tc * 0.4 + ini * 0.3 + pf * 0.2 + qi * 0.1;
     }
 
     // 验证评语和工作安排
@@ -520,34 +622,6 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '工作安排不能为空' });
     }
 
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: '未认证'
-      });
-    }
-
-    // 权限边界：只能评分自己负责的记录
-    const existing = await PerformanceModel.findById(id);
-    if (!existing) {
-      return res.status(404).json({
-        success: false,
-        error: '记录不存在'
-      });
-    }
-    if (existing.assessorId !== req.user.userId) {
-      return res.status(403).json({
-        success: false,
-        error: '只能评分自己负责的员工'
-      });
-    }
-
-    // 计算总分
-    const totalScore = 
-      tc * 0.4 + 
-      ini * 0.3 + 
-      pf * 0.2 + 
-      qi * 0.1;
     const roundedTotalScore = parseFloat(totalScore.toFixed(2));
     const evidenceText = typeof scoreEvidence === 'string' ? scoreEvidence.trim() : '';
     const starRecommended = monthlyStarRecommended === true;
@@ -591,7 +665,12 @@ export const performanceController = {
       monthlyStarRecommended: starRecommended,
       monthlyStarCategory: starRecommended ? starCategory : '',
       monthlyStarReason: starRecommended ? starReason : '',
-      monthlyStarPublic: starPublic
+      monthlyStarPublic: starPublic,
+      // 动态模板评分
+      templateId: existing.templateId || undefined,
+      templateName: existing.templateName || undefined,
+      departmentType: existing.departmentType || undefined,
+      metricScores: processedMetricScores || undefined
     });
 
     if (!record) {
