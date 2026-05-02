@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { MonthlyAssessmentModel } from '../models/monthlyAssessment.model';
+import { MonthlyAssessmentModel, MonthlyAssessment } from '../models/monthlyAssessment.model';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 
@@ -145,4 +145,112 @@ export const getAssessmentByMonth = asyncHandler(async (req: Request, res: Respo
   }
   
   res.json({ success: true, data: assessment });
+});
+
+/**
+ * 获取当月考核列表（支持按月过滤）
+ */
+export const getMonthlyList = asyncHandler(async (req: Request, res: Response) => {
+  const { month } = req.query;
+
+  let assessments: MonthlyAssessment[];
+  if (month && typeof month === 'string') {
+    assessments = await MonthlyAssessmentModel.findByMonth(month);
+  } else {
+    assessments = await MonthlyAssessmentModel.findAll();
+  }
+
+  res.json({ success: true, data: assessments });
+});
+
+/**
+ * 员工自评提交
+ */
+export const submitSelfAssessment = asyncHandler(async (req: Request, res: Response) => {
+  const { employeeId, month, selfSummary, nextMonthPlan } = req.body;
+
+  if (!employeeId || !month) {
+    return res.status(400).json({ success: false, message: '缺少必要字段' });
+  }
+
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: '未认证' });
+  }
+
+  // 员工只能提交自己的自评
+  if (req.user.userId !== employeeId && !isPrivilegedRole(req.user.role)) {
+    return res.status(403).json({ success: false, message: '无权提交自评' });
+  }
+
+  const existing = await MonthlyAssessmentModel.findByEmployeeAndMonth(employeeId, month);
+
+  if (existing) {
+    const updated = await MonthlyAssessmentModel.update(existing.id, {
+      selfSummary,
+      nextMonthPlan,
+      status: 'self_assessed'
+    });
+    return res.json({ success: true, data: updated, message: '自评已提交' });
+  } else {
+    const employee = await EmployeeModel.findById(employeeId);
+    const assessment = await MonthlyAssessmentModel.create({
+      employeeId,
+      employeeName: employee?.name || '',
+      month,
+      templateId: '',
+      templateName: '',
+      departmentType: '',
+      scores: [],
+      totalScore: 0,
+      evaluatorId: employeeId,
+      evaluatorName: employee?.name || '',
+      selfSummary,
+      nextMonthPlan,
+      status: 'self_assessed'
+    });
+    return res.status(201).json({ success: true, data: assessment, message: '自评已提交' });
+  }
+});
+
+/**
+ * 主管评分提交
+ */
+export const submitScore = asyncHandler(async (req: Request, res: Response) => {
+  const { id, scores, totalScore, managerComment, nextMonthWorkArrangement, status } = req.body;
+
+  if (!id || !scores || totalScore === undefined) {
+    return res.status(400).json({ success: false, message: '缺少必要字段' });
+  }
+
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: '未认证' });
+  }
+
+  const existing = await MonthlyAssessmentModel.findById(id);
+  if (!existing) {
+    return res.status(404).json({ success: false, message: '评分记录不存在' });
+  }
+
+  // 检查权限：主管只能给下属评分
+  if (req.user.role === 'employee') {
+    return res.status(403).json({ success: false, message: '无权评分' });
+  }
+  if (req.user.role === 'manager') {
+    const employee = await EmployeeModel.findById(existing.employeeId);
+    if (employee?.managerId !== req.user.userId && !isPrivilegedRole(req.user.role)) {
+      return res.status(403).json({ success: false, message: '无权为该员工评分' });
+    }
+  }
+
+  const updated = await MonthlyAssessmentModel.update(id, {
+    scores,
+    totalScore,
+    managerComment,
+    nextMonthWorkArrangement,
+    status: status || 'scored',
+    evaluatorId: req.user.userId,
+    evaluatorName: (req.user as any).name || req.user.userId
+  });
+
+  return res.json({ success: true, data: updated, message: '评分已提交' });
 });

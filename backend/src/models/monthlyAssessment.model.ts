@@ -23,6 +23,14 @@ export interface MonthlyAssessment {
   totalScore: number;
   evaluatorId: string;
   evaluatorName: string;
+  // 自评字段
+  selfSummary?: string;
+  nextMonthPlan?: string;
+  // 主管评论字段
+  managerComment?: string;
+  nextMonthWorkArrangement?: string;
+  // 状态: draft -> self_assessed -> scored -> confirmed
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -165,6 +173,26 @@ export class MonthlyAssessmentModel {
     }
   }
   
+  /**
+   * 根据 ID 查询
+   */
+  static async findById(id: string): Promise<MonthlyAssessment | null> {
+    try {
+      if (USE_MEMORY_DB) {
+        if (!memoryStore.monthlyAssessments) return null;
+        const a = memoryStore.monthlyAssessments.get(id);
+        return a ? this.mapAssessment(a) : null;
+      }
+
+      const sql = `SELECT * FROM monthly_assessments WHERE id = $1 LIMIT 1`;
+      const results = await query(sql, [id]);
+      return results.length > 0 ? this.mapAssessment(results[0]) : null;
+    } catch (error) {
+      logger.error('Failed to find assessment by id: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  }
+
   /**
    * 获取员工的所有评分记录
    */

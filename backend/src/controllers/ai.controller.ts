@@ -208,3 +208,94 @@ export const getAnomalyStats = async (req: Request, res: Response) => {
     });
   }
 };
+
+// ====== 以下为新增 AI 端点 ======
+
+/** 通用 AI 调用处理器 */
+async function handleAIPrompt(req: Request, res: Response, promptFn: (data: any) => { prompt: string; systemPrompt?: string }) {
+  try {
+    const promptRequest = promptFn(req.body);
+    const aiResult = await generateAISuggestion({
+      prompt: promptRequest.prompt,
+      systemPrompt: promptRequest.systemPrompt,
+      maxTokens: 2000,
+      temperature: 0.7
+    });
+    if (!aiResult.success) {
+      return res.status(502).json({ success: false, message: aiResult.error || 'AI 生成失败' });
+    }
+    res.json({ success: true, data: { content: aiResult.content }, provider: aiResult.provider, usage: aiResult.usage });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'AI 生成失败' });
+  }
+}
+
+/**
+ * POST /ai/goal-decomposition
+ */
+export const generateGoalDecomposition = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.goalDecomposition);
+};
+
+/**
+ * POST /ai/company-strategy
+ */
+export const generateCompanyStrategy = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.companyStrategy);
+};
+
+/**
+ * POST /ai/company-key-works
+ */
+export const generateCompanyKeyWorks = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.companyKeyWorks);
+};
+
+/**
+ * POST /ai/department-key-works
+ */
+export const generateDepartmentKeyWorks = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.departmentKeyWorks);
+};
+
+/**
+ * POST /ai/goal-confirmation-feedback
+ */
+export const generateGoalConfirmationFeedback = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.goalConfirmationFeedback);
+};
+
+/**
+ * POST /ai/goal-progress-comment
+ */
+export const generateGoalProgressComment = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.goalProgressComment);
+};
+
+/**
+ * POST /ai/self-summary
+ */
+export const generateSelfSummary = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.employeeSelfSummary);
+};
+
+/**
+ * POST /ai/next-month-plan
+ */
+export const generateNextMonthPlan = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.employeeNextMonthPlan);
+};
+
+/**
+ * POST /ai/manager-comment
+ */
+export const generateManagerComment = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.managerComment);
+};
+
+/**
+ * POST /ai/work-arrangement
+ */
+export const generateWorkArrangement = async (req: Request, res: Response) => {
+  await handleAIPrompt(req, res, prompts.managerWorkArrangement);
+};

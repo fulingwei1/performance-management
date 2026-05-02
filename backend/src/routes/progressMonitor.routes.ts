@@ -11,6 +11,16 @@ import { ProgressMonitorService } from '../services/progressMonitor.service';
 
 const router = Router();
 
+// 获取所有有记录的月份（静态路由必须在动态路由之前）
+router.get(
+  '/months',
+  authenticate,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const months = await ProgressMonitorService.listMonths();
+    return res.json({ success: true, data: months });
+  })
+);
+
 // 获取月度进度快照
 router.get(
   '/:month',
@@ -23,16 +33,6 @@ router.get(
 
     const progress = await ProgressMonitorService.getMonthProgress(month);
     return res.json({ success: true, data: progress });
-  })
-);
-
-// 获取所有有记录的月份
-router.get(
-  '/months',
-  authenticate,
-  asyncHandler(async (_req: Request, res: Response) => {
-    const months = await ProgressMonitorService.listMonths();
-    return res.json({ success: true, data: months });
   })
 );
 

@@ -27,17 +27,16 @@ import settingsRoutes from './routes/settings.routes';
 import exportRoutes from './routes/export.routes';
 import quarterlySummaryRoutes from './routes/quarterlySummary.routes';
 import monthlyReportRoutes from './routes/monthlyReport.routes';
-import performanceInterviewRoutes from './routes/performanceInterview.routes';
-import interviewRecordRoutes from './routes/interviewRecord.routes';
+
 import attachmentRoutes from './routes/attachment.routes';
 import departmentRoutes from './routes/department.routes';
-import goalProgressRoutes from './routes/goalProgress.routes';
+
 import aiRoutes from './routes/ai.routes';
 
 import automationRoutes from './routes/automation.routes';
 import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
-import notificationRoutes from './routes/notification.routes';
-import appealRoutes from './routes/appeal.routes';
+
+
 
 
 import auditLogRoutes from './routes/auditLog.routes';
@@ -187,17 +186,15 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
 app.use('/api/monthly-reports', monthlyReportRoutes);
-app.use('/api/interviews', performanceInterviewRoutes);
-app.use('/api/interview-records', interviewRecordRoutes);
+
 app.use('/api/attachments', attachmentRoutes);
 app.use('/api/departments', departmentRoutes);
-app.use('/api/goal-progress', goalProgressRoutes);
+
 app.use('/api/ai', aiRoutes);
 
 app.use('/api/automation', automationRoutes);
 app.use('/api/assessment-publications', assessmentPublicationRoutes);
-app.use('/api/notifications', notificationRoutes);
-app.use('/api/appeals', appealRoutes);
+
 
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/todos', todoRoutes);
