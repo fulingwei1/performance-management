@@ -41,9 +41,15 @@ const getDistributionQuota = (total: number) => ({
 export const validatePublicationReadiness = async (month: string): Promise<PublicationReadinessResult> => {
   const config = await getPerformanceRankingConfig();
   const employees = await EmployeeModel.findAll();
+  const validIds = new Set<string>(
+    employees
+      .filter((employee: any) => !employee.status || employee.status === 'active')
+      .map((employee: any) => employee.id)
+  );
   const participants = employees
     .filter((employee: any) => (employee.role === 'employee' || employee.role === 'manager') && (!employee.status || employee.status === 'active'))
-    .filter((employee: any) => isParticipatingRecord(employee, config));
+    .filter((employee: any) => isParticipatingRecord(employee, config))
+    .filter((employee: any) => employee.role !== 'manager' || (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)));
 
   const records = await PerformanceModel.findByMonth(month);
   const recordsByEmployee = new Map<string, PerformanceRecord>();

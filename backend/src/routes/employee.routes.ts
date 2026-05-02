@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { employeeController } from '../controllers/employee.controller';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireManagerCapability, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { 
   createEmployeeValidation, 
@@ -19,7 +19,7 @@ router.get('/managers', authenticate, employeeController.getAllManagers);
 router.get('/assessment-participation', authenticate, employeeController.getAssessmentParticipation);
 
 // 获取当前经理/兼任经理的下属
-router.get('/subordinates', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), employeeController.getSubordinates);
+router.get('/subordinates', authenticate, requireManagerCapability, employeeController.getSubordinates);
 
 // 根据角色获取员工（需要认证）
 router.get('/role/:role', authenticate, employeeController.getEmployeesByRole);

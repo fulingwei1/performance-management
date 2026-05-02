@@ -1,6 +1,6 @@
 /**
  * 部门经理绩效看板
- * 展示团队绩效趋势、个人成长、四维分析等
+ * 展示团队绩效趋势、四维分析等
  */
 
 import { useEffect, useState, useMemo } from 'react';
@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { RadarChart } from '@/components/charts/RadarChart';
-import { GrowthTable } from '@/components/stats/GrowthTable';
 import { TalentGrid } from '@/components/stats/TalentGrid';
 import { 
   Users, 
@@ -145,74 +144,6 @@ export function Analytics() {
     };
   }, [realRecords, currentMonth]);
 
-  // 员工成长数据
-  const growthData = useMemo(() => {
-    const monthsSet = new Set(realRecords.map(r => r.month));
-    const months = Array.from(monthsSet).sort();
-    
-    // 找到最近有评分的月份（解决月初未评分问题）
-    let currentMonth = months[months.length - 1];
-    
-    // 检查最新月份是否有评分数据
-    const latestMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
-    if (latestMonthRecords.length === 0 && months.length >= 2) {
-      // 如果最新月份没有评分，使用上一个有评分的月份
-      for (let i = months.length - 1; i >= 0; i--) {
-        const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
-        if (monthRecords.length > 0) {
-          currentMonth = months[i];
-          break;
-        }
-      }
-    }
-    
-    // 按员工分组
-    const employeeRecords = new Map<string, any[]>();
-    realRecords.forEach(r => {
-      if (!employeeRecords.has(r.employeeId)) {
-        employeeRecords.set(r.employeeId, []);
-      }
-      employeeRecords.get(r.employeeId)!.push(r);
-    });
-    
-    return subordinates.map(emp => {
-      const empRecords = employeeRecords.get(emp.id) || [];
-      // 只获取有评分的历史记录
-      const sortedRecords = empRecords.filter(r => r.totalScore > 0).sort((a, b) => a.month.localeCompare(b.month));
-      
-      const currentRecord = sortedRecords.length > 0 ? sortedRecords[sortedRecords.length - 1] : null;
-      const previousRecord = sortedRecords.length > 1 ? sortedRecords[sortedRecords.length - 2] : null;
-      
-      const currentScore = currentRecord?.totalScore || 0;
-      const previousScore = previousRecord?.totalScore || 0;
-      const change = currentScore - previousScore;
-      
-      // 判断趋势
-      let trend: 'up' | 'down' | 'stable' = 'stable';
-      if (change > 0.05) trend = 'up';
-      else if (change < -0.05) trend = 'down';
-      
-      // 判断状态
-      let status: 'excellent' | 'improving' | 'stable' | 'attention' | 'warning' = 'stable';
-      if (currentScore >= 1.3) status = 'excellent';
-      else if (trend === 'up' && sortedRecords.length >= 2) status = 'improving';
-      else if (currentScore < 0.8 || (trend === 'down' && sortedRecords.length >= 2)) status = 'warning';
-      else if (change < -0.1) status = 'attention';
-      
-      return {
-        employeeId: emp.id,
-        employeeName: emp.name,
-        level: emp.level,
-        currentScore,
-        previousScore,
-        change,
-        trend,
-        status,
-        history: sortedRecords.slice(-6).map(r => r.totalScore)
-      };
-    }).filter(emp => emp.currentScore > 0 || emp.history.length > 0);
-  }, [realRecords, subordinates]);
-
   // 九宫格数据
   const talentGridData = useMemo(() => {
     // 按员工分组
@@ -341,7 +272,7 @@ export function Analytics() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">绩效分析看板</h1>
-          <p className="text-gray-500 mt-1">团队趋势 · 个人成长 · 多维分析</p>
+          <p className="text-gray-500 mt-1">团队趋势 · 标签画像 · 多维分析</p>
         </div>
         <div className="flex items-center gap-3">
           {hasDemoData && (
@@ -371,7 +302,7 @@ export function Analytics() {
             <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">暂无真实绩效数据</h3>
             <p className="text-gray-500 mb-4">
-              当前真实打分还不足以生成看板。等经理完成月度评分后，团队趋势、四维分析、员工成长都会自动出来。
+              当前真实打分还不足以生成看板。等经理完成月度评分后，团队趋势、四维分析和标签画像都会自动出来。
             </p>
             <div className="text-sm text-gray-400">本页现在只统计真实评分数据，不再建议用示例数据看分析结果。</div>
           </CardContent>
@@ -680,12 +611,6 @@ export function Analytics() {
             employees={talentGridData}
             title="团队人才九宫格"
             showDepartment={false}
-          />
-
-          {/* 员工成长表格 */}
-          <GrowthTable
-            data={growthData}
-            title="员工成长追踪"
           />
         </>
       )}

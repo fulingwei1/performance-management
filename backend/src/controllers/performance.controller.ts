@@ -244,8 +244,7 @@ export const performanceController = {
         if (record.assessorId === userId) {
           isManagerAllowed = true;
         } else {
-          const employee = await EmployeeModel.findById(record.employeeId);
-          isManagerAllowed = Boolean(employee && employee.managerId === userId);
+          isManagerAllowed = await EmployeeModel.isInManagerTeam(userId, record.employeeId);
         }
       }
 
@@ -448,8 +447,9 @@ export const performanceController = {
       });
     }
 
-    // 权限边界：只能给"自己的下属"创建空记录
-    if (employee.managerId !== req.user.userId) {
+    // 权限边界：只能给自己负责范围内的员工创建空记录
+    const isInTeam = await EmployeeModel.isInManagerTeam(req.user.userId, employee.id);
+    if (!isInTeam) {
       return res.status(403).json({
         success: false,
         error: '只能为自己的下属创建空记录'
@@ -458,6 +458,19 @@ export const performanceController = {
 
     const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
     if (existing) {
+      if (
+        existing.assessorId !== req.user.userId &&
+        existing.status !== 'completed' &&
+        existing.status !== 'scored'
+      ) {
+        const reassigned = await PerformanceModel.update(existing.id, { assessorId: req.user.userId });
+        return res.json({
+          success: true,
+          data: reassigned || existing,
+          message: '绩效记录已转为当前经理负责'
+        });
+      }
+
       return res.json({
         success: true,
         data: existing,
@@ -529,9 +542,6 @@ export const performanceController = {
     const existing = await PerformanceModel.findById(id);
     if (!existing) {
       return res.status(404).json({ success: false, error: '记录不存在' });
-    }
-    if (existing.assessorId !== req.user.userId) {
-      return res.status(403).json({ success: false, error: '只能评分自己负责的员工' });
     }
 
     // 判断使用新版动态指标还是旧版固定4项
@@ -606,6 +616,21 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '工作安排不能为空' });
     }
 
+    if (existing.assessorId !== req.user.userId) {
+      const isInTeam = await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);
+      if (
+        isInTeam &&
+        existing.status !== 'completed' &&
+        existing.status !== 'scored'
+      ) {
+        await PerformanceModel.update(existing.id, { assessorId: req.user.userId });
+      } else {
+        return res.status(403).json({
+          success: false,
+          error: '只能评分自己负责的员工'
+        });
+      }
+    }
     const roundedTotalScore = parseFloat(totalScore.toFixed(2));
     const evidenceText = typeof scoreEvidence === 'string' ? scoreEvidence.trim() : '';
     const starRecommended = monthlyStarRecommended === true;
@@ -768,19 +793,19 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
     }
     
-    // 获取所有需要考评的员工（员工+经理，排除总经理和HR）
+    // 获取所有需要考评的员工（员工 + 有直接上级的二级经理，排除总经理/HR/顶层部门经理）
     const allEmployees = await EmployeeModel.findAll();
     const rankingConfig = await getPerformanceRankingConfig();
-    const assessableEmployees = allEmployees
-      .filter((e: any) => !e.status || e.status === 'active')
-      .filter((e: any) => e.role === 'employee' || e.role === 'manager')
-      .filter((e: any) => isParticipatingRecord(e, rankingConfig));
-
     const validIds = new Set<string>(
       allEmployees
         .filter((e: any) => !e.status || e.status === 'active')
         .map((e: any) => e.id)
     );
+    const assessableEmployees = allEmployees
+      .filter((e: any) => !e.status || e.status === 'active')
+      .filter((e: any) => e.role === 'employee' || e.role === 'manager')
+      .filter((e: any) => isParticipatingRecord(e, rankingConfig))
+      .filter((e: any) => e.role !== 'manager' || (e.managerId && e.managerId !== e.id && validIds.has(e.managerId)));
     
     let createdCount = 0;
     let skippedCount = 0;
@@ -796,13 +821,11 @@ export const performanceController = {
       // 确定分组和考评人
       const groupType = getGroupType(employee.level);
 
-      // 员工的考评人是其经理；经理的考评人是总经理。
-      // 若员工 managerId 缺失/无效，为避免外键失败，回退到 gm001。
+      // 员工/二级经理的考评人是其直接上级；没有有效上级的部门经理暂不由总经理评分。
+      // 若普通员工 managerId 缺失/无效，为避免外键失败，回退到 gm001。
       let assessorId = 'gm001';
-      if (employee.role === 'employee') {
-        if (employee.managerId && validIds.has(employee.managerId)) {
-          assessorId = employee.managerId;
-        }
+      if (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)) {
+        assessorId = employee.managerId;
       }
       
       // 根据员工岗位自动匹配模板

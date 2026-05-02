@@ -77,7 +77,11 @@ export const requireRole = (...roles: EmployeeRole[]) => {
       return;
     }
     
-    if (!roles.includes(req.user.role)) {
+    const effectiveRoles = new Set<EmployeeRole>([req.user.role]);
+    if (req.user.role === 'admin') effectiveRoles.add('hr');
+    if (req.user.role === 'hr') effectiveRoles.add('admin');
+
+    if (!roles.some((role) => effectiveRoles.has(role))) {
       res.status(403).json({ success: false, message: '权限不足' });
       return;
     }
@@ -97,14 +101,13 @@ export const requireManagerCapability = async (req: Request, res: Response, next
     return;
   }
 
-  if (!['hr', 'admin', 'gm'].includes(req.user.role)) {
+  if (!['hr', 'admin'].includes(req.user.role)) {
     res.status(403).json({ success: false, message: '权限不足' });
     return;
   }
 
   try {
-    const subordinates = await EmployeeModel.findByManagerId(req.user.userId);
-    const activeSubordinates = (subordinates as any[]).filter((employee) => !employee.status || employee.status === 'active');
+    const activeSubordinates = await EmployeeModel.findTeamForManager(req.user.userId);
     if (activeSubordinates.length > 0) {
       next();
       return;

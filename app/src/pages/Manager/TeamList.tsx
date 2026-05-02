@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { Users, ArrowLeft, Clock, CheckCircle, FileText, Search } from 'lucide-react';
@@ -10,11 +10,22 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { employeeApi } from '@/services/api';
-import { getLevelColor, getLevelLabel, resolveGroupType } from '@/lib/config';
+import { employeeApi, employeeQuarterlyApi } from '@/services/api';
+import { getLevelColor, getLevelLabel } from '@/lib/config';
 import { toast } from 'sonner';
+import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 
 type FilterType = 'all' | 'pending' | 'completed';
+
+function getQuarterFromMonth(month: string) {
+  const [yearText, monthText] = month.split('-');
+  const year = Number(yearText);
+  const monthNumber = Number(monthText);
+  return {
+    year,
+    quarter: Math.ceil(monthNumber / 3)
+  };
+}
 
 export function TeamList() {
   const { user } = useAuthStore();
@@ -23,9 +34,11 @@ export function TeamList() {
   const filterType = (searchParams.get('filter') as FilterType) || 'all';
   const [searchQuery, setSearchQuery] = useState('');
   const [subordinates, setSubordinates] = useState<any[]>([]);
+  const [quarterlySummaries, setQuarterlySummaries] = useState<any[]>([]);
   
-  // 使用当前月份
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  // 默认当前月份，也支持从工作台点击数字时带入月份
+  const currentMonth = searchParams.get('month') || format(new Date(), 'yyyy-MM');
+  const currentQuarter = useMemo(() => getQuarterFromMonth(currentMonth), [currentMonth]);
   
   // 获取下属员工列表
   useEffect(() => {
@@ -41,7 +54,8 @@ export function TeamList() {
       }
     };
     
-    if (user && user.role === 'manager') {
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    if (user && canManageTeam) {
       fetchSubordinates();
     }
   }, [user]);
@@ -51,10 +65,27 @@ export function TeamList() {
     if (user) {
       fetchTeamRecords(user.id, currentMonth);
     }
-  }, [user, currentMonth]);
+  }, [user, currentMonth, fetchTeamRecords]);
+
+  useEffect(() => {
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    if (!user || !canManageTeam || !currentQuarter.year || !currentQuarter.quarter) return;
+
+    employeeQuarterlyApi.getTeam(currentQuarter)
+      .then((response) => {
+        if (response.success) setQuarterlySummaries(response.data || []);
+      })
+      .catch((error) => {
+        console.error(error);
+        setQuarterlySummaries([]);
+      });
+  }, [user, currentQuarter]);
   
   // 获取当前月份的记录
   const currentMonthRecords = records.filter(r => r.month === currentMonth);
+  const quarterlySummaryMap = useMemo(() => (
+    new Map(quarterlySummaries.map((record) => [record.employeeId || record.employee_id, record]))
+  ), [quarterlySummaries]);
   
   // 创建包含所有下属员工的列表（即使没有绩效记录）
   const allEmployees = subordinates.map(sub => {
@@ -64,11 +95,10 @@ export function TeamList() {
       record: record || null,
       status: record ? record.status : 'not_submitted',
       totalScore: record ? record.totalScore : 0,
+      departmentRank: record ? record.departmentRank : 0,
       selfSummary: record ? record.selfSummary : '',
       month: currentMonth,
-      groupType: resolveGroupType(record?.groupType, sub.level),
-      groupRank: record?.groupRank || null,
-      crossDeptRank: record?.crossDeptRank || null
+      quarterlySummary: quarterlySummaryMap.get(sub.id) || null
     };
   });
   
@@ -146,13 +176,6 @@ export function TeamList() {
     }
   };
 
-  const getGroupBadge = (groupType: 'high' | 'low' | null) => {
-    if (!groupType) return <Badge variant="outline" className="bg-gray-50 text-gray-400">未分组</Badge>;
-    return groupType === 'high'
-      ? <Badge className="bg-purple-100 text-purple-700">高分组</Badge>
-      : <Badge className="bg-green-100 text-green-700">低分组</Badge>;
-  };
-  
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -242,7 +265,7 @@ export function TeamList() {
       {/* Filter Tabs */}
       <motion.div variants={itemVariants}>
         <div className="flex gap-2 border-b">
-          <Link to="/manager/team?filter=all">
+          <Link to={`/manager/team?filter=all&month=${currentMonth}`}>
             <Button 
               variant={filterType === 'all' ? 'default' : 'ghost'}
               className="rounded-none border-b-2"
@@ -250,7 +273,7 @@ export function TeamList() {
               全部 ({allEmployees.length})
             </Button>
           </Link>
-          <Link to="/manager/team?filter=pending">
+          <Link to={`/manager/team?filter=pending&month=${currentMonth}`}>
             <Button 
               variant={filterType === 'pending' ? 'default' : 'ghost'}
               className="rounded-none border-b-2"
@@ -258,7 +281,7 @@ export function TeamList() {
               待评分 ({allEmployees.filter(e => e.status === 'submitted' || e.status === 'draft' || e.status === 'not_submitted').length})
             </Button>
           </Link>
-          <Link to="/manager/team?filter=completed">
+          <Link to={`/manager/team?filter=completed&month=${currentMonth}`}>
             <Button 
               variant={filterType === 'completed' ? 'default' : 'ghost'}
               className="rounded-none border-b-2"
@@ -339,16 +362,6 @@ export function TeamList() {
                           <span className="text-gray-400">月度：</span>
                           <span>{employee.month}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-gray-400">分组：</span>
-                          {getGroupBadge(employee.groupType)}
-                          <span className="text-gray-300">•</span>
-                          <span className="text-gray-400">组内排名：</span>
-                          <span>{employee.groupRank || '—'}</span>
-                          <span className="text-gray-300">•</span>
-                          <span className="text-gray-400">跨部门排名：</span>
-                          <span>{employee.crossDeptRank || '—'}</span>
-                        </div>
                       </div>
                       
                       {employee.selfSummary && (
@@ -362,16 +375,38 @@ export function TeamList() {
                         </div>
                       )}
                       
-                      {employee.status === 'completed' || employee.status === 'scored' ? (
-                        <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-lg bg-green-50 p-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-gray-600">本月评分</span>
-                            <span className="text-2xl font-bold text-green-600">
-                              {employee.totalScore?.toFixed(2)}
-                            </span>
+                            <span className="text-sm text-gray-600">月度绩效</span>
+                            {employee.totalScore > 0 ? (
+                              <ScoreDisplay score={employee.totalScore || 0} showLabel={false} size="sm" />
+                            ) : (
+                              <span className="text-sm text-gray-400">暂无</span>
+                            )}
                           </div>
+                          <p className="mt-2 text-xs text-gray-500">
+                            部门排名：{employee.departmentRank ? `#${employee.departmentRank}` : '—'}
+                          </p>
                         </div>
-                      ) : (
+                        <div className="rounded-lg bg-blue-50 p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-600">季度汇总</span>
+                            {employee.quarterlySummary ? (
+                              <ScoreDisplay score={Number(employee.quarterlySummary.avgScore || employee.quarterlySummary.avg_score || 0)} showLabel={false} size="sm" />
+                            ) : (
+                              <span className="text-sm text-gray-400">暂无</span>
+                            )}
+                          </div>
+                          <p className="mt-2 text-xs text-gray-500">
+                            {employee.quarterlySummary
+                              ? `Q${employee.quarterlySummary.quarter || currentQuarter.quarter} 部门排名：#${employee.quarterlySummary.departmentQuarterRank || employee.quarterlySummary.quarterRank || '—'}`
+                              : `Q${currentQuarter.quarter} 暂无季度汇总`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {employee.status !== 'completed' && employee.status !== 'scored' && (
                         <Link to={`/manager/dashboard?employee=${employee.id}&month=${employee.month}&noSummary=${employee.status === 'not_submitted'}`}>
                           <Button 
                             className={`mt-3 w-full ${employee.status === 'not_submitted' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}

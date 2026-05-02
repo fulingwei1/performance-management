@@ -7,8 +7,6 @@ import {
   Award,
   FileText,
   Users,
-  Settings,
-  Send,
   Database,
   Zap
 } from 'lucide-react';
@@ -27,65 +25,70 @@ const employeeNavItems = [
 const managerNavItems = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/manager/template-config', label: '模板配置', icon: FileText },
 ];
 
 const gmNavItems = [
   { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/gm/scoring', label: '总经理评分', icon: Award },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/gm/data-export', label: '数据导出', icon: LogOut },
 ];
 
-const hrNavItems = [
+const hrAdminBaseNavItems = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/manager/dashboard', label: '部门评分', icon: Award },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/hr/data-io', label: '数据管理', icon: Database },
-  { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
-  { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
-  { path: '/hr/assessment-publication', label: '结果发布', icon: Send },
-  { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
-  // HIDDEN: { path: '/hr/appeals', label: '申诉管理', icon: AlertCircle },
-];
-
-const adminNavItems = [
-  { path: '/admin/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/manager/dashboard', label: '部门评分', icon: Award },
-  { path: '/admin/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/data-io', label: '数据管理', icon: Database },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
   { path: '/admin/user-management', label: '用户管理', icon: Users },
-  { path: '/admin/system-settings', label: '系统设置', icon: Settings },
-  { path: '/admin/data-export', label: '数据导出', icon: LogOut },
 ];
+
+const roleLabelMap: Record<string, string> = {
+  employee: '员工',
+  manager: '部门经理',
+  gm: '总经理',
+  hr: '人力资源',
+  admin: '系统管理员',
+};
+
+function buildRoleLabelsFromRoles(roles: string[]): string[] {
+  const labels: string[] = [];
+  const hasAdmin = roles.includes('admin');
+  const hasHr = roles.includes('hr');
+  if (hasAdmin || hasHr) labels.push(hasAdmin && hasHr ? 'HR/管理员' : roleLabelMap[hasAdmin ? 'admin' : 'hr']);
+  roles
+    .filter((item) => item !== 'admin' && item !== 'hr')
+    .forEach((item) => labels.push(roleLabelMap[item] || item));
+  return labels;
+}
+
+function getDisplayRoleLabels(user: any, role: SidebarProps['role']): string[] {
+  if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
+  if (Array.isArray(user?.roles) && user.roles.length > 0) {
+    return buildRoleLabelsFromRoles(user.roles);
+  }
+  return [roleLabelMap[role] || ''];
+}
 
 export function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   
+  const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
+  const canManageTeam = Boolean(user?.capabilities?.canManageTeam || effectiveRoles.includes('manager'));
   const navItems = role === 'employee' 
     ? employeeNavItems 
     : role === 'manager' 
     ? managerNavItems 
     : role === 'gm'
     ? gmNavItems
-    : role === 'admin'
-    ? adminNavItems
-    : hrNavItems;
-  
-  const getRoleLabel = () => {
-    switch (role) {
-      case 'employee': return '员工';
-      case 'manager': return '部门经理';
-      case 'gm': return '总经理';
-      case 'hr': return '人力资源';
-      case 'admin': return '系统管理员';
-      default: return '';
-    }
-  };
+    : canManageTeam
+      ? [
+          hrAdminBaseNavItems[0],
+          { path: '/manager/dashboard', label: '部门评分', icon: Award },
+          ...hrAdminBaseNavItems.slice(1),
+        ]
+      : hrAdminBaseNavItems;
+  const roleLabels = getDisplayRoleLabels(user, role).filter(Boolean);
   
   return (
     <aside className="w-64 bg-gray-900 text-white flex flex-col h-screen fixed left-0 top-0 z-50">
@@ -110,7 +113,13 @@ export function Sidebar({ role }: SidebarProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{user?.name}</p>
-            <p className="text-xs text-gray-400 truncate">{getRoleLabel()}</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {roleLabels.map((label) => (
+                <span key={label} className="rounded-full bg-gray-800 px-2 py-0.5 text-[11px] leading-4 text-gray-300">
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>

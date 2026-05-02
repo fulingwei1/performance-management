@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   Play, Bell, Archive, Send, FileText, CheckCircle,
-  Users, RefreshCw, Calendar, TrendingUp, Zap
+  Users, RefreshCw, Calendar, TrendingUp, Zap, ShieldCheck
 } from 'lucide-react';
 import { salaryIntegrationApi } from '@/services/api';
 
@@ -44,6 +44,7 @@ export default function MonthlyAutomation() {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [salaryPushMode, setSalaryPushMode] = useState<'monthly' | 'quarterly'>('quarterly');
+  const [salaryPushConfirmed, setSalaryPushConfirmed] = useState(false);
 
   const loadProgress = useCallback(async (month?: string) => {
     const m = month || selectedMonth;
@@ -85,8 +86,17 @@ export default function MonthlyAutomation() {
   const selectedYear = Number(selectedMonth.slice(0, 4));
   const selectedMonthNumber = Number(selectedMonth.slice(5, 7));
   const selectedQuarter = Math.ceil(selectedMonthNumber / 3);
+  const sourcePeriodLabel = salaryPushMode === 'monthly' ? selectedMonth : `${selectedYear}-Q${selectedQuarter}`;
+  const effectivePeriodLabel = salaryPushMode === 'monthly'
+    ? `${selectedMonthNumber === 12 ? selectedYear + 1 : selectedYear}-${String(selectedMonthNumber === 12 ? 1 : selectedMonthNumber + 1).padStart(2, '0')}`
+    : `${selectedQuarter === 4 ? selectedYear + 1 : selectedYear}-Q${selectedQuarter === 4 ? 1 : selectedQuarter + 1}`;
 
   const pushToSalary = async () => {
+    if (!salaryPushConfirmed) {
+      toast.error('请先点击“系统管理员确认”，确认后才允许推送到薪资系统');
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await salaryIntegrationApi.pushResults({
@@ -94,9 +104,11 @@ export default function MonthlyAutomation() {
         year: selectedYear,
         month: salaryPushMode === 'monthly' ? selectedMonthNumber : undefined,
         quarter: salaryPushMode === 'quarterly' ? selectedQuarter : undefined,
+        confirmedByAdmin: true,
       });
       if (result.success) {
         toast.success(result.message || '已推送到薪资系统');
+        setSalaryPushConfirmed(false);
       } else {
         toast.error(result.message || '推送失败');
       }
@@ -119,7 +131,7 @@ export default function MonthlyAutomation() {
         </div>
         <div className="flex items-center gap-3">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <input type="month" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); loadProgress(e.target.value); }}
+          <input type="month" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setSalaryPushConfirmed(false); loadProgress(e.target.value); }}
             className="bg-gray-800 text-white rounded px-3 py-1.5 text-sm border border-gray-700" />
           <button onClick={() => { loadProgress(); loadLogs(); }} className="p-2 hover:bg-gray-800 rounded-lg">
             <RefreshCw className="w-4 h-4 text-gray-400" />
@@ -197,7 +209,10 @@ export default function MonthlyAutomation() {
               <label className="text-xs text-gray-400">推送口径</label>
               <select
                 value={salaryPushMode}
-                onChange={(event) => setSalaryPushMode(event.target.value as 'monthly' | 'quarterly')}
+                onChange={(event) => {
+                  setSalaryPushMode(event.target.value as 'monthly' | 'quarterly');
+                  setSalaryPushConfirmed(false);
+                }}
                 className="mt-1 w-full bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700"
               >
                 <option value="quarterly">按季度汇总推送</option>
@@ -213,14 +228,34 @@ export default function MonthlyAutomation() {
             <div>
               <label className="text-xs text-gray-400">实际推送周期</label>
               <div className="mt-1 bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700">
-                {salaryPushMode === 'monthly' ? selectedMonth : `${selectedYear}-Q${selectedQuarter}`}
+                {sourcePeriodLabel}
               </div>
             </div>
           </div>
 
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 lg:max-w-md">
+            <div className="font-medium">管理员确认后才会写入薪资系统</div>
+            <div className="mt-1 text-amber-200/80">
+              本次将按 {sourcePeriodLabel} 推送，影响薪资周期：{effectivePeriodLabel}。确认前不会进入绩效工资计算。
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setSalaryPushConfirmed(true);
+              toast.success('已完成管理员确认，可以推送到薪资系统');
+            }}
+            disabled={loading || salaryPushConfirmed}
+            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            {salaryPushConfirmed ? '已确认' : '系统管理员确认'}
+          </button>
+
           <button
             onClick={pushToSalary}
-            disabled={loading}
+            disabled={loading || !salaryPushConfirmed}
             className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
           >
             <Send className="w-4 h-4" />

@@ -46,8 +46,10 @@ export const salaryIntegrationController = {
       year: Number(year),
       month: month ? Number(month) : undefined,
       quarter: quarter ? Number(quarter) : undefined,
+      confirmedByAdmin: req.body.confirmedByAdmin === true,
+      confirmedBy: req.user.userId,
     });
-    res.json(result);
+    res.status(result.requiresConfirmation ? 409 : 200).json(result);
   }),
 
   /**
@@ -64,8 +66,11 @@ export const salaryIntegrationController = {
       return res.status(400).json({ success: false, message: '请提供有效的 year 和 quarter (1-4)' });
     }
 
-    const result = await SalaryIntegrationService.pushQuarterlyResults(Number(year), Number(quarter));
-    res.json(result);
+    const result = await SalaryIntegrationService.pushQuarterlyResults(Number(year), Number(quarter), {
+      confirmedByAdmin: req.body.confirmedByAdmin === true,
+      confirmedBy: req.user.userId,
+    });
+    res.status(result.requiresConfirmation ? 409 : 200).json(result);
   }),
 
   /**
@@ -82,7 +87,10 @@ export const salaryIntegrationController = {
       return res.status(400).json({ success: false, message: '请提供有效的 year 和 month (1-12)' });
     }
 
-    const result = await SalaryIntegrationService.pushMonthlyResults(Number(year), Number(month));
-    res.json(result);
+    const result = await SalaryIntegrationService.pushMonthlyResults(Number(year), Number(month), {
+      confirmedByAdmin: req.body.confirmedByAdmin === true,
+      confirmedBy: req.user.userId,
+    });
+    res.status(result.requiresConfirmation ? 409 : 200).json(result);
   })
 };

@@ -607,6 +607,22 @@ export class AssessmentTemplateModel {
 
   // ==================== 模板匹配 ====================
 
+  private static getLevelCandidates(employee: { role?: string; level?: string }): string[] {
+    const normalizedRole = (employee.role || '').trim();
+    const normalizedLevel = (employee.level || 'junior').trim() || 'junior';
+    const candidates: string[] = [];
+
+    if (normalizedRole === 'manager') candidates.push('manager');
+    if (normalizedRole === 'gm') candidates.push('manager', 'senior');
+
+    candidates.push(normalizedLevel);
+
+    if (normalizedLevel === 'assistant') candidates.push('junior');
+    if (normalizedLevel === 'intermediate') candidates.push('junior');
+
+    return Array.from(new Set(candidates.filter(Boolean)));
+  }
+
   /**
    * 根据员工信息匹配最佳模板
    * 匹配优先级：岗位+层级(100) > 岗位(80) > 层级(60) > 角色(40) > 部门类型(20)
@@ -622,24 +638,25 @@ export class AssessmentTemplateModel {
       if (!templates.length) return null;
 
       const scored = templates
-        .map(t => {
+        .map(template => {
           let score = 0;
-          const roles = t.applicableRoles || [];
-          const levels = t.applicableLevels || [];
-          const positions = t.applicablePositions || [];
+          const roles = template.applicableRoles || [];
+          const levels = template.applicableLevels || [];
+          const positions = template.applicablePositions || [];
+          const levelCandidates = this.getLevelCandidates(employee);
 
           // 岗位精确匹配
           if (employee.position && positions.length > 0) {
             if (positions.includes(employee.position)) {
               score += 80;
               // 岗位 + 层级同时匹配
-              if (employee.level && levels.includes(employee.level)) {
+              if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
                 score += 20;
               }
             }
-          } else if (employee.level && levels.length > 0) {
+          } else if (levels.length > 0) {
             // 仅层级匹配
-            if (levels.includes(employee.level)) {
+            if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
               score += 60;
             }
           }
@@ -650,17 +667,17 @@ export class AssessmentTemplateModel {
           }
 
           // 部门类型兜底
-          if (score === 0 && this.getDepartmentType(employee.department) === t.departmentType) {
+          if (score === 0 && this.getDepartmentType(employee.department) === template.departmentType) {
             score = 20;
           }
 
           // 默认模板额外加分
-          if (t.isDefault && score > 0) score += 5;
+          if (template.isDefault && score > 0) score += 5;
 
           // 自定义优先级
-          if (t.priority) score += t.priority;
+          if (template.priority) score += template.priority;
 
-          return { template: t, score };
+          return { template, score };
         })
         .filter(s => s.score > 0)
         .sort((a, b) => b.score - a.score);
@@ -692,23 +709,24 @@ export class AssessmentTemplateModel {
 
     return employees.map(emp => {
       const scored = templates
-        .map(t => {
+        .map(template => {
           let score = 0;
           let reasons: string[] = [];
-          const roles = t.applicableRoles || [];
-          const levels = t.applicableLevels || [];
-          const positions = t.applicablePositions || [];
+          const roles = template.applicableRoles || [];
+          const levels = template.applicableLevels || [];
+          const positions = template.applicablePositions || [];
+          const levelCandidates = this.getLevelCandidates(emp);
 
           if (emp.position && positions.includes(emp.position)) {
             score += 80;
             reasons.push(`岗位匹配: ${emp.position}`);
-            if (emp.level && levels.includes(emp.level)) {
+            if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
               score += 20;
-              reasons.push(`层级匹配: ${emp.level}`);
+              reasons.push(`层级匹配: ${levelCandidates.join('/')}`);
             }
-          } else if (emp.level && levels.includes(emp.level)) {
+          } else if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
             score += 60;
-            reasons.push(`层级匹配: ${emp.level}`);
+            reasons.push(`层级匹配: ${levelCandidates.join('/')}`);
           }
 
           if (emp.role && roles.includes(emp.role)) {
@@ -716,22 +734,22 @@ export class AssessmentTemplateModel {
             reasons.push(`角色匹配: ${emp.role}`);
           }
 
-          if (score === 0 && this.getDepartmentType(emp.department) === t.departmentType) {
+          if (score === 0 && this.getDepartmentType(emp.department) === template.departmentType) {
             score = 20;
-            reasons.push(`部门类型兜底: ${t.departmentType}`);
+            reasons.push(`部门类型兜底: ${template.departmentType}`);
           }
 
-          if (t.isDefault && score > 0) {
+          if (template.isDefault && score > 0) {
             score += 5;
             reasons.push('默认模板');
           }
 
-          if (t.priority) {
-            score += t.priority;
-            reasons.push(`优先级+${t.priority}`);
+          if (template.priority) {
+            score += template.priority;
+            reasons.push(`优先级+${template.priority}`);
           }
 
-          return { template: t, score, reasons };
+          return { template, score, reasons };
         })
         .filter(s => s.score > 0)
         .sort((a, b) => b.score - a.score);
@@ -750,6 +768,7 @@ export class AssessmentTemplateModel {
     if (!department) return 'support';
     const name = department.toLowerCase();
     if (name.includes('营销') || name.includes('销售')) return 'sales';
+    if (name.includes('项目管理')) return 'engineering';
     if (name.includes('工程') || name.includes('技术') || name.includes('研发')) return 'engineering';
     if (name.includes('制造') || name.includes('生产') || name.includes('品质')) return 'manufacturing';
     if (name.includes('总') || name.includes('管理')) return 'management';

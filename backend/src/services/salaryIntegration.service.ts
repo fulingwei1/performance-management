@@ -16,6 +16,8 @@ interface PushResultsOptions {
   year: number;
   month?: number;
   quarter?: number;
+  confirmedByAdmin?: boolean;
+  confirmedBy?: string;
 }
 
 interface SalaryForecastEmployee {
@@ -147,17 +149,24 @@ export class SalaryIntegrationService {
       if (!options.month || options.month < 1 || options.month > 12) {
         return { success: false, message: '请选择有效的月份' };
       }
-      return this.pushMonthlyResults(options.year, options.month);
+      return this.pushMonthlyResults(options.year, options.month, options);
     }
 
     if (!options.quarter || options.quarter < 1 || options.quarter > 4) {
       return { success: false, message: '请选择有效的季度' };
     }
-    return this.pushQuarterlyResults(options.year, options.quarter);
+    return this.pushQuarterlyResults(options.year, options.quarter, options);
   }
   
-  static async pushQuarterlyResults(year: number, quarter: number): Promise<any> {
+  static async pushQuarterlyResults(
+    year: number,
+    quarter: number,
+    confirmation?: { confirmedByAdmin?: boolean; confirmedBy?: string }
+  ): Promise<any> {
     try {
+      const confirmationCheck = this.requireAdminConfirmation(confirmation);
+      if (!confirmationCheck.success) return confirmationCheck;
+
       const summaries = await this.loadOrGenerateQuarterlySummaries(year, quarter);
       
       if (!summaries || summaries.length === 0) {
@@ -196,6 +205,9 @@ export class SalaryIntegrationService {
         effectiveQuarter: getEffectiveQuarter(year, quarter),
         periodType: 'quarterly',
         publishedAt: new Date().toISOString(),
+        adminConfirmed: true,
+        confirmedBy: confirmation?.confirmedBy || 'admin',
+        confirmedAt: new Date().toISOString(),
         results: results
       };
       
@@ -220,8 +232,15 @@ export class SalaryIntegrationService {
     }
   }
   
-  static async pushMonthlyResults(year: number, month: number): Promise<any> {
+  static async pushMonthlyResults(
+    year: number,
+    month: number,
+    confirmation?: { confirmedByAdmin?: boolean; confirmedBy?: string }
+  ): Promise<any> {
     try {
+      const confirmationCheck = this.requireAdminConfirmation(confirmation);
+      if (!confirmationCheck.success) return confirmationCheck;
+
       const monthStr = monthLabel(year, month);
       const rankingConfig = await getPerformanceRankingConfig();
       const records = (await PerformanceModel.findByMonth(monthStr))
@@ -265,6 +284,9 @@ export class SalaryIntegrationService {
         effectiveMonth: getNextMonthLabel(year, month),
         periodType: 'monthly',
         publishedAt: new Date().toISOString(),
+        adminConfirmed: true,
+        confirmedBy: confirmation?.confirmedBy || 'admin',
+        confirmedAt: new Date().toISOString(),
         results
       };
       
@@ -295,6 +317,18 @@ export class SalaryIntegrationService {
   
   static monthToQuarter(month: number): number {
     return Math.floor((month - 1) / 3) + 1;
+  }
+
+  private static requireAdminConfirmation(confirmation?: { confirmedByAdmin?: boolean; confirmedBy?: string }) {
+    if (confirmation?.confirmedByAdmin === true) {
+      return { success: true };
+    }
+
+    return {
+      success: false,
+      requiresConfirmation: true,
+      message: '暂未推送到薪资系统：需要系统管理员确认后，才会把绩效结果写入薪资系统绩效工资计算。',
+    };
   }
 
   private static async loadOrGenerateQuarterlySummaries(year: number, quarter: number): Promise<any[]> {

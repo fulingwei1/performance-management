@@ -6,17 +6,17 @@ const router = Router();
 
 router.use(authenticate);
 
-// 设置/更新规则（经理、HR、admin）
-router.post('/', requireRole('manager', 'hr', 'admin'), ctrl.setRule);
-router.post('/batch', requireRole('manager', 'hr', 'admin'), ctrl.batchSetRules);
+// 设置/更新全局模板规则：只能由 HR/管理员维护，避免经理误改全公司模板匹配规则
+router.post('/', requireRole('hr', 'admin'), ctrl.setRule);
+router.post('/batch', requireRole('hr', 'admin'), ctrl.batchSetRules);
 
 // 静态路径在前
-router.get('/', requireRole('manager', 'hr', 'admin'), ctrl.getAllRules);
+router.get('/', requireRole('hr', 'admin'), ctrl.getAllRules);
 router.get('/stats/coverage', requireRole('hr', 'admin'), ctrl.getCoverageStats);
 router.get('/resolve/:employeeId', ctrl.resolveTemplate);
 
 // 带参数路由
-router.get('/:departmentType', ctrl.getByDepartmentType);
+router.get('/:departmentType', requireRole('hr', 'admin'), ctrl.getByDepartmentType);
 
 // 删除规则
 router.delete('/:departmentType/:level', requireRole('hr', 'admin'), ctrl.deleteRule);

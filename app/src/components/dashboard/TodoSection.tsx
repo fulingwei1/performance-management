@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileText, Target, AlertCircle, Award, ClipboardCheck, MessageSquare, Send } from 'lucide-react';
+import { Award, FileText } from 'lucide-react';
 import { TodoCard } from './TodoCard';
 
 interface TodoItem {
@@ -27,21 +27,13 @@ interface TodoConfig {
 
 const employeeTodoConfigs: TodoConfig[] = [
   { type: 'work_summary', title: '待填写工作总结', link: '/employee/summary', icon: <FileText className="h-4 w-4 text-blue-500" /> },
-  { type: 'goal_approval', title: '待确认目标', link: '/employee/goal-planning', icon: <Target className="h-4 w-4 text-green-500" /> },
-  { type: 'appeal_review', title: '申诉结果', link: '/employee/appeals', icon: <AlertCircle className="h-4 w-4 text-orange-500" /> },
 ];
 
 const managerTodoConfigs: TodoConfig[] = [
   { type: 'performance_review', title: '待打分员工', link: '/manager/scoring', icon: <Award className="h-4 w-4 text-purple-500" /> },
-  { type: 'goal_approval', title: '待审批目标', link: '/manager/goal-approval', icon: <ClipboardCheck className="h-4 w-4 text-blue-500" /> },
-  { type: 'appeal_review', title: '待审核申诉', link: '/manager/appeals', icon: <AlertCircle className="h-4 w-4 text-red-500" /> },
-  { type: 'manager_review', title: '待审阅报告', link: '/manager/review-reports', icon: <MessageSquare className="h-4 w-4 text-green-500" /> },
 ];
 
-const hrTodoConfigs: TodoConfig[] = [
-  { type: 'hr_review', title: '待处理申诉', link: '/hr/appeals', icon: <AlertCircle className="h-4 w-4 text-red-500" /> },
-  { type: 'appeal_review', title: '待发布考核', link: '/hr/assessment-publication', icon: <Send className="h-4 w-4 text-blue-500" /> },
-];
+const hrTodoConfigs: TodoConfig[] = [];
 
 const configMap: Record<string, TodoConfig[]> = {
   employee: employeeTodoConfigs,

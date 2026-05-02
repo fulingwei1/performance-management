@@ -17,12 +17,7 @@ const SKIP_METHODS = ['GET', 'OPTIONS', 'HEAD'];
 const PATH_TO_MODULE: Record<string, string> = {
   '/api/auth': 'auth',
   '/api/performance': 'performance',
-  '/api/promotion': 'promotion',
-  '/api/appeals': 'appeal',
-  '/api/objectives': 'objective',
   '/api/employees': 'employee',
-  '/api/strategic-objectives': 'strategic',
-  '/api/notifications': 'notification',
   '/api/assessment-cycles': 'assessment',
   '/api/ai': 'ai',
 };
@@ -55,27 +50,12 @@ function extractTarget(path: string, method: string): { type?: string; id?: stri
   // 示例：/api/performance/rec-123 -> type: record, id: rec-123
   // 示例：/api/promotion-requests/pr-123/manager-approve -> type: request, id: pr-123
 
-  if (path.includes('/promotion-requests/')) {
-    const match = path.match(/\/promotion-requests\/([^\/]+)/);
-    return { type: 'promotion_request', id: match?.[1] };
-  }
-
   if (path.includes('/performance/')) {
     const match = path.match(/\/performance\/([^\/]+)/);
     if (match && match[1] !== 'summary') {
       return { type: 'performance_record', id: match[1] };
     }
     return { type: 'performance_record' };
-  }
-
-  if (path.includes('/appeals/')) {
-    const match = path.match(/\/appeals\/([^\/]+)/);
-    return { type: 'appeal', id: match?.[1] };
-  }
-
-  if (path.includes('/objectives/')) {
-    const match = path.match(/\/objectives\/([^\/]+)/);
-    return { type: 'objective', id: match?.[1] };
   }
 
   if (path.includes('/employees/')) {
@@ -102,25 +82,16 @@ function generateDescription(action: AuditAction, module: string, path: string, 
 
   if (action === 'CREATE') {
     if (module === 'performance') return `${userName} 提交了工作总结`;
-    if (module === 'promotion') return `${userName} 创建了晋升申请`;
-    if (module === 'appeal') return `${userName} 创建了申诉`;
-    if (module === 'objective') return `${userName} 创建了目标`;
     return `${userName} 创建了${module}记录`;
   }
 
   if (action === 'UPDATE') {
-    if (path.includes('/manager-approve')) return `${userName} 审批了晋升申请（经理）`;
-    if (path.includes('/gm-approve')) return `${userName} 审批了晋升申请（总经理）`;
-    if (path.includes('/hr-approve')) return `${userName} 审批了晋升申请（HR）`;
     if (module === 'performance') return `${userName} 修改了工作总结`;
-    if (module === 'objective') return `${userName} 修改了目标`;
     return `${userName} 修改了${module}记录`;
   }
 
   if (action === 'DELETE') {
     if (module === 'performance') return `${userName} 删除了工作总结`;
-    if (module === 'promotion') return `${userName} 删除了晋升申请`;
-    if (module === 'objective') return `${userName} 删除了目标`;
     return `${userName} 删除了${module}记录`;
   }
 

@@ -1,9 +1,81 @@
 import { query } from '../config/database';
 
+function parseJson(value: any): any[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function toNumber(value: any): number {
+  const numberValue = Number(value || 0);
+  return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function getQuarterOrgUnitKey(record: any): string {
+  const department = String(record.department || '').trim();
+  const subDepartment = String(record.subDepartment || record.sub_department || '').trim();
+  return subDepartment ? `${department}/${subDepartment}` : department;
+}
+
+function sortByQuarterScore(a: any, b: any): number {
+  const scoreDiff = toNumber(b.avgScore ?? b.avg_score) - toNumber(a.avgScore ?? a.avg_score);
+  if (scoreDiff !== 0) return scoreDiff;
+  return String(a.employeeId || a.employee_id || '').localeCompare(String(b.employeeId || b.employee_id || ''));
+}
+
 /**
  * 员工季度绩效汇总 — 从 3 个月 performance_records 自动聚合
  */
 export class EmployeeQuarterlyModel {
+  private static formatQuarterlyRow(row: any): any {
+    return {
+      ...row,
+      employeeId: row.employee_id || row.employeeId,
+      employeeName: row.employee_name || row.employeeName,
+      department: row.department,
+      subDepartment: row.sub_department || row.subDepartment,
+      employeeLevel: row.employee_level || row.employeeLevel,
+      avgScore: toNumber(row.avg_score ?? row.avgScore),
+      maxScore: toNumber(row.max_score ?? row.maxScore),
+      minScore: toNumber(row.min_score ?? row.minScore),
+      recordCount: Number(row.record_count ?? row.recordCount ?? 0),
+      bestLevel: row.best_level || row.bestLevel,
+      monthlySummaries: row.monthly_summaries || row.monthlySummaries || '',
+      monthlyPlans: row.monthly_plans || row.monthlyPlans || '',
+      monthRecords: parseJson(row.month_records ?? row.monthRecords),
+    };
+  }
+
+  private static attachRanks(rows: any[]): any[] {
+    const formatted = rows.map((row) => this.formatQuarterlyRow(row));
+    const quarterSorted = [...formatted].sort(sortByQuarterScore);
+    quarterSorted.forEach((row, index) => {
+      row.quarterRank = index + 1;
+    });
+
+    const unitGroups = new Map<string, any[]>();
+    formatted.forEach((row) => {
+      const key = getQuarterOrgUnitKey(row) || '未分组';
+      if (!unitGroups.has(key)) unitGroups.set(key, []);
+      unitGroups.get(key)!.push(row);
+    });
+
+    unitGroups.forEach((records) => {
+      records.sort(sortByQuarterScore).forEach((row, index) => {
+        row.departmentQuarterRank = index + 1;
+      });
+    });
+
+    return formatted;
+  }
+
   static async generateForEmployeeIfMissing(employeeId: string, year: number, quarter: number): Promise<any> {
     const existing = await query(
       'SELECT id FROM employee_quarterly_summaries WHERE employee_id = ? AND year = ? AND quarter = ?',
@@ -173,10 +245,7 @@ export class EmployeeQuarterlyModel {
     sql += ' ORDER BY year DESC, quarter DESC';
 
     const results = await query(sql, params);
-    return results.map((r: any) => ({
-      ...r,
-      monthRecords: typeof r.month_records === 'string' ? JSON.parse(r.month_records) : (r.month_records || [])
-    }));
+    return results.map((r: any) => this.formatQuarterlyRow(r));
   }
 
   /**
@@ -184,13 +253,40 @@ export class EmployeeQuarterlyModel {
    */
   static async findByQuarter(year: number, quarter: number): Promise<any[]> {
     const results = await query(
-      'SELECT * FROM employee_quarterly_summaries WHERE year = ? AND quarter = ? ORDER BY avg_score DESC',
+      `SELECT
+         qs.*,
+         e.name AS employee_name,
+         e.department,
+         e.sub_department,
+         e.level AS employee_level
+       FROM employee_quarterly_summaries qs
+       LEFT JOIN employees e ON e.id = qs.employee_id
+       WHERE qs.year = ? AND qs.quarter = ?
+       ORDER BY qs.avg_score DESC`,
       [year, quarter]
     );
-    return results.map((r: any) => ({
-      ...r,
-      monthRecords: typeof r.month_records === 'string' ? JSON.parse(r.month_records) : (r.month_records || [])
-    }));
+    return this.attachRanks(results);
+  }
+
+  /**
+   * 查询某个经理团队的季度汇总，不生成新记录；没有季度汇总则返回空数组
+   */
+  static async findByTeamQuarter(employeeIds: string[], year: number, quarter: number): Promise<any[]> {
+    if (employeeIds.length === 0) return [];
+    const results = await query(
+      `SELECT
+         qs.*,
+         e.name AS employee_name,
+         e.department,
+         e.sub_department,
+         e.level AS employee_level
+       FROM employee_quarterly_summaries qs
+       LEFT JOIN employees e ON e.id = qs.employee_id
+       WHERE qs.year = ? AND qs.quarter = ? AND qs.employee_id = ANY(?)
+       ORDER BY qs.avg_score DESC`,
+      [year, quarter, employeeIds]
+    );
+    return this.attachRanks(results);
   }
 
   /**
@@ -200,10 +296,7 @@ export class EmployeeQuarterlyModel {
     const results = await query('SELECT * FROM employee_quarterly_summaries WHERE id = ?', [id]);
     if (results.length === 0) return null;
     const r = results[0];
-    return {
-      ...r,
-      monthRecords: typeof r.month_records === 'string' ? JSON.parse(r.month_records) : (r.month_records || [])
-    };
+    return this.formatQuarterlyRow(r);
   }
 
   /**

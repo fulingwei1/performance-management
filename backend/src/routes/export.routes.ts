@@ -28,10 +28,10 @@ const authenticateWithTokenParam = (req: Request, res: Response, next: NextFunct
   }
 };
 
-router.get('/monthly-performance', authenticateWithTokenParam, requireRole('hr', 'gm'), exportController.exportMonthlyPerformance);
+router.get('/monthly-performance', authenticateWithTokenParam, requireRole('hr', 'admin'), exportController.exportMonthlyPerformance);
 
-router.get('/annual-performance', authenticateWithTokenParam, requireRole('hr', 'gm'), exportController.exportAnnualPerformance);
+router.get('/annual-performance', authenticateWithTokenParam, requireRole('hr', 'admin'), exportController.exportAnnualPerformance);
 
-router.get('/employees', authenticateWithTokenParam, requireRole('hr', 'gm'), exportController.exportEmployees);
+router.get('/employees', authenticateWithTokenParam, requireRole('hr', 'admin'), exportController.exportEmployees);
 
 export default router;

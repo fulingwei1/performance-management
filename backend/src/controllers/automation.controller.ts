@@ -124,15 +124,19 @@ export const automationController = {
     let result;
     
     if (quarter) {
-      // 手动指定季度：调用薪资集成接口
-      const { salaryIntegrationController } = await import('../controllers/salaryIntegration.controller');
-      // 通过内部调用实现
-      result = await SchedulerService.pushPreviousQuarterResults();
+      // 当前自动化兜底仍按上季度口径执行；写入薪资系统前必须由管理员显式确认。
+      result = await SchedulerService.pushPreviousQuarterResults(new Date(), {
+        confirmedByAdmin: req.body?.confirmedByAdmin === true,
+        confirmedBy: req.user?.userId,
+      });
     } else {
-      result = await SchedulerService.pushPreviousQuarterResults();
+      result = await SchedulerService.pushPreviousQuarterResults(new Date(), {
+        confirmedByAdmin: req.body?.confirmedByAdmin === true,
+        confirmedBy: req.user?.userId,
+      });
     }
 
-    res.json({
+    res.status(result.requiresConfirmation ? 409 : 200).json({
       success: result.pushed,
       message: result.pushed ? `季度 ${result.quarter} 推送成功 (${result.count} 人)` : result.reason,
       data: result

@@ -79,14 +79,15 @@ export class SchedulerService {
       }
     });
 
-    // 每季度首月（1/4/7/10）10 日凌晨 4:00 自动推送上季度绩效到薪资系统
+    // 每季度首月（1/4/7/10）10 日凌晨 4:00 检查上季度薪资对接是否具备推送条件
+    // 现阶段不自动写入薪资系统，需要系统管理员在“手动触发”页确认后推送。
     cron.schedule('0 4 10 1,4,7,10 *', async () => {
-      logger.info('[Scheduler] 执行季度绩效推送...');
+      logger.info('[Scheduler] 检查季度绩效薪资对接...');
       try {
         const result = await this.pushPreviousQuarterResults();
-        logger.info(`[Scheduler] 季度推送完成: ${JSON.stringify(result)}`);
+        logger.info(`[Scheduler] 季度薪资对接检查完成: ${JSON.stringify(result)}`);
       } catch (err) {
-        logger.error(`[Scheduler] 季度推送出错: ${err}`);
+        logger.error(`[Scheduler] 季度薪资对接检查出错: ${err}`);
       }
     });
 
@@ -117,7 +118,8 @@ export class SchedulerService {
     const assessableEmployees = allEmployees
       .filter((employee: any) => employee.role === 'employee' || employee.role === 'manager')
       .filter((employee: any) => !employee.status || employee.status === 'active')
-      .filter((employee: any) => isParticipatingRecord(employee, rankingConfig));
+      .filter((employee: any) => isParticipatingRecord(employee, rankingConfig))
+      .filter((employee: any) => employee.role !== 'manager' || (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)));
 
     let createdCount = 0;
     let skippedCount = 0;
@@ -134,7 +136,7 @@ export class SchedulerService {
 
       const groupType = getGroupType(employee.level);
       let assessorId = 'gm001';
-      if (employee.role === 'employee' && employee.managerId && validIds.has(employee.managerId)) {
+      if (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)) {
         assessorId = employee.managerId;
       }
 
@@ -742,9 +744,15 @@ export class SchedulerService {
     // 只按“参与绩效考核”的在职员工自动发布
     const allEmployees = await EmployeeModel.findAll();
     const rankingConfig = await getPerformanceRankingConfig();
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((e: any) => !e.status || e.status === 'active')
+        .map((e: any) => e.id)
+    );
     const eligibleEmployees = allEmployees
       .filter((e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active'))
-      .filter((e: any) => isParticipatingRecord(e, rankingConfig));
+      .filter((e: any) => isParticipatingRecord(e, rankingConfig))
+      .filter((e: any) => e.role !== 'manager' || (e.managerId && e.managerId !== e.id && validIds.has(e.managerId)));
     const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
     // 检查所有员工是否都已完成
@@ -805,14 +813,18 @@ export class SchedulerService {
   }
 
   /**
-   * 季度首月 10 日自动推送上季度绩效到薪资系统
+   * 季度首月 10 日检查上季度绩效薪资对接条件；写入薪资系统前需要管理员确认
    * 季度分数 = 该季度 3 个月已完成月度绩效的等权平均值
    */
-  static async pushPreviousQuarterResults(referenceDate: Date = new Date()): Promise<{
+  static async pushPreviousQuarterResults(referenceDate: Date = new Date(), confirmation?: {
+    confirmedByAdmin?: boolean;
+    confirmedBy?: string;
+  }): Promise<{
     quarter: string;
     pushed: boolean;
     count: number;
     reason?: string;
+    requiresConfirmation?: boolean;
   }> {
     // 计算上季度
     const month = referenceDate.getMonth() + 1; // 1-12
@@ -846,9 +858,15 @@ export class SchedulerService {
     
     const allEmployees = await EmployeeModel.findAll();
     const rankingConfig = await getPerformanceRankingConfig();
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((e: any) => !e.status || e.status === 'active')
+        .map((e: any) => e.id)
+    );
     const eligibleEmployees = allEmployees
       .filter((e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active'))
-      .filter((e: any) => isParticipatingRecord(e, rankingConfig));
+      .filter((e: any) => isParticipatingRecord(e, rankingConfig))
+      .filter((e: any) => e.role !== 'manager' || (e.managerId && e.managerId !== e.id && validIds.has(e.managerId)));
     const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
     if (eligibleEmployees.length === 0) {
@@ -940,6 +958,16 @@ export class SchedulerService {
       return a.employeeExternalId.localeCompare(b.employeeExternalId);
     });
     results.forEach((item, idx) => { item.rank = idx + 1; });
+
+    if (confirmation?.confirmedByAdmin !== true) {
+      return {
+        quarter: prevQuarter,
+        pushed: false,
+        count: results.length,
+        requiresConfirmation: true,
+        reason: '季度绩效结果已准备好，但暂未推送到薪资系统：需要系统管理员确认后才会写入绩效工资计算'
+      };
+    }
     
     // 推送到薪资系统
     const salaryBaseUrl = (process.env.SALARY_SYSTEM_BASE_URL || '').trim();
@@ -961,6 +989,9 @@ export class SchedulerService {
       quarter: prevQuarter,
       effectiveQuarter: prevQ === 4 ? `${prevYear + 1}-Q1` : `${prevYear}-Q${prevQ + 1}`,
       publishedAt: new Date().toISOString(),
+      adminConfirmed: true,
+      confirmedBy: confirmation.confirmedBy || 'admin',
+      confirmedAt: new Date().toISOString(),
       results
     };
     

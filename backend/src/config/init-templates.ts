@@ -662,11 +662,27 @@ export async function initializeDefaultTemplates() {
   ]);
 
   registerTemplate({
+    id: 'template-sales-junior-001', name: '销售部门普通销售考核模板',
+    description: '适用于普通销售：个人业绩50%+客户维护15%+学习成长20%+新客户开发15%',
+    department_type: 'sales', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate', 'junior'],
+    applicablePositions: ['普通销售', '销售助理', '销售工程师'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-sales-jnr-01', template_id: 'template-sales-junior-001', metric_name: '个人销售额', metric_code: 'PERSONAL_SALES_AMT', category: 'performance', weight: 30.00, description: '个人实际销售额', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-sales-jnr-02', template_id: 'template-sales-junior-001', metric_name: '销售目标完成率', metric_code: 'SALES_TARGET_RATE', category: 'performance', weight: 20.00, description: '实际销售额/目标销售额', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sales-jnr-03', template_id: 'template-sales-junior-001', metric_name: '客户维护', metric_code: 'CLIENT_MAINTENANCE', category: 'performance', weight: 15.00, description: '客户回访、关系维护', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-sales-jnr-04', template_id: 'template-sales-junior-001', metric_name: '新客户开发', metric_code: 'NEW_CLIENT_DEV', category: 'performance', weight: 15.00, description: '新客户获取数量和转化', evaluation_type: 'quantitative', sort_order: 4 },
+    { id: 'metric-sales-jnr-05', template_id: 'template-sales-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 10.00, description: '产品培训、销售技巧学习', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-sales-jnr-06', template_id: 'template-sales-junior-001', metric_name: '工作态度', metric_code: 'WORK_ATTITUDE', category: 'behavior', weight: 10.00, description: '积极性、执行力、出勤', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
     id: 'template-sales-senior-001', name: '高级销售工程师考核模板',
     description: '高级销售：业绩50%+大客户20%+策略15%+协作10%+指导5%',
     department_type: 'sales', is_default: false, status: 'active',
     applicableRoles: ['employee'], applicableLevels: ['senior'],
-    applicablePositions: ['高级销售工程师', '销售主管', '销售经理'], priority: 50
+    applicablePositions: ['高级销售工程师', '销售主管'], priority: 50
   });
   registerMetrics([
     { id: 'metric-sales-snr-01', template_id: 'template-sales-senior-001', metric_name: '个人业绩', metric_code: 'PERSONAL_SALES', category: 'performance', weight: 30.00, description: '个人销售额', evaluation_type: 'quantitative', sort_order: 1 },
@@ -675,6 +691,22 @@ export async function initializeDefaultTemplates() {
     { id: 'metric-sales-snr-04', template_id: 'template-sales-senior-001', metric_name: '市场策略', metric_code: 'MARKET_STRATEGY', category: 'innovation', weight: 15.00, description: '市场开拓策略', evaluation_type: 'qualitative', sort_order: 4 },
     { id: 'metric-sales-snr-05', template_id: 'template-sales-senior-001', metric_name: '技术协作', metric_code: 'TECH_COLLAB', category: 'collaboration', weight: 10.00, description: '与技术方案团队配合', evaluation_type: 'qualitative', sort_order: 5 },
     { id: 'metric-sales-snr-06', template_id: 'template-sales-senior-001', metric_name: '经验分享', metric_code: 'SHARING', category: 'collaboration', weight: 10.00, description: '销售经验分享', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-sales-mgr-001', name: '销售部门销售经理考核模板',
+    description: '适用于销售经理：团队业绩40%+个人业绩30%+团队管理15%+战略规划15%',
+    department_type: 'sales', is_default: false, status: 'active',
+    applicableRoles: ['manager'], applicableLevels: ['manager', 'senior'],
+    applicablePositions: ['销售经理', '大客户经理', '营销中心总监'], priority: 60
+  });
+  registerMetrics([
+    { id: 'metric-sales-mgr-01', template_id: 'template-sales-mgr-001', metric_name: '团队业绩完成率', metric_code: 'TEAM_SALES_RATE', category: 'performance', weight: 25.00, description: '团队整体销售目标达成情况', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-sales-mgr-02', template_id: 'template-sales-mgr-001', metric_name: '团队回款率', metric_code: 'TEAM_PAYMENT_RATE', category: 'performance', weight: 15.00, description: '团队整体回款比例', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sales-mgr-03', template_id: 'template-sales-mgr-001', metric_name: '个人业绩贡献', metric_code: 'PERSONAL_SALES', category: 'performance', weight: 20.00, description: '个人直接销售业绩', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-sales-mgr-04', template_id: 'template-sales-mgr-001', metric_name: '团队管理', metric_code: 'TEAM_MGMT', category: 'collaboration', weight: 15.00, description: '团队培养、激励、绩效管理', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-sales-mgr-05', template_id: 'template-sales-mgr-001', metric_name: '客户资源管理', metric_code: 'CLIENT_RESOURCE_MGMT', category: 'performance', weight: 10.00, description: '大客户维护、客户分配公平性', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-sales-mgr-06', template_id: 'template-sales-mgr-001', metric_name: '市场策略规划', metric_code: 'MARKET_STRATEGY', category: 'innovation', weight: 15.00, description: '销售策略制定、市场开拓规划', evaluation_type: 'qualitative', sort_order: 6 },
   ]);
 
   // 统计

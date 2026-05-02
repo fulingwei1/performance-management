@@ -46,8 +46,7 @@ export const employeeController = {
       },
     };
 
-    const subordinates = (await EmployeeModel.findByManagerId(req.user.userId))
-      .filter((employee: any) => !employee.status || employee.status === 'active');
+    const subordinates = await EmployeeModel.findTeamForManager(req.user.userId);
     if (subordinates.length > 0) {
       const members = subordinates.map((employee) => {
         const participating = isParticipatingRecord(
@@ -170,8 +169,7 @@ export const employeeController = {
       });
     }
 
-    const subordinates = (await EmployeeModel.findByManagerId(req.user.userId))
-      .filter((e: any) => !e.status || e.status === 'active');
+    const subordinates = await EmployeeModel.findTeamForManager(req.user.userId);
     res.json({
       success: true,
       data: (subordinates as any[]).map((e) => {

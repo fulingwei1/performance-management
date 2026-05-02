@@ -225,16 +225,28 @@ VALUES
     ('metric-sup-009', 'template-support-001', '跨部门协作', 'CROSS_DEPT_COLLABORATION', 'collaboration', 5.00, '跨部门配合', 'qualitative', 9)
 ON CONFLICT DO NOTHING;
 
+-- 旧版基础模板只保留历史指标，不作为当前可选模板展示。
+UPDATE assessment_templates
+SET status = 'archived',
+    updated_at = CURRENT_TIMESTAMP
+WHERE id IN (
+    'template-sales-001',
+    'template-engineering-001',
+    'template-manufacturing-001',
+    'template-support-001'
+);
+
 -- ============================================
 -- 7. 更新现有部门类型（根据实际情况）
 -- ============================================
 
 -- 示例：根据部门名称设置类型
 UPDATE departments SET department_type = 'sales' WHERE name LIKE '%营销%' OR name LIKE '%销售%';
+UPDATE departments SET department_type = 'engineering' WHERE name LIKE '%项目管理%';
 UPDATE departments SET department_type = 'engineering' WHERE name LIKE '%工程%' OR name LIKE '%技术%' OR name LIKE '%研发%';
 UPDATE departments SET department_type = 'manufacturing' WHERE name LIKE '%制造%' OR name LIKE '%生产%' OR name LIKE '%品质%';
 UPDATE departments SET department_type = 'support' WHERE name LIKE '%财务%' OR name LIKE '%人力%' OR name LIKE '%行政%' OR name LIKE '%采购%';
-UPDATE departments SET department_type = 'management' WHERE name LIKE '%总%' OR name LIKE '%管理%';
+UPDATE departments SET department_type = 'management' WHERE (name LIKE '%总%' OR name LIKE '%管理%') AND name NOT LIKE '%项目管理%';
 
 -- ============================================
 -- 8. 验证数据

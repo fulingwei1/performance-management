@@ -1,6 +1,14 @@
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeQuarterlyModel } from '../models/employeeQuarterly.model';
+import { EmployeeModel } from '../models/employee.model';
+
+function parseQuarterParams(yearValue: unknown, quarterValue: unknown): { year: number; quarter: number } | null {
+  const year = Number(yearValue);
+  const quarter = Number(quarterValue);
+  if (!year || !Number.isInteger(year) || !quarter || quarter < 1 || quarter > 4) return null;
+  return { year, quarter };
+}
 
 export const employeeQuarterlyController = {
   /**
@@ -52,6 +60,36 @@ export const employeeQuarterlyController = {
     );
 
     res.json({ success: true, data: results });
+  }),
+
+  /**
+   * GET /api/employee-quarterly/team?year=2026&quarter=2
+   * 查看当前经理负责员工的季度汇总；只读已有汇总，不自动生成
+   */
+  getTeamQuarterly: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: '未认证' });
+    }
+
+    const parsed = parseQuarterParams(req.query.year, req.query.quarter);
+    if (!parsed) {
+      return res.status(400).json({ success: false, message: '请提供有效的 year 和 quarter (1-4)' });
+    }
+
+    const teamMembers = await EmployeeModel.findTeamForManager(req.user.userId);
+    const employeeIds = teamMembers.map((employee) => employee.id);
+    const results = await EmployeeQuarterlyModel.findByTeamQuarter(employeeIds, parsed.year, parsed.quarter);
+
+    res.json({
+      success: true,
+      data: results,
+      meta: {
+        year: parsed.year,
+        quarter: parsed.quarter,
+        teamCount: employeeIds.length,
+        summaryCount: results.length
+      }
+    });
   }),
 
   /**

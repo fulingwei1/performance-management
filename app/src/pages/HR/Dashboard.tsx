@@ -7,7 +7,8 @@ import {
   ChevronRight,
   ArrowUp,
   ArrowDown,
-  Users
+  Users,
+  Lightbulb
 } from 'lucide-react';
 import { useHRStore } from '@/stores/hrStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -42,6 +43,20 @@ type RankingConfig = {
     excludedEmployeeIds?: string[];
   };
 };
+
+interface ImprovementSuggestionSummary {
+  totalCount: number;
+  namedCount: number;
+  anonymousCount: number;
+  suggestions: Array<{
+    id: string;
+    employeeName: string;
+    suggestion: string;
+    anonymous: boolean;
+    department?: string;
+    subDepartment?: string;
+  }>;
+}
 
 const ASSESSMENT_ROLES = new Set(['employee', 'manager']);
 
@@ -130,7 +145,10 @@ export function HRDashboard() {
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [rankingConfig, setRankingConfig] = useState<RankingConfig | null>(null);
+  const [suggestionSummary, setSuggestionSummary] = useState<ImprovementSuggestionSummary | null>(null);
   const todoRole = user?.role === 'admin' ? 'admin' : 'hr';
+  const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [user?.role];
+  const showSuggestionSummary = user?.role === 'admin';
   
   useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
   
@@ -142,6 +160,15 @@ export function HRDashboard() {
       if (res.success && res.data) setRankingConfig(res.data);
     }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!showSuggestionSummary) return;
+    performanceApi.getImprovementSuggestions({ month: currentMonth, scope: 'all' })
+      .then((res) => {
+        if (res.success) setSuggestionSummary(res.data || null);
+      })
+      .catch(() => {});
+  }, [currentMonth, showSuggestionSummary]);
   
   const inScopeEmployees = employeesList.filter((employee: any) => {
     if (employee.status && employee.status !== 'active') return false;
@@ -273,6 +300,52 @@ export function HRDashboard() {
       <motion.div variants={itemVariants}>
         <StatCards stats={stats} onFilterChange={setStatusFilter} />
       </motion.div>
+
+      {showSuggestionSummary && (
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Lightbulb className="h-4 w-4 text-amber-500" />
+                合理化建议汇总
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-amber-50 p-3">
+                  <p className="text-xs text-gray-500">建议数</p>
+                  <p className="mt-1 text-xl font-bold text-amber-700">{suggestionSummary?.totalCount || 0}</p>
+                </div>
+                <div className="rounded-lg bg-blue-50 p-3">
+                  <p className="text-xs text-gray-500">显名</p>
+                  <p className="mt-1 text-xl font-bold text-blue-700">{suggestionSummary?.namedCount || 0}</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500">匿名</p>
+                  <p className="mt-1 text-xl font-bold text-gray-700">{suggestionSummary?.anonymousCount || 0}</p>
+                </div>
+              </div>
+              <div className="grid gap-2 md:grid-cols-3">
+                {(suggestionSummary?.suggestions || []).slice(0, 6).map((item) => (
+                  <div key={item.id} className="rounded-lg border px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-900">{item.employeeName}</p>
+                      <Badge className={item.anonymous ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-700'}>
+                        {item.anonymous ? '匿名' : '显名'}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">{item.department || '—'}{item.subDepartment ? ` / ${item.subDepartment}` : ''}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-gray-600">{item.suggestion}</p>
+                  </div>
+                ))}
+              </div>
+              {(suggestionSummary?.totalCount || 0) === 0 && (
+                <p className="text-sm text-gray-500">本月暂无合理化建议。</p>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
       
       {/* Department Performance Table */}
       <motion.div variants={itemVariants}>

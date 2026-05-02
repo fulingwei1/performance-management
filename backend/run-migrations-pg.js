@@ -19,7 +19,10 @@ const migrationFiles = [
   'migrations/009_system_settings.sql',
   'migrations/011_monthly_assessments.sql',
   'migrations/012_metric_library.sql',
+  'src/migrations/add_employee_quarterly_summaries.sql',
   'src/migrations/015_improvement_suggestions.sql',
+  'src/migrations/016_template_cleanup_and_manager_rules.sql',
+  'src/migrations/017_role_alignment_and_hr_manager.sql',
 ];
 
 async function runMigrations() {

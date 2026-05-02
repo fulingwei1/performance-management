@@ -2,10 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Bars3Icon,
+  BoltIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
   HomeIcon,
+  StarIcon,
   Squares2X2Icon,
   UserGroupIcon,
   UsersIcon,
@@ -29,12 +31,10 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
     { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
-    { name: '模板配置', path: '/manager/template-config', icon: DocumentTextIcon },
   ],
   gm: [
     { name: '工作台', path: '/gm/dashboard', icon: HomeIcon },
     { name: '绩效看板', path: '/gm/analytics', icon: ChartBarIcon },
-    { name: '评分', path: '/gm/scoring', icon: DocumentTextIcon },
   ],
   hr: [
     { name: '工作台', path: '/hr/dashboard', icon: HomeIcon },
@@ -42,15 +42,19 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { name: '绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
+    { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
+    { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
+    { name: '用户管理', path: '/admin/user-management', icon: UsersIcon },
   ],
   admin: [
-    { name: '工作台', path: '/admin/dashboard', icon: HomeIcon },
+    { name: '工作台', path: '/hr/dashboard', icon: HomeIcon },
     { name: '部门评分', path: '/manager/dashboard', icon: UserGroupIcon },
-    { name: '绩效看板', path: '/admin/analytics', icon: ChartBarIcon },
+    { name: '绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
+    { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
+    { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
     { name: '用户管理', path: '/admin/user-management', icon: UsersIcon },
-    { name: '系统设置', path: '/admin/system-settings', icon: Cog6ToothIcon },
   ],
 };
 
@@ -60,7 +64,36 @@ export const MobileNav: React.FC = () => {
   const { user } = useAuthStore();
 
   const role = (user?.role || 'employee') as UserRole;
-  const filteredItems = useMemo(() => roleNavItems[role] || roleNavItems.employee, [role]);
+  const effectiveRoles = useMemo(() => (
+    Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role]
+  ), [role, user?.roles]);
+  const canManageTeam = Boolean(user?.capabilities?.canManageTeam || effectiveRoles.includes('manager'));
+  const filteredItems = useMemo(() => {
+    const items = roleNavItems[role] || roleNavItems.employee;
+    if ((role === 'hr' || role === 'admin') && !canManageTeam) {
+      return items.filter((item) => item.path !== '/manager/dashboard');
+    }
+    return items;
+  }, [canManageTeam, role]);
+  const roleLabels = useMemo(() => {
+    if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
+    if (effectiveRoles.length > 0) {
+      const hasAdmin = effectiveRoles.includes('admin');
+      const hasHr = effectiveRoles.includes('hr');
+      const labels: string[] = [];
+      if (hasAdmin || hasHr) labels.push(hasAdmin && hasHr ? 'HR/管理员' : hasAdmin ? '系统管理员' : '人力资源');
+      effectiveRoles
+        .filter((item) => item !== 'admin' && item !== 'hr')
+        .forEach((item) => labels.push(
+        item === 'admin' ? '系统管理员' :
+        item === 'hr' ? '人力资源' :
+        item === 'gm' ? '总经理' :
+        item === 'manager' ? '部门经理' : '员工'
+      ));
+      return labels;
+    }
+    return [role === 'admin' ? '系统管理员' : role === 'hr' ? '人力资源' : role === 'gm' ? '总经理' : role === 'manager' ? '部门经理' : '员工'];
+  }, [effectiveRoles, role, user?.roleLabels]);
 
   const toggleMenu = () => setIsOpen((prev) => !prev);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -93,9 +126,16 @@ export const MobileNav: React.FC = () => {
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">绩效管理</h2>
           {user && (
-            <p className="text-sm text-gray-600 mt-1">
-              {user.name} · {role === 'admin' ? '系统管理员' : role === 'hr' ? 'HR' : role === 'gm' ? '总经理' : role === 'manager' ? '经理' : '员工'}
-            </p>
+            <div className="mt-1">
+              <p className="text-sm text-gray-700">{user.name}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {roleLabels.map((label) => (
+                  <span key={label} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 

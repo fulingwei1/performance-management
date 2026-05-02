@@ -29,6 +29,29 @@ ALTER TABLE employees
   ADD COLUMN IF NOT EXISTS id_card_last6_hash TEXT,
   ADD COLUMN IF NOT EXISTS wecom_user_id VARCHAR(128);
 
+CREATE TABLE IF NOT EXISTS employee_quarterly_summaries (
+  id VARCHAR(100) PRIMARY KEY,
+  employee_id VARCHAR(50) NOT NULL,
+  year INT NOT NULL,
+  quarter INT NOT NULL CHECK (quarter BETWEEN 1 AND 4),
+  month_records JSONB,
+  avg_score NUMERIC(5,2),
+  max_score NUMERIC(5,2),
+  min_score NUMERIC(5,2),
+  trend VARCHAR(10) CHECK (trend IN ('up', 'down', 'flat')),
+  best_level VARCHAR(2),
+  monthly_summaries TEXT,
+  monthly_plans TEXT,
+  record_count INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(employee_id, year, quarter)
+);
+
+CREATE INDEX IF NOT EXISTS idx_eqs_employee ON employee_quarterly_summaries(employee_id);
+CREATE INDEX IF NOT EXISTS idx_eqs_year_quarter ON employee_quarterly_summaries(year, quarter);
+CREATE INDEX IF NOT EXISTS idx_eqs_avg_score ON employee_quarterly_summaries(year, quarter, avg_score DESC);
+
 CREATE TABLE IF NOT EXISTS departments (
   id VARCHAR(36) PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -164,10 +187,10 @@ CREATE INDEX IF NOT EXISTS idx_level_template_rules_template ON level_template_r
 
 INSERT INTO assessment_templates (id, name, description, department_type, is_default, status)
 VALUES
-  ('template-sales-001', '销售部门标准模板', '适用于销售岗位的考核模板：业绩导向，70%量化指标+30%行为指标', 'sales', true, 'active'),
-  ('template-engineering-001', '工程技术部门标准模板', '适用于工程技术岗位：项目交付50%+技术能力30%+协作成长20%', 'engineering', true, 'active'),
-  ('template-manufacturing-001', '生产制造部门标准模板', '适用于生产制造岗位：效率40%+质量安全40%+现场管理20%', 'manufacturing', true, 'active'),
-  ('template-support-001', '支持部门标准模板', '适用于财务、人事、行政、采购等支持岗位：质量50%+服务30%+能力20%', 'support', true, 'active')
+  ('template-sales-001', '销售部门标准模板', '适用于销售岗位的考核模板：业绩导向，70%量化指标+30%行为指标', 'sales', true, 'archived'),
+  ('template-engineering-001', '工程技术部门标准模板', '适用于工程技术岗位：项目交付50%+技术能力30%+协作成长20%', 'engineering', true, 'archived'),
+  ('template-manufacturing-001', '生产制造部门标准模板', '适用于生产制造岗位：效率40%+质量安全40%+现场管理20%', 'manufacturing', true, 'archived'),
+  ('template-support-001', '支持部门标准模板', '适用于财务、人事、行政、采购等支持岗位：质量50%+服务30%+能力20%', 'support', true, 'archived')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO template_metrics (id, template_id, metric_name, metric_code, category, weight, description, evaluation_type, sort_order)

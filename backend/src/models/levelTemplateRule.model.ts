@@ -20,10 +20,27 @@ export interface LevelTemplateRule {
 export function getDepartmentType(department: string): string {
   const d = department?.trim() || '';
   if (/营销|销售/.test(d)) return 'sales';
+  if (/项目管理/.test(d)) return 'engineering';
   if (/工程|技术|研发/.test(d)) return 'engineering';
   if (/制造|生产|品质/.test(d)) return 'manufacturing';
   if (/总经|管理|总办/.test(d)) return 'management';
   return 'support'; // 人力、财务、采购、项目管理、教育装备等
+}
+
+function getTemplateLevelCandidates(employee: { role?: string; level?: string }): string[] {
+  const normalizedRole = (employee.role || '').trim();
+  const normalizedLevel = (employee.level || 'junior').trim() || 'junior';
+  const candidates: string[] = [];
+
+  if (normalizedRole === 'manager') candidates.push('manager');
+  if (normalizedRole === 'gm') candidates.push('manager', 'senior');
+
+  candidates.push(normalizedLevel);
+
+  if (normalizedLevel === 'assistant') candidates.push('junior');
+  if (normalizedLevel === 'intermediate') candidates.push('junior');
+
+  return Array.from(new Set(candidates.filter(Boolean)));
 }
 
 export class LevelTemplateRuleModel {
@@ -119,7 +136,8 @@ export class LevelTemplateRuleModel {
     }
     const employee = empResult[0];
     const departmentType = getDepartmentType(employee.department);
-    const level = employee.level || 'junior';
+    const levelCandidates = getTemplateLevelCandidates(employee);
+    const level = levelCandidates[0] || 'junior';
     const unitKey = getOrgUnitKey({
       department: employee.department,
       subDepartment: employee.sub_department || employee.subDepartment,
@@ -132,7 +150,8 @@ export class LevelTemplateRuleModel {
     );
     if (bindingResult.length > 0) {
       const tplResult = await query(
-        'SELECT id, name FROM assessment_templates WHERE id = $1',
+        `SELECT id, name FROM assessment_templates
+         WHERE id = $1 AND status = 'active'`,
         [bindingResult[0].template_id]
       );
       if (tplResult.length > 0) {
@@ -170,8 +189,12 @@ export class LevelTemplateRuleModel {
       `SELECT r.*, t.name as template_name
        FROM level_template_rules r
        JOIN assessment_templates t ON r.template_id = t.id
-       WHERE r.department_type = $1 AND r.level = $2`,
-      [departmentType, level]
+       WHERE r.department_type = $1
+         AND r.level = ANY($2::text[])
+         AND t.status = 'active'
+       ORDER BY array_position($2::text[], r.level)
+       LIMIT 1`,
+      [departmentType, levelCandidates]
     );
     if (ruleResult.length > 0) {
       return {
@@ -179,7 +202,7 @@ export class LevelTemplateRuleModel {
         templateName: ruleResult[0].template_name,
         source: 'level_rule',
         departmentType,
-        level
+        level: ruleResult[0].level
       };
     }
 
@@ -187,17 +210,23 @@ export class LevelTemplateRuleModel {
     const autoResult = await query(
       `SELECT id, name FROM assessment_templates
        WHERE department_type = $1
+       AND status = 'active'
        AND (
-         ($2 = 'junior' AND (name LIKE '%初级%' OR name LIKE '%普通%' OR name LIKE '%标准%'))
-         OR ($2 = 'senior' AND (name LIKE '%高级%' OR name LIKE '%主管%' OR name LIKE '%经理%'))
+         ('manager' = ANY($2::text[]) AND (name LIKE '%经理%' OR name LIKE '%主管%' OR name LIKE '%总监%' OR name LIKE '%高管%'))
+         OR ('senior' = ANY($2::text[]) AND (name LIKE '%高级%' OR name LIKE '%主管%'))
+         OR ('intermediate' = ANY($2::text[]) AND (name LIKE '%中级%' OR name LIKE '%普通%' OR name LIKE '%标准%'))
+         OR ('junior' = ANY($2::text[]) AND (name LIKE '%初级%' OR name LIKE '%普通%' OR name LIKE '%标准%'))
        )
        ORDER BY
-         CASE WHEN $2 = 'junior' AND name LIKE '%初级%' THEN 0
-              WHEN $2 = 'senior' AND name LIKE '%高级%' THEN 0
-              ELSE 1
+         CASE
+           WHEN 'manager' = ANY($2::text[]) AND (name LIKE '%经理%' OR name LIKE '%主管%' OR name LIKE '%总监%' OR name LIKE '%高管%') THEN 0
+           WHEN 'senior' = ANY($2::text[]) AND name LIKE '%高级%' THEN 1
+           WHEN 'intermediate' = ANY($2::text[]) AND name LIKE '%中级%' THEN 2
+           WHEN 'junior' = ANY($2::text[]) AND name LIKE '%初级%' THEN 3
+           ELSE 4
          END
        LIMIT 1`,
-      [departmentType, level]
+      [departmentType, levelCandidates]
     );
     if (autoResult.length > 0) {
       return {
@@ -212,7 +241,10 @@ export class LevelTemplateRuleModel {
     // 6. 兜底：取部门类型的 default 模板
     const defaultResult = await query(
       `SELECT id, name FROM assessment_templates
-       WHERE department_type = $1 AND (name LIKE '%标准%' OR name LIKE '%default%')
+       WHERE department_type = $1
+         AND status = 'active'
+         AND (name LIKE '%标准%' OR name LIKE '%default%')
+       ORDER BY is_default DESC, priority DESC, updated_at DESC
        LIMIT 1`,
       [departmentType]
     );
@@ -228,7 +260,10 @@ export class LevelTemplateRuleModel {
 
     // 7. 最终兜底
     const anyResult = await query(
-      'SELECT id, name FROM assessment_templates LIMIT 1'
+      `SELECT id, name FROM assessment_templates
+       WHERE status = 'active'
+       ORDER BY is_default DESC, priority DESC, updated_at DESC
+       LIMIT 1`
     );
     if (anyResult.length > 0) {
       return {

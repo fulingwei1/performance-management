@@ -78,14 +78,17 @@ export class PerformanceModel {
 
   // 获取经理的所有评分记录（下属）
   static async findByAssessorId(assessorId: string, month?: string): Promise<PerformanceRecord[]> {
+    const teamMembers = await EmployeeModel.findTeamForManager(assessorId);
+    const teamMemberIds = teamMembers.map((employee) => employee.id);
+
+    if (teamMemberIds.length === 0) {
+      return [];
+    }
+
     if (USE_MEMORY_DB) {
-      // 获取经理的所有下属
-      const subordinates = await EmployeeModel.findByManagerId(assessorId);
-      const subordinateIds = subordinates.map(s => s.id);
-      
       // 获取这些员工的绩效记录
       const allRecords = Array.from(memoryStore.performanceRecords.values()) as PerformanceRecord[];
-      let records = allRecords.filter(r => subordinateIds.includes(r.employeeId));
+      let records = allRecords.filter(r => teamMemberIds.includes(r.employeeId));
       
       if (month) {
         records = records.filter(r => r.month === month);
@@ -94,6 +97,7 @@ export class PerformanceModel {
       return Promise.all(records.map(r => this.enrichRecord(r)));
     }
     
+    const placeholders = teamMemberIds.map(() => '?').join(', ');
     let sql = `
       SELECT 
         r.*,
@@ -105,10 +109,10 @@ export class PerformanceModel {
       FROM performance_records r
       JOIN employees e ON r.employee_id = e.id
       JOIN employees m ON r.assessor_id = m.id
-      WHERE r.assessor_id = ?
+      WHERE r.employee_id IN (${placeholders})
         AND (e.status = 'active' OR e.status IS NULL)
     `;
-    const params: any[] = [assessorId];
+    const params: any[] = [...teamMemberIds];
     
     if (month) {
       sql += ' AND r.month = ?';

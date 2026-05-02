@@ -5,6 +5,51 @@ import { LoginLogModel } from '../models/loginLog.model';
 import { generateToken } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
 
+const roleLabelMap: Record<string, string> = {
+  employee: '员工',
+  manager: '部门经理',
+  gm: '总经理',
+  hr: '人力资源',
+  admin: '系统管理员',
+};
+
+function buildRoleLabels(roles: string[]) {
+  const labels: string[] = [];
+  const hasAdmin = roles.includes('admin');
+  const hasHr = roles.includes('hr');
+  if (hasAdmin || hasHr) {
+    labels.push(hasAdmin && hasHr ? 'HR/管理员' : roleLabelMap[hasAdmin ? 'admin' : 'hr']);
+  }
+  for (const role of roles) {
+    if (role === 'admin' || role === 'hr') continue;
+    labels.push(roleLabelMap[role] || role);
+  }
+  return labels;
+}
+
+async function buildEffectiveRoleInfo(employee: any) {
+  const roles = new Set<string>();
+  roles.add(employee.role);
+
+  // HR 与管理员合并为同一类后台能力，前端以“HR/管理员”展示
+  if (employee.role === 'admin') roles.add('hr');
+  if (employee.role === 'hr') roles.add('admin');
+
+  const subordinates = await EmployeeModel.findTeamForManager(employee.id);
+  const hasActiveSubordinates = subordinates.length > 0;
+  const canManageTeam = employee.role !== 'gm' && (hasActiveSubordinates || employee.role === 'manager');
+  if (canManageTeam) roles.add('manager');
+
+  return {
+    roles: Array.from(roles),
+    roleLabels: buildRoleLabels(Array.from(roles)),
+    capabilities: {
+      canManageTeam,
+      canManageSystem: roles.has('admin') || roles.has('hr'),
+    },
+  };
+}
+
 export const authController = {
   // 登录
   login: [
@@ -169,7 +214,8 @@ export const authController = {
 
       // 返回用户信息（显式排除 password，避免泄露）
       const { id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt } = employee;
-      const userInfo = { id, userId: id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt };
+      const roleInfo = await buildEffectiveRoleInfo(employee);
+      const userInfo = { id, userId: id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt, ...roleInfo };
 
       res.json({
         success: true,
@@ -200,7 +246,9 @@ export const authController = {
       });
     }
 
-    const { password: _, idCardLast6Hash: __, ...userInfo } = employee as any;
+    const { password: _, idCardLast6Hash: __, ...baseUserInfo } = employee as any;
+    const roleInfo = await buildEffectiveRoleInfo(employee);
+    const userInfo = { ...baseUserInfo, userId: employee.id, ...roleInfo };
     res.json({
       success: true,
       data: userInfo

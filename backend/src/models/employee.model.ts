@@ -7,6 +7,23 @@ function invalidateEmployeeCache(): void {
   cache.invalidateByPrefix('employee:');
 }
 
+function isActiveEmployee(employee: any): boolean {
+  return !employee?.status || employee.status === 'active';
+}
+
+function isAssessableRole(employee: any): boolean {
+  return employee?.role === 'employee' || employee?.role === 'manager';
+}
+
+function isInDepartmentScope(employee: any, manager: any): boolean {
+  if (!manager?.department || employee?.department !== manager.department) return false;
+  const managerSubDepartment = String(manager.subDepartment || '').trim();
+  if (!managerSubDepartment) return true;
+
+  const employeeSubDepartment = String(employee.subDepartment || '').trim();
+  return employeeSubDepartment === managerSubDepartment || employeeSubDepartment.startsWith(`${managerSubDepartment}/`);
+}
+
 export class EmployeeModel {
   // 根据ID查找员工（MySQL + optional read cache）
   static async findById(id: string): Promise<(Employee & { password?: string }) | null> {
@@ -151,6 +168,32 @@ export class EmployeeModel {
       ORDER BY name
     `;
     return await query(sql, [department, department]) as Employee[];
+  }
+
+  // 获取经理负责的团队成员：优先使用直接上级关系；如果只有自己/没有直接下属，则按所在部门兜底
+  static async findTeamForManager(managerId: string): Promise<Employee[]> {
+    const manager = await this.findById(managerId);
+    const directReports = (await this.findByManagerId(managerId))
+      .filter((employee: any) => employee.id !== managerId)
+      .filter(isActiveEmployee)
+      .filter(isAssessableRole);
+
+    if (directReports.length > 0 || !manager) {
+      return directReports;
+    }
+
+    const employees = (await this.findAll() as any[])
+      .filter((employee: any) => employee.id !== managerId)
+      .filter(isActiveEmployee)
+      .filter(isAssessableRole)
+      .filter((employee: any) => isInDepartmentScope(employee, manager));
+
+    return employees as Employee[];
+  }
+
+  static async isInManagerTeam(managerId: string, employeeId: string): Promise<boolean> {
+    const team = await this.findTeamForManager(managerId);
+    return team.some((employee) => employee.id === employeeId);
   }
 
   // 创建员工

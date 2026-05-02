@@ -184,6 +184,7 @@ function getTemplateTypeLabel(departmentType?: string): string {
 function getDepartmentTypeByName(departmentName?: string): string {
   const value = String(departmentName || '').trim();
   if (/营销|销售/.test(value)) return 'sales';
+  if (/项目管理/.test(value)) return 'engineering';
   if (/工程|技术|研发/.test(value)) return 'engineering';
   if (/制造|生产|品质/.test(value)) return 'manufacturing';
   if (/总经|管理|总办/.test(value)) return 'management';

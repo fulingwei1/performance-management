@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { performanceController } from '../controllers/performance.controller';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireManagerCapability, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import {
   submitSummaryValidation,
@@ -19,7 +19,7 @@ router.get('/my-records', authenticate, performanceController.getMyRecords);
 router.get('/my-record/:month', authenticate, performanceController.getMyRecordByMonth);
 
 // 获取经理/兼任经理的评分记录（下属）
-router.get('/team-records', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), performanceController.getTeamRecords);
+router.get('/team-records', authenticate, requireManagerCapability, performanceController.getTeamRecords);
 
   // 获取某月份的所有记录（经理、总经理或HR）
   router.get('/month/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getRecordsByMonth);
@@ -33,8 +33,8 @@ router.get('/team-records', authenticate, requireRole('manager', 'hr', 'admin', 
 	  // 获取每月之星推荐汇总
 	  router.get('/monthly-stars/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getMonthlyStars);
 
-	  // 获取员工合理化建议汇总（经理默认看团队；HR/Admin/GM 可传 scope=all）
-	  router.get('/improvement-suggestions', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), performanceController.getImprovementSuggestions);
+	  // 获取员工合理化建议汇总：只给管理员看，匿名建议不返回提交人
+	  router.get('/improvement-suggestions', authenticate, requireRole('admin'), performanceController.getImprovementSuggestions);
 
   // 删除全公司所有绩效记录（HR）
   router.delete('/all-records', authenticate, requireRole('hr', 'admin'), performanceController.deleteAllRecords);
@@ -43,13 +43,13 @@ router.get('/team-records', authenticate, requireRole('manager', 'hr', 'admin', 
 router.post('/summary', authenticate, requireRole('employee'), validate(submitSummaryValidation), performanceController.submitSummary);
 
 // 创建空记录（经理给未提交的员工评分时使用）
-router.post('/create-empty-record', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), validate(createRecordValidation), performanceController.createEmptyRecord);
+router.post('/create-empty-record', authenticate, requireManagerCapability, validate(createRecordValidation), performanceController.createEmptyRecord);
 
 // 获取记录对应的评分模板（用于前端动态渲染评分表单）
 router.get('/:id/template', authenticate, performanceController.getRecordTemplate);
 
 // 经理评分（含 HR/管理员兼任经理视角）
-router.post('/score', authenticate, requireRole('manager', 'hr', 'admin', 'gm'), validate(submitScoreValidation), performanceController.submitScore);
+router.post('/score', authenticate, requireManagerCapability, validate(submitScoreValidation), performanceController.submitScore);
 
 // HR批量生成绩效任务
 router.post('/generate-tasks', authenticate, requireRole('hr'), validate(generateTasksValidation), performanceController.generateTasks);

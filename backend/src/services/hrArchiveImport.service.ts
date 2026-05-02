@@ -253,8 +253,8 @@ function resolveRole(row: WorksheetRow, existing?: ExistingEmployee): ArchiveEmp
   const { department } = normalizeOrgLevels(row);
   const position = normalizeText(row['岗位']);
 
+  if (name === '符凌维' || name === '林作倩') return 'admin';
   if (existing && ['admin', 'hr', 'gm'].includes(existing.role)) return existing.role;
-  if (name === '符凌维') return 'hr';
   if (name === '郑汝才') return 'gm';
   if (department === '人力行政部' && /人事|行政/.test(position) && !/保洁/.test(position)) return 'hr';
   if (/总经理|副总|常务副总|部门经理|经理|主管|主任|部长/.test(position)) return 'manager';
@@ -299,9 +299,14 @@ function parseArchiveEmployees(rows: WorksheetRow[], existingEmployees: Existing
       const existing = existingByName.get(name);
       const archiveStatus = normalizeText(row['在职离职状态']);
       const idCard = normalizeText(row['身份证号']).toUpperCase();
-      const { department, secondDepartment, thirdDepartment } = normalizeOrgLevels(row);
+      let { department, secondDepartment, thirdDepartment } = normalizeOrgLevels(row);
       const position = normalizeText(row['岗位']);
       const levelText = normalizeText(row['级别']);
+      if (name === '符凌维') {
+        department = '人力行政部';
+        secondDepartment = '';
+        thirdDepartment = '';
+      }
       const subDepartment = normalizeSubDepartmentPath(
         thirdDepartment ? `${secondDepartment || department}/${thirdDepartment}` : secondDepartment
       );
@@ -336,6 +341,21 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
     const manager = activeByName.get(employee.managerName) || existingByName.get(employee.managerName);
     if (manager) managerIds.set(employee.id, manager.id);
   }
+
+  const hrManager = activeByName.get('符凌维') || existingByName.get('符凌维');
+  if (hrManager) {
+    for (const employee of employees) {
+      if (
+        employee.status === 'active' &&
+        employee.department === '人力行政部' &&
+        employee.name !== '符凌维' &&
+        !managerIds.has(employee.id)
+      ) {
+        managerIds.set(employee.id, hrManager.id);
+      }
+    }
+  }
+
   return managerIds;
 }
 

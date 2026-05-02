@@ -461,86 +461,12 @@ export const quarterlySummaryApi = {
 export const employeeQuarterlyApi = {
   getMy: (params?: { year?: number; quarter?: number }) =>
     request(`/employee-quarterly/my${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+  getTeam: (params: { year: number; quarter: number }) =>
+    request(`/employee-quarterly/team${buildQueryString(params as Record<string, QueryValue>)}`),
 };
 
 // AI相关API
 export const aiApi = {
-  generateQuarterlySummary: (data: {
-    managerName: string;
-    department: string;
-    quarter: string;
-    teamSize: number;
-    avgScore?: number;
-    topPerformers?: string[];
-    keyProjects?: string[];
-  }) => request('/ai/quarterly-summary', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  generateGoalDecomposition: (data: {
-    goalName: string;
-    goalDescription: string;
-    targetValue: number;
-    unit: string;
-  }) => request('/ai/goal-decomposition', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  generateCompanyStrategy: (data: {
-    currentStrategy?: string;
-    companyName: string;
-    industry: string;
-  }) => request('/ai/company-strategy', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  generateCompanyKeyWorks: (data: {
-    strategy: string;
-    companyName: string;
-  }) => request('/ai/company-key-works', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  generateDepartmentKeyWorks: (data: {
-    department: string;
-    companyStrategy: string;
-    companyKeyWorks: string[];
-  }) => request('/ai/department-key-works', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // AI生成目标确认反馈
-  generateGoalConfirmationFeedback: (data: {
-    employeeName: string;
-    goalName: string;
-    targetValue: number;
-    unit: string;
-  }) => request('/ai/goal-confirmation-feedback', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // AI生成目标进度说明
-  generateGoalProgressComment: (data: {
-    employeeName: string;
-    goalName: string;
-    completionRate: number;
-    month: string;
-  }) => request('/ai/goal-progress-comment', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 获取晋升候选人
-  getPromotionCandidates: (limit?: number) => {
-    const query = limit ? `?limit=${limit}` : '';
-    return request(`/ai/promotion-candidates${query}`);
-  },
-
-  // 获取绩效异常检测
-  getPerformanceAnomalies: () => request('/ai/performance-anomalies'),
-
   // AI生成员工自评总结
   generateSelfSummary: (data: Record<string, unknown>) => request('/ai/self-summary', {
     method: 'POST',
@@ -677,6 +603,7 @@ export const salaryIntegrationApi = {
     year: number;
     month?: number;
     quarter?: number;
+    confirmedByAdmin?: boolean;
   }) => request('/integrations/salary/push', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -684,12 +611,12 @@ export const salaryIntegrationApi = {
 
   pushMonthly: (year: number, month: number) => request('/integrations/salary/push-monthly', {
     method: 'POST',
-    body: JSON.stringify({ year, month }),
+    body: JSON.stringify({ year, month, confirmedByAdmin: true }),
   }),
 
   pushQuarterly: (year: number, quarter: number) => request('/integrations/salary/push-quarterly', {
     method: 'POST',
-    body: JSON.stringify({ year, quarter }),
+    body: JSON.stringify({ year, quarter, confirmedByAdmin: true }),
   }),
 
   getSalaryForecast: (data: {
@@ -988,107 +915,6 @@ export const assessmentPublicationApi = {
     request('/assessment-publications/published')
 };
 
-// 绩效申诉相关API
-export const appealApi = {
-  // 员工提交申诉
-  create: (data: {
-    performanceRecordId: string;
-    reason: string;
-  }) => request('/appeals', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  
-  // 员工查询自己的申诉列表
-  getMyAppeals: () => request('/appeals/my'),
-  
-  // HR查询所有申诉列表
-  getAll: (status?: string) => {
-    const url = status ? `/appeals?status=${status}` : '/appeals';
-    return request(url);
-  },
-  
-  // 根据ID获取申诉详情
-  getById: (id: string) => request(`/appeals/${id}`),
-  
-  // HR处理申诉（批准/拒绝）
-  review: (id: string, data: {
-    status: 'approved' | 'rejected';
-    hrComment: string;
-  }) => request(`/appeals/${id}/review`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-};
-
-const DISABLED_NOTIFICATION_MESSAGE = '消息中心模块已停用';
-
-const notificationDisabledResponse = <T>(data: T, message = DISABLED_NOTIFICATION_MESSAGE) => ({
-  success: true,
-  data,
-  disabled: true,
-  message
-});
-
-const notificationRequest = async <T>(url: string, options: RequestInit = {}, disabledData: T) => {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...options.headers as Record<string, string>
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    ...options,
-    headers
-  });
-  const data = await readErrorPayload(response);
-
-  if (response.status === 410) {
-    return notificationDisabledResponse(disabledData, data.message ?? data.error ?? DISABLED_NOTIFICATION_MESSAGE);
-  }
-
-  if (!response.ok) {
-    const message = data.message ?? data.error ?? '请求失败';
-    if (response.status === 401) {
-      handleUnauthorized(message);
-    }
-    throw new Error(message);
-  }
-
-  return data;
-};
-
-// 站内消息通知相关API
-export const notificationApi = {
-  // 获取我的消息列表
-  getMyNotifications: (read?: boolean) => {
-    const url = read !== undefined ? `/notifications?read=${read}` : '/notifications';
-    return notificationRequest(url, {}, []);
-  },
-  
-  // 获取未读数量
-  getUnreadCount: () => notificationRequest('/notifications/unread-count', {}, { count: 0 }),
-  
-  // 标记为已读
-  markAsRead: (id: string) => 
-    notificationRequest(`/notifications/${id}/read`, {
-      method: 'PUT'
-    }, null),
-  
-  // 全部标记为已读
-  markAllAsRead: () => 
-    notificationRequest('/notifications/read-all', {
-      method: 'PUT'
-    }, null),
-  
-  // 根据ID获取消息详情
-  getById: (id: string) => notificationRequest(`/notifications/${id}`, {}, null)
-};
-
 // 自动化任务相关API
 export const automationApi = {
   // 检查截止日期提醒
@@ -1129,9 +955,7 @@ export default {
   assessmentTemplate: assessmentTemplateApi,
   monthlyAssessment: monthlyAssessmentApi,
   assessmentPublication: assessmentPublicationApi,
-  appeal: appealApi,
   export: exportApi,
-  notification: notificationApi,
   automation: automationApi
 };
 

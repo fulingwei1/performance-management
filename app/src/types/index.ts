@@ -10,6 +10,12 @@ export interface Employee {
   subDepartment: string;
   wecomUserId?: string;
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
+  roles?: Array<'employee' | 'manager' | 'gm' | 'hr' | 'admin'>;
+  roleLabels?: string[];
+  capabilities?: {
+    canManageTeam?: boolean;
+    canManageSystem?: boolean;
+  };
   level: EmployeeLevel;
   managerId?: string;
   avatar?: string;

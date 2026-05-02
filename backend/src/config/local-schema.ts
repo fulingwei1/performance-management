@@ -59,6 +59,7 @@ export async function syncDepartmentsFromEmployees(): Promise<void> {
       'active' AS status,
       CASE
         WHEN TRIM(department) LIKE '%营销%' OR TRIM(department) LIKE '%销售%' THEN 'sales'
+        WHEN TRIM(department) LIKE '%项目管理%' THEN 'engineering'
         WHEN TRIM(department) LIKE '%工程%' OR TRIM(department) LIKE '%技术%' OR TRIM(department) LIKE '%研发%' THEN 'engineering'
         WHEN TRIM(department) LIKE '%制造%' OR TRIM(department) LIKE '%生产%' OR TRIM(department) LIKE '%品质%' THEN 'manufacturing'
         WHEN TRIM(department) LIKE '%总%' OR TRIM(department) LIKE '%管理%' THEN 'management'

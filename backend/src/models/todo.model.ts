@@ -1,7 +1,7 @@
 import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 
-export type TodoType = 'work_summary' | 'goal_approval' | 'performance_review' | 'appeal_review' | 'manager_review' | 'hr_review';
+export type TodoType = 'work_summary' | 'performance_review';
 export type TodoStatus = 'pending' | 'completed' | 'overdue';
 
 export interface Todo {

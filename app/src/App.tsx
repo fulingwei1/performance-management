@@ -10,20 +10,15 @@ const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((
 const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
 const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
-const TemplateManagement = lazy(() => import('@/pages/Manager/TemplateManagement').then((module) => ({ default: module.TemplateManagement })));
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
 const EmployeePerformanceHistory = lazy(() => import('@/pages/Manager/EmployeePerformanceHistory').then((module) => ({ default: module.EmployeePerformanceHistory })));
 const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => ({ default: module.TeamList })));
 const GMDashboard = lazy(() => import('@/pages/GM/Dashboard').then((module) => ({ default: module.GMDashboard })));
-const GMScoring = lazy(() => import('@/pages/GM/Scoring').then((module) => ({ default: module.GMScoring })));
-const GMDataExport = lazy(() => import('@/pages/GM/GMDataExport').then((module) => ({ default: module.GMDataExport })));
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
-const AssessmentPublication = lazy(() => import('@/pages/HR/AssessmentPublication').then((module) => ({ default: module.AssessmentPublication })));
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
-const HRSystemSettings = lazy(() => import('@/pages/HR/SystemSettings').then((module) => ({ default: module.SystemSettings })));
 const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
 
@@ -32,7 +27,7 @@ const ROLE_HOME: Record<string, string> = {
   manager: '/manager/dashboard',
   gm: '/gm/dashboard',
   hr: '/hr/dashboard',
-  admin: '/admin/dashboard',
+  admin: '/hr/dashboard',
 };
 
 const DISABLED_FEATURE_PATHS = [
@@ -84,7 +79,13 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!user?.role || !allowedRoles.includes(user.role as any)) return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
+  const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0
+    ? user.roles
+    : user?.role
+      ? [user.role]
+      : [];
+  const hasAllowedRole = effectiveRoles.some((role) => allowedRoles.includes(role as any));
+  if (!user?.role || !hasAllowedRole) return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
 
   return (
     <Layout role={user.role as any}>
@@ -197,13 +198,13 @@ function App() {
         </Route>
 
         {/* Manager routes */}
-        <Route element={<ProtectedLayout allowedRoles={['manager', 'hr', 'admin']} />}>
+        <Route element={<ProtectedLayout allowedRoles={['manager']} />}>
           <Route path="/manager/dashboard" element={<ManagerDashboard />} />
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/scoring" element={<RedirectToManagerDashboard />} />
-          <Route path="/manager/template-config" element={<TemplateManagement />} />
-          <Route path="/manager/template-assignment" element={<Navigate to="/manager/template-config" replace />} />
-          <Route path="/manager/assessment-templates" element={<Navigate to="/manager/template-config" replace />} />
+          <Route path="/manager/template-config" element={<Navigate to="/manager/dashboard" replace />} />
+          <Route path="/manager/template-assignment" element={<Navigate to="/manager/dashboard" replace />} />
+          <Route path="/manager/assessment-templates" element={<Navigate to="/manager/dashboard" replace />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
         </Route>
@@ -211,9 +212,9 @@ function App() {
         {/* GM routes */}
         <Route element={<ProtectedLayout allowedRoles={['gm']} />}>
           <Route path="/gm/dashboard" element={<GMDashboard />} />
-          <Route path="/gm/scoring" element={<GMScoring />} />
+          <Route path="/gm/scoring" element={<Navigate to="/gm/dashboard" replace />} />
           <Route path="/gm/analytics" element={<GMAnalytics />} />
-          <Route path="/gm/data-export" element={<GMDataExport />} />
+          <Route path="/gm/data-export" element={<Navigate to="/gm/dashboard" replace />} />
         </Route>
 
         {/* HR routes */}
@@ -232,17 +233,17 @@ function App() {
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
         </Route>
 
-        <Route element={<ProtectedLayout allowedRoles={['hr']} />}>
-          <Route path="/hr/assessment-publication" element={<AssessmentPublication />} />
+        <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
+          <Route path="/hr/assessment-publication" element={<Navigate to="/hr/monthly-automation" replace />} />
         </Route>
 
-        {/* Admin routes */}
-        <Route element={<ProtectedLayout allowedRoles={['admin']} />}>
-          <Route path="/admin/dashboard" element={<HRDashboard />} />
+        {/* HR/Admin merged routes */}
+        <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
+          <Route path="/admin/dashboard" element={<Navigate to="/hr/dashboard" replace />} />
           <Route path="/admin/user-management" element={<UserManagement />} />
-          <Route path="/admin/system-settings" element={<HRSystemSettings />} />
-          <Route path="/admin/analytics" element={<GMAnalytics />} />
-          <Route path="/admin/data-export" element={<GMDataExport />} />
+          <Route path="/admin/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
+          <Route path="/admin/analytics" element={<Navigate to="/hr/analytics" replace />} />
+          <Route path="/admin/data-export" element={<Navigate to="/hr/data-io" replace />} />
         </Route>
 
         {/* Default redirects */}

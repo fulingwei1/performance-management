@@ -26,23 +26,13 @@ import metricLibraryRoutes from './routes/metricLibrary.routes';
 import settingsRoutes from './routes/settings.routes';
 import exportRoutes from './routes/export.routes';
 import quarterlySummaryRoutes from './routes/quarterlySummary.routes';
-import monthlyReportRoutes from './routes/monthlyReport.routes';
-
-import attachmentRoutes from './routes/attachment.routes';
 import departmentRoutes from './routes/department.routes';
-
 import aiRoutes from './routes/ai.routes';
-
 import automationRoutes from './routes/automation.routes';
 import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
-
-
-
-
 import auditLogRoutes from './routes/auditLog.routes';
 import todoRoutes from './routes/todo.routes';
 import dataImportRoutes from './routes/dataImport.routes';
-import dataExportRoutes from './routes/dataExport.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import systemSettingsRoutes from './routes/systemSettings.routes';
 import assessmentTemplateRoutes from './routes/assessmentTemplate.routes';
@@ -185,21 +175,13 @@ app.use('/api/metrics', metricLibraryRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
-app.use('/api/monthly-reports', monthlyReportRoutes);
-
-app.use('/api/attachments', attachmentRoutes);
 app.use('/api/departments', departmentRoutes);
-
 app.use('/api/ai', aiRoutes);
-
 app.use('/api/automation', automationRoutes);
 app.use('/api/assessment-publications', assessmentPublicationRoutes);
-
-
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/todos', todoRoutes);
 app.use('/api/data-import', dataImportRoutes);
-app.use('/api/data-export', dataExportRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/assessment-templates', assessmentTemplateRoutes);
