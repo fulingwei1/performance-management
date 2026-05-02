@@ -5,7 +5,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { getGroupType, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
 import { getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
-import { LevelTemplateRuleModel, getDepartmentType } from '../models/levelTemplateRule.model';
+import { getDepartmentType } from '../models/levelTemplateRule.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import '../middleware/auth'; // Request type extension
 
@@ -284,23 +284,26 @@ export const performanceController = {
       }
     }
 
-    // 否则根据员工部门+级别匹配模板
+    // 否则根据员工的岗位、部门、层级、角色自动匹配最佳模板
     const employee = await EmployeeModel.findById(record.employeeId);
     if (!employee) {
       return res.status(404).json({ success: false, error: '员工不存在' });
     }
 
-    const deptType = getDepartmentType(employee.department || '');
-    const level = employee.level || 'junior';
+    const template = await AssessmentTemplateModel.findMatchingTemplate({
+      role: employee.role || '',
+      level: employee.level || '',
+      position: employee.subDepartment || employee.department || '',
+      department: employee.department || ''
+    });
 
-    const rules = await LevelTemplateRuleModel.getByDepartmentType(deptType);
-    const rule = rules.find((r: any) => r.level === level);
-    if (!rule) {
-      return res.json({ success: true, data: null, message: '未找到匹配的模板规则' });
+    if (!template) {
+      return res.json({ success: true, data: null, message: '未找到匹配的模板，请检查模板配置' });
     }
 
-    const template = await AssessmentTemplateModel.findById(rule.templateId, true);
-    res.json({ success: true, data: template });
+    // 返回带指标的完整模板
+    const fullTemplate = await AssessmentTemplateModel.findById(template.id, true);
+    res.json({ success: true, data: fullTemplate });
   }),
 
   // 员工提交工作总结
