@@ -79,7 +79,6 @@ export const requireRole = (...roles: EmployeeRole[]) => {
     
     const effectiveRoles = new Set<EmployeeRole>([req.user.role]);
     if (req.user.role === 'admin') effectiveRoles.add('hr');
-    if (req.user.role === 'hr') effectiveRoles.add('admin');
 
     if (!roles.some((role) => effectiveRoles.has(role))) {
       res.status(403).json({ success: false, message: '权限不足' });

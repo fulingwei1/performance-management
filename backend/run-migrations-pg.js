@@ -23,6 +23,9 @@ const migrationFiles = [
   'src/migrations/015_improvement_suggestions.sql',
   'src/migrations/016_template_cleanup_and_manager_rules.sql',
   'src/migrations/017_role_alignment_and_hr_manager.sql',
+  'src/migrations/018_department_assessment_manager_alignment.sql',
+  'src/migrations/019_backfill_template_metric_scoring_criteria.sql',
+  'src/migrations/020_dedupe_active_assessment_templates.sql',
 ];
 
 async function runMigrations() {

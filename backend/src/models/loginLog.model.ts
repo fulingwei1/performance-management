@@ -67,6 +67,7 @@ export class LoginLogModel {
   // 查询登录日志（支持分页和过滤）
   static async find(filters: {
     employeeId?: string;
+    keyword?: string;
     startDate?: string;
     endDate?: string;
     success?: boolean;
@@ -82,6 +83,16 @@ export class LoginLogModel {
 
       if (filters.employeeId) {
         filtered = filtered.filter(l => l.employeeId === filters.employeeId);
+      }
+      if (filters.keyword) {
+        const keyword = filters.keyword.trim().toLowerCase();
+        filtered = filtered.filter(l => [
+          l.employeeId,
+          l.employeeName,
+          l.department,
+          l.subDepartment,
+          l.loginIp,
+        ].join(' ').toLowerCase().includes(keyword));
       }
       if (filters.startDate) {
         filtered = filtered.filter(l => new Date(l.loginTime) >= new Date(filters.startDate!));
@@ -107,6 +118,17 @@ export class LoginLogModel {
     if (filters.employeeId) {
       whereClauses.push(`employee_id = $${paramIndex}`);
       params.push(filters.employeeId);
+      paramIndex++;
+    }
+    if (filters.keyword) {
+      whereClauses.push(`(
+        employee_id ILIKE $${paramIndex}
+        OR employee_name ILIKE $${paramIndex}
+        OR department ILIKE $${paramIndex}
+        OR sub_department ILIKE $${paramIndex}
+        OR login_ip ILIKE $${paramIndex}
+      )`);
+      params.push(`%${filters.keyword}%`);
       paramIndex++;
     }
     if (filters.startDate) {

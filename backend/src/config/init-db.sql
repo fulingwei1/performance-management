@@ -276,7 +276,7 @@ INSERT INTO employees (id, name, department, sub_department, role, level, manage
 ('e065', '杨明博', '工程技术中心', '测试部-新能源组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e066', '蔡柯炳', '工程技术中心', 'PLC 部-PLC三组', 'employee', 'senior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e067', '张浩', '工程技术中心', '测试部-新能源组', 'employee', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
-('hr001', '林作倩', '人力行政部', '人事组-/', 'admin', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
+('hr001', '林作倩', '人力行政部', '人事组-/', 'hr', 'junior', 'hr002', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e068', '潘自栖', '工程技术中心', 'PLC 部-PLC四组', 'employee', 'intermediate', 'm010', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e069', '刘万成', '工程技术中心', '新能源技术部-结构三组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e070', '曾杰', '工程技术中心', '新能源技术部-结构三组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
@@ -380,6 +380,6 @@ INSERT INTO employees (id, name, department, sub_department, role, level, manage
 ('e162', '刘孙伟', '工程技术中心', '测试部-现场支持', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e163', '谭章斌', '项目管理部', '项目管理组-/', 'employee', 'senior', 'm016', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
 ('e164', '谢朝良', '制造中心', '生产部-电子接线组', 'employee', 'intermediate', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'),
-('hr002', '符凌维', '总经办', '/-/', 'admin', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
+('hr002', '符凌维', '人力行政部', '/-/', 'admin', 'junior', NULL, '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')
 
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;

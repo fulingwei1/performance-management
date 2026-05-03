@@ -45,6 +45,11 @@ export interface AssessmentTemplate {
   priority?: number;               // 匹配优先级，数值越大优先级越高
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item || '').trim()).filter(Boolean);
+}
+
 export class AssessmentTemplateModel {
   // ==================== 模板管理 ====================
   
@@ -211,8 +216,10 @@ export class AssessmentTemplateModel {
       
       const sql = `
         INSERT INTO assessment_templates (
-          id, name, description, department_type, is_default, status, created_by, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          id, name, description, department_type, is_default, status, created_by,
+          applicable_roles, applicable_levels, applicable_positions, priority,
+          created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::text[], $9::text[], $10::text[], $11, $12, $13)
         RETURNING *
       `;
       
@@ -224,6 +231,10 @@ export class AssessmentTemplateModel {
         data.isDefault || false,
         data.status || 'active',
         data.createdBy || null,
+        normalizeStringArray(data.applicableRoles),
+        normalizeStringArray(data.applicableLevels),
+        normalizeStringArray(data.applicablePositions),
+        data.priority ?? 0,
         now,
         now
       ]);
@@ -267,6 +278,26 @@ export class AssessmentTemplateModel {
       if (data.status !== undefined) {
         updates.push(`status = $${paramIndex++}`);
         params.push(data.status);
+      }
+
+      if (data.applicableRoles !== undefined) {
+        updates.push(`applicable_roles = $${paramIndex++}::text[]`);
+        params.push(normalizeStringArray(data.applicableRoles));
+      }
+
+      if (data.applicableLevels !== undefined) {
+        updates.push(`applicable_levels = $${paramIndex++}::text[]`);
+        params.push(normalizeStringArray(data.applicableLevels));
+      }
+
+      if (data.applicablePositions !== undefined) {
+        updates.push(`applicable_positions = $${paramIndex++}::text[]`);
+        params.push(normalizeStringArray(data.applicablePositions));
+      }
+
+      if (data.priority !== undefined) {
+        updates.push(`priority = $${paramIndex++}`);
+        params.push(data.priority);
       }
       
       if (updates.length === 0) return this.findById(id, false);
@@ -542,6 +573,19 @@ export class AssessmentTemplateModel {
       return results;
     } catch (error) {
       logger.error('Failed to add scoring criteria: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  }
+
+  /**
+   * 覆盖指标的评分标准
+   */
+  static async replaceScoringCriteria(metricId: string, criteria: Omit<ScoringCriterion, 'id' | 'metricId'>[]): Promise<ScoringCriterion[]> {
+    try {
+      await query('DELETE FROM metric_scoring_criteria WHERE metric_id = $1', [metricId]);
+      return await this.addScoringCriteria(metricId, criteria);
+    } catch (error) {
+      logger.error('Failed to replace scoring criteria: ' + (error instanceof Error ? error.message : String(error)));
       throw error;
     }
   }

@@ -75,7 +75,7 @@ const initialEmployees = [
   { id: 'e064', name: '杨明博', department: '工程技术中心', subDepartment: '测试部', role: 'employee' as const, level: 'junior' as const, managerId: 'm011', password: '123456' },
   { id: 'e065', name: '蔡柯炳', department: '工程技术中心', subDepartment: 'PLC 部', role: 'employee' as const, level: 'junior' as const, managerId: 'm008', password: '123456' },
   { id: 'e066', name: '张浩', department: '工程技术中心', subDepartment: '测试部', role: 'employee' as const, level: 'junior' as const, managerId: 'm011', password: '123456' },
-  { id: 'hr001', name: '林作倩', department: '人力行政部', subDepartment: '人事组', role: 'admin' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
+  { id: 'hr001', name: '林作倩', department: '人力行政部', subDepartment: '人事组', role: 'hr' as const, level: 'junior' as const, managerId: 'hr002', password: '123456' },
   { id: 'e067', name: '潘自栖', department: '工程技术中心', subDepartment: 'PLC 部', role: 'employee' as const, level: 'junior' as const, managerId: 'm008', password: '123456' },
   { id: 'e068', name: '刘万成', department: '工程技术中心', subDepartment: '新能源技术部', role: 'employee' as const, level: 'junior' as const, managerId: 'm003', password: '123456' },
   { id: 'e069', name: '曾杰', department: '工程技术中心', subDepartment: '新能源技术部', role: 'employee' as const, level: 'junior' as const, managerId: 'm003', password: '123456' },
@@ -133,7 +133,7 @@ const initialEmployees = [
   { id: 'e118', name: '谢欢', department: '财务部', subDepartment: '会计组', role: 'employee' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
   { id: 'e119', name: '代亚平', department: '采购部', subDepartment: '采购组', role: 'employee' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
   { id: 'e120', name: '刘启勇', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
-  { id: 'hr002', name: '符凌维', department: '总经办', subDepartment: '', role: 'admin' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
+  { id: 'hr002', name: '符凌维', department: '人力行政部', subDepartment: '', role: 'admin' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
   { id: 'e121', name: '卢俊宏', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
   { id: 'e122', name: '陈思', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
   { id: 'e123', name: '周志锐', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
@@ -180,7 +180,6 @@ const initialEmployees = [
   { id: 'e156', name: '谭章斌', department: '项目管理部', subDepartment: '项目管理组', role: 'employee' as const, level: 'junior' as const, managerId: 'm007', password: '123456' },
   { id: 'e157', name: '谢朝良', department: '制造中心', subDepartment: '生产部', role: 'employee' as const, level: 'junior' as const, managerId: 'gm001', password: '123456' },
   { id: 'e158', name: '张小保', department: '人力行政部', subDepartment: '行政组', role: 'employee' as const, level: 'junior' as const, managerId: undefined, password: '123456' },
-  { id: 'admin', name: '系统管理员', department: '总公司', subDepartment: '', role: 'admin' as const, level: 'senior' as const, managerId: undefined, password: '123456' },
 ];
 
 // 初始化数据
@@ -232,4 +231,4 @@ export const initializeData = async (): Promise<void> => {
   }
 };
 
-// 总计: 172 名员工, 经理 11 人
+// 总计: 171 名员工, 经理 11 人

@@ -45,6 +45,12 @@ const ORG_NAME_ALIASES: Record<string, string> = {
   海尔治县: '海尔治具',
 };
 
+const DEFAULT_ASSESSMENT_MANAGERS = [
+  { keyword: '仓储部', managerName: '周念' },
+  { keyword: '客服部', managerName: '王志红' },
+  { keyword: '生产部', managerName: '高勇' },
+] as const;
+
 const THIRD_LEVEL_PARENT_OVERRIDES: Record<string, string> = {
   结构二组: '新能源技术部',
   海尔治具: '测试部',
@@ -253,7 +259,8 @@ function resolveRole(row: WorksheetRow, existing?: ExistingEmployee): ArchiveEmp
   const { department } = normalizeOrgLevels(row);
   const position = normalizeText(row['岗位']);
 
-  if (name === '符凌维' || name === '林作倩') return 'admin';
+  if (name === '符凌维') return 'admin';
+  if (name === '林作倩') return 'hr';
   if (existing && ['admin', 'hr', 'gm'].includes(existing.role)) return existing.role;
   if (name === '郑汝才') return 'gm';
   if (department === '人力行政部' && /人事|行政/.test(position) && !/保洁/.test(position)) return 'hr';
@@ -352,6 +359,22 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
         !managerIds.has(employee.id)
       ) {
         managerIds.set(employee.id, hrManager.id);
+      }
+    }
+  }
+
+  for (const rule of DEFAULT_ASSESSMENT_MANAGERS) {
+    const manager = activeByName.get(rule.managerName) || existingByName.get(rule.managerName);
+    if (!manager) continue;
+
+    for (const employee of employees) {
+      const orgPath = `${employee.department}/${employee.subDepartment}`;
+      if (
+        employee.status === 'active' &&
+        employee.name !== rule.managerName &&
+        orgPath.includes(rule.keyword)
+      ) {
+        managerIds.set(employee.id, manager.id);
       }
     }
   }

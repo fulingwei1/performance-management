@@ -2,6 +2,14 @@ import { Request, Response } from 'express';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { asyncHandler } from '../middleware/errorHandler';
 
+const DEFAULT_SCORING_CRITERIA = [
+  { level: 'L1', score: 0.5, description: '不合格：结果明显低于要求，影响工作交付，需要重点辅导和限期改进' },
+  { level: 'L2', score: 0.8, description: '待改进：部分达到要求，但质量、进度或主动性存在明显不足' },
+  { level: 'L3', score: 1.0, description: '合格：基本达到岗位要求和本月目标，工作结果稳定可接受' },
+  { level: 'L4', score: 1.2, description: '良好：超过岗位要求，能主动推动问题解决，交付质量较高' },
+  { level: 'L5', score: 1.5, description: '优秀：显著超出预期，形成标杆成果或可复用经验，对团队有明显贡献' },
+];
+
 async function assertManagerOwnTemplateAccess(req: Request, templateId: string) {
   if (req.user?.role !== 'manager') return null;
 
@@ -16,6 +24,26 @@ async function assertManagerOwnTemplateAccess(req: Request, templateId: string) 
   }
 
   return template;
+}
+
+function normalizeScoringCriteria(metric: any) {
+  const incoming = Array.isArray(metric.scoringCriteria) ? metric.scoringCriteria : [];
+  const incomingByLevel = new Map(
+    incoming
+      .filter((criterion: any) => criterion?.level)
+      .map((criterion: any) => [String(criterion.level).toUpperCase(), criterion])
+  );
+
+  return DEFAULT_SCORING_CRITERIA.map((defaultCriterion) => {
+    const custom = incomingByLevel.get(defaultCriterion.level) as any;
+    return {
+      level: defaultCriterion.level,
+      score: Number(custom?.score ?? defaultCriterion.score),
+      description: String(custom?.description || defaultCriterion.description).trim(),
+      minValue: custom?.minValue,
+      maxValue: custom?.maxValue,
+    };
+  });
 }
 
 async function syncTemplateMetrics(templateId: string, metrics: any[] = []) {
@@ -36,13 +64,20 @@ async function syncTemplateMetrics(templateId: string, metrics: any[] = []) {
       sortOrder: metric.sortOrder ?? 0,
     };
 
+    let savedMetric;
+
     if (metric.id) {
-      await AssessmentTemplateModel.updateMetric(metric.id, payload);
+      savedMetric = await AssessmentTemplateModel.updateMetric(metric.id, payload);
+      if (!savedMetric) savedMetric = await AssessmentTemplateModel.findMetricById(metric.id);
     } else {
-      await AssessmentTemplateModel.addMetric({
+      savedMetric = await AssessmentTemplateModel.addMetric({
         templateId,
         ...payload,
       });
+    }
+
+    if (savedMetric) {
+      await AssessmentTemplateModel.replaceScoringCriteria(savedMetric.id, normalizeScoringCriteria(metric));
     }
   }
 

@@ -24,6 +24,19 @@ const CATEGORIES = [
   { value: 'collaboration', label: '协作指标' }
 ];
 
+const QUALIFICATION_LEVELS = [
+  { value: 'assistant', label: 'L1/助理/实习' },
+  { value: 'junior', label: 'L2/初级' },
+  { value: 'intermediate', label: 'L3/中级' },
+  { value: 'senior', label: 'L4+/高级' },
+  { value: 'manager', label: 'M1+/主管/经理' },
+];
+
+const ROLE_OPTIONS = [
+  { value: 'employee', label: '员工' },
+  { value: 'manager', label: '部门经理' },
+];
+
 interface Metric {
   id?: string;
   metricName: string;
@@ -33,6 +46,16 @@ interface Metric {
   description?: string;
   evaluationType: 'quantitative' | 'qualitative';
   sortOrder: number;
+  scoringCriteria?: ScoringCriterion[];
+}
+
+interface ScoringCriterion {
+  id?: string;
+  level: string;
+  score: number;
+  description: string;
+  minValue?: number;
+  maxValue?: number;
 }
 
 interface Template {
@@ -42,6 +65,10 @@ interface Template {
   departmentType: string;
   isDefault: boolean;
   status: string;
+  applicableRoles?: string[];
+  applicableLevels?: string[];
+  applicablePositions?: string[];
+  priority?: number;
   metrics?: Metric[];
 }
 
@@ -51,6 +78,50 @@ interface TemplateEditorProps {
   managerMode?: boolean;
   onSave: () => void;
   onCancel: () => void;
+}
+
+const DEFAULT_SCORING_CRITERIA: ScoringCriterion[] = [
+  { level: 'L1', score: 0.5, description: '不合格：结果明显低于要求，影响工作交付，需要重点辅导和限期改进' },
+  { level: 'L2', score: 0.8, description: '待改进：部分达到要求，但质量、进度或主动性存在明显不足' },
+  { level: 'L3', score: 1.0, description: '合格：基本达到岗位要求和本月目标，工作结果稳定可接受' },
+  { level: 'L4', score: 1.2, description: '良好：超过岗位要求，能主动推动问题解决，交付质量较高' },
+  { level: 'L5', score: 1.5, description: '优秀：显著超出预期，形成标杆成果或可复用经验，对团队有明显贡献' },
+];
+
+function ensureScoringCriteria(metric: Partial<Metric>): ScoringCriterion[] {
+  const criteriaByLevel = new Map(
+    (metric.scoringCriteria || []).map((criterion) => [criterion.level, criterion])
+  );
+
+  return DEFAULT_SCORING_CRITERIA.map((defaultCriterion) => ({
+    ...defaultCriterion,
+    ...criteriaByLevel.get(defaultCriterion.level),
+    score: Number(criteriaByLevel.get(defaultCriterion.level)?.score ?? defaultCriterion.score),
+    description: criteriaByLevel.get(defaultCriterion.level)?.description || defaultCriterion.description,
+  }));
+}
+
+function normalizeMetrics(metrics: Metric[] = []): Metric[] {
+  return metrics.map((metric, index) => ({
+    ...metric,
+    sortOrder: metric.sortOrder ?? index,
+    scoringCriteria: ensureScoringCriteria(metric),
+  }));
+}
+
+function toggleArrayValue(values: string[] = [], value: string): string[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function parsePositionInput(value: string): string[] {
+  return value
+    .split(/[，,\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatPositions(values?: string[]): string {
+  return (values || []).join('，');
 }
 
 export function TemplateEditor({ template, viewMode, managerMode = false, onSave, onCancel }: TemplateEditorProps) {
@@ -69,7 +140,7 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
     if (template) {
       setFormData({
         ...template,
-        metrics: template.metrics || []
+        metrics: normalizeMetrics(template.metrics || [])
       });
     } else {
       setFormData({
@@ -90,7 +161,8 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
       category: 'performance',
       weight: 10,
       evaluationType: 'quantitative',
-      sortOrder: formData.metrics?.length || 0
+      sortOrder: formData.metrics?.length || 0,
+      scoringCriteria: ensureScoringCriteria({})
     };
     
     setFormData({
@@ -102,6 +174,16 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
   const handleUpdateMetric = (index: number, field: keyof Metric, value: any) => {
     const newMetrics = [...(formData.metrics || [])];
     newMetrics[index] = { ...newMetrics[index], [field]: value };
+    setFormData({ ...formData, metrics: newMetrics });
+  };
+
+  const handleUpdateScoringCriterion = (metricIndex: number, level: string, description: string) => {
+    const newMetrics = [...(formData.metrics || [])];
+    const currentMetric = newMetrics[metricIndex];
+    const scoringCriteria = ensureScoringCriteria(currentMetric).map((criterion) => (
+      criterion.level === level ? { ...criterion, description } : criterion
+    ));
+    newMetrics[metricIndex] = { ...currentMetric, scoringCriteria };
     setFormData({ ...formData, metrics: newMetrics });
   };
 
@@ -158,6 +240,11 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
         toast.error('指标代码不能为空');
         return false;
       }
+      const incompleteCriteria = ensureScoringCriteria(metric).some((criterion) => !criterion.description.trim());
+      if (incompleteCriteria) {
+        toast.error(`${metric.metricName || '指标'} 的 L1-L5 评分描述不能为空`);
+        return false;
+      }
     }
     
     return true;
@@ -169,10 +256,15 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
     setSaving(true);
     
     try {
+      const payload = {
+        ...formData,
+        metrics: normalizeMetrics(formData.metrics || []),
+      };
+
       if (template?.id) {
-        await assessmentTemplateApi.update(template.id, formData as unknown as Record<string, unknown>);
+        await assessmentTemplateApi.update(template.id, payload as unknown as Record<string, unknown>);
       } else {
-        await assessmentTemplateApi.create(formData as unknown as Record<string, unknown>);
+        await assessmentTemplateApi.create(payload as unknown as Record<string, unknown>);
       }
       toast.success(template?.id ? '模板已更新' : '模板已创建');
       onSave();
@@ -234,6 +326,75 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
             placeholder="模板的使用说明"
           />
         </div>
+
+        <div className="rounded-lg border bg-blue-50/50 p-4">
+          <div className="mb-3">
+            <h4 className="font-medium text-sm">任职资格适用范围</h4>
+            <p className="mt-1 text-xs text-gray-500">
+              系统生成考核任务时，会优先按员工档案里的“岗位 + 任职资格等级”匹配模板；部门模板只作为特殊覆盖。
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <Label className="text-xs">适用等级</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {QUALIFICATION_LEVELS.map((level) => (
+                  <Button
+                    key={level.value}
+                    type="button"
+                    variant={(formData.applicableLevels || []).includes(level.value) ? 'default' : 'outline'}
+                    size="sm"
+                    disabled={viewMode}
+                    onClick={() => setFormData({
+                      ...formData,
+                      applicableLevels: toggleArrayValue(formData.applicableLevels, level.value),
+                    })}
+                  >
+                    {level.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">适用角色</Label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {ROLE_OPTIONS.map((role) => (
+                  <Button
+                    key={role.value}
+                    type="button"
+                    variant={(formData.applicableRoles || []).includes(role.value) ? 'default' : 'outline'}
+                    size="sm"
+                    disabled={viewMode || (managerMode && role.value !== 'manager')}
+                    onClick={() => setFormData({
+                      ...formData,
+                      applicableRoles: toggleArrayValue(formData.applicableRoles, role.value),
+                    })}
+                  >
+                    {role.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">适用岗位</Label>
+              <Input
+                value={formatPositions(formData.applicablePositions)}
+                onChange={(event) => setFormData({
+                  ...formData,
+                  applicablePositions: parsePositionInput(event.target.value),
+                })}
+                disabled={viewMode}
+                placeholder="如：销售工程师，销售助理，大客户经理"
+              />
+              <div className="mt-1 text-xs text-gray-500">
+                多个岗位用逗号隔开；留空表示仅按部门类型/等级兜底。
+              </div>
+            </div>
+          </div>
+        </div>
         
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -277,6 +438,9 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
           <div className="space-y-3">
             {formData.metrics.map((metric, index) => (
               <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                {(() => {
+                  const scoringCriteria = ensureScoringCriteria(metric);
+                  return (
                 <div className="grid grid-cols-12 gap-3">
                   {/* 排序 */}
                   {!viewMode && (
@@ -406,8 +570,36 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
                         size="sm"
                       />
                     </div>
+
+                    <div className="mt-3 rounded-lg border bg-white p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <Label className="text-xs font-medium">L1-L5 评分描述</Label>
+                        <Badge variant="outline" className="text-xs">系数 0.5 / 0.8 / 1.0 / 1.2 / 1.5</Badge>
+                      </div>
+                      <div className="space-y-2">
+                        {scoringCriteria.map((criterion) => (
+                          <div key={criterion.level} className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={criterion.level === 'L3' ? 'default' : 'secondary'}>
+                                {criterion.level}
+                              </Badge>
+                              <span className="text-xs text-gray-500">{criterion.score.toFixed(1)}</span>
+                            </div>
+                            <Input
+                              value={criterion.description}
+                              onChange={(event) => handleUpdateScoringCriterion(index, criterion.level, event.target.value)}
+                              disabled={viewMode}
+                              className="h-8 text-sm"
+                              placeholder={`${criterion.level} 对应的评价描述`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -4,13 +4,13 @@ import {
   Bars3Icon,
   BoltIcon,
   ChartBarIcon,
+  ClipboardDocumentListIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
   HomeIcon,
   StarIcon,
   Squares2X2Icon,
   UserGroupIcon,
-  UsersIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
@@ -37,24 +37,26 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { name: '绩效看板', path: '/gm/analytics', icon: ChartBarIcon },
   ],
   hr: [
-    { name: '工作台', path: '/hr/dashboard', icon: HomeIcon },
-    { name: '部门评分', path: '/manager/dashboard', icon: UserGroupIcon },
-    { name: '绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
+    { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
+    { name: '部门经理工作台', path: '/manager/dashboard', icon: UserGroupIcon },
+    { name: '部门绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
+    { name: '全公司绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
     { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
-    { name: '用户管理', path: '/admin/user-management', icon: UsersIcon },
+    { name: '日志管理', path: '/hr/logs', icon: ClipboardDocumentListIcon },
   ],
   admin: [
-    { name: '工作台', path: '/hr/dashboard', icon: HomeIcon },
-    { name: '部门评分', path: '/manager/dashboard', icon: UserGroupIcon },
-    { name: '绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
+    { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
+    { name: '部门经理工作台', path: '/manager/dashboard', icon: UserGroupIcon },
+    { name: '部门绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
+    { name: '全公司绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
     { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
-    { name: '用户管理', path: '/admin/user-management', icon: UsersIcon },
+    { name: '日志管理', path: '/hr/logs', icon: ClipboardDocumentListIcon },
   ],
 };
 
@@ -71,7 +73,7 @@ export const MobileNav: React.FC = () => {
   const filteredItems = useMemo(() => {
     const items = roleNavItems[role] || roleNavItems.employee;
     if ((role === 'hr' || role === 'admin') && !canManageTeam) {
-      return items.filter((item) => item.path !== '/manager/dashboard');
+      return items.filter((item) => !item.path.startsWith('/manager/'));
     }
     return items;
   }, [canManageTeam, role]);

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  AlertTriangle,
   Building2,
   CheckCircle2,
   ChevronDown,
@@ -312,7 +311,7 @@ export default function AssessmentScopeSettings() {
       const [empResult, configResult, templateResult] = await Promise.allSettled([
         employeeApi.getAll(),
         performanceConfigApi.getRankingConfig(),
-        assessmentTemplateApi.getAll({ includeMetrics: false }),
+        assessmentTemplateApi.getAll({ includeMetrics: false, status: 'active' }),
       ]);
 
       let nextEmployees: Employee[] = [];
@@ -422,7 +421,6 @@ export default function AssessmentScopeSettings() {
     requiredTemplateUnitKeys,
     templateMap,
   ]);
-  const missingTemplateUnits = selectedUnitSummaries.filter((summary) => summary.missingTemplate);
   const selectedTemplateCount = Object.keys(rankingConfig.templateAssignments || {}).length;
 
   const setParticipation = (updater: (current: RankingConfig['participation']) => RankingConfig['participation']) => {
@@ -567,28 +565,10 @@ export default function AssessmentScopeSettings() {
 
   const handleSave = async () => {
     const latestConfig = rankingConfigRef.current;
-    const latestParticipation = latestConfig.participation;
-    const latestRequiredTemplateUnitKeys = latestParticipation.mode === 'include'
-      ? unique(latestParticipation.includedUnitKeys)
-      : [];
-    const latestMissingTemplateUnits = latestRequiredTemplateUnitKeys.filter((unitKey) => (
-      !getTemplateAssignmentDetail(unitKey, latestConfig.templateAssignments).effectiveTemplateId
-    ));
-
-    if (latestParticipation.mode === 'include' && latestRequiredTemplateUnitKeys.length > 0 && latestMissingTemplateUnits.length > 0) {
-      const previewNames = latestMissingTemplateUnits
-        .slice(0, 3)
-        .map((unitKey) => orgNodeMap.get(unitKey)?.name || unitKey.split('/').slice(-1)[0] || unitKey)
-        .join('、');
-      const suffix = latestMissingTemplateUnits.length > 3 ? ` 等 ${latestMissingTemplateUnits.length} 个部门` : '';
-      toast.error(`还有参与考核的部门未选择模板：${previewNames}${suffix}`);
-      return;
-    }
-
     setSaving(true);
     try {
       await performanceConfigApi.updateRankingConfig(latestConfig as unknown as Record<string, unknown>);
-      toast.success('考核范围和部门模板已保存，后续生成任务、考核表单和排名都会按这个配置生效');
+      toast.success('考核范围已保存；模板会优先按岗位和任职资格等级自动匹配，特殊覆盖按本页设置生效');
       await loadData();
     } catch (error: any) {
       toast.error('保存失败: ' + (error.message || String(error)));
@@ -668,7 +648,7 @@ export default function AssessmentScopeSettings() {
               考核范围配置
             </h1>
             <p className="mt-1 text-muted-foreground">
-              按一级/二级/三级部门或具体员工选择谁参与考核；也可以反过来只勾选不参与的人。
+              按一级/二级/三级部门或具体员工选择谁参与考核；模板默认按岗位和任职资格等级自动匹配。
             </p>
           </div>
           <Button onClick={handleSave} disabled={saving}>
@@ -680,7 +660,7 @@ export default function AssessmentScopeSettings() {
           <Badge variant="outline" className="text-sm">参与考核：{participantCount} 人</Badge>
           <Badge variant="secondary" className="text-sm">不参与：{activeEmployees.length - participantCount} 人</Badge>
           <Badge variant="outline" className="text-sm">当前勾选：{selectedMarkCount} 人</Badge>
-          <Badge variant="outline" className="text-sm">已选模板：{selectedTemplateCount} 个</Badge>
+          <Badge variant="outline" className="text-sm">特殊覆盖模板：{selectedTemplateCount} 个</Badge>
         </div>
       </motion.div>
 
@@ -693,12 +673,12 @@ export default function AssessmentScopeSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm text-muted-foreground">
-            保存后，这里会展示“参与考核的部门”和“该部门当前生效的考核模板”。模板内容请在“考核模板”页里维护，这里只负责选择使用哪个模板。
+            保存后，这里会展示参与考核的部门。正常情况下，系统会按员工“岗位 + 任职资格等级”匹配模板；只有少数特殊部门才需要在本页指定覆盖模板。
           </div>
 
           {participation.mode !== 'include' ? (
             <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              当前是“默认全员参与、勾选不参与”的模式，所以这里不单独展示参与部门模板。要按部门指定模板，请切换到“勾选参与考核”模式。
+              当前是“默认全员参与、勾选不参与”的模式，所以这里不单独展示参与部门。模板仍会按岗位和任职资格等级自动匹配。
             </div>
           ) : selectedUnitSummaries.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2">
@@ -713,7 +693,7 @@ export default function AssessmentScopeSettings() {
                         <div className="mt-1 text-xs text-gray-500">参与人数：{summary.employeeCount} 人</div>
                       </div>
                       <Badge variant={summary.missingTemplate ? 'outline' : 'secondary'}>
-                        {summary.missingTemplate ? '未选模板' : '已选模板'}
+                        {summary.missingTemplate ? '自动匹配模板' : '指定覆盖模板'}
                       </Badge>
                     </div>
 
@@ -734,7 +714,7 @@ export default function AssessmentScopeSettings() {
                         </>
                       ) : (
                         <Badge variant="outline" className="text-xs text-amber-700">
-                          还没有选择考核模板
+                          按岗位和任职资格等级自动匹配
                         </Badge>
                       )}
                     </div>
@@ -744,7 +724,7 @@ export default function AssessmentScopeSettings() {
             </div>
           ) : (
             <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              当前还没有勾选参与考核的部门。先在下面组织树里勾选要参与考核的部门，再为这些部门选择模板。
+              当前还没有勾选参与考核的部门。先在下面组织树里勾选要参与考核的部门。
             </div>
           )}
         </CardContent>
@@ -754,17 +734,17 @@ export default function AssessmentScopeSettings() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" />
-            参与部门对应考核模板
+            特殊部门模板覆盖（可选）
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm text-muted-foreground">
-            这里不是新建模板的地方，只是为“已选参与考核的部门”指定要使用的模板。模板内容请到上面的“考核模板”页维护。
+            这里不是新建模板的地方。多数部门不用选，系统会按员工岗位和任职资格等级自动匹配；只有确实需要和岗位规则不同的部门，才在这里指定覆盖模板。
           </div>
 
           {participation.mode !== 'include' ? (
             <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              当前是“勾选不参与考核”模式，系统默认其他部门都参与，因此这里不强制逐个选模板。若你想明确指定参与部门和对应模板，请切换到“勾选参与考核”模式。
+              当前是“勾选不参与考核”模式，系统默认其他部门都参与；模板会按岗位和任职资格等级自动匹配，暂不需要逐部门设置。
             </div>
           ) : selectedUnitSummaries.length > 0 ? (
             <div className="space-y-3">
@@ -795,13 +775,13 @@ export default function AssessmentScopeSettings() {
                           onValueChange={(value) => setUnitTemplate(summary.unitKey, value)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="请选择考核模板" />
+                          <SelectValue placeholder="可选：指定覆盖模板" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__inherit__">
                               {inheritedTemplate
                                 ? `继承上级模板：${inheritedTemplate.name}`
-                                : '未单独指定（请选择模板）'}
+                                : '不指定，按岗位/任职资格自动匹配'}
                             </SelectItem>
                             {recommendedTemplates.length > 0 && (
                               <SelectGroup>
@@ -847,7 +827,7 @@ export default function AssessmentScopeSettings() {
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-xs text-amber-700">
-                          这个参与部门还没有选择模板
+                          未指定覆盖模板，将自动匹配
                         </Badge>
                       )}
                     </div>
@@ -857,18 +837,7 @@ export default function AssessmentScopeSettings() {
             </div>
           ) : (
             <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              先在下面组织树里勾选要参与考核的部门，这里才会出现模板选择框。
-            </div>
-          )}
-
-          {missingTemplateUnits.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>
-                  还有 {missingTemplateUnits.length} 个参与考核的部门没有选择模板，当前不能保存。请先到这里选好模板；如果模板本身还没有建好，请切到“考核模板”页先维护。
-                </div>
-              </div>
+              先在下面组织树里勾选要参与考核的部门；如需特殊覆盖模板，这里才会出现选择框。
             </div>
           )}
         </CardContent>

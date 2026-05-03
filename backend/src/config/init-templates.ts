@@ -56,6 +56,348 @@ function registerMetrics(metrics: MetricDef[]) {
   metrics.forEach(m => memoryStore.templateMetrics?.set(m.id, m));
 }
 
+type TemplateLevelKey = 'standard' | 'junior' | 'intermediate' | 'senior';
+
+interface MetricPreset {
+  name: string;
+  code: string;
+  weight: number;
+  description: string;
+  category?: string;
+  type?: string;
+}
+
+interface SupplementalTemplateInput {
+  id: string;
+  name: string;
+  description: string;
+  departmentType: string;
+  positions: string[];
+  metrics: MetricPreset[];
+  levels?: string[];
+  roles?: string[];
+  priority?: number;
+}
+
+interface SupplementalTemplateSetInput {
+  baseId: string;
+  label: string;
+  departmentType: string;
+  positions: Record<TemplateLevelKey, string[]>;
+  metrics: Record<TemplateLevelKey, MetricPreset[]>;
+  descriptions?: Partial<Record<TemplateLevelKey, string>>;
+}
+
+function registerSupplementalTemplate(input: SupplementalTemplateInput) {
+  registerTemplate({
+    id: input.id,
+    name: input.name,
+    description: input.description,
+    department_type: input.departmentType,
+    is_default: false,
+    status: 'active',
+    applicableRoles: input.roles || ['employee'],
+    applicableLevels: input.levels || [],
+    applicablePositions: input.positions,
+    priority: input.priority ?? 50,
+  });
+
+  registerMetrics(input.metrics.map((metric, index) => ({
+    id: `metric-${input.id.replace(/^template-/, '')}-${String(index + 1).padStart(2, '0')}`,
+    template_id: input.id,
+    metric_name: metric.name,
+    metric_code: metric.code,
+    category: metric.category || 'performance',
+    weight: metric.weight,
+    description: metric.description,
+    evaluation_type: metric.type || 'qualitative',
+    sort_order: index + 1,
+  })));
+}
+
+function registerSupplementalTemplateSet(input: SupplementalTemplateSetInput) {
+  const levelLabels: Record<TemplateLevelKey, string> = {
+    standard: '标准',
+    junior: '初级',
+    intermediate: '中级',
+    senior: '高级',
+  };
+  const allPositions = Array.from(new Set(Object.values(input.positions).flat()));
+
+  (Object.keys(levelLabels) as TemplateLevelKey[]).forEach((level) => {
+    registerSupplementalTemplate({
+      id: `template-${input.baseId}-${level}`,
+      name: `${input.label}${levelLabels[level]}模板`,
+      description: input.descriptions?.[level] || `${input.label}${levelLabels[level]}模板：按岗位任职资格匹配员工，覆盖任务完成、质量、协作和成长。`,
+      departmentType: input.departmentType,
+      positions: level === 'standard' ? allPositions : input.positions[level],
+      levels: level === 'standard' ? [] : [level],
+      roles: level === 'senior' ? ['employee', 'manager'] : ['employee'],
+      priority: level === 'standard' ? 45 : 50,
+      metrics: input.metrics[level],
+    });
+  });
+}
+
+const engineeringCoreMetrics: Record<TemplateLevelKey, MetricPreset[]> = {
+  standard: [
+    { name: '任务交付质量', code: 'TASK_DELIVERY_QUALITY', weight: 30, description: '岗位任务按期、按质完成情况', type: 'quantitative' },
+    { name: '专业技术能力', code: 'PROFESSIONAL_SKILL', weight: 25, description: '专业方案、技术判断和问题处理能力' },
+    { name: '问题闭环', code: 'ISSUE_CLOSURE', weight: 20, description: '问题定位、记录、复盘和闭环效率' },
+    { name: '跨部门协作', code: 'CROSS_TEAM_COLLAB', weight: 15, description: '与项目、采购、制造、售后等团队配合情况' },
+    { name: '学习改进', code: 'LEARNING_IMPROVEMENT', weight: 10, description: '岗位技能提升、标准化沉淀和改进建议' },
+  ],
+  junior: [
+    { name: '基础任务完成', code: 'BASIC_TASK_COMPLETION', weight: 30, description: '在指导下完成基础任务的质量和效率', type: 'quantitative' },
+    { name: '工具与规范掌握', code: 'TOOL_STANDARD_MASTERY', weight: 25, description: '岗位工具、流程规范、文档模板掌握情况' },
+    { name: '学习成长', code: 'LEARNING_GROWTH', weight: 25, description: '技能学习、培训吸收、主动请教和复盘' },
+    { name: '执行与反馈', code: 'EXECUTION_FEEDBACK', weight: 10, description: '任务执行、异常反馈及时性' },
+    { name: '工作态度', code: 'WORK_ATTITUDE', weight: 10, description: '责任心、主动性、纪律性' },
+  ],
+  intermediate: [
+    { name: '独立承担能力', code: 'INDEPENDENT_WORK', weight: 30, description: '独立完成岗位模块任务的能力' },
+    { name: '交付质量', code: 'DELIVERY_QUALITY', weight: 25, description: '交付物准确性、稳定性、返工率控制', type: 'quantitative' },
+    { name: '问题解决', code: 'PROBLEM_SOLVING', weight: 20, description: '独立定位和解决项目问题的能力' },
+    { name: '进度达成', code: 'SCHEDULE_ACHIEVEMENT', weight: 15, description: '计划节点达成和风险预警', type: 'quantitative' },
+    { name: '协作沟通', code: 'COLLABORATION', weight: 10, description: '跨岗位沟通和项目配合' },
+  ],
+  senior: [
+    { name: '复杂问题攻关', code: 'COMPLEX_PROBLEM_SOLVING', weight: 30, description: '疑难问题、关键技术、重大异常处理' },
+    { name: '方案与评审质量', code: 'SOLUTION_REVIEW_QUALITY', weight: 25, description: '方案设计、技术评审、风险识别能力' },
+    { name: '标准化沉淀', code: 'STANDARDIZATION', weight: 15, description: '标准流程、案例库、通用模块沉淀' },
+    { name: '指导培养', code: 'MENTORING', weight: 15, description: '指导初中级员工、经验分享' },
+    { name: '项目贡献', code: 'PROJECT_CONTRIBUTION', weight: 15, description: '对项目交付、成本、客户满意度的贡献' },
+  ],
+};
+
+const manufacturingCoreMetrics: Record<TemplateLevelKey, MetricPreset[]> = {
+  standard: [
+    { name: '作业质量', code: 'WORK_QUALITY', weight: 30, description: '工艺执行、一次合格率、返工控制', type: 'quantitative' },
+    { name: '生产效率', code: 'PRODUCTION_EFFICIENCY', weight: 25, description: '计划完成、工时利用、节点达成', type: 'quantitative' },
+    { name: '安全与5S', code: 'SAFETY_5S', weight: 20, description: '安全操作、现场整理、工具物料管理' },
+    { name: '问题反馈', code: 'ISSUE_FEEDBACK', weight: 15, description: '异常反馈、设计问题回传和闭环' },
+    { name: '协作纪律', code: 'COLLAB_DISCIPLINE', weight: 10, description: '配合度、纪律性、服从安排' },
+  ],
+  junior: [
+    { name: '基础作业完成', code: 'BASIC_WORK_COMPLETION', weight: 35, description: '在指导下完成基础作业的质量', type: 'quantitative' },
+    { name: '工艺学习', code: 'PROCESS_LEARNING', weight: 25, description: '图纸、工艺、工具和安全规范学习情况' },
+    { name: '安全执行', code: 'SAFETY_EXECUTION', weight: 20, description: '安全操作、劳保用品、现场规范' },
+    { name: '工作纪律', code: 'WORK_DISCIPLINE', weight: 10, description: '出勤、服从安排、及时反馈' },
+    { name: '工作态度', code: 'WORK_ATTITUDE', weight: 10, description: '主动性、责任心、学习意愿' },
+  ],
+  intermediate: [
+    { name: '独立作业能力', code: 'INDEPENDENT_OPERATION', weight: 30, description: '独立完成岗位任务的熟练度' },
+    { name: '质量控制', code: 'QUALITY_CONTROL', weight: 25, description: '一次合格率、返工率、细节质量', type: 'quantitative' },
+    { name: '效率达成', code: 'EFFICIENCY_TARGET', weight: 20, description: '工时、产出、节点达成', type: 'quantitative' },
+    { name: '异常处理', code: 'EXCEPTION_HANDLING', weight: 15, description: '问题识别、上报、协助解决' },
+    { name: '安全5S', code: 'SAFETY_5S', weight: 10, description: '安全生产和现场管理' },
+  ],
+  senior: [
+    { name: '复杂任务攻关', code: 'COMPLEX_TASK', weight: 25, description: '复杂设备、疑难工序、关键节点攻关' },
+    { name: '班组质量效率', code: 'TEAM_QUALITY_EFFICIENCY', weight: 25, description: '带动班组质量和效率提升', type: 'quantitative' },
+    { name: '工艺改进', code: 'PROCESS_IMPROVEMENT', weight: 20, description: '工艺优化、工装改善、降本增效' },
+    { name: '安全管理', code: 'SAFETY_MANAGEMENT', weight: 15, description: '安全培训、隐患排查和现场管理' },
+    { name: '带教培养', code: 'MENTORING', weight: 15, description: '带教新人、技能传承' },
+  ],
+};
+
+const supportCoreMetrics: Record<TemplateLevelKey, MetricPreset[]> = {
+  standard: [
+    { name: '服务交付质量', code: 'SERVICE_DELIVERY_QUALITY', weight: 35, description: '本岗位服务输出的准确性、及时性和满意度' },
+    { name: '流程合规', code: 'PROCESS_COMPLIANCE', weight: 20, description: '制度流程、单据资料和审批合规' },
+    { name: '响应效率', code: 'RESPONSE_EFFICIENCY', weight: 20, description: '内部客户响应和问题处理时效', type: 'quantitative' },
+    { name: '协同支持', code: 'COLLAB_SUPPORT', weight: 15, description: '跨部门支持、信息同步和资源协调' },
+    { name: '改进建议', code: 'IMPROVEMENT', weight: 10, description: '流程优化、降本增效、合理化建议' },
+  ],
+  junior: [
+    { name: '基础事务准确性', code: 'BASIC_ACCURACY', weight: 35, description: '基础事务、台账、单据处理准确性' },
+    { name: '响应及时性', code: 'RESPONSE_TIMELINESS', weight: 25, description: '任务响应、沟通反馈和交付及时性', type: 'quantitative' },
+    { name: '流程学习', code: 'PROCESS_LEARNING', weight: 20, description: '制度流程、系统工具学习掌握情况' },
+    { name: '服务态度', code: 'SERVICE_ATTITUDE', weight: 10, description: '内部服务意识、沟通态度' },
+    { name: '执行纪律', code: 'EXECUTION_DISCIPLINE', weight: 10, description: '执行力、责任心、纪律性' },
+  ],
+  intermediate: [
+    { name: '独立处理能力', code: 'INDEPENDENT_HANDLING', weight: 30, description: '独立处理岗位事务和异常问题' },
+    { name: '交付质量', code: 'DELIVERY_QUALITY', weight: 25, description: '数据、单据、服务输出准确性' },
+    { name: '问题闭环', code: 'ISSUE_CLOSURE', weight: 20, description: '跨部门问题跟进和闭环' },
+    { name: '效率改进', code: 'EFFICIENCY_IMPROVEMENT', weight: 15, description: '流程优化、效率提升' },
+    { name: '协作支持', code: 'COLLAB_SUPPORT', weight: 10, description: '业务部门支持和资源协调' },
+  ],
+  senior: [
+    { name: '专业方案能力', code: 'PROFESSIONAL_SOLUTION', weight: 30, description: '复杂事项方案设计和专业判断' },
+    { name: '体系/流程建设', code: 'SYSTEM_PROCESS_BUILD', weight: 25, description: '制度、流程、标准、风控建设' },
+    { name: '业务支撑贡献', code: 'BUSINESS_SUPPORT', weight: 20, description: '对业务部门、项目交付和经营结果的支持' },
+    { name: '团队协同与带教', code: 'TEAM_COLLAB_MENTORING', weight: 15, description: '跨部门协同和新人带教' },
+    { name: '持续改进', code: 'CONTINUOUS_IMPROVEMENT', weight: 10, description: '降本增效、数字化、流程优化' },
+  ],
+};
+
+function registerMissingQualificationTemplates() {
+  registerSupplementalTemplateSet({
+    baseId: 'hardware',
+    label: '硬件工程师',
+    departmentType: 'engineering',
+    positions: {
+      standard: ['硬件工程师', '电子工程师', '电路工程师'],
+      junior: ['助理硬件工程师', '初级硬件工程师', '硬件助理工程师'],
+      intermediate: ['硬件工程师', '电子工程师', '电路工程师'],
+      senior: ['高级硬件工程师', '硬件专家', '硬件主管'],
+    },
+    metrics: engineeringCoreMetrics,
+    descriptions: {
+      standard: '硬件工程师标准模板：硬件设计质量30%+选型/BOM20%+验证调试20%+问题闭环20%+协作10%',
+      junior: '硬件初级工程师：基础设计与测试35%+工具规范25%+学习成长25%+执行反馈15%',
+      intermediate: '硬件中级工程师：独立设计30%+交付质量25%+问题解决20%+进度协作25%',
+      senior: '硬件高级工程师：复杂问题攻关30%+方案评审25%+标准化15%+指导培养15%+项目贡献15%',
+    },
+  });
+
+  registerSupplementalTemplateSet({
+    baseId: 'presales',
+    label: '售前技术工程师',
+    departmentType: 'engineering',
+    positions: {
+      standard: ['售前技术工程师', '方案工程师', '应用工程师'],
+      junior: ['助理售前工程师', '初级售前技术工程师', '售前助理'],
+      intermediate: ['售前技术工程师', '方案工程师', '应用工程师'],
+      senior: ['高级售前技术工程师', '售前专家', '方案主管'],
+    },
+    metrics: engineeringCoreMetrics,
+    descriptions: {
+      standard: '售前技术工程师标准模板：需求澄清25%+方案质量30%+成本交期评估20%+客户沟通15%+协同10%',
+      junior: '售前初级工程师：资料整理和基础方案35%+产品学习25%+响应执行25%+工作态度15%',
+      intermediate: '售前中级工程师：独立方案30%+评估准确25%+问题解决20%+客户协作25%',
+      senior: '售前高级工程师：复杂方案30%+技术评审25%+标准化沉淀15%+指导培养15%+重大项目贡献15%',
+    },
+  });
+
+  registerSupplementalTemplate({
+    id: 'template-debug-junior-001',
+    name: '调试初级工程师考核模板',
+    description: '调试初级工程师：测试执行30%+记录反馈20%+安全规范20%+学习成长20%+态度10%',
+    departmentType: 'engineering',
+    levels: ['junior'],
+    positions: ['助理调试工程师', '初级调试工程师', '调试助理', '测试助理'],
+    metrics: engineeringCoreMetrics.junior,
+  });
+
+  registerSupplementalTemplate({
+    id: 'template-pm-junior-001',
+    name: '项目工程师初级模板',
+    description: '项目初级岗位：计划跟踪30%+资料整理20%+会议纪要15%+风险上报20%+协作执行15%',
+    departmentType: 'engineering',
+    levels: ['junior'],
+    roles: ['employee'],
+    positions: ['助理项目工程师', '初级项目工程师', '项目助理', '项目专员'],
+    metrics: engineeringCoreMetrics.junior,
+  });
+
+  registerSupplementalTemplateSet({
+    baseId: 'wiring',
+    label: '接线组',
+    departmentType: 'manufacturing',
+    positions: {
+      standard: ['接线工', '配线工', '布线工'],
+      junior: ['初级接线工', '接线学徒', '配线学徒'],
+      intermediate: ['接线工', '中级接线工', '配线工'],
+      senior: ['高级接线工', '接线组长', '配线组长'],
+    },
+    metrics: manufacturingCoreMetrics,
+    descriptions: {
+      standard: '接线组标准模板：接线质量30%+图纸执行20%+效率20%+安全5S20%+问题反馈10%',
+    },
+  });
+
+  registerSupplementalTemplateSet({
+    baseId: 'electrician',
+    label: '电工组',
+    departmentType: 'manufacturing',
+    positions: {
+      standard: ['电工', '电气装配工', '电气安装工'],
+      junior: ['初级电工', '电工学徒', '助理电工'],
+      intermediate: ['电工', '中级电工', '电气装配工'],
+      senior: ['高级电工', '电工组长', '电气装配组长'],
+    },
+    metrics: manufacturingCoreMetrics,
+    descriptions: {
+      standard: '电工组标准模板：电气装配质量30%+安全规范20%+图纸执行20%+效率20%+协作10%',
+    },
+  });
+
+  registerSupplementalTemplate({
+    id: 'template-purch-junior-001',
+    name: '采购初级模板',
+    description: '采购初级：询价比价25%+交期跟催25%+单据准确20%+供应商沟通15%+学习执行15%',
+    departmentType: 'support',
+    levels: ['junior'],
+    positions: ['采购助理', '初级采购', '采购专员'],
+    metrics: supportCoreMetrics.junior,
+  });
+  registerSupplementalTemplate({
+    id: 'template-purch-inter-001',
+    name: '采购中级模板',
+    description: '采购中级：供应商管理30%+成本控制25%+交期达成20%+异常闭环15%+协作10%',
+    departmentType: 'support',
+    levels: ['intermediate'],
+    positions: ['采购工程师', '采购专员', '中级采购'],
+    metrics: supportCoreMetrics.intermediate,
+  });
+
+  registerSupplementalTemplate({
+    id: 'template-qa-junior-001',
+    name: '质量初级模板',
+    description: '质量初级：检验执行35%+记录准确25%+标准学习20%+问题反馈10%+态度10%',
+    departmentType: 'support',
+    levels: ['junior'],
+    positions: ['质检员', '初级质量工程师', '质量助理', '检验员'],
+    metrics: supportCoreMetrics.junior,
+  });
+  registerSupplementalTemplate({
+    id: 'template-qa-inter-001',
+    name: '质量中级模板',
+    description: '质量中级：独立检验30%+问题分析25%+异常闭环20%+质量改进15%+协作10%',
+    departmentType: 'support',
+    levels: ['intermediate'],
+    positions: ['质量工程师', '品质工程师', '检验工程师', '中级质量工程师'],
+    metrics: supportCoreMetrics.intermediate,
+  });
+
+  registerSupplementalTemplate({
+    id: 'template-service-junior-001',
+    name: '售后初级模板',
+    description: '售后初级：服务执行30%+记录反馈25%+客户沟通20%+学习成长15%+安全10%',
+    departmentType: 'support',
+    levels: ['junior'],
+    positions: ['售后助理', '初级售后工程师', '客服专员'],
+    metrics: supportCoreMetrics.junior,
+  });
+  registerSupplementalTemplate({
+    id: 'template-service-inter-001',
+    name: '售后中级模板',
+    description: '售后中级：独立服务30%+一次解决率25%+客户沟通20%+问题闭环15%+协作10%',
+    departmentType: 'support',
+    levels: ['intermediate'],
+    positions: ['售后工程师', '客服工程师', '中级售后工程师'],
+    metrics: supportCoreMetrics.intermediate,
+  });
+
+  registerSupplementalTemplateSet({
+    baseId: 'hraf',
+    label: '人事行政财务支持',
+    departmentType: 'support',
+    positions: {
+      standard: ['人事专员', '行政专员', '财务专员', '会计', '出纳'],
+      junior: ['人事助理', '行政助理', '财务助理', '初级会计'],
+      intermediate: ['人事专员', '行政专员', '财务专员', '会计'],
+      senior: ['高级人事专员', '行政主管', '财务主管', '高级会计'],
+    },
+    metrics: supportCoreMetrics,
+    descriptions: {
+      standard: '人事行政财务支持标准模板：服务质量35%+流程合规20%+响应效率20%+协同15%+改进10%',
+    },
+  });
+}
+
 async function syncTemplatesToDatabase() {
   if (USE_MEMORY_DB) return;
 
@@ -82,6 +424,22 @@ async function syncTemplatesToDatabase() {
   const castFor = (columnName: string) => columnTypeMap.get(columnName) === 'jsonb' ? '::jsonb' : '::text[]';
   const valueFor = (columnName: string, value: string[]) => (
     columnTypeMap.get(columnName) === 'jsonb' ? JSON.stringify(value || []) : (value || [])
+  );
+  const legacyTemplateIds = [
+    'template-engineering-001',
+    'template-manufacturing-001',
+    'template-support-001',
+    'template-hr-admin-finance-standard',
+    'template-hr-admin-finance-junior',
+    'template-hr-admin-finance-intermediate',
+    'template-hr-admin-finance-senior',
+  ];
+
+  await query(
+    `UPDATE assessment_templates
+     SET status = 'archived', updated_at = CURRENT_TIMESTAMP
+     WHERE id = ANY($1::text[])`,
+    [legacyTemplateIds]
   );
 
   for (const t of templates) {
@@ -150,6 +508,13 @@ async function syncTemplatesToDatabase() {
       ]
     );
   }
+
+  await query(
+    `UPDATE assessment_templates
+     SET status = 'archived', updated_at = CURRENT_TIMESTAMP
+     WHERE id = ANY($1::text[])`,
+    [legacyTemplateIds]
+  );
 
   logger.info(`✅ 已同步 ${templates.length} 个行业考核模板、${metrics.length} 个指标到本地 PostgreSQL`);
 }
@@ -708,6 +1073,8 @@ export async function initializeDefaultTemplates() {
     { id: 'metric-sales-mgr-05', template_id: 'template-sales-mgr-001', metric_name: '客户资源管理', metric_code: 'CLIENT_RESOURCE_MGMT', category: 'performance', weight: 10.00, description: '大客户维护、客户分配公平性', evaluation_type: 'qualitative', sort_order: 5 },
     { id: 'metric-sales-mgr-06', template_id: 'template-sales-mgr-001', metric_name: '市场策略规划', metric_code: 'MARKET_STRATEGY', category: 'innovation', weight: 15.00, description: '销售策略制定、市场开拓规划', evaluation_type: 'qualitative', sort_order: 6 },
   ]);
+
+  registerMissingQualificationTemplates();
 
   // 统计
   const templateCount = memoryStore.assessmentTemplates?.size || 0;

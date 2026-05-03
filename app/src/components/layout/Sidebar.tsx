@@ -6,9 +6,9 @@ import {
   LogOut,
   Award,
   FileText,
-  Users,
   Database,
-  Zap
+  Zap,
+  ClipboardList
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -39,7 +39,7 @@ const hrAdminBaseNavItems = [
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
-  { path: '/admin/user-management', label: '用户管理', icon: Users },
+  { path: '/hr/logs', label: '日志管理', icon: ClipboardList },
 ];
 
 const roleLabelMap: Record<string, string> = {
@@ -83,9 +83,11 @@ export function Sidebar({ role }: SidebarProps) {
     ? gmNavItems
     : canManageTeam
       ? [
-          hrAdminBaseNavItems[0],
-          { path: '/manager/dashboard', label: '部门评分', icon: Award },
-          ...hrAdminBaseNavItems.slice(1),
+          { path: '/hr/dashboard', label: '管理员工作台', icon: LayoutDashboard },
+          { path: '/manager/dashboard', label: '部门经理工作台', icon: Award },
+          { path: '/manager/analytics', label: '部门绩效看板', icon: BarChart3 },
+          { ...hrAdminBaseNavItems[1], label: '全公司绩效看板' },
+          ...hrAdminBaseNavItems.slice(2),
         ]
       : hrAdminBaseNavItems;
   const roleLabels = getDisplayRoleLabels(user, role).filter(Boolean);

@@ -31,10 +31,6 @@ async function buildEffectiveRoleInfo(employee: any) {
   const roles = new Set<string>();
   roles.add(employee.role);
 
-  // HR 与管理员合并为同一类后台能力，前端以“HR/管理员”展示
-  if (employee.role === 'admin') roles.add('hr');
-  if (employee.role === 'hr') roles.add('admin');
-
   const subordinates = await EmployeeModel.findTeamForManager(employee.id);
   const hasActiveSubordinates = subordinates.length > 0;
   const canManageTeam = employee.role !== 'gm' && (hasActiveSubordinates || employee.role === 'manager');
@@ -45,7 +41,7 @@ async function buildEffectiveRoleInfo(employee: any) {
     roleLabels: buildRoleLabels(Array.from(roles)),
     capabilities: {
       canManageTeam,
-      canManageSystem: roles.has('admin') || roles.has('hr'),
+      canManageSystem: roles.has('admin'),
     },
   };
 }
@@ -325,10 +321,11 @@ export const authController = {
       });
     }
 
-    const { employeeId, startDate, endDate, success, page = 1, limit = 50 } = req.query as any;
+    const { employeeId, keyword, startDate, endDate, success, page = 1, limit = 50 } = req.query as any;
 
     const result = await LoginLogModel.find({
       employeeId,
+      keyword,
       startDate,
       endDate,
       success: success !== undefined ? success === 'true' : undefined,

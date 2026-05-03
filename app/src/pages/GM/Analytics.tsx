@@ -16,15 +16,12 @@ import { TalentTable } from '@/components/stats/TalentTable';
 import { TalentGrid } from '@/components/stats/TalentGrid';
 import { 
   Users, 
-  TrendingUp, 
-  TrendingDown,
   CheckCircle2, 
   BarChart3,
   Calendar,
   AlertTriangle,
   Sparkles,
   RefreshCw,
-  Award,
   Target,
   Tags
 } from 'lucide-react';
@@ -170,15 +167,6 @@ export function GMAnalytics() {
     const currentAvg = currentMonthRecords.length > 0
       ? currentMonthRecords.reduce((sum, r) => sum + r.totalScore, 0) / currentMonthRecords.length
       : 0;
-    const previousAvg = previousMonthRecords.length > 0
-      ? previousMonthRecords.reduce((sum, r) => sum + r.totalScore, 0) / previousMonthRecords.length
-      : currentAvg;
-    
-    // 优秀率（得分>=1.2）
-    const excellentCount = currentMonthRecords.filter(r => r.totalScore >= 1.2).length;
-    const excellentRate = currentMonthRecords.length > 0 
-      ? (excellentCount / currentMonthRecords.length * 100)
-      : 0;
     
     // 需要被考评的人员：员工 + 部门经理（排除总经理和HR）
     const assessableEmployees = employees.filter(e => e.role === 'employee' || e.role === 'manager');
@@ -187,9 +175,6 @@ export function GMAnalytics() {
       totalEmployees: assessableEmployees.length,
       currentCompleted: currentMonthRecords.filter(r => r.status === 'completed' || r.status === 'scored').length,
       currentAvg,
-      previousAvg,
-      change: currentAvg - previousAvg,
-      excellentRate
     };
   }, [realRecords, employees, currentMonth]);
 
@@ -428,24 +413,6 @@ export function GMAnalytics() {
       }
     }
     
-    // 优秀率过低
-    if (stats.excellentRate < 10 && currentMonthRecords.length >= 5) {
-      result.push({
-        type: 'low_excellence',
-        message: `本月优秀率仅 ${stats.excellentRate.toFixed(1)}%，建议关注团队激励`,
-        severity: 'warning'
-      });
-    }
-    
-    // 环比下降
-    if (stats.change < -0.1) {
-      result.push({
-        type: 'declining',
-        message: `本月均分环比下降 ${Math.abs(stats.change).toFixed(2)}，建议排查原因`,
-        severity: 'error'
-      });
-    }
-    
     return result;
   }, [realRecords, departmentData, stats, currentMonth]);
 
@@ -516,8 +483,8 @@ export function GMAnalytics() {
 
       {realRecords.length > 0 && (
         <>
-          {/* Stats Cards - 5 columns */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
@@ -543,64 +510,6 @@ export function GMAnalytics() {
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">公司均分</p>
-                    <p className="text-2xl font-bold mt-1">{stats.currentAvg.toFixed(2)}</p>
-                    <p className="text-xs text-gray-400 mt-1">本月平均</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <BarChart3 className="w-5 h-5 text-purple-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">环比变化</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className={`text-2xl font-bold ${stats.change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {stats.change >= 0 ? '+' : ''}{stats.change.toFixed(2)}
-                      </p>
-                      {stats.change >= 0 ? (
-                        <TrendingUp className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <TrendingDown className="w-5 h-5 text-red-600" />
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">对比上月</p>
-                  </div>
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stats.change >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                    {stats.change >= 0 ? (
-                      <TrendingUp className="w-5 h-5 text-green-600" />
-                    ) : (
-                      <TrendingDown className="w-5 h-5 text-red-600" />
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">优秀率</p>
-                    <p className="text-2xl font-bold mt-1">{stats.excellentRate.toFixed(1)}%</p>
-                    <p className="text-xs text-gray-400 mt-1">得分≥1.2</p>
-                  </div>
-                  <div className="w-10 h-10 rounded-lg bg-yellow-50 flex items-center justify-center">
-                    <Award className="w-5 h-5 text-yellow-600" />
                   </div>
                 </div>
               </CardContent>

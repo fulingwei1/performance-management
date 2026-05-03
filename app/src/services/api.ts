@@ -891,6 +891,31 @@ const buildQueryString = (params?: Record<string, QueryValue>) => {
   return search ? `?${search}` : '';
 };
 
+// 日志管理 API
+export const logApi = {
+  getLoginLogs: (params?: {
+    keyword?: string;
+    employeeId?: string;
+    startDate?: string;
+    endDate?: string;
+    success?: boolean;
+    page?: number;
+    limit?: number;
+  }) => request(`/auth/login-logs${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+
+  getAuditLogs: (params?: {
+    user_id?: string;
+    action?: string;
+    module?: string;
+    target_type?: string;
+    result?: string;
+    start_date?: string;
+    end_date?: string;
+    page?: number;
+    limit?: number;
+  }) => request(`/audit-logs${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+};
+
 // 考核结果发布相关API
 export const assessmentPublicationApi = {
   // 发布某月考核结果（HR/Admin）
@@ -956,7 +981,8 @@ export default {
   monthlyAssessment: monthlyAssessmentApi,
   assessmentPublication: assessmentPublicationApi,
   export: exportApi,
-  automation: automationApi
+  automation: automationApi,
+  log: logApi
 };
 
 // 待办事项API
