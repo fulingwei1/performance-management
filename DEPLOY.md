@@ -25,6 +25,22 @@ cd performance-management
 echo "KIMI_API_KEY=your_kimi_api_key_here" > .env
 ```
 
+如果需要和薪资系统打通，必须让绩效系统和薪资系统使用同一个推送 token。这个 token 不是薪资系统自动生成的，而是部署时统一生成并写入两个系统的 `.env`：
+
+```bash
+# 在服务器上执行；首次会自动生成，后续会复用现有 token
+bash /opt/performance-management/scripts/sync-salary-token.sh
+
+# 如需轮换新 token
+bash /opt/performance-management/scripts/sync-salary-token.sh --rotate
+```
+
+同步后两个文件都会写入 `SALARY_SYSTEM_PUSH_TOKEN`：
+- `/opt/performance-management/.env`
+- `/opt/salary/.env`
+
+绩效系统调用薪资系统时会通过 `X-Performance-Push-Token` 请求头携带该 token；薪资系统只校验是否一致，不会自行生成 token。
+
 ### 3. 启动服务
 
 ```bash
