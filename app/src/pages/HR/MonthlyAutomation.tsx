@@ -272,9 +272,9 @@ export default function MonthlyAutomation() {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <ActionCard
-            title="补跑任务生成"
-            description={`当后台自动生成漏跑或需要重建时，再手动为 ${selectedMonth} 执行一次任务生成。`}
-            buttonLabel="生成任务"
+            title="补生成缺失任务"
+            description={`当后台自动生成漏跑时，为 ${selectedMonth} 补生成缺失任务；已有任务会跳过，不会删除或重建。`}
+            buttonLabel="补生成缺失任务"
             buttonClassName="bg-blue-600 hover:bg-blue-700"
             disabled={loading}
             icon={<Play className="w-4 h-4" />}
@@ -283,17 +283,21 @@ export default function MonthlyAutomation() {
 
           <ActionCard
             title="补发催办提醒"
-            description="当后台自动催办没有按预期执行时，可在这里手动补发一次提醒。"
-            buttonLabel="立即催办"
+            description={`当后台自动催办没有按预期执行时，可为 ${selectedMonth} 强制补发一次；如果今天已发过，会再次发出。`}
+            buttonLabel="强制补发催办"
             buttonClassName="bg-amber-600 hover:bg-amber-700"
             disabled={loading}
             icon={<Bell className="w-4 h-4" />}
-            onClick={() => runAction('check-reminders')}
+            onClick={() => {
+              if (window.confirm(`确认要为 ${selectedMonth} 强制补发催办吗？如果今天已经催办过，员工和经理会再收到一次。`)) {
+                runAction('check-reminders?force=true', { month: selectedMonth, force: true });
+              }
+            }}
           />
 
           <ActionCard
             title="补跑结果发布"
-            description="当后台自动发布或归档没执行成功时，可在这里手动补跑发布和归档。"
+            description={`8-10号自动发布/归档漏跑，或员工补齐后需要立即发布时，可为 ${selectedMonth} 补跑发布和归档。`}
             buttonLabel="补跑发布+归档"
             buttonClassName="bg-green-600 hover:bg-green-700"
             disabled={loading}

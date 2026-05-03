@@ -346,11 +346,14 @@ export class SalaryIntegrationService {
     if (!salaryBaseUrl) {
       throw new Error('未配置薪资系统地址 SALARY_SYSTEM_BASE_URL');
     }
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (pushToken) {
-      headers['X-Performance-Push-Token'] = pushToken;
+    if (!pushToken) {
+      throw new Error('未配置薪资系统推送 token SALARY_SYSTEM_PUSH_TOKEN，不能调用薪资系统绩效接口');
     }
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-Performance-Push-Token': pushToken,
+    };
 
     return axios.post(`${salaryBaseUrl}${path}`, payload, {
       headers,

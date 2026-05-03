@@ -68,8 +68,8 @@ export class SchedulerService {
       }
     });
 
-    // 每月 8 日凌晨 3:00 自动发布（兜底）
-    cron.schedule('0 3 8 * *', async () => {
+    // 每月 8-10 日凌晨 3:00 自动发布（兜底重试）
+    cron.schedule('0 3 8-10 * *', async () => {
       logger.info('[Scheduler] 检查自动发布...');
       try {
         const result = await this.autoPublishPreviousMonth();
@@ -217,7 +217,7 @@ export class SchedulerService {
    * 2. 催经理打分（submitted → scored）
    * 3. 统计部门完成率，推送到企业微信
    */
-  static async dailyReminderWorkflow(forceToday: boolean = false) {
+  static async dailyReminderWorkflow(forceToday: boolean = false, requestedTargetMonth?: string) {
     try {
       const now = new Date();
       const dayOfMonth = now.getDate();
@@ -228,12 +228,16 @@ export class SchedulerService {
         return;
       }
 
-      // 计算上月月份
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const targetMonth = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth() + 1).padStart(2, '0')}`;
-      const deadlineDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-07`;
-      const daysLeft = 7 - dayOfMonth;
-      const isLastDay = dayOfMonth === 6;
+      // 计算目标绩效月份；手动补发可指定月份，定时任务默认催办上月。
+      const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+      const targetMonth = requestedTargetMonth && monthPattern.test(requestedTargetMonth)
+        ? requestedTargetMonth
+        : `${new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear()}-${String(new Date(now.getFullYear(), now.getMonth() - 1, 1).getMonth() + 1).padStart(2, '0')}`;
+      const [targetYearText, targetMonthText] = targetMonth.split('-');
+      const deadline = new Date(Number(targetYearText), Number(targetMonthText), 7);
+      const deadlineDate = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}`;
+      const daysLeft = Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
+      const isLastDay = daysLeft <= 1;
 
       logger.info(`[Scheduler] 催办 ${targetMonth}，今天是${dayOfMonth}号，距截止还有${daysLeft}天`);
 
