@@ -228,13 +228,14 @@ export const automationController = {
     }
 
     const startedAt = Date.now();
-    await SchedulerService.dailyReminderWorkflow(force || Boolean(month), month);
+    const result = await SchedulerService.dailyReminderWorkflow(force || Boolean(month), month);
     await SchedulerService.checkOverdueTodos();
-    await writeAutomationLog('send_reminders', month, 'success', { month, force }, Date.now() - startedAt);
 
     res.json({
       success: true,
-      message: month ? `${month} 催办检查完成` : '催办检查完成'
+      message: month ? `${month} 催办检查完成` : '催办检查完成',
+      data: result,
+      durationMs: Date.now() - startedAt,
     });
   }),
 

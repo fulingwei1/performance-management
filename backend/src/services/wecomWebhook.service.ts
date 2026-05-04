@@ -109,6 +109,7 @@ export interface ReminderParams {
   deadlineDate: string;
   pendingCount: number;
   employeeNames: string[];
+  operationGuide?: string;
 }
 
 export interface OverdueParams {
@@ -123,6 +124,7 @@ export interface TaskGeneratedParams {
   month: string;
   totalCount: number;
   dueDate: string;
+  operationGuide?: string;
 }
 
 export interface ResultPublishedParams {
@@ -207,7 +209,7 @@ function buildLoginInstructions(): string[] {
 // ---- 对外服务类 ----
 export class WecomWebhookService {
   private static buildReminderMarkdown(params: ReminderParams): string {
-    const { cycleName, taskType, daysLeft, deadlineDate, pendingCount, employeeNames } = params;
+    const { cycleName, taskType, daysLeft, deadlineDate, pendingCount, employeeNames, operationGuide } = params;
     const urgency = daysLeft === 1 ? '🔴 **最后一天**' : daysLeft <= 3 ? '🟠 **即将截止**' : '🟡 温馨提醒';
     const names = employeeNames.length <= 20
       ? employeeNames.join('、')
@@ -224,11 +226,11 @@ export class WecomWebhookService {
       `未完成人员：${names}`,
       '',
       ...buildLoginInstructions(),
-      '请及时登录系统完成待办任务。',
+      operationGuide || '请及时登录系统完成待办任务。',
     ].join('\n');
   }
 
-  /** 发送催办提醒（默认推送给全员，可指定个人或逗号分隔用户） */
+  /** 发送催办提醒（必须传入精准接收人；仅兜底兼容时才使用 @all） */
   static async sendReminder(params: ReminderParams, touser: string = '@all'): Promise<boolean> {
     return sendAppMessage(touser, this.buildReminderMarkdown(params));
   }
@@ -257,8 +259,8 @@ export class WecomWebhookService {
   }
 
   /** 发送月度任务生成通知 */
-  static async sendTaskGenerated(params: TaskGeneratedParams): Promise<boolean> {
-    const { month, totalCount, dueDate } = params;
+  static async sendTaskGenerated(params: TaskGeneratedParams, touser: string = '@all'): Promise<boolean> {
+    const { month, totalCount, dueDate, operationGuide } = params;
     const md = [
       '## ✅ 月度绩效任务已生成',
       `> 考核月份：**${month}**`,
@@ -266,10 +268,10 @@ export class WecomWebhookService {
       `> 截止日期：**${dueDate}**`,
       '',
       ...buildLoginInstructions(),
-      '请各位员工及时登录系统完成工作总结填写。',
+      operationGuide || '请各位员工及时登录系统完成工作总结填写。',
     ].join('\n');
 
-    return sendAppMessage('@all', md);
+    return sendAppMessage(touser, md);
   }
 
   /** 发送结果发布通知 */
