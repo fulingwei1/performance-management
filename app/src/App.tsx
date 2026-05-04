@@ -13,7 +13,6 @@ const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) =
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
 const EmployeePerformanceHistory = lazy(() => import('@/pages/Manager/EmployeePerformanceHistory').then((module) => ({ default: module.EmployeePerformanceHistory })));
 const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => ({ default: module.TeamList })));
-const GMDashboard = lazy(() => import('@/pages/GM/Dashboard').then((module) => ({ default: module.GMDashboard })));
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
@@ -25,7 +24,7 @@ const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ d
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
   manager: '/manager/dashboard',
-  gm: '/gm/dashboard',
+  gm: '/gm/analytics',
   hr: '/hr/dashboard',
   admin: '/hr/dashboard',
 };
@@ -215,10 +214,10 @@ function App() {
 
         {/* GM routes */}
         <Route element={<ProtectedLayout allowedRoles={['gm']} />}>
-          <Route path="/gm/dashboard" element={<GMDashboard />} />
-          <Route path="/gm/scoring" element={<Navigate to="/gm/dashboard" replace />} />
+          <Route path="/gm/dashboard" element={<Navigate to="/gm/analytics" replace />} />
+          <Route path="/gm/scoring" element={<Navigate to="/gm/analytics" replace />} />
           <Route path="/gm/analytics" element={<GMAnalytics />} />
-          <Route path="/gm/data-export" element={<Navigate to="/gm/dashboard" replace />} />
+          <Route path="/gm/data-export" element={<Navigate to="/gm/analytics" replace />} />
         </Route>
 
         {/* HR routes */}

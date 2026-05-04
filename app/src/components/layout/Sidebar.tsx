@@ -28,7 +28,6 @@ const managerNavItems = [
 ];
 
 const gmNavItems = [
-  { path: '/gm/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
 ];
 

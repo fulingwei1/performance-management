@@ -33,7 +33,7 @@ export function Login() {
       const redirectMap: Record<string, string> = {
         employee: '/employee/dashboard',
         manager: '/manager/dashboard',
-        gm: '/gm/dashboard',
+        gm: '/gm/analytics',
         hr: '/hr/dashboard',
         admin: '/admin/dashboard',
       };

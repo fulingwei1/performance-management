@@ -1,4 +1,4 @@
-import type { MonthlyTask, TemporaryWork, TalentDevelopment, GMManagerScore, QuarterlySummary } from '@/types';
+import type { MonthlyTask, TemporaryWork, TalentDevelopment, QuarterlySummary } from '@/types';
 import { quarterlySummaryApi } from '@/services/api';
 
 const generateId = () => `id-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -47,24 +47,6 @@ export const createTaskActions = (set: any, get: any) => ({
     } else {
       set((state: any) => ({ talentDevelopments: [...state.talentDevelopments, { id: generateId(), ...data }] }));
     }
-  },
-
-  submitGMScore: (data: Omit<GMManagerScore, 'id' | 'totalScore' | 'rank' | 'createdAt' | 'updatedAt'>) => {
-    const totalScore = data.monthlyTaskCompletion * 0.4 + data.temporaryWorkCompletion * 0.25 + data.workload * 0.2 + data.talentDevelopment * 0.15;
-    const existingScores = get().gmScores.filter((s: GMManagerScore) => s.quarter === data.quarter);
-    const sortedScores = [...existingScores, { totalScore } as GMManagerScore].sort((a, b) => b.totalScore - a.totalScore);
-    const rank = sortedScores.findIndex(s => s.totalScore === totalScore) + 1;
-    const newScore: GMManagerScore = {
-      id: generateId(), ...data, totalScore: parseFloat(totalScore.toFixed(2)), rank,
-      status: 'completed', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-    };
-    set((state: any) => ({ gmScores: [...state.gmScores, newScore] }));
-  },
-
-  updateGMScore: (id: string, updates: Partial<GMManagerScore>) => {
-    set((state: any) => ({
-      gmScores: state.gmScores.map((score: GMManagerScore) => score.id === id ? { ...score, ...updates, updatedAt: new Date().toISOString() } : score)
-    }));
   },
 
   saveQuarterlySummary: async (data: Omit<QuarterlySummary, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -128,23 +110,4 @@ export const createTaskActions = (set: any, get: any) => ({
     });
   },
 
-  generateGMTasks: (quarter: string) => {
-    const employeesList = get().employeesList || [];
-    const managers = employeesList.filter((e: any) => e.role === 'manager');
-    
-    let addedCount = 0;
-    managers.forEach((manager: any) => {
-      if (!get().gmScores.find((s: GMManagerScore) => s.managerId === manager.id && s.quarter === quarter)) {
-        set((state: any) => ({
-          gmScores: [...state.gmScores, {
-            id: generateId(), managerId: manager.id, managerName: manager.name, quarter,
-            monthlyTaskCompletion: 0, temporaryWorkCompletion: 0, workload: 0, talentDevelopment: 0,
-            totalScore: 0, gmComment: '', rank: 0, status: 'pending',
-            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
-          }]
-        }));
-        addedCount++;
-      }
-    });
-  },
 });

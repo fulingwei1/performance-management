@@ -122,39 +122,6 @@ export interface TalentDevelopment {
   notes: string;
 }
 
-// 总经理对部门经理的评分
-export interface GMManagerScore {
-  id: string;
-  managerId: string;
-  managerName: string;
-  quarter: string;
-  
-  // 年度经营计划月度任务完成情况 (40%)
-  monthlyTaskCompletion: number;
-  
-  // 临时工作完成情况 (25%)
-  temporaryWorkCompletion: number;
-  
-  // 工作量大小 (20%)
-  workload: number;
-  
-  // 部门人才培养 (15%)
-  talentDevelopment: number;
-  
-  // 总得分
-  totalScore: number;
-  
-  // 评价
-  gmComment: string;
-  
-  // 排名
-  rank: number;
-  
-  status: 'pending' | 'scored' | 'completed';
-  createdAt: string;
-  updatedAt: string;
-}
-
 // 经理季度工作总结
 export interface QuarterlySummary {
   id: string;

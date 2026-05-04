@@ -5,7 +5,6 @@ import type {
   MonthlyTask,
   TemporaryWork,
   TalentDevelopment,
-  GMManagerScore,
   QuarterlySummary,
   PerformanceRecord,
   ReportData
@@ -19,7 +18,6 @@ interface HRState {
   monthlyTasks: MonthlyTask[];
   temporaryWorks: TemporaryWork[];
   talentDevelopments: TalentDevelopment[];
-  gmScores: GMManagerScore[];
   quarterlySummaries: QuarterlySummary[];
   allPerformanceRecords: PerformanceRecord[];
   employeesList: Employee[];
@@ -34,13 +32,10 @@ interface HRState {
   addTemporaryWork: (data: Omit<TemporaryWork, 'id' | 'addedAt'>) => void;
   updateTemporaryWork: (id: string, updates: Partial<TemporaryWork>) => void;
   updateTalentDevelopment: (data: Omit<TalentDevelopment, 'id'>) => void;
-  submitGMScore: (data: Omit<GMManagerScore, 'id' | 'totalScore' | 'rank' | 'createdAt' | 'updatedAt'>) => void;
-  updateGMScore: (id: string, updates: Partial<GMManagerScore>) => void;
   saveQuarterlySummary: (data: Omit<QuarterlySummary, 'id' | 'createdAt' | 'updatedAt'>) => Promise<QuarterlySummary>;
   fetchQuarterlySummary: (quarter: string) => Promise<QuarterlySummary | undefined>;
   getQuarterlySummary: (managerId: string, quarter: string) => QuarterlySummary | undefined;
   generateMonthlyTasks: (month: string) => void;
-  generateGMTasks: (quarter: string) => void;
   
   // Employee actions
   fetchEmployees: () => Promise<void>;
@@ -76,7 +71,6 @@ export const useHRStore = create<HRState>()(
       monthlyTasks: [],
       temporaryWorks: [],
       talentDevelopments: [],
-      gmScores: [],
       quarterlySummaries: [],
       allPerformanceRecords: [],
       employeesList: [],
@@ -103,7 +97,6 @@ export const useHRStore = create<HRState>()(
         monthlyTasks: state.monthlyTasks,
         temporaryWorks: state.temporaryWorks,
         talentDevelopments: state.talentDevelopments,
-        gmScores: state.gmScores,
         allPerformanceRecords: state.allPerformanceRecords,
         metricsList: state.metricsList,
         employeesList: state.employeesList  // 添加员工列表持久化
