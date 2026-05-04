@@ -23,7 +23,13 @@ ALTER TABLE performance_records
   ADD COLUMN IF NOT EXISTS employee_issue_tags JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS resource_need_tags JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS improvement_suggestion TEXT,
-  ADD COLUMN IF NOT EXISTS suggestion_anonymous BOOLEAN DEFAULT false;
+  ADD COLUMN IF NOT EXISTS suggestion_anonymous BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS template_id VARCHAR(36),
+  ADD COLUMN IF NOT EXISTS template_name VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS department_type VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS metric_scores JSONB;
+
+CREATE INDEX IF NOT EXISTS idx_performance_records_template ON performance_records(template_id);
 
 ALTER TABLE employees
   ADD COLUMN IF NOT EXISTS id_card_last6_hash TEXT,

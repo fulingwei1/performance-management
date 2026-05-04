@@ -33,6 +33,7 @@ interface Employee {
   name: string;
   department: string;
   subDepartment?: string;
+  managerId?: string;
   role: string;
   level: string;
   position?: string;
@@ -360,11 +361,24 @@ export default function AssessmentScopeSettings() {
     }
   };
 
+  const activeEmployeeIds = useMemo(
+    () => new Set(
+      employees
+        .filter((employee) => !employee.status || employee.status === 'active')
+        .map((employee) => employee.id)
+    ),
+    [employees]
+  );
   const activeEmployees = useMemo(
     () => employees.filter((employee) => (
-      (!employee.status || employee.status === 'active') && ASSESSMENT_ROLES.has(employee.role)
+      (!employee.status || employee.status === 'active') &&
+      ASSESSMENT_ROLES.has(employee.role) &&
+      (
+        employee.role !== 'manager' ||
+        Boolean(employee.managerId && employee.managerId !== employee.id && activeEmployeeIds.has(employee.managerId))
+      )
     )),
-    [employees]
+    [activeEmployeeIds, employees]
   );
   const orgTree = useMemo(() => buildOrgTree(activeEmployees), [activeEmployees]);
   const orgNodeMap = useMemo(() => {

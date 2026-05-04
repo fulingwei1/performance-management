@@ -193,8 +193,12 @@ function App() {
         {/* Employee routes */}
         <Route element={<ProtectedLayout allowedRoles={['employee']} />}>
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-          <Route path="/employee/summary" element={<WorkSummary />} />
           <Route path="/employee/scores" element={<Navigate to="/employee/dashboard" replace />} />
+        </Route>
+
+        {/* 参与考核人员月度总结：普通员工和参与考核的二级经理/主管都可填写 */}
+        <Route element={<ProtectedLayout allowedRoles={['employee', 'manager']} />}>
+          <Route path="/employee/summary" element={<WorkSummary />} />
         </Route>
 
         {/* Manager routes */}

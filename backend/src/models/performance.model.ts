@@ -308,6 +308,9 @@ export class PerformanceModel {
         resource_need_tags = EXCLUDED.resource_need_tags,
         improvement_suggestion = EXCLUDED.improvement_suggestion,
         suggestion_anonymous = EXCLUDED.suggestion_anonymous,
+        template_id = COALESCE(performance_records.template_id, EXCLUDED.template_id),
+        template_name = COALESCE(performance_records.template_name, EXCLUDED.template_name),
+        department_type = COALESCE(performance_records.department_type, EXCLUDED.department_type),
         status = EXCLUDED.status,
         deadline = COALESCE(performance_records.deadline, EXCLUDED.deadline),
         updated_at = CURRENT_TIMESTAMP

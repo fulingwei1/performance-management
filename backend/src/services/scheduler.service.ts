@@ -4,9 +4,15 @@ import { NotificationModel, CreateNotificationInput } from '../models/notificati
 import { TodoModel } from '../models/todo.model';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
+import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { getGroupType, scoreToLevel, levelToScore } from '../utils/helpers';
-import { getPerformanceRankingConfig, isParticipatingRecord } from './performanceRankingConfig.service';
+import {
+  getConfiguredTemplateId,
+  getOrgUnitKey,
+  getPerformanceRankingConfig,
+  isParticipatingRecord
+} from './performanceRankingConfig.service';
 import { ProgressMonitorService } from './progressMonitor.service';
 import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
@@ -140,6 +146,17 @@ export class SchedulerService {
         assessorId = employee.managerId;
       }
 
+      const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);
+      const configuredTemplate = configuredTemplateId
+        ? await AssessmentTemplateModel.findById(configuredTemplateId, false)
+        : null;
+      const template = configuredTemplate || await AssessmentTemplateModel.findMatchingTemplate({
+        role: employee.role || '',
+        level: employee.level || '',
+        position: (employee as any).position || employee.subDepartment || employee.department || '',
+        department: employee.department || ''
+      });
+
       await PerformanceModel.saveSummary({
         id: `rec-${employee.id}-${targetMonth}`,
         employeeId: employee.id,
@@ -148,7 +165,10 @@ export class SchedulerService {
         selfSummary: '',
         nextMonthPlan: '',
         groupType,
-        deadline: dueDate
+        deadline: dueDate,
+        templateId: template?.id || null,
+        templateName: template?.name || null,
+        departmentType: template?.departmentType || null
       });
       createdCount++;
 

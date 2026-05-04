@@ -4,7 +4,12 @@ import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { getGroupType, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
-import { getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
+import {
+  getConfiguredTemplateId,
+  getOrgUnitKey,
+  getPerformanceRankingConfig,
+  isParticipatingRecord
+} from '../services/performanceRankingConfig.service';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import '../middleware/auth'; // Request type extension
 
@@ -165,14 +170,14 @@ export const performanceController = {
     }
 
     const month = typeof req.query.month === 'string' ? req.query.month : undefined;
-    const scope = typeof req.query.scope === 'string' ? req.query.scope : 'team';
+    const scope = typeof req.query.scope === 'string' ? req.query.scope : 'all';
     if (month && !/^\d{4}-\d{2}$/.test(month)) {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
     }
 
     const role = req.user.role;
     const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
-    const useTeamScope = role === 'manager' || scope !== 'all' || !isPrivileged;
+    const useTeamScope = !isPrivileged || scope === 'team';
     const records = useTeamScope
       ? await PerformanceModel.findByAssessorId(req.user.userId, month)
       : month
@@ -828,11 +833,15 @@ export const performanceController = {
         assessorId = employee.managerId;
       }
       
-      // 根据员工岗位自动匹配模板
-      const template = await AssessmentTemplateModel.findMatchingTemplate({
+      // 优先使用“考核范围”里管理员给部门指定的模板；未指定时再按岗位/层级自动匹配
+      const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);
+      const configuredTemplate = configuredTemplateId
+        ? await AssessmentTemplateModel.findById(configuredTemplateId, false)
+        : null;
+      const template = configuredTemplate || await AssessmentTemplateModel.findMatchingTemplate({
         role: employee.role || '',
         level: employee.level || '',
-        position: employee.subDepartment || employee.department || '',
+        position: (employee as any).position || employee.subDepartment || employee.department || '',
         department: employee.department || ''
       });
       
@@ -871,9 +880,17 @@ export const performanceController = {
     }
 
     const rankingConfig = await getPerformanceRankingConfig();
-    const employees = (await EmployeeModel.findAll())
+    const allEmployees = await EmployeeModel.findAll();
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((emp: any) => !emp.status || emp.status === 'active')
+        .map((emp: any) => emp.id)
+    );
+    const employees = allEmployees
       .filter((emp: any) => !emp.status || emp.status === 'active')
-      .filter((emp: any) => isParticipatingRecord(emp, rankingConfig));
+      .filter((emp: any) => emp.role === 'employee' || emp.role === 'manager')
+      .filter((emp: any) => isParticipatingRecord(emp, rankingConfig))
+      .filter((emp: any) => emp.role !== 'manager' || (emp.managerId && emp.managerId !== emp.id && validIds.has(emp.managerId)));
     const eligibleEmployeeIds = new Set(employees.map((emp: any) => emp.id));
     const records = (await PerformanceModel.findByMonth(month))
       .filter((record: any) => eligibleEmployeeIds.has(record.employeeId));

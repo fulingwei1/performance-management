@@ -133,6 +133,7 @@ export function HRDashboard() {
   const { 
     employeesList,
     fetchEmployees,
+    fetchAllPerformanceRecords,
     allPerformanceRecords
   } = useHRStore();
   
@@ -150,7 +151,10 @@ export function HRDashboard() {
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [user?.role];
   const showSuggestionSummary = user?.role === 'admin';
   
-  useEffect(() => { fetchEmployees(); }, [fetchEmployees]);
+  useEffect(() => {
+    fetchEmployees();
+    fetchAllPerformanceRecords();
+  }, [fetchEmployees, fetchAllPerformanceRecords]);
   
   useEffect(() => {
     settingsApi.getAssessmentScope().then((res) => {
@@ -175,17 +179,26 @@ export function HRDashboard() {
     if (!ASSESSMENT_ROLES.has(employee.role)) return false;
     return isParticipatingEmployee(employee, rankingConfig);
   });
+  const activeEmployeeIds = new Set(
+    employeesList
+      .filter((employee: any) => !employee.status || employee.status === 'active')
+      .map((employee: any) => employee.id)
+  );
+  const assessableInScopeEmployees = inScopeEmployees.filter((employee: any) => (
+    employee.role !== 'manager' ||
+    (employee.managerId && employee.managerId !== employee.id && activeEmployeeIds.has(employee.managerId))
+  ));
   const activeCompanyEmployees = employeesList.filter((employee: any) => {
     if (employee.status && employee.status !== 'active') return false;
     return ASSESSMENT_ROLES.has(employee.role);
   });
-  const inScopeEmployeeIds = new Set(inScopeEmployees.map((employee: any) => employee.id));
+  const inScopeEmployeeIds = new Set(assessableInScopeEmployees.map((employee: any) => employee.id));
   const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));
-  const rootDepartments = [...new Set(inScopeEmployees.map(e => e.department))].filter(Boolean);
+  const rootDepartments = [...new Set(assessableInScopeEmployees.map(e => e.department))].filter(Boolean);
   
   // Build department records hierarchy
   const deptRecords: DeptRecord[] = rootDepartments.map(rootDept => {
-    const rootDeptEmployees = inScopeEmployees.filter(e => e.department === rootDept);
+    const rootDeptEmployees = assessableInScopeEmployees.filter(e => e.department === rootDept);
     const subDepts = [...new Set(rootDeptEmployees.map(e => displaySubDepartment(e.subDepartment)))];
     
     const subDeptRecords = subDepts.map(subDept => {
@@ -231,9 +244,9 @@ export function HRDashboard() {
   
   const stats = {
     companyTotalEmployees: activeCompanyEmployees.length,
-    participatingEmployees: inScopeEmployees.length,
+    participatingEmployees: assessableInScopeEmployees.length,
     completedScores: monthRecords.filter(r => isScoredStatus(r.status)).length,
-    pendingScores: inScopeEmployees.length - monthRecords.filter(r => isScoredStatus(r.status)).length,
+    pendingScores: assessableInScopeEmployees.length - monthRecords.filter(r => isScoredStatus(r.status)).length,
     averageScore: monthRecords.filter(r => isScoredStatus(r.status)).length > 0
       ? monthRecords.filter(r => isScoredStatus(r.status)).reduce((sum, r) => sum + r.totalScore, 0) / monthRecords.filter(r => isScoredStatus(r.status)).length
       : 0

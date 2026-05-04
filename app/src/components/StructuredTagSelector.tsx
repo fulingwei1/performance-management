@@ -15,6 +15,7 @@ interface StructuredTagSelectorProps {
   maxCount?: number;
   emptyText?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function StructuredTagSelector({
@@ -23,9 +24,11 @@ export function StructuredTagSelector({
   groups,
   maxCount = 4,
   emptyText = '未选择',
-  className
+  className,
+  disabled = false
 }: StructuredTagSelectorProps) {
   const toggleTag = (tag: string) => {
+    if (disabled) return;
     if (value.includes(tag)) {
       onChange(value.filter((item) => item !== tag));
       return;
@@ -34,13 +37,16 @@ export function StructuredTagSelector({
     onChange([...value, tag]);
   };
 
-  const clearAll = () => onChange([]);
+  const clearAll = () => {
+    if (disabled) return;
+    onChange([]);
+  };
 
   return (
     <div className={cn('space-y-3', className)}>
       <div className="flex items-center justify-between">
         <div className="text-xs text-gray-500">已选 {value.length}/{maxCount}</div>
-        {value.length > 0 && (
+        {value.length > 0 && !disabled && (
           <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-gray-500" onClick={clearAll}>
             清空
           </Button>
@@ -73,19 +79,19 @@ export function StructuredTagSelector({
             <div className="flex flex-wrap gap-2">
               {group.tags.map((tag) => {
                 const selected = value.includes(tag);
-                const disabled = !selected && value.length >= maxCount;
+                const tagDisabled = disabled || (!selected && value.length >= maxCount);
                 return (
                   <button
                     key={tag}
                     type="button"
                     onClick={() => toggleTag(tag)}
-                    disabled={disabled}
+                    disabled={tagDisabled}
                     className={cn(
                       'rounded-full border px-3 py-1.5 text-xs transition-colors',
                       selected
                         ? 'border-blue-300 bg-blue-50 text-blue-700'
                         : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50',
-                      disabled && 'cursor-not-allowed opacity-50'
+                      tagDisabled && 'cursor-not-allowed opacity-50'
                     )}
                   >
                     {tag}

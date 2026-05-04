@@ -46,6 +46,9 @@ export function WorkSummary() {
   const [frozen, setFrozen] = useState(false);
   const [deadline, setDeadline] = useState<string | undefined>(undefined);
   const [recordId, setRecordId] = useState<string | null>(null);
+  const [recordStatus, setRecordStatus] = useState<string | null>(null);
+  const isSubmittedRecord = ['submitted', 'completed', 'scored'].includes(recordStatus || '');
+  const isReadOnly = frozen || isSubmittedRecord;
   
   // 加载该月份的记录（检测冻结状态）
   useEffect(() => {
@@ -60,6 +63,7 @@ export function WorkSummary() {
           setRecordId(record.id);
           setFrozen(record.frozen || false);
           setDeadline(record.deadline);
+          setRecordStatus(record.status || null);
           
           // 如果记录已存在，加载已保存的内容；空草稿要清空旧月份遗留输入
           setSelfSummary(record.selfSummary || '');
@@ -73,6 +77,7 @@ export function WorkSummary() {
           setRecordId(null);
           setFrozen(false);
           setDeadline(undefined);
+          setRecordStatus(null);
           setSelfSummary('');
           setNextMonthPlan('');
           setEmployeeIssueTags([]);
@@ -115,8 +120,10 @@ export function WorkSummary() {
     });
     
     if (success && !isDraft) {
+      setRecordStatus('submitted');
       navigate('/employee/dashboard');
     } else if (success && isDraft) {
+      setRecordStatus('draft');
       setShowDraftSuccess(true);
       setTimeout(() => setShowDraftSuccess(false), 3000);
     }
@@ -202,6 +209,19 @@ export function WorkSummary() {
         <motion.div variants={itemVariants} className="mb-4">
           <FrozenAlert frozen={frozen} deadline={deadline} />
         </motion.div>
+
+        {isSubmittedRecord && (
+          <motion.div variants={itemVariants} className="mb-4">
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <AlertDescription className="text-green-700">
+                {recordStatus === 'completed' || recordStatus === 'scored'
+                  ? '本月绩效已完成评分，工作总结已锁定。'
+                  : '本月工作总结已提交，等待经理评分，提交后不可再修改。'}
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
         
         {/* Form */}
         <motion.div variants={itemVariants}>
@@ -255,7 +275,7 @@ export function WorkSummary() {
                   placeholder="请描述本月完成的主要工作、项目经验与收获、遇到的困难与解决方案..."
                   value={selfSummary}
                   onChange={(e) => setSelfSummary(e.target.value)}
-                  disabled={frozen}
+                  disabled={isReadOnly}
                   className="min-h-[150px] resize-none"
                 />
                 <p className="text-xs text-gray-400">
@@ -271,6 +291,7 @@ export function WorkSummary() {
                     onChange={setEmployeeIssueTags}
                     groups={analysisTagsData.employeeIssueFeedbacks}
                     maxCount={4}
+                    disabled={isReadOnly}
                     emptyText="可选 1-4 个本月主要问题"
                   />
                 </div>
@@ -287,7 +308,7 @@ export function WorkSummary() {
                   placeholder="请描述下月工作目标、计划开展的项目、需要协调的资源..."
                   value={nextMonthPlan}
                   onChange={(e) => setNextMonthPlan(e.target.value)}
-                  disabled={frozen}
+                  disabled={isReadOnly}
                   className="min-h-[150px] resize-none"
                 />
                 <p className="text-xs text-gray-400">
@@ -303,6 +324,7 @@ export function WorkSummary() {
 	                    onChange={setResourceNeedTags}
 	                    groups={analysisTagsData.resourceNeedTags}
 	                    maxCount={4}
+	                    disabled={isReadOnly}
 	                    emptyText="可选 1-4 个资源诉求"
 	                  />
 	                </div>
@@ -325,7 +347,7 @@ export function WorkSummary() {
 	                      type="checkbox"
 	                      checked={suggestionAnonymous}
 	                      onChange={(event) => setSuggestionAnonymous(event.target.checked)}
-	                      disabled={frozen}
+	                      disabled={isReadOnly}
 	                      className="h-4 w-4 rounded border-gray-300"
 	                    />
 	                    匿名提交
@@ -336,7 +358,7 @@ export function WorkSummary() {
 	                  placeholder="例如：建议优化某流程、减少重复录入、提升交付效率或降低质量风险……"
 	                  value={improvementSuggestion}
 	                  onChange={(e) => setImprovementSuggestion(e.target.value)}
-	                  disabled={frozen}
+	                  disabled={isReadOnly}
 	                  className="min-h-[110px] resize-none"
 	                />
 	                <p className="text-xs text-gray-400">
@@ -349,7 +371,7 @@ export function WorkSummary() {
                 <Button
                   variant="outline"
                   onClick={() => handleSave(true)}
-                  disabled={isSubmitting || loading || frozen}
+                  disabled={isSubmitting || loading || isReadOnly}
                   className="flex-1"
                 >
                   {isSubmitting ? (
@@ -361,7 +383,7 @@ export function WorkSummary() {
                 </Button>
                 <Button
                   onClick={() => handleSave(false)}
-                  disabled={isSubmitting || loading || frozen || !selfSummary || !nextMonthPlan}
+                  disabled={isSubmitting || loading || isReadOnly || !selfSummary || !nextMonthPlan}
                   className="flex-1"
                 >
                   {isSubmitting ? (
