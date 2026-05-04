@@ -38,6 +38,7 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATABASE_URL: postgresql://performance_user:performance123@postgres:5432/performance_db
+      AUTO_RUN_LOCAL_SCHEMA: "false"
       JWT_SECRET: ate_performance_jwt_secret_2026_production
       JWT_EXPIRES_IN: 7d
       ADMIN_DEFAULT_PASSWORD: 123456
