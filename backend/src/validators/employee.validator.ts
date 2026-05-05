@@ -28,10 +28,10 @@ export const createEmployeeValidation = [
     .optional()
     .isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别值无效'),
   
-  // 可选：密码（兼容旧登录）；若不传，后端会使用默认值
+  // 可选：密码（兼容旧登录）；优先使用身份证后六位作为登录口令
   body('password')
     .optional()
-    .isLength({ min: 6 }).withMessage('密码至少6个字符'),
+    .isLength({ min: 8 }).withMessage('密码至少8个字符'),
 
   // 可选：身份证后六位（用于新登录方式）
   body('idCardLast6')
@@ -39,6 +39,13 @@ export const createEmployeeValidation = [
     .isString()
     .matches(/^[0-9Xx]{6}$/)
     .withMessage('身份证后六位格式错误'),
+
+  body().custom((_, { req }) => {
+    if (!req.body.idCardLast6 && !req.body.password) {
+      throw new Error('请提供身份证后六位；系统不再生成随机登录密码');
+    }
+    return true;
+  }),
   
   body('managerId')
     .optional({ values: 'falsy' })
@@ -97,7 +104,7 @@ export const changePasswordValidation = [
   
   body('newPassword')
     .notEmpty().withMessage('新密码不能为空')
-    .isLength({ min: 6 }).withMessage('新密码至少6个字符')
+    .isLength({ min: 8 }).withMessage('新密码至少8个字符')
     .custom((value, { req }) => {
       if (value === req.body.oldPassword) {
         throw new Error('新密码不能与原密码相同');

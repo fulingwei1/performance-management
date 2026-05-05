@@ -27,9 +27,11 @@ export function WorkSummary() {
   const { saveSummary, loading, error } = usePerformanceStore();
 
   const monthParam = searchParams.get('month');
+  const now = new Date();
+  const defaultSummaryMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const initialMonth = monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam)
     ? new Date(`${monthParam}-01T00:00:00`)
-    : new Date();
+    : defaultSummaryMonth;
   
   const [month, setMonth] = useState<Date>(initialMonth);
   const [selfSummary, setSelfSummary] = useState('');
@@ -143,6 +145,61 @@ export function WorkSummary() {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 }
   };
+
+  const canSubmitSelfSummary = user?.capabilities?.canSubmitSelfSummary;
+  const isCapabilityRefreshing = Boolean(user && canSubmitSelfSummary === undefined);
+
+  if (isCapabilityRefreshing) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-4xl mx-auto"
+      >
+        <motion.div variants={itemVariants} className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">月度工作总结</h1>
+          <p className="text-gray-500 mt-1">正在刷新账号考核权限...</p>
+        </motion.div>
+        <Card>
+          <CardContent className="pt-6 text-sm text-gray-500">
+            正在同步最新的人事档案和考核范围，请稍候。
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (canSubmitSelfSummary === false) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-4xl mx-auto"
+      >
+        <motion.div variants={itemVariants} className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">月度工作总结</h1>
+          <p className="text-gray-500 mt-1">当前账号无需提交工作总结和下月计划</p>
+        </motion.div>
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-amber-900">
+              <FileText className="w-5 h-5" />
+              未纳入个人月度自评范围
+            </CardTitle>
+            <CardDescription className="text-amber-800">
+              系统按“在职 + 员工/经理角色 + 有有效上级或已被考核范围纳入”判断是否需要填写自评。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-amber-900">
+            <p>如果该人员业务上需要被上级考核，请先在人事档案中维护角色、上级关系，并确认没有被考核范围排除。</p>
+            <p>维护完成后重新登录或刷新页面，系统会自动显示“我的月度总结”。</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
   
   return (
     <>

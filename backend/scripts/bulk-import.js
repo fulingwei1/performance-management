@@ -9,10 +9,14 @@ const path = require('path');
 // 配置
 const API_BASE_URL = process.env.API_URL || 'http://localhost:3001/api';
 const AUTH_CREDENTIALS = {
-  username: '林作倩',
-  password: '123456',
-  role: 'hr'
+  username: process.env.IMPORT_LOGIN_USERNAME || '林作倩',
+  password: process.env.IMPORT_LOGIN_SECRET,
 };
+
+if (!AUTH_CREDENTIALS.password) {
+  console.error('请先设置 IMPORT_LOGIN_SECRET，脚本不再内置 HR 默认密码。');
+  process.exit(1);
+}
 
 // 示例数据模板
 const SAMPLE_DATA = {
@@ -341,7 +345,7 @@ async function importData() {
     
     console.log('🎉 数据导入完成！');
     console.log('\n📌 提示:');
-    console.log('  - 所有新员工默认密码: 123456');
+    console.log('  - 新员工由后端生成临时随机密码，并要求首次登录修改');
     console.log('  - 已存在的数据会被跳过');
     console.log('  - 可以通过管理界面继续添加更多数据');
     
@@ -382,7 +386,7 @@ async function main() {
 
 默认账号:
   用户名: 林作倩
-  密码: 123456
+  密码: 通过 IMPORT_LOGIN_SECRET 环境变量提供
   角色: hr
     `);
     return;

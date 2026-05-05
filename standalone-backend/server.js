@@ -9,7 +9,10 @@ const crypto = require('crypto');
 const url = require('url');
 
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'performance_system_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-secret-key' : '');
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET 环境变量未设置，拒绝使用内置默认密钥启动');
+}
 
 // CORS headers
 const corsHeaders = {
@@ -42,6 +45,14 @@ const bcrypt = {
     return hashed === hash;
   }
 };
+
+const INITIAL_EMPLOYEE_TEMP_PASSWORD = process.env.INITIAL_EMPLOYEE_TEMP_PASSWORD
+  || (process.env.NODE_ENV === 'test' ? '123456' : '');
+if (!INITIAL_EMPLOYEE_TEMP_PASSWORD) {
+  throw new Error('INITIAL_EMPLOYEE_TEMP_PASSWORD 环境变量未设置，拒绝使用内置默认密码启动');
+}
+
+const generateTemporaryPassword = () => crypto.randomBytes(12).toString('base64url');
 
 // 简单的JWT实现
 const jwt = {
@@ -104,7 +115,8 @@ const initialEmployees = [
 initialEmployees.forEach(emp => {
   memoryStore.employees.set(emp.id, {
     ...emp,
-    password: crypto.createHash('sha256').update('123456' + 'salt').digest('hex')
+    password: crypto.createHash('sha256').update(INITIAL_EMPLOYEE_TEMP_PASSWORD + 'salt').digest('hex'),
+    mustChangePassword: process.env.NODE_ENV !== 'test'
   });
 });
 
@@ -557,6 +569,7 @@ const routes = {
     const { name, department, subDepartment, role, level, managerId } = body;
     
     const id = `emp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const temporaryPassword = generateTemporaryPassword();
     const newEmployee = {
       id,
       name,
@@ -565,14 +578,20 @@ const routes = {
       role: role || 'employee',
       level: level || 'intermediate',
       managerId: managerId || undefined,
-      password: crypto.createHash('sha256').update('123456' + 'salt').digest('hex'),
+      password: crypto.createHash('sha256').update(temporaryPassword + 'salt').digest('hex'),
+      mustChangePassword: true,
       createdAt: new Date().toISOString()
     };
     
     memoryStore.employees.set(id, newEmployee);
     
     const { password: _, ...empData } = newEmployee;
-    sendResponse(res, 200, { success: true, data: empData, message: '员工添加成功' });
+    sendResponse(res, 200, {
+      success: true,
+      data: empData,
+      temporaryPassword,
+      message: '员工添加成功，已生成临时密码'
+    });
   },
 
   // HR更新员工
@@ -654,6 +673,7 @@ const routes = {
     for (const empData of importedEmployees) {
       try {
         const id = `emp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const temporaryPassword = generateTemporaryPassword();
         const newEmployee = {
           id,
           name: empData.name,
@@ -662,7 +682,8 @@ const routes = {
           role: empData.role || 'employee',
           level: empData.level || 'intermediate',
           managerId: empData.managerId || undefined,
-          password: crypto.createHash('sha256').update('123456' + 'salt').digest('hex'),
+          password: crypto.createHash('sha256').update(temporaryPassword + 'salt').digest('hex'),
+          mustChangePassword: true,
           createdAt: new Date().toISOString()
         };
         

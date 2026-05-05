@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar, Award, BarChart3, Users, Trophy, Target, FileText, CheckCircle } from 'lucide-react';
+import { TrendingUp, Calendar, BarChart3, Users, Trophy, Target, FileText, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -12,7 +12,6 @@ import { assessmentPublicationApi, employeeQuarterlyApi } from '@/services/api';
 
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
-import { toast } from 'sonner';
 
 interface QuarterlyRecord {
   id: string;
@@ -68,7 +67,6 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
             }
           } catch (error) {
             console.error(`检查 ${month} 发布状态失败:`, error);
-            toast.error('检查发布状态失败');
             statusMap[month] = false;
           }
         })
@@ -84,6 +82,10 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
   
   // 按月份排序
   const sortedRecords = [...records].sort((a, b) => b.month.localeCompare(a.month));
+  const scoredRecords = useMemo(
+    () => records.filter((record) => Number(record.totalScore || 0) > 0 && ['completed', 'scored'].includes(record.status)),
+    [records]
+  );
   
   // 获取最新记录
   const latestRecord = sortedRecords[0];
@@ -94,24 +96,24 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
   
   // 计算统计数据
   const stats = useMemo(() => {
-    const averageScore = records.length > 0
-      ? records.reduce((sum, r) => sum + r.totalScore, 0) / records.length
+    const averageScore = scoredRecords.length > 0
+      ? scoredRecords.reduce((sum, r) => sum + r.totalScore, 0) / scoredRecords.length
       : 0;
     
-    const bestScore = records.length > 0
-      ? Math.max(...records.map(r => r.totalScore))
+    const bestScore = scoredRecords.length > 0
+      ? Math.max(...scoredRecords.map(r => r.totalScore))
       : 0;
     
-    const bestDeptRank = records.length > 0
-      ? Math.min(...records.map(r => r.departmentRank))
+    const bestDeptRank = scoredRecords.length > 0
+      ? Math.min(...scoredRecords.map(r => r.departmentRank))
       : 0;
     
-    const bestGroupRank = records.length > 0
-      ? Math.min(...records.map(r => r.groupRank))
+    const bestGroupRank = scoredRecords.length > 0
+      ? Math.min(...scoredRecords.map(r => r.groupRank))
       : 0;
     
     return { averageScore, bestScore, bestDeptRank, bestGroupRank };
-  }, [records]);
+  }, [scoredRecords]);
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -169,7 +171,11 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
               )}
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="mb-4 rounded-lg bg-white/60 px-3 py-2 text-sm text-gray-600">
+                口径说明：1.00 为基准绩效系数；正式发布前显示为草稿，仅供本人参考。
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Total Score */}
                 <div className="text-center">
                   <p className="text-sm text-gray-500 mb-2">综合得分</p>
@@ -212,16 +218,6 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                   )}
                 </div>
 
-                {/* Cross Dept Rank */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-2">跨部门排名</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Award className="w-5 h-5 text-green-500" />
-                    <span className="text-3xl font-bold text-green-600">
-                      {latestRecord.crossDeptRank || '-'}
-                    </span>
-                  </div>
-                </div>
               </div>
               
               {/* Dimension Scores */}
@@ -273,7 +269,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                 <BarChart3 className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">平均分</p>
+                <p className="text-sm text-gray-500">已评分平均分</p>
                 <p className="text-2xl font-bold">{stats.averageScore.toFixed(2)}</p>
               </div>
             </div>
@@ -315,8 +311,8 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                 <Calendar className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">考核次数</p>
-                <p className="text-2xl font-bold">{records.length}</p>
+                <p className="text-sm text-gray-500">已评分次数</p>
+                <p className="text-2xl font-bold">{scoredRecords.length}</p>
               </div>
             </div>
           </CardContent>
@@ -338,6 +334,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">季度汇总得分</CardTitle>
+            <p className="text-sm text-gray-500">季度分由已完成的月度绩效汇总生成，后续与绩效工资对接。</p>
           </CardHeader>
           <CardContent>
             {quarterlyRecords.length > 0 ? (
@@ -386,7 +383,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
               </div>
             ) : (
               <div className="text-center py-10 text-gray-500">
-                暂无季度汇总得分
+                暂无季度汇总得分；月度评分完成并归档后，这里会自动显示。
               </div>
             )}
           </CardContent>
@@ -397,7 +394,8 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">历史记录</CardTitle>
+            <CardTitle className="text-lg">月度历史记录</CardTitle>
+            <p className="text-sm text-gray-500">只展示部门排名和组内排名；当前系统暂不展示跨部门个人排名。</p>
           </CardHeader>
           <CardContent>
             {sortedRecords.length > 0 ? (
@@ -434,7 +432,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                       <ScoreDisplay score={record.totalScore} size="sm" />
                     </div>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                       <div className="text-center p-2 bg-gray-50 rounded">
                         <p className="text-xs text-gray-500">部门排名</p>
                         <p className="font-semibold text-blue-600">{record.departmentRank}</p>
@@ -442,10 +440,6 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                       <div className="text-center p-2 bg-gray-50 rounded">
                         <p className="text-xs text-gray-500">组内排名</p>
                         <p className="font-semibold text-purple-600">{record.groupRank}</p>
-                      </div>
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-gray-500">跨部门排名</p>
-                        <p className="font-semibold text-green-600">{record.crossDeptRank || '-'}</p>
                       </div>
                       <div className="text-center p-2 bg-gray-50 rounded">
                         <p className="text-xs text-gray-500">分组</p>
@@ -509,6 +503,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
               <div className="text-center py-12">
                 <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500">暂无绩效记录</p>
+                <p className="mt-2 text-sm text-gray-400">员工提交月度总结、经理完成评分后，这里会显示月度得分和季度汇总。</p>
               </div>
             )}
           </CardContent>

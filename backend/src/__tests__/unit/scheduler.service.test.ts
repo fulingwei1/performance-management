@@ -18,6 +18,16 @@ describe('SchedulerService monthly performance task generation', () => {
       department: '工程技术中心',
       subDepartment: '测试部',
       level: 'senior',
+      managerId: 'gm001',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('gm001', {
+      id: 'gm001',
+      name: '总经理',
+      role: 'gm',
+      department: '总经办',
+      subDepartment: '',
+      level: 'senior',
       status: 'active'
     } as any);
     memoryStore.employees.set('e001', {
@@ -49,6 +59,7 @@ describe('SchedulerService monthly performance task generation', () => {
       notificationCount: 2,
       todoCount: 2,
       emailCount: 0,
+      taskGeneratedWecomCount: 0,
       total: 2
     });
 
@@ -86,6 +97,16 @@ describe('SchedulerService monthly performance task generation', () => {
       role: 'manager',
       department: '工程技术中心',
       subDepartment: '测试部',
+      level: 'senior',
+      managerId: 'gm001',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('gm001', {
+      id: 'gm001',
+      name: '总经理',
+      role: 'gm',
+      department: '总经办',
+      subDepartment: '',
       level: 'senior',
       status: 'active'
     } as any);

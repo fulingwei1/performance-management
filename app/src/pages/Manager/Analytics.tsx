@@ -76,6 +76,11 @@ export function Analytics() {
     () => records.filter((record) => !record.isDemo && !String(record.id || '').startsWith('demo-')),
     [records]
   );
+  const scoredRecords = useMemo(
+    () => realRecords.filter((record) => Number(record.totalScore || 0) > 0),
+    [realRecords]
+  );
+  const hasScoredData = scoredRecords.length > 0;
 
   // 计算统计数据
   const stats = useMemo(() => {
@@ -296,20 +301,27 @@ export function Analytics() {
       </div>
 
       {/* 没有数据时的提示 */}
-      {realRecords.length === 0 && (
+      {!hasScoredData && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无真实绩效数据</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无可分析的真实评分数据</h3>
             <p className="text-gray-500 mb-4">
-              当前真实打分还不足以生成看板。等经理完成月度评分后，团队趋势、四维分析和标签画像都会自动出来。
+              {realRecords.length > 0
+                ? `当前已有 ${realRecords.length} 条团队绩效任务，但还没有完成评分；等评分完成后，团队趋势、四维分析和标签画像会自动生成。`
+                : '当前还没有团队绩效任务；管理员生成任务、员工提交总结、经理完成评分后，这里会自动生成分析。'}
             </p>
-            <div className="text-sm text-gray-400">本页现在只统计真实评分数据，不再建议用示例数据看分析结果。</div>
+            <div className="mx-auto mb-4 grid max-w-2xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">1. 员工提交月度总结和计划</div>
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">2. 经理完成评分和标签勾选</div>
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">3. 看板自动生成趋势和画像</div>
+            </div>
+            <div className="text-sm text-gray-400">口径说明：1.00 为基准绩效系数，超过 1.00 表示高于基准，低于 1.00 表示低于基准。</div>
           </CardContent>
         </Card>
       )}
 
-      {realRecords.length > 0 && (
+      {hasScoredData && (
         <>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

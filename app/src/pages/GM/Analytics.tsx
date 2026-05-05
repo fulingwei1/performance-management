@@ -43,13 +43,18 @@ export function GMAnalytics() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('6');
   const [hasDemoData, setHasDemoData] = useState(false);
-  const [generatingDemo, setGeneratingDemo] = useState(false);
+  const [peopleFilter, setPeopleFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
   const currentMonth = format(new Date(), 'yyyy-MM');
   const realRecords = useMemo(
     () => records.filter((record) => !record.isDemo && !String(record.id || '').startsWith('demo-')),
     [records]
   );
+  const scoredRecords = useMemo(
+    () => realRecords.filter((record) => Number(record.totalScore || 0) > 0),
+    [realRecords]
+  );
+  const hasScoredData = scoredRecords.length > 0;
 
   // 获取数据
   useEffect(() => {
@@ -74,25 +79,6 @@ export function GMAnalytics() {
     };
     fetchData();
   }, [user, timeRange]);
-
-  // 生成模拟数据
-  const handleGenerateDemo = async () => {
-    setGeneratingDemo(true);
-    try {
-      const res = await performanceApi.generateDemoData();
-      if (res.success) {
-        toast.success(res.message);
-        setHasDemoData(true);
-        // 重新获取数据
-        const recordsRes = await performanceApi.getAllRecords(parseInt(timeRange));
-        if (recordsRes.success) setRecords(recordsRes.data);
-      }
-    } catch (error: any) {
-      toast.error(error.message || '生成失败');
-    } finally {
-      setGeneratingDemo(false);
-    }
-  };
 
   // 清除模拟数据
   const handleClearDemo = async () => {
@@ -136,6 +122,26 @@ export function GMAnalytics() {
     };
   }, [realRecords, currentMonth]);
 
+  const assessableEmployees = useMemo(
+    () => employees.filter(e => e.role === 'employee' || e.role === 'manager'),
+    [employees]
+  );
+
+  const currentMonthCompletedRecords = useMemo(
+    () => realRecords.filter(
+      (r) =>
+        r.month === currentMonth &&
+        Number(r.totalScore || 0) > 0 &&
+        (r.status === 'completed' || r.status === 'scored')
+    ),
+    [realRecords, currentMonth]
+  );
+
+  const currentCompletedEmployeeIds = useMemo(
+    () => new Set(currentMonthCompletedRecords.map((record) => record.employeeId)),
+    [currentMonthCompletedRecords]
+  );
+
   // 计算全公司统计数据
   const stats = useMemo(() => {
     // 找到最近有评分的月份（解决月初未评分问题）
@@ -168,15 +174,33 @@ export function GMAnalytics() {
       ? currentMonthRecords.reduce((sum, r) => sum + r.totalScore, 0) / currentMonthRecords.length
       : 0;
     
-    // 需要被考评的人员：员工 + 部门经理（排除总经理和HR）
-    const assessableEmployees = employees.filter(e => e.role === 'employee' || e.role === 'manager');
-    
     return {
       totalEmployees: assessableEmployees.length,
-      currentCompleted: currentMonthRecords.filter(r => r.status === 'completed' || r.status === 'scored').length,
+      currentCompleted: currentMonthCompletedRecords.length,
+      currentPending: Math.max(assessableEmployees.length - currentMonthCompletedRecords.length, 0),
       currentAvg,
     };
-  }, [realRecords, employees, currentMonth]);
+  }, [realRecords, assessableEmployees, currentMonth, currentMonthCompletedRecords]);
+
+  const peopleList = useMemo(() => {
+    const list = assessableEmployees.filter((employee) => {
+      const isCompleted = currentCompletedEmployeeIds.has(employee.id);
+      if (peopleFilter === 'completed') return isCompleted;
+      if (peopleFilter === 'pending') return !isCompleted;
+      return true;
+    });
+
+    return list.sort((a, b) => {
+      const deptCompare = String(a.department || '').localeCompare(String(b.department || ''), 'zh-CN');
+      if (deptCompare !== 0) return deptCompare;
+      return String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN');
+    });
+  }, [assessableEmployees, currentCompletedEmployeeIds, peopleFilter]);
+
+  const peopleFilterLabel = peopleFilter === 'all' ? '全部考评人员' : peopleFilter === 'completed' ? '本月已评人员' : '本月待评分人员';
+
+  const statCardClass = (filter: 'all' | 'completed' | 'pending') =>
+    `cursor-pointer transition hover:shadow-md ${peopleFilter === filter ? 'ring-2 ring-blue-500' : ''}`;
 
   // 部门对比数据
   const departmentData = useMemo(() => {
@@ -454,44 +478,37 @@ export function GMAnalytics() {
       </div>
 
       {/* 没有数据时的提示 */}
-      {realRecords.length === 0 && (
+      {!hasScoredData && (
         <Card className="border-dashed">
           <CardContent className="py-12 text-center">
             <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无真实绩效数据</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">暂无可分析的真实评分数据</h3>
             <p className="text-gray-500 mb-4">
-              {hasDemoData ? '当前库里有示例数据，但看板已自动排除，请以真实打分数据为准。' : '当前还没有可用于统计的真实绩效记录。'}
+              {realRecords.length > 0
+                ? `系统已有 ${realRecords.length} 条真实绩效任务，但目前还没有经理完成评分；评分完成后会自动生成部门对比、趋势和标签分析。`
+                : '当前还没有真实绩效任务；生成任务并完成经理评分后，本页会自动形成公司绩效分析。'}
             </p>
-            {!hasDemoData && (
-              <Button onClick={handleGenerateDemo} disabled={generatingDemo}>
-                {generatingDemo ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                    生成中...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    生成示例数据
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="mx-auto mb-4 grid max-w-2xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">1. 先完成各部门月度评分</div>
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">2. 系统汇总部门均分和标签</div>
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">3. 自动形成公司看板和异常提示</div>
+            </div>
+            <div className="text-sm text-gray-400">口径说明：本看板只统计真实评分，不用示例数据；1.00 为基准绩效系数。</div>
           </CardContent>
         </Card>
       )}
 
-      {realRecords.length > 0 && (
+      {hasScoredData && (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card className={statCardClass('all')} onClick={() => setPeopleFilter('all')}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm text-gray-500">考评人数</p>
                     <p className="text-2xl font-bold mt-1">{stats.totalEmployees}</p>
-                    <p className="text-xs text-gray-400 mt-1">不含总经理/HR</p>
+                    <p className="text-xs text-blue-500 mt-1">点击查看名单</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
                     <Users className="w-5 h-5 text-blue-600" />
@@ -500,13 +517,13 @@ export function GMAnalytics() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className={statCardClass('completed')} onClick={() => setPeopleFilter('completed')}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm text-gray-500">本月已评</p>
                     <p className="text-2xl font-bold mt-1">{stats.currentCompleted}</p>
-                    <p className="text-xs text-gray-400 mt-1">{currentMonth}</p>
+                    <p className="text-xs text-green-500 mt-1">点击查看已评人员</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -514,7 +531,55 @@ export function GMAnalytics() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className={statCardClass('pending')} onClick={() => setPeopleFilter('pending')}>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">本月待评</p>
+                    <p className="text-2xl font-bold mt-1">{stats.currentPending}</p>
+                    <p className="text-xs text-amber-600 mt-1">点击查看待评人员</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>{peopleFilterLabel}</span>
+                <Badge variant="outline">{peopleList.length} 人 · {currentMonth}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {peopleList.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {peopleList.map((employee) => (
+                    <div key={employee.id} className="rounded-lg border bg-white p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-gray-900">{employee.name}</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {employee.department || '未分配部门'}{employee.subDepartment ? ` / ${employee.subDepartment}` : ''}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">{employee.position || (employee.role === 'manager' ? '部门经理' : '员工')}</p>
+                        </div>
+                        <Badge variant={currentCompletedEmployeeIds.has(employee.id) ? 'default' : 'secondary'}>
+                          {currentCompletedEmployeeIds.has(employee.id) ? '已评' : '待评'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">暂无对应人员。</p>
+              )}
+            </CardContent>
+          </Card>
 
           {/* 异常检测卡片 */}
           {anomalies.length > 0 && (

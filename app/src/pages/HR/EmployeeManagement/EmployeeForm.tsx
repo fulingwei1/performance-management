@@ -77,14 +77,15 @@ export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOption
         <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="请输入员工姓名" />
       </div>
       <div>
-        <Label>身份证后六位（用于登录）</Label>
+        <Label>身份证后六位（用于登录；新增必填）</Label>
         <Input
           type="password"
+          maxLength={6}
           value={form.idCardLast6 || ''}
           onChange={(e) => setForm({ ...form, idCardLast6: e.target.value })}
-          placeholder="可选：用于登录验证"
+          placeholder="请输入身份证后六位"
         />
-        <p className="mt-1 text-xs text-gray-400">仅保存加密值；留空不会修改原登录口令</p>
+        <p className="mt-1 text-xs text-gray-400">仅保存加密值；编辑已有员工时留空不会修改原登录口令</p>
       </div>
       <div>
         <Label>企业微信用户ID</Label>

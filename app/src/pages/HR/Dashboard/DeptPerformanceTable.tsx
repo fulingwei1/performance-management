@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -48,10 +48,15 @@ interface DeptPerformanceTableProps {
   setSortBy: (v: 'name' | 'score' | 'status') => void;
   setSortOrder: (v: 'asc' | 'desc') => void;
   onEmployeeClick: (emp: any) => void;
+  statusFilter: 'all' | 'pending' | 'completed';
 }
 
-export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOrder, setSortBy, setSortOrder, onEmployeeClick }: DeptPerformanceTableProps) {
+export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOrder, setSortBy, setSortOrder, onEmployeeClick, statusFilter }: DeptPerformanceTableProps) {
   const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setExpandedDepts(new Set(deptRecords.map((dept) => dept.rootDepartment)));
+  }, [deptRecords, statusFilter]);
 
   const toggleDept = (rootDept: string) => {
     const newExpanded = new Set(expandedDepts);
@@ -67,6 +72,11 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
           <BarChart3 className="w-5 h-5 text-blue-600" />
           {currentMonth} 部门绩效统计
         </CardTitle>
+        <p className="text-sm text-gray-500">
+          当前显示：
+          {statusFilter === 'all' ? '参与考核人员名单' : statusFilter === 'pending' ? '待评分人员名单' : '已评分人员名单'}
+          ，点击员工姓名可查看详情。
+        </p>
       </CardHeader>
       <CardContent className="pt-6">
         {deptRecords.map((dept) => {

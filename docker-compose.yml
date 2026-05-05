@@ -1,5 +1,11 @@
 version: '3.8'
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   # PostgreSQL数据库
   postgres:
@@ -24,6 +30,7 @@ services:
       retries: 5
     networks:
       - ate_network
+    logging: *default-logging
 
   # 后端服务
   backend:
@@ -39,9 +46,9 @@ services:
       PORT: 3001
       DATABASE_URL: postgresql://performance_user:performance123@postgres:5432/performance_db
       AUTO_RUN_LOCAL_SCHEMA: "false"
-      JWT_SECRET: ate_performance_jwt_secret_2026_production
+      JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET}
       JWT_EXPIRES_IN: 7d
-      ADMIN_DEFAULT_PASSWORD: 123456
+      INITIAL_EMPLOYEE_TEMP_PASSWORD: ${INITIAL_EMPLOYEE_TEMP_PASSWORD:?请在 .env 中设置初始化临时密码}
       KIMI_API_KEY: ${KIMI_API_KEY:-}
       USE_MEMORY_DB: "false"
       SALARY_SYSTEM_BASE_URL: ${SALARY_SYSTEM_BASE_URL:-http://host.docker.internal:8000}
@@ -67,6 +74,7 @@ services:
     volumes:
       - ./backend/logs:/app/logs
       - ./postgres-init:/postgres-init:ro
+    logging: *default-logging
 
   # 前端服务
   frontend:
@@ -84,6 +92,7 @@ services:
       - backend
     networks:
       - ate_network
+    logging: *default-logging
 
 networks:
   ate_network:

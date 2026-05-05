@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 import sys
 import json
+import os
 
 # API配置
 BASE_URL = "http://localhost:3001"
@@ -14,8 +15,10 @@ LOGIN_URL = f"{BASE_URL}/api/auth/login"
 IMPORT_URL = f"{BASE_URL}/api/employees/import"
 
 # 登录凭据（使用超级管理员账号）
-USERNAME = "admin"
-PASSWORD = "123456"
+USERNAME = os.environ.get("IMPORT_LOGIN_USERNAME", "admin")
+PASSWORD = os.environ.get("IMPORT_LOGIN_SECRET", "")
+if not PASSWORD:
+    raise SystemExit("请设置 IMPORT_LOGIN_SECRET，导入脚本不再内置默认密码")
 
 def login():
     """登录获取token（使用HR角色）"""
@@ -72,7 +75,6 @@ def read_excel(file_path):
                 "idCard": str(row['身份证号']).strip() if pd.notna(row['身份证号']) else None,
                 "position": str(row['岗位']).strip() if pd.notna(row['岗位']) else None,
                 "managerName": str(row['直接上级']).strip() if pd.notna(row['直接上级']) else None,
-                "password": "123456"  # 默认密码
             }
             employees.append(employee)
         

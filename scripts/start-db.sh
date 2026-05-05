@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🚀 ATE绩效管理系统 - MySQL 数据库启动"
+echo "🚀 ATE绩效管理系统 - PostgreSQL 数据库启动"
 echo "=========================================="
 
 # 切换到项目根目录
@@ -23,18 +23,18 @@ if ! docker compose version &> /dev/null; then
     exit 1
 fi
 
-# 启动 MySQL 容器
-echo "📦 启动 MySQL 容器..."
-docker compose up -d mysql
+# 启动 PostgreSQL 容器
+echo "📦 启动 PostgreSQL 容器..."
+docker compose up -d postgres
 
-# 等待 MySQL 准备就绪
-echo "⏳ 等待 MySQL 启动..."
+# 等待 PostgreSQL 准备就绪
+echo "⏳ 等待 PostgreSQL 启动..."
 sleep 5
 
 # 检查容器状态
 for i in {1..30}; do
-    if docker compose exec mysql mysqladmin ping -h localhost -u root -pperformance123 --silent 2>/dev/null; then
-        echo "✅ MySQL 已就绪!"
+    if docker compose exec postgres pg_isready -U performance_user -d performance_db >/dev/null 2>&1; then
+        echo "✅ PostgreSQL 已就绪!"
         break
     fi
     echo "   等待中... ($i/30)"
@@ -46,16 +46,17 @@ echo ""
 echo "=========================================="
 echo "📊 数据库连接信息:"
 echo "   主机: localhost"
-echo "   端口: 3306"
+echo "   端口: 5432"
 echo "   数据库: performance_db"
-echo "   用户名: root"
+echo "   用户名: performance_user"
 echo "   密码: performance123"
 echo ""
-echo "📝 初始账号 (密码均为 123456):"
+echo "📝 初始账号："
 echo "   - 总经理: 郑汝才 (gm001)"
 echo "   - HR: 林作倩 (hr001), 符凌维 (hr002)"
 echo "   - 经理: 于振华 (m001) 等6位"
 echo "   - 员工: 周欢欢 (e001) 等26位"
+echo "   初始临时密码请通过 INITIAL_EMPLOYEE_TEMP_PASSWORD 设置，首次登录后必须修改。"
 echo "=========================================="
 echo ""
 echo "🎯 下一步:"

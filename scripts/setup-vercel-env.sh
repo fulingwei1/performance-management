@@ -82,21 +82,36 @@ setup_backend_env() {
 
     info "正在设置环境变量..."
 
-    # 读取并设置环境变量
+    require_env() {
+        local name="$1"
+        if [[ -z "${!name:-}" ]]; then
+            error "缺少环境变量 $name；部署脚本不再内置数据库或密钥凭据。"
+            exit 1
+        fi
+    }
+
+    # 读取并设置环境变量（必须由调用者提供，避免把生产凭据写进仓库）
+    require_env DATABASE_URL
+    require_env SUPABASE_URL
+    require_env SUPABASE_ANON_KEY
+    require_env SUPABASE_SERVICE_ROLE_KEY
+    require_env JWT_SECRET
+    require_env INITIAL_EMPLOYEE_TEMP_PASSWORD
+
     # 数据库配置
-    set_env_var "$backend_dir" "DATABASE_URL" "postgresql://postgres:VSBI9rbbvjK7n64B@db.dehgzqgnoqyujsmxgjvn.supabase.co:5432/postgres"
-    set_env_var "$backend_dir" "SUPABASE_URL" "https://dehgzqgnoqyujsmxgjvn.supabase.co"
-    set_env_var "$backend_dir" "SUPABASE_ANON_KEY" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGd6cWdub3F5dWpzbXhnanZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4NDAzMTAsImV4cCI6MjA4NTQxNjMxMH0.XLADPGt8mGX0YZocd5NbM9NK4iOjJ38LH4BmhTZ7oUs"
-    set_env_var "$backend_dir" "SUPABASE_SERVICE_ROLE_KEY" "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRlaGd6cWdub3F5dWpzbXhnanZuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTg0MDMxMCwiZXhwIjoyMDg1NDE2MzEwfQ.xdz6w659ChxaiF_Dx5Cg6rnqdDFqb_2JAyd_B9XsPnY"
+    set_env_var "$backend_dir" "DATABASE_URL" "$DATABASE_URL"
+    set_env_var "$backend_dir" "SUPABASE_URL" "$SUPABASE_URL"
+    set_env_var "$backend_dir" "SUPABASE_ANON_KEY" "$SUPABASE_ANON_KEY"
+    set_env_var "$backend_dir" "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_KEY"
 
     # JWT 配置
-    set_env_var "$backend_dir" "JWT_SECRET" "performance_system_secret_key_2024"
+    set_env_var "$backend_dir" "JWT_SECRET" "$JWT_SECRET"
     set_env_var "$backend_dir" "JWT_EXPIRES_IN" "7d"
 
     # 服务器配置
     set_env_var "$backend_dir" "NODE_ENV" "production"
     set_env_var "$backend_dir" "USE_MEMORY_DB" "false"
-    set_env_var "$backend_dir" "ADMIN_DEFAULT_PASSWORD" "123456"
+    set_env_var "$backend_dir" "INITIAL_EMPLOYEE_TEMP_PASSWORD" "$INITIAL_EMPLOYEE_TEMP_PASSWORD"
 
     success "后端环境变量配置完成!"
 }

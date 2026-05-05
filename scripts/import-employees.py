@@ -132,8 +132,7 @@ for idx, row in df.iterrows():
         'subDepartment': sub_dept if sub_dept else dept1,
         'role': role,
         'level': level,
-        'managerId': manager_id,
-        'password': '123456'
+        'managerId': manager_id
     })
 
 print(f"总共处理 {len(employees)} 名员工")
@@ -147,13 +146,18 @@ ts_output = """import { EmployeeModel } from '../models/employee.model';
 import { query, USE_MEMORY_DB, memoryDB } from './database';
 import bcrypt from 'bcryptjs';
 
+const initialPassword = process.env.INITIAL_EMPLOYEE_TEMP_PASSWORD;
+if (!initialPassword) {
+  throw new Error('INITIAL_EMPLOYEE_TEMP_PASSWORD is required');
+}
+
 // 初始化员工数据 - 从 ATE-人事档案系统.xlsx 导入
 const initialEmployees = [
 """
 
 for emp in employees:
     manager_str = f"'{emp['managerId']}'" if emp['managerId'] else 'undefined'
-    ts_output += f"  {{ id: '{emp['id']}', name: '{emp['name']}', department: '{emp['department']}', subDepartment: '{emp['subDepartment']}', role: '{emp['role']}' as const, level: '{emp['level']}' as const, managerId: {manager_str}, password: '123456' }},\n"
+    ts_output += f"  {{ id: '{emp['id']}', name: '{emp['name']}', department: '{emp['department']}', subDepartment: '{emp['subDepartment']}', role: '{emp['role']}' as const, level: '{emp['level']}' as const, managerId: {manager_str}, password: initialPassword }},\n"
 
 ts_output += """];
 
@@ -199,7 +203,7 @@ print("\n✅ 已生成 init-data.ts")
 
 # 生成 SQL 插入语句
 sql_output = """-- 初始化数据：插入员工
--- 密码都是 bcrypt 加密后的 '123456'
+-- 初始化密码由 INITIAL_EMPLOYEE_TEMP_PASSWORD 提供，不再内置固定默认密码
 -- 使用 bcrypt 生成的哈希值
 
 INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, password) VALUES

@@ -1,3 +1,10 @@
+if (process.env.ALLOW_LEGACY_MYSQL_MIGRATIONS !== 'true') {
+  console.error('❌ run-migrations.js 是历史 MySQL 迁移入口，当前系统已统一使用 PostgreSQL。');
+  console.error('请使用: npm run db:migrate:local');
+  console.error('如确需操作历史 MySQL 环境，请显式设置 ALLOW_LEGACY_MYSQL_MIGRATIONS=true 后再运行。');
+  process.exit(1);
+}
+
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');

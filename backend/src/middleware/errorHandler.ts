@@ -13,11 +13,17 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ): void => {
-  logger.error({ err }, 'Unhandled error');
-  
-  // 默认错误响应
   const statusCode = err.statusCode || 500;
   const message = err.message || '服务器内部错误';
+  const requestId = (req as Request & { requestId?: string }).requestId;
+
+  logger.error({
+    err,
+    requestId,
+    method: req.method,
+    path: req.path,
+    statusCode,
+  }, 'Unhandled error');
   
   // PostgreSQL错误处理
   if (err.code === '23505') {
@@ -47,7 +53,8 @@ export const errorHandler = (
   res.status(statusCode).json({
     success: false,
     message,
-    code: err.code
+    code: err.code,
+    requestId
   });
 };
 

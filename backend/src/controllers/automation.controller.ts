@@ -8,11 +8,13 @@ import { EmployeeModel } from '../models/employee.model';
 import { WecomWebhookService } from '../services/wecomWebhook.service';
 import { EmailService } from '../services/email.service';
 import { formatPublicationReadinessMessage, validatePublicationReadiness } from '../services/publicationReadiness.service';
+import { DemoDataService } from '../services/demoData.service';
 import { query } from '../config/database';
 import logger from '../config/logger';
 import { randomUUID } from 'crypto';
 
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+type AutomationJobType = 'generate_tasks' | 'send_reminders' | 'publish_results' | 'archive_data' | 'generate_demo_data' | 'clear_demo_data';
 let automationLogColumnsCache: Set<string> | null = null;
 
 const requestedMonth = (req: Request): string | undefined => {
@@ -67,7 +69,7 @@ async function hasSuccessfulLogToday(jobType: string, month?: string): Promise<b
 }
 
 async function writeAutomationLog(
-  jobType: 'generate_tasks' | 'send_reminders' | 'publish_results' | 'archive_data',
+  jobType: AutomationJobType,
   month: string | undefined,
   status: 'success' | 'failed' | 'skipped',
   details: Record<string, unknown>,
@@ -343,6 +345,52 @@ export const automationController = {
       success: true,
       data: result,
       pagination: { page, limit, total }
+    });
+  }),
+
+  /**
+   * 查看演示数据状态
+   */
+  getDemoDataStatus: asyncHandler(async (_req: Request, res: Response) => {
+    const result = await DemoDataService.getDemoDataStatus();
+    res.json({
+      success: true,
+      data: result
+    });
+  }),
+
+  /**
+   * 生成演示绩效数据（仅 HR/admin）
+   */
+  generateDemoData: asyncHandler(async (req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const month = requestedMonth(req);
+    const monthCount = Number(req.body?.monthCount || req.query?.monthCount || 3);
+    const result = await DemoDataService.generatePerformanceDemoData({
+      endMonth: month,
+      monthCount,
+    });
+    await writeAutomationLog('generate_demo_data', result.months[result.months.length - 1], 'success', result as any, Date.now() - startedAt);
+
+    res.json({
+      success: true,
+      message: `已生成 ${result.createdCount} 条演示绩效数据`,
+      data: result
+    });
+  }),
+
+  /**
+   * 清除演示绩效数据（仅 HR/admin）
+   */
+  clearDemoData: asyncHandler(async (_req: Request, res: Response) => {
+    const startedAt = Date.now();
+    const result = await DemoDataService.clearDemoData();
+    await writeAutomationLog('clear_demo_data', undefined, 'success', result as any, Date.now() - startedAt);
+
+    res.json({
+      success: true,
+      message: `已清除 ${result.totalDeleted} 条演示数据`,
+      data: result
     });
   }),
 

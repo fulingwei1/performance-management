@@ -383,9 +383,10 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
 }
 
 async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: Map<string, string>) {
-  const defaultPasswordHash = await bcrypt.hash('123456', 10);
-
   for (const employee of employees) {
+    const passwordHash = employee.idCardLast6
+      ? await bcrypt.hash(employee.idCardLast6, 10)
+      : null;
     const idCardLast6Hash = employee.idCardLast6
       ? await bcrypt.hash(employee.idCardLast6, 10)
       : null;
@@ -394,8 +395,8 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
     await query(
       `INSERT INTO employees (
         id, name, department, sub_department, position, role, level,
-        manager_id, password, id_card_last6_hash, status, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        manager_id, password, id_card_last6_hash, status, must_change_password, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         department = EXCLUDED.department,
@@ -404,9 +405,16 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
         role = EXCLUDED.role,
         level = EXCLUDED.level,
         manager_id = COALESCE(EXCLUDED.manager_id, employees.manager_id),
-        password = COALESCE(employees.password, EXCLUDED.password),
+        password = CASE
+          WHEN EXCLUDED.id_card_last6_hash IS NOT NULL THEN EXCLUDED.password
+          ELSE employees.password
+        END,
         id_card_last6_hash = COALESCE(EXCLUDED.id_card_last6_hash, employees.id_card_last6_hash),
         status = EXCLUDED.status,
+        must_change_password = CASE
+          WHEN EXCLUDED.id_card_last6_hash IS NOT NULL THEN FALSE
+          ELSE employees.must_change_password
+        END,
         updated_at = CURRENT_TIMESTAMP`,
       [
         employee.id,
@@ -417,9 +425,10 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
         employee.role,
         employee.level,
         managerId,
-        defaultPasswordHash,
+        passwordHash,
         idCardLast6Hash,
         employee.status,
+        !employee.idCardLast6,
       ]
     );
   }

@@ -199,4 +199,44 @@ export class TodoModel {
     const results = await query(sql, [employeeId, type, relatedId]);
     return results.length > 0 ? (results[0] as Todo) : null;
   }
+
+  static async deletePerformanceRelated(month?: string): Promise<number> {
+    if (USE_MEMORY_DB) {
+      if (!memoryStore.todos) memoryStore.todos = new Map();
+      const beforeCount = memoryStore.todos.size;
+      for (const [id, todo] of memoryStore.todos.entries()) {
+        const t = todo as Todo;
+        if (t.type !== 'work_summary' && t.type !== 'performance_review') continue;
+        if (month) {
+          const relatedId = t.relatedId || '';
+          const link = t.link || '';
+          const matchesMonth =
+            relatedId === `performance-summary-${month}` ||
+            relatedId.endsWith(`-${month}`) ||
+            link.includes(`month=${month}`);
+          if (!matchesMonth) continue;
+        }
+        memoryStore.todos.delete(id);
+      }
+      return beforeCount - memoryStore.todos.size;
+    }
+
+    const params: any[] = [];
+    let sql = `
+      DELETE FROM todos
+      WHERE type IN ('work_summary', 'performance_review')
+    `;
+    if (month) {
+      params.push(`performance-summary-${month}`, `%-${month}`, `%month=${month}%`);
+      sql += `
+        AND (
+          related_id = $1
+          OR related_id LIKE $2
+          OR link LIKE $3
+        )
+      `;
+    }
+    const result = await query(sql, params);
+    return (result as any).affectedRows ?? (result as any).rowCount ?? 0;
+  }
 }

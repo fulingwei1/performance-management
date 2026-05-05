@@ -108,7 +108,11 @@ export const employeeController = {
 
     const sanitized = (scopedEmployees as any[]).map((e) => {
       const { password, idCardLast6Hash, ...rest } = e || {};
-      return isPrivileged ? rest : toDirectory(rest);
+      const privilegedRest = {
+        ...rest,
+        hasIdCardLast6: Boolean(rest.hasIdCardLast6 || idCardLast6Hash),
+      };
+      return isPrivileged ? privilegedRest : toDirectory(rest);
     });
     res.json({
       success: true,
@@ -155,7 +159,10 @@ export const employeeController = {
 
       res.json({
         success: true,
-        data: employeeWithoutSensitive
+        data: {
+          ...employeeWithoutSensitive,
+          hasIdCardLast6: Boolean(employeeWithoutSensitive.hasIdCardLast6 || idCardLast6Hash),
+        }
       });
     })
   ],
@@ -211,7 +218,11 @@ export const employeeController = {
           .filter((e) => (includeDisabled && isPrivileged) || !e.status || e.status === 'active')
           .map((e) => {
           const { password, idCardLast6Hash, ...rest } = e || {};
-          return isPrivileged ? rest : toDirectory(rest);
+          const privilegedRest = {
+            ...rest,
+            hasIdCardLast6: Boolean(rest.hasIdCardLast6 || idCardLast6Hash),
+          };
+          return isPrivileged ? privilegedRest : toDirectory(rest);
         })
       });
     })
@@ -236,7 +247,11 @@ export const employeeController = {
       success: true,
       data: (managers as any[]).map((e) => {
         const { password, idCardLast6Hash, ...rest } = e || {};
-        return isPrivileged ? rest : toDirectory(rest);
+        const privilegedRest = {
+          ...rest,
+          hasIdCardLast6: Boolean(rest.hasIdCardLast6 || idCardLast6Hash),
+        };
+        return isPrivileged ? privilegedRest : toDirectory(rest);
       })
     });
   }),
@@ -246,16 +261,22 @@ export const employeeController = {
     body('id').notEmpty().withMessage('员工ID不能为空'),
     body('name').notEmpty().withMessage('姓名不能为空'),
     body('department').notEmpty().withMessage('部门不能为空'),
-    body('subDepartment').notEmpty().withMessage('子部门不能为空'),
+    body('subDepartment').optional({ values: 'falsy' }).isLength({ max: 100 }).withMessage('子部门不能超过100个字符'),
     body('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
     body('level').isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别错误'),
-    body('password').optional().isLength({ min: 6 }).withMessage('密码至少6位'),
+    body('password').optional().isLength({ min: 8 }).withMessage('密码至少8位'),
     body('wecomUserId').optional().isLength({ max: 128 }).withMessage('企业微信用户ID不能超过128个字符'),
     body('idCardLast6')
       .optional()
       .isString()
       .matches(/^[0-9Xx]{6}$/)
       .withMessage('身份证后六位格式错误'),
+    body().custom((_, { req }) => {
+      if (!req.body.idCardLast6 && !req.body.password) {
+        throw new Error('请提供身份证后六位；系统不再生成随机登录密码');
+      }
+      return true;
+    }),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -278,6 +299,12 @@ export const employeeController = {
         });
       }
 
+      const normalizedIdCardLast6 = typeof idCardLast6 === 'string'
+        ? idCardLast6.trim().toUpperCase()
+        : '';
+      const providedPassword = typeof password === 'string' && password.trim() ? password.trim() : '';
+      const loginPassword = normalizedIdCardLast6 || providedPassword;
+
       const employee = await EmployeeModel.create({
         id,
         name,
@@ -287,8 +314,9 @@ export const employeeController = {
         level,
         managerId: normalizedManagerId ?? undefined,
         wecomUserId,
-        password: password || '123456',
-        idCardLast6
+        password: loginPassword,
+        idCardLast6: normalizedIdCardLast6 || undefined,
+        mustChangePassword: false
       });
 
       res.status(201).json({
@@ -297,7 +325,9 @@ export const employeeController = {
           const { password: _, idCardLast6Hash: __, ...rest } = employee as any;
           return rest;
         })(),
-        message: '员工创建成功'
+        message: normalizedIdCardLast6
+          ? '员工创建成功，登录口令为身份证后六位'
+          : '员工创建成功'
       });
     })
   ],
@@ -320,7 +350,9 @@ export const employeeController = {
         restUpdates.managerId = normalizeManagerId(restUpdates.managerId);
       }
       if (idCardLast6) {
-        await EmployeeModel.updateIdCardLast6(req.params.id as string, String(idCardLast6));
+        const normalizedIdCardLast6 = String(idCardLast6).trim().toUpperCase();
+        await EmployeeModel.updateIdCardLast6(req.params.id as string, normalizedIdCardLast6);
+        await EmployeeModel.updatePassword(req.params.id as string, normalizedIdCardLast6, { mustChangePassword: false });
       }
 
       const employee = await EmployeeModel.update(req.params.id as string, restUpdates);
@@ -346,6 +378,23 @@ export const employeeController = {
   // 重置密码
   resetPassword: [
     param('id').notEmpty().withMessage('员工ID不能为空'),
+    body('idCardLast6')
+      .optional()
+      .isString()
+      .matches(/^[0-9Xx]{6}$/)
+      .withMessage('身份证后六位格式错误'),
+    body('newPassword')
+      .optional()
+      .isLength({ min: 8 })
+      .withMessage('新密码至少8位'),
+    body().custom((_, { req }) => {
+      const hasIdCardLast6 = typeof req.body?.idCardLast6 === 'string' && req.body.idCardLast6.trim();
+      const hasNewPassword = typeof req.body?.newPassword === 'string' && req.body.newPassword.length > 0;
+      if (hasIdCardLast6 && hasNewPassword) {
+        throw new Error('设置新密码和重置为身份证后六位不能同时提交');
+      }
+      return true;
+    }),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -358,12 +407,58 @@ export const employeeController = {
         return res.status(404).json({ success: false, message: '员工不存在' });
       }
 
-      const success = await EmployeeModel.updatePassword(req.params.id as string, '123456');
-      if (!success) {
-        return res.status(500).json({ success: false, message: '重置密码失败' });
+      const idCardLast6 = typeof req.body?.idCardLast6 === 'string'
+        ? req.body.idCardLast6.trim().toUpperCase()
+        : '';
+      const newPassword = typeof req.body?.newPassword === 'string'
+        ? req.body.newPassword
+        : '';
+
+      if (newPassword) {
+        const success = await EmployeeModel.updatePassword(
+          req.params.id as string,
+          newPassword,
+          { mustChangePassword: false }
+        );
+        if (!success) {
+          return res.status(500).json({ success: false, message: '设置密码失败' });
+        }
+
+        return res.json({
+          success: true,
+          message: '登录密码已设置'
+        });
       }
 
-      res.json({ success: true, message: '密码已重置为默认密码(123456)' });
+      if (idCardLast6) {
+        await EmployeeModel.updateIdCardLast6(req.params.id as string, idCardLast6);
+        const success = await EmployeeModel.updatePassword(
+          req.params.id as string,
+          idCardLast6,
+          { mustChangePassword: false }
+        );
+        if (!success) {
+          return res.status(500).json({ success: false, message: '重置密码失败' });
+        }
+
+        return res.json({
+          success: true,
+          message: '登录口令已重置为身份证后六位'
+        });
+      }
+
+      if (!employee.idCardLast6Hash) {
+        return res.status(400).json({
+          success: false,
+          message: '该员工未录入身份证后六位，请先补录后再重置'
+        });
+      }
+
+      await EmployeeModel.updateMustChangePassword(req.params.id as string, false);
+      res.json({
+        success: true,
+        message: '该员工已使用档案中的身份证后六位登录，无需生成随机密码'
+      });
     })
   ],
 

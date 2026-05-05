@@ -8,7 +8,10 @@ import {
   FileText,
   Database,
   Zap,
-  ClipboardList
+  ClipboardList,
+  KeyRound,
+  MessageSquare,
+  type LucideIcon
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -17,26 +20,52 @@ interface SidebarProps {
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 }
 
-const employeeNavItems = [
+interface SidebarNavItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+const selfSummaryNavItem: SidebarNavItem = { path: '/employee/summary', label: '我的月度总结', icon: FileText };
+
+function withSelfSummaryNavItem(items: SidebarNavItem[]): SidebarNavItem[] {
+  if (items.some((item) => item.path === selfSummaryNavItem.path)) return items;
+  const [first, ...rest] = items;
+  return first ? [first, selfSummaryNavItem, ...rest] : [selfSummaryNavItem];
+}
+
+const employeeNavItems: SidebarNavItem[] = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/employee/summary', label: '月度总结', icon: FileText },
+  { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
-const managerNavItems = [
+const managerNavItems: SidebarNavItem[] = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
+  { path: '/employee/summary', label: '我的月度总结', icon: FileText },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
-const gmNavItems = [
+const gmNavItems: SidebarNavItem[] = [
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
-const hrAdminBaseNavItems = [
+const gmManagerNavItems: SidebarNavItem[] = [
+  { path: '/manager/dashboard', label: '管辖绩效', icon: Award },
+  { path: '/manager/analytics', label: '管辖绩效看板', icon: BarChart3 },
+  ...gmNavItems,
+];
+
+const hrAdminBaseNavItems: SidebarNavItem[] = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/data-io', label: '数据管理', icon: Database },
+  { path: '/hr/user-management', label: '账号管理', icon: KeyRound },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
+  { path: '/hr/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
   { path: '/hr/logs', label: '日志管理', icon: ClipboardList },
 ];
@@ -71,15 +100,15 @@ function getDisplayRoleLabels(user: any, role: SidebarProps['role']): string[] {
 export function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  
+
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam || effectiveRoles.includes('manager'));
-  const navItems = role === 'employee' 
-    ? employeeNavItems 
-    : role === 'manager' 
-    ? managerNavItems 
+  const baseNavItems = role === 'employee'
+    ? employeeNavItems
+    : role === 'manager'
+    ? managerNavItems
     : role === 'gm'
-    ? gmNavItems
+    ? (canManageTeam ? gmManagerNavItems : gmNavItems)
     : canManageTeam
       ? [
           { path: '/hr/dashboard', label: '管理员工作台', icon: LayoutDashboard },
@@ -89,8 +118,11 @@ export function Sidebar({ role }: SidebarProps) {
           ...hrAdminBaseNavItems.slice(2),
         ]
       : hrAdminBaseNavItems;
+  const navItems = user?.capabilities?.canSubmitSelfSummary
+    ? withSelfSummaryNavItem(baseNavItems)
+    : baseNavItems;
   const roleLabels = getDisplayRoleLabels(user, role).filter(Boolean);
-  
+
   return (
     <aside className="w-64 bg-gray-900 text-white flex flex-col h-screen fixed left-0 top-0 z-50">
       {/* Logo */}
@@ -105,7 +137,7 @@ export function Sidebar({ role }: SidebarProps) {
           </div>
         </div>
       </div>
-      
+
       {/* User Info */}
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
@@ -124,21 +156,21 @@ export function Sidebar({ role }: SidebarProps) {
           </div>
         </div>
       </div>
-      
+
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-          
+
           return (
             <NavLink
               key={item.path}
               to={item.path}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive 
-                  ? "bg-blue-600 text-white" 
+                isActive
+                  ? "bg-blue-600 text-white"
                   : "text-gray-300 hover:bg-gray-800 hover:text-white"
               )}
             >
@@ -154,9 +186,21 @@ export function Sidebar({ role }: SidebarProps) {
           );
         })}
       </nav>
-      
+
       {/* Logout */}
       <div className="p-4 border-t border-gray-800">
+        <NavLink
+          to="/change-password"
+          className={cn(
+            "mb-2 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
+            location.pathname === '/change-password'
+              ? "bg-blue-600 text-white"
+              : "text-gray-400 hover:bg-gray-800 hover:text-white"
+          )}
+        >
+          <KeyRound className="w-5 h-5" />
+          <span>修改密码</span>
+        </NavLink>
         <button
           onClick={logout}
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-all duration-200 w-full"

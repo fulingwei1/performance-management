@@ -3,11 +3,22 @@
 绩效管理系统 ECS 迁移 - 使用 docker cp
 """
 import paramiko
+import os
 import sys
 
-SSH_HOST = '8.138.230.46'
-SSH_USER = 'root'
-SSH_PASSWORD = 'F@p%AK94*dv!8h7'
+def require_env(name: str) -> str:
+    value = os.getenv(name, '').strip()
+    if not value:
+        raise RuntimeError(f'缺少环境变量 {name}')
+    return value
+
+
+# 连接配置从环境变量读取，避免把服务器地址/凭据写入仓库。
+SSH_HOST = require_env('PERF_ECS_HOST')
+SSH_PORT = int(os.getenv('PERF_ECS_PORT', '22'))
+SSH_USER = os.getenv('PERF_ECS_USER', 'root')
+SSH_PASSWORD = os.getenv('PERF_ECS_PASSWORD')
+SSH_KEY_FILE = os.getenv('PERF_ECS_KEY_FILE')
 LOCAL_SQL = '/Users/fulingwei/performance-management/backend/migrations/013_core_department_templates.sql'
 DB_USER = 'performance_user'
 DB_NAME = 'performance_db'
@@ -26,7 +37,16 @@ def main():
     
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    client.connect(SSH_HOST, port=22, username=SSH_USER, password=SSH_PASSWORD, timeout=10)
+    if not SSH_PASSWORD and not SSH_KEY_FILE:
+        raise RuntimeError('请设置 PERF_ECS_KEY_FILE 或 PERF_ECS_PASSWORD')
+    client.connect(
+        SSH_HOST,
+        port=SSH_PORT,
+        username=SSH_USER,
+        password=SSH_PASSWORD,
+        key_filename=SSH_KEY_FILE,
+        timeout=10,
+    )
     print("✅ SSH 连接成功")
     
     try:

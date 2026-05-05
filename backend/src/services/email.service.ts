@@ -80,14 +80,88 @@ function wrapHtml(body: string): string {
 
 /** 纯文本版本的页脚 */
 const TEXT_FOOTER = `\n\n--\n${COMPANY_NAME} · 绩效管理系统\n${COMPANY_NAME_FULL}\n此邮件由系统自动发送，请勿直接回复。`;
+const DEFAULT_SYSTEM_BASE_URL = 'http://8.138.230.46/performance-management';
+const LOGIN_METHOD_GUIDE = '登录方式：姓名 + 当前密码；首次登录或未设置密码时，默认使用身份证后6位。';
+const EMPLOYEE_SUMMARY_OPERATION_GUIDE = '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。';
+const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。';
+const DEFAULT_OPERATION_GUIDE = '点击处理链接进入系统，根据页面待办提示完成任务。';
+const TASK_TYPE_LABELS: Record<string, string> = {
+  work_summary: '工作总结',
+  manager_review: '经理评审',
+  manager_scoring: '经理评分',
+  hr_review: 'HR评审',
+  appeal_review: '申诉处理',
+  goal_approval: '目标审批',
+};
 
 // ============================================================
 // 模板函数
 // ============================================================
 
+function getTaskLabel(taskType: string): string {
+  return TASK_TYPE_LABELS[taskType] || taskType;
+}
+
+function getOperationGuide(taskType: string): string {
+  if (taskType === 'work_summary') return EMPLOYEE_SUMMARY_OPERATION_GUIDE;
+  if (taskType === 'manager_scoring' || taskType === 'manager_review') return MANAGER_SCORING_OPERATION_GUIDE;
+  return DEFAULT_OPERATION_GUIDE;
+}
+
+function normalizeSystemBaseUrl(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    let pathname = parsed.pathname.replace(/\/+$/, '');
+    if (pathname === '/login') {
+      pathname = '';
+    } else if (pathname.endsWith('/login')) {
+      pathname = pathname.slice(0, -'/login'.length).replace(/\/+$/, '');
+    }
+
+    if (!pathname && parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
+      pathname = '/performance-management';
+    }
+
+    return `${parsed.origin}${pathname}`;
+  } catch (error) {
+    logger.warn(`[EmailService] 系统地址解析失败，使用默认地址: ${error}`);
+    return null;
+  }
+}
+
+function buildSystemBaseUrl(): string {
+  return normalizeSystemBaseUrl(process.env.PERFORMANCE_SYSTEM_URL || '')
+    || normalizeSystemBaseUrl(process.env.FRONTEND_URL || '')
+    || DEFAULT_SYSTEM_BASE_URL;
+}
+
+function buildActionLink(link: string): string {
+  const trimmed = (link || '').trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${buildSystemBaseUrl()}${path}`;
+}
+
+function operationGuideHtml(operationGuide: string): string {
+  return `
+    <hr class="divider" />
+    <p><strong>系统使用方法：</strong>${operationGuide}</p>
+    <p><strong>${LOGIN_METHOD_GUIDE}</strong></p>
+  `;
+}
+
+function operationGuideText(operationGuide: string): string {
+  return `\n\n系统使用方法：${operationGuide}\n${LOGIN_METHOD_GUIDE}`;
+}
+
 function monthlyTaskGeneratedHtml(
   employeeName: string, month: string, summaryLink: string, dueDate: string
 ): string {
+  const actionLink = buildActionLink(summaryLink);
   return `
     <p>你好，<strong>${employeeName}</strong>：</p>
     <p>系统已为你生成 <span class="badge badge-info">${month}</span> 的绩效考核任务，请尽快填写上月工作总结和本月计划。</p>
@@ -95,7 +169,8 @@ function monthlyTaskGeneratedHtml(
       <tr><td>考核月份</td><td>${month}</td></tr>
       <tr><td>截止日期</td><td>${dueDate}</td></tr>
     </table>
-    <p><a class="btn" href="${summaryLink}" target="_blank">前往填写工作总结 →</a></p>
+    ${operationGuideHtml(EMPLOYEE_SUMMARY_OPERATION_GUIDE)}
+    <p><a class="btn" href="${actionLink}" target="_blank">前往填写工作总结 →</a></p>
     <p style="color:#888;font-size:13px;">请及时完成，以免影响绩效考核进度。</p>
   `;
 }
@@ -103,20 +178,16 @@ function monthlyTaskGeneratedHtml(
 function monthlyTaskGeneratedText(
   employeeName: string, month: string, summaryLink: string, dueDate: string
 ): string {
-  return `你好，${employeeName}：\n\n系统已为你生成 ${month} 的绩效考核任务，请尽快填写上月工作总结和本月计划。\n\n考核月份：${month}\n截止日期：${dueDate}\n\n前往填写：${summaryLink}\n\n请及时完成，以免影响绩效考核进度。`;
+  const actionLink = buildActionLink(summaryLink);
+  return `你好，${employeeName}：\n\n系统已为你生成 ${month} 的绩效考核任务，请尽快填写上月工作总结和本月计划。\n\n考核月份：${month}\n截止日期：${dueDate}${operationGuideText(EMPLOYEE_SUMMARY_OPERATION_GUIDE)}\n\n前往填写：${actionLink}\n\n请及时完成，以免影响绩效考核进度。`;
 }
 
 function deadlineReminderHtml(
   employeeName: string, cycleName: string, taskType: string, deadline: string, link: string
 ): string {
-  const typeLabel: Record<string, string> = {
-    work_summary: '工作总结',
-    manager_review: '经理评审',
-    hr_review: 'HR评审',
-    appeal_review: '申诉处理',
-    goal_approval: '目标审批',
-  };
-  const label = typeLabel[taskType] || taskType;
+  const label = getTaskLabel(taskType);
+  const actionLink = buildActionLink(link);
+  const operationGuide = getOperationGuide(taskType);
 
   return `
     <p>你好，<strong>${employeeName}</strong>：</p>
@@ -126,23 +197,19 @@ function deadlineReminderHtml(
       <tr><td>任务类型</td><td>${label}</td></tr>
       <tr><td>截止时间</td><td>${deadline}</td></tr>
     </table>
-    <p><a class="btn" href="${link}" target="_blank">立即处理 →</a></p>
+    ${operationGuideHtml(operationGuide)}
+    <p><a class="btn" href="${actionLink}" target="_blank">立即处理 →</a></p>
   `;
 }
 
 function deadlineReminderText(
   employeeName: string, cycleName: string, taskType: string, deadline: string, link: string
 ): string {
-  const typeLabel: Record<string, string> = {
-    work_summary: '工作总结',
-    manager_review: '经理评审',
-    hr_review: 'HR评审',
-    appeal_review: '申诉处理',
-    goal_approval: '目标审批',
-  };
-  const label = typeLabel[taskType] || taskType;
+  const label = getTaskLabel(taskType);
+  const actionLink = buildActionLink(link);
+  const operationGuide = getOperationGuide(taskType);
 
-  return `你好，${employeeName}：\n\n提醒你，考核周期「${cycleName}」中的「${label}」即将截止。\n\n考核周期：${cycleName}\n任务类型：${label}\n截止时间：${deadline}\n\n处理链接：${link}`;
+  return `你好，${employeeName}：\n\n提醒你，考核周期「${cycleName}」中的「${label}」即将截止。\n\n考核周期：${cycleName}\n任务类型：${label}\n截止时间：${deadline}${operationGuideText(operationGuide)}\n\n处理链接：${actionLink}`;
 }
 
 function overdueNoticeHtml(
@@ -364,9 +431,10 @@ export class EmailService {
   static async sendDeadlineReminder(
     to: string, employeeName: string, cycleName: string, taskType: string, deadline: string, link: string
   ): Promise<boolean> {
+    const label = getTaskLabel(taskType);
     return this.send({
       to,
-      subject: `【提醒】${cycleName} - ${taskType}即将截止`,
+      subject: `【提醒】${cycleName} - ${label}即将截止`,
       html: deadlineReminderHtml(employeeName, cycleName, taskType, deadline, link),
       text: deadlineReminderText(employeeName, cycleName, taskType, deadline, link),
     });

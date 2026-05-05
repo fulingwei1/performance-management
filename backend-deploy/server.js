@@ -11,7 +11,15 @@ const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'performance_system_secret_key_2024';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-secret-key' : '');
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET 环境变量未设置，拒绝使用内置默认密钥启动');
+}
+const INITIAL_EMPLOYEE_TEMP_PASSWORD = process.env.INITIAL_EMPLOYEE_TEMP_PASSWORD
+  || (process.env.NODE_ENV === 'test' ? '123456' : '');
+if (!INITIAL_EMPLOYEE_TEMP_PASSWORD) {
+  throw new Error('INITIAL_EMPLOYEE_TEMP_PASSWORD 环境变量未设置，拒绝使用内置默认密码启动');
+}
 
 // 内存存储
 const memoryStore = {
@@ -76,7 +84,8 @@ const initialEmployees = [
 initialEmployees.forEach(emp => {
   memoryStore.employees.set(emp.id, {
     ...emp,
-    password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi' // 123456
+    password: bcrypt.hashSync(INITIAL_EMPLOYEE_TEMP_PASSWORD, 10),
+    mustChangePassword: process.env.NODE_ENV !== 'test'
   });
 });
 

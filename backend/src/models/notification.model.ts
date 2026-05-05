@@ -251,4 +251,67 @@ export class NotificationModel {
     const result = await query(sql, []);
     return (result as any).rowCount || 0;
   }
+
+  static async deletePerformanceRelated(month?: string): Promise<number> {
+    const isPerformanceNotification = (notification: Notification) => {
+      const link = notification.link || '';
+      const title = notification.title || '';
+      const content = notification.content || '';
+      const performanceRelated =
+        link.startsWith('/employee/summary') ||
+        link === '/manager/dashboard' ||
+        link === '/manager/scoring' ||
+        title.includes('绩效') ||
+        title.includes('工作总结') ||
+        title.includes('评分') ||
+        content.includes('绩效') ||
+        content.includes('工作总结') ||
+        content.includes('评分');
+      if (!performanceRelated) return false;
+      if (!month) return true;
+      return link.includes(`month=${month}`) || title.includes(month) || content.includes(month);
+    };
+
+    if (USE_MEMORY_DB) {
+      if (!memoryStore.notifications) {
+        memoryStore.notifications = new Map();
+      }
+      const beforeCount = memoryStore.notifications.size;
+      for (const [id, notification] of memoryStore.notifications.entries()) {
+        if (isPerformanceNotification(notification)) {
+          memoryStore.notifications.delete(id);
+        }
+      }
+      return beforeCount - memoryStore.notifications.size;
+    }
+
+    const performancePredicate = `
+      (
+        link LIKE '/employee/summary%'
+        OR link IN ('/manager/dashboard', '/manager/scoring')
+        OR title LIKE '%绩效%'
+        OR title LIKE '%工作总结%'
+        OR title LIKE '%评分%'
+        OR content LIKE '%绩效%'
+        OR content LIKE '%工作总结%'
+        OR content LIKE '%评分%'
+      )
+    `;
+
+    const params: any[] = [];
+    let sql = `DELETE FROM notifications WHERE ${performancePredicate}`;
+    if (month) {
+      params.push(`%month=${month}%`, `%${month}%`);
+      sql += `
+        AND (
+          link LIKE $1
+          OR title LIKE $2
+          OR content LIKE $2
+        )
+      `;
+    }
+
+    const result = await query(sql, params);
+    return (result as any).affectedRows ?? (result as any).rowCount ?? 0;
+  }
 }

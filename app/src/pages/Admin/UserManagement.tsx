@@ -28,7 +28,7 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmployeeForm } from '@/pages/HR/EmployeeManagement/EmployeeForm';
-import { employeeApi, organizationApi, DEFAULT_EMPLOYEE_PASSWORD } from '@/services/api';
+import { employeeApi, organizationApi } from '@/services/api';
 import type { Department, Employee, EmployeeLevel } from '@/types';
 
 const NO_MANAGER = '__none__';
@@ -104,6 +104,11 @@ export function UserManagement() {
   const [syncDepartmentAssignments, setSyncDepartmentAssignments] = useState<Record<string, boolean>>({});
   const [savingEmployeeId, setSavingEmployeeId] = useState<string | null>(null);
   const [savingDepartmentKey, setSavingDepartmentKey] = useState<string | null>(null);
+  const [passwordDialogEmployee, setPasswordDialogEmployee] = useState<Employee | null>(null);
+  const [resetIdCardLast6, setResetIdCardLast6] = useState('');
+  const [customPassword, setCustomPassword] = useState('');
+  const [customPasswordConfirm, setCustomPasswordConfirm] = useState('');
+  const [savingPasswordAction, setSavingPasswordAction] = useState<'id-card' | 'custom' | null>(null);
 
   const [employeeForm, setEmployeeForm] = useState<EmployeeFormState>({
     id: '',
@@ -279,13 +284,23 @@ export function UserManagement() {
   };
 
   const handleSaveEmployee = async () => {
+    const idCardLast6 = employeeForm.idCardLast6.trim();
+    if (!editingEmployee && !/^[0-9Xx]{6}$/.test(idCardLast6)) {
+      toast.error('新增用户必须录入身份证后六位，作为首次登录口令');
+      return;
+    }
+    if (editingEmployee && idCardLast6 && !/^[0-9Xx]{6}$/.test(idCardLast6)) {
+      toast.error('身份证后六位格式不正确');
+      return;
+    }
+
     try {
       if (editingEmployee) {
         await employeeApi.updateEmployee(editingEmployee.id, employeeForm);
         toast.success('员工信息已更新');
       } else {
-        await employeeApi.create({ ...employeeForm, password: DEFAULT_EMPLOYEE_PASSWORD });
-        toast.success('员工已添加');
+        await employeeApi.create(employeeForm);
+        toast.success('员工已添加，登录口令为身份证后六位');
       }
       setShowAddDialog(false);
       setEditingEmployee(null);
@@ -323,13 +338,68 @@ export function UserManagement() {
     }
   };
 
-  const handleResetPassword = async (id: string, name: string) => {
-    if (!confirm(`确定要重置 ${name} 的密码为默认密码(见系统配置)吗？`)) return;
+  const openPasswordDialog = (employee: Employee) => {
+    setPasswordDialogEmployee(employee);
+    setResetIdCardLast6('');
+    setCustomPassword('');
+    setCustomPasswordConfirm('');
+    setSavingPasswordAction(null);
+  };
+
+  const closePasswordDialog = () => {
+    setPasswordDialogEmployee(null);
+    setResetIdCardLast6('');
+    setCustomPassword('');
+    setCustomPasswordConfirm('');
+    setSavingPasswordAction(null);
+  };
+
+  const handleResetPasswordToIdCard = async () => {
+    if (!passwordDialogEmployee) return;
+    const idCardLast6 = resetIdCardLast6.trim();
+    if (idCardLast6 && !/^[0-9Xx]{6}$/.test(idCardLast6)) {
+      toast.error('身份证后六位格式不正确');
+      return;
+    }
+    if (!idCardLast6 && !passwordDialogEmployee.hasIdCardLast6) {
+      toast.error('该员工未录入身份证后六位，请先在这里补录后再重置');
+      return;
+    }
+
+    setSavingPasswordAction('id-card');
     try {
-      await employeeApi.resetPassword(id);
-      toast.success('密码已重置');
+      await employeeApi.resetPassword(passwordDialogEmployee.id, idCardLast6 ? { idCardLast6 } : undefined);
+      toast.success('登录口令已重置为身份证后六位');
+      closePasswordDialog();
+      await fetchEmployees();
     } catch (error: any) {
       toast.error(error.message || '重置失败');
+    } finally {
+      setSavingPasswordAction(null);
+    }
+  };
+
+  const handleSetCustomPassword = async () => {
+    if (!passwordDialogEmployee) return;
+    if (customPassword.length < 8) {
+      toast.error('新密码至少 8 位');
+      return;
+    }
+    if (customPassword !== customPasswordConfirm) {
+      toast.error('两次输入的新密码不一致');
+      return;
+    }
+
+    setSavingPasswordAction('custom');
+    try {
+      await employeeApi.resetPassword(passwordDialogEmployee.id, { newPassword: customPassword });
+      toast.success('登录密码已设置');
+      closePasswordDialog();
+      await fetchEmployees();
+    } catch (error: any) {
+      toast.error(error.message || '设置失败');
+    } finally {
+      setSavingPasswordAction(null);
     }
   };
 
@@ -385,6 +455,11 @@ export function UserManagement() {
     for (const line of lines) {
       const values = line.split(',').map((value) => value.trim().replace(/^"|"$/g, ''));
       if (values.length >= 2 && values[1]) {
+        const idCardLast6 = (values[7] || '').trim().toUpperCase();
+        if (!/^[0-9Xx]{6}$/.test(idCardLast6)) {
+          failCount++;
+          continue;
+        }
         try {
           await employeeApi.create({
             id: values[0] || `emp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -394,7 +469,7 @@ export function UserManagement() {
             role: values[4] || 'employee',
             level: values[5] || 'intermediate',
             managerId: values[6] || undefined,
-            password: DEFAULT_EMPLOYEE_PASSWORD,
+            idCardLast6,
           });
           successCount++;
         } catch {
@@ -778,6 +853,7 @@ export function UserManagement() {
                     <TableHead>部门</TableHead>
                     <TableHead>角色</TableHead>
                     <TableHead>级别</TableHead>
+                    <TableHead>身份证口令</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
@@ -791,6 +867,11 @@ export function UserManagement() {
                       <TableCell>{getRoleBadge(employee.role)}</TableCell>
                       <TableCell>{employee.level}</TableCell>
                       <TableCell>
+                        <Badge variant={employee.hasIdCardLast6 ? 'outline' : 'destructive'}>
+                          {employee.hasIdCardLast6 ? '已录入' : '待补录'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant={(employee as any).status === 'disabled' ? 'destructive' : 'outline'}>
                           {(employee as any).status === 'disabled' ? '已禁用' : '正常'}
                         </Badge>
@@ -798,7 +879,7 @@ export function UserManagement() {
                       <TableCell className="text-right" onClick={(event) => event.stopPropagation()}>
                         <div className="flex justify-end gap-1">
                           <Button size="sm" variant="ghost" title="编辑" onClick={() => handleEdit(employee)}><Edit className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" title="重置密码" onClick={() => handleResetPassword(employee.id, employee.name)}><KeyRound className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" title="账号密码" onClick={() => openPasswordDialog(employee)}><KeyRound className="w-4 h-4" /></Button>
                           <Button size="sm" variant="ghost" title={(employee as any).status === 'disabled' ? '启用' : '禁用'} onClick={() => handleToggleStatus(employee.id)}>
                             {(employee as any).status === 'disabled' ? <ShieldCheck className="w-4 h-4 text-green-500" /> : <ShieldOff className="w-4 h-4 text-orange-500" />}
                           </Button>
@@ -819,6 +900,90 @@ export function UserManagement() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(passwordDialogEmployee)} onOpenChange={(open) => { if (!open) closePasswordDialog(); }}>
+        <DialogContent className="max-w-xl" aria-describedby="password-dialog-desc">
+          <DialogHeader>
+            <DialogTitle>账号密码 - {passwordDialogEmployee?.name}</DialogTitle>
+            <p id="password-dialog-desc" className="text-sm text-gray-600">
+              可直接设置一个新密码，也可把登录口令重置为身份证后六位。
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-medium text-gray-900">重置为身份证后六位</h4>
+                  <p className="text-xs text-gray-500">
+                    {passwordDialogEmployee?.hasIdCardLast6
+                      ? '系统已录入该员工的身份证后六位；留空可直接重置。'
+                      : '系统暂未录入身份证后六位，请在下方补录后再重置。'}
+                  </p>
+                </div>
+                <Badge variant={passwordDialogEmployee?.hasIdCardLast6 ? 'outline' : 'destructive'}>
+                  {passwordDialogEmployee?.hasIdCardLast6 ? '已录入' : '待补录'}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="resetIdCardLast6">身份证后六位（可选）</Label>
+                <Input
+                  id="resetIdCardLast6"
+                  type="password"
+                  maxLength={6}
+                  value={resetIdCardLast6}
+                  onChange={(event) => setResetIdCardLast6(event.target.value)}
+                  placeholder="不填则使用档案中已录入的身份证后六位"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleResetPasswordToIdCard}
+                disabled={savingPasswordAction !== null}
+              >
+                {savingPasswordAction === 'id-card' ? '重置中...' : '重置为身份证后六位'}
+              </Button>
+            </div>
+
+            <div className="rounded-lg border p-4 space-y-3">
+              <div>
+                <h4 className="font-medium text-gray-900">直接设置新密码</h4>
+                <p className="text-xs text-gray-500">用于员工忘记密码但不想使用身份证后六位的情况；新密码至少 8 位。</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="customPassword">新密码</Label>
+                  <Input
+                    id="customPassword"
+                    type="password"
+                    value={customPassword}
+                    onChange={(event) => setCustomPassword(event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="customPasswordConfirm">确认新密码</Label>
+                  <Input
+                    id="customPasswordConfirm"
+                    type="password"
+                    value={customPasswordConfirm}
+                    onChange={(event) => setCustomPasswordConfirm(event.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                onClick={handleSetCustomPassword}
+                disabled={savingPasswordAction !== null || !customPassword || !customPasswordConfirm}
+              >
+                {savingPasswordAction === 'custom' ? '保存中...' : '设置新密码'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
         <DialogContent className="max-w-lg" aria-describedby="detail-desc">

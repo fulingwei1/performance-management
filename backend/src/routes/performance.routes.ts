@@ -39,8 +39,8 @@ router.get('/team-records', authenticate, requireManagerCapability, performanceC
   // 删除全公司所有绩效记录（HR）
   router.delete('/all-records', authenticate, requireRole('hr', 'admin'), performanceController.deleteAllRecords);
 
-// 参与考核人员提交工作总结（普通员工和参与考核的二级经理/主管都可提交）
-router.post('/summary', authenticate, requireRole('employee', 'manager'), validate(submitSummaryValidation), performanceController.submitSummary);
+// 参与考核人员提交工作总结：是否需要提交由“参与考核能力”统一判断，不再只按角色写死。
+router.post('/summary', authenticate, validate(submitSummaryValidation), performanceController.submitSummary);
 
 // 创建空记录（经理给未提交的员工评分时使用）
 router.post('/create-empty-record', authenticate, requireManagerCapability, validate(createRecordValidation), performanceController.createEmptyRecord);

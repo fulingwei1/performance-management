@@ -19,7 +19,14 @@ except ImportError as e:
 
 API_BASE = os.environ.get("API_URL", "http://localhost:3001")
 API = f"{API_BASE}/api"
-AUTH = {"username": "林作倩", "password": "123456", "role": "hr"}
+LOGIN_SECRET = os.environ.get("IMPORT_LOGIN_SECRET", "").strip()
+if not LOGIN_SECRET:
+    print("Please set IMPORT_LOGIN_SECRET for the HR import account.")
+    sys.exit(1)
+AUTH = {
+    "username": os.environ.get("IMPORT_LOGIN_USERNAME", "林作倩"),
+    "password": LOGIN_SECRET,
+}
 
 # Map 级别 to system level
 LEVEL_MAP = {
@@ -113,7 +120,6 @@ def main():
             "role": "employee",
             "level": map_level(level_raw),
             "managerId": None,
-            "password": "123456",
         })
 
     print(f"Parsed {len(employees)} employees from Excel.")

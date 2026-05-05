@@ -2,9 +2,6 @@ import { API_BASE_URL } from '@/lib/api-config';
 
 // API服务 - 连接后端
 
-// 新员工默认密码
-export const DEFAULT_EMPLOYEE_PASSWORD = '123456';
-
 // 获取Token
 const getToken = () => localStorage.getItem('token');
 
@@ -20,6 +17,16 @@ const redirectToLogin = () => {
   const loginPath = `${base}/login`;
   if (window.location.pathname !== loginPath) {
     window.location.replace(loginPath);
+  }
+};
+
+const redirectToChangePassword = () => {
+  if (typeof window === 'undefined') return;
+
+  const base = (import.meta as any).env.BASE_URL.replace(/\/+$/, '') || '';
+  const changePasswordPath = `${base}/change-password`;
+  if (window.location.pathname !== changePasswordPath) {
+    window.location.replace(changePasswordPath);
   }
 };
 
@@ -84,6 +91,9 @@ export const request = async (url: string, options: RequestInit = {}) => {
     
     if (!response.ok) {
       const message = data.message ?? data.error ?? '请求失败';
+      if (response.status === 403 && data.code === 'PASSWORD_CHANGE_REQUIRED') {
+        redirectToChangePassword();
+      }
       if (response.status === 401 && url !== '/auth/login') {
         handleUnauthorized(message);
       }
@@ -144,10 +154,7 @@ export const employeeApi = {
   // 创建员工
   create: (data: Record<string, unknown>) => request('/employees', {
     method: 'POST',
-    body: JSON.stringify({
-      ...data,
-      password: data.password || DEFAULT_EMPLOYEE_PASSWORD // 默认密码
-    })
+    body: JSON.stringify(data)
   }),
   
   // 更新员工
@@ -162,8 +169,9 @@ export const employeeApi = {
   }),
 
   // 重置密码
-  resetPassword: (id: string) => request(`/employees/${id}/reset-password`, {
-    method: 'PUT'
+  resetPassword: (id: string, payload?: { idCardLast6?: string; newPassword?: string }) => request(`/employees/${id}/reset-password`, {
+    method: 'PUT',
+    body: JSON.stringify(payload || {})
   }),
 
   // 启用/禁用用户
@@ -960,6 +968,65 @@ export const automationApi = {
     })
 };
 
+export interface SatisfactionSurveyQuestion {
+  key: string;
+  label: string;
+  description?: string;
+}
+
+export interface SatisfactionSurvey {
+  id: string;
+  year: number;
+  half: 1 | 2;
+  period: string;
+  title: string;
+  description: string;
+  questions: SatisfactionSurveyQuestion[];
+  status: 'draft' | 'open' | 'closed';
+  startDate: string;
+  endDate: string;
+}
+
+export interface SatisfactionSurveyResponse {
+  id: string;
+  surveyId: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  subDepartment: string;
+  anonymous: boolean;
+  scores: Record<string, number>;
+  comment?: string;
+  submittedAt: string;
+}
+
+export interface SatisfactionSurveyStats {
+  survey: SatisfactionSurvey;
+  responseCount: number;
+  overallAverage: number | null;
+  questionAverages: Array<SatisfactionSurveyQuestion & { average: number | null }>;
+  departmentBreakdown: Array<{ department: string; responseCount: number; average: number | null }>;
+  comments: Array<{ anonymous: boolean; employeeName?: string; department: string; comment: string; submittedAt: string }>;
+}
+
+export const satisfactionSurveyApi = {
+  getCurrent: () => request('/satisfaction-surveys/current'),
+  list: () => request('/satisfaction-surveys'),
+  ensureCurrent: (payload?: { year?: number; half?: 1 | 2 }) =>
+    request('/satisfaction-surveys/current/ensure', {
+      method: 'POST',
+      body: JSON.stringify(payload || {})
+    }),
+  submitResponse: (surveyId: string, payload: { scores: Record<string, number>; comment?: string; anonymous?: boolean }) =>
+    request(`/satisfaction-surveys/${surveyId}/responses`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  getStats: (surveyId: string) => request(`/satisfaction-surveys/${surveyId}/stats`),
+  open: (surveyId: string) => request(`/satisfaction-surveys/${surveyId}/open`, { method: 'POST' }),
+  close: (surveyId: string) => request(`/satisfaction-surveys/${surveyId}/close`, { method: 'POST' }),
+};
+
 // 系统设置API
 export const systemSettingsApi = {
   getAll: () => request('/system-settings/'),
@@ -982,6 +1049,7 @@ export default {
   assessmentPublication: assessmentPublicationApi,
   export: exportApi,
   automation: automationApi,
+  satisfactionSurvey: satisfactionSurveyApi,
   log: logApi
 };
 

@@ -311,7 +311,7 @@ export function HRDashboard() {
       
       {/* Stat Cards */}
       <motion.div variants={itemVariants}>
-        <StatCards stats={stats} onFilterChange={setStatusFilter} />
+        <StatCards stats={stats} activeFilter={statusFilter} onFilterChange={setStatusFilter} />
       </motion.div>
 
       {showSuggestionSummary && (
@@ -370,6 +370,7 @@ export function HRDashboard() {
           setSortBy={setSortBy}
           setSortOrder={setSortOrder}
           onEmployeeClick={(emp) => { setSelectedEmployee(emp); setDetailDrawerOpen(true); }}
+          statusFilter={statusFilter}
         />
       </motion.div>
       

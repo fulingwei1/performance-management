@@ -15,6 +15,7 @@ export interface Employee {
   capabilities?: {
     canManageTeam?: boolean;
     canManageSystem?: boolean;
+    canSubmitSelfSummary?: boolean;
   };
   level: EmployeeLevel;
   managerId?: string;
@@ -24,6 +25,8 @@ export interface Employee {
   joinDate?: string;
   phone?: string;
   status?: 'active' | 'inactive' | 'disabled';
+  mustChangePassword?: boolean;
+  hasIdCardLast6?: boolean;
 }
 
 // 员工档案（完整信息）

@@ -13,6 +13,9 @@ const migrationFiles = [
   '../postgres-init/04-todos.sql',
   '../postgres-init/05-employee-transfers.sql',
   '../postgres-init/06-local-current-schema.sql',
+  '../postgres-init/07-login-logs.sql',
+  '../postgres-init/08-automation-logs.sql',
+  '../postgres-init/09-satisfaction-surveys.sql',
   'migrations/001_add_objective_cycle_fields.sql',
   'migrations/002_attachments.sql',
   'migrations/004_bonus.sql',
@@ -26,6 +29,9 @@ const migrationFiles = [
   'src/migrations/018_department_assessment_manager_alignment.sql',
   'src/migrations/019_backfill_template_metric_scoring_criteria.sql',
   'src/migrations/020_dedupe_active_assessment_templates.sql',
+  'src/migrations/021_employee_must_change_password.sql',
+  'src/migrations/022_create_automation_logs.sql',
+  'src/migrations/023_satisfaction_surveys.sql',
 ];
 
 async function runMigrations() {

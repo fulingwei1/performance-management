@@ -60,7 +60,7 @@ describe('AssessmentTemplates', () => {
     render(<AssessmentTemplates />);
 
     await screen.findByText('工程类模板');
-    expect(apiMocks.getTemplates).toHaveBeenCalledWith({ includeMetrics: true });
+    expect(apiMocks.getTemplates).toHaveBeenCalledWith({ includeMetrics: true, status: 'active' });
     expect(global.fetch).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: '筛选工程类模板' }));

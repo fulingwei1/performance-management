@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../../index';
 import { validLoginData, invalidLoginData } from '../fixtures/mockData';
 import { TestHelper } from '../helpers/testHelper';
+import { EmployeeModel } from '../../models/employee.model';
 
 describe('Auth API', () => {
   describe('POST /api/auth/login', () => {
@@ -204,12 +205,18 @@ describe('Auth API', () => {
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('message', '密码修改成功');
 
-      // Reset password so subsequent tests can still use 123456 for getAuthToken('employee')
-      const tokenAfterChange = await TestHelper.loginAs('周欢欢', newPassword, 'employee');
-      await request(app)
-        .post('/api/auth/change-password')
-        .set('Authorization', `Bearer ${tokenAfterChange}`)
-        .send({ oldPassword: newPassword, newPassword: '123456' });
+      const loginWithNewPassword = await request(app)
+        .post('/api/auth/login')
+        .send({
+          username: '周欢欢',
+          password: newPassword
+        });
+      expect(loginWithNewPassword.status).toBe(200);
+      expect(loginWithNewPassword.body).toHaveProperty('success', true);
+
+      // Reset password directly so subsequent tests can still use the legacy test fixture.
+      const [employee] = await EmployeeModel.findAllByName('周欢欢');
+      await EmployeeModel.updatePassword(employee.id, '123456', { mustChangePassword: false });
     });
 
     it('should fail with wrong current password', async () => {

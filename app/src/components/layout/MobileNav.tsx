@@ -4,10 +4,12 @@ import {
   Bars3Icon,
   BoltIcon,
   ChartBarIcon,
+  ChatBubbleLeftRightIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
   HomeIcon,
+  KeyIcon,
   StarIcon,
   Squares2X2Icon,
   UserGroupIcon,
@@ -23,17 +25,33 @@ interface NavItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
+const selfSummaryNavItem: NavItem = {
+  name: '我的月度总结',
+  path: '/employee/summary',
+  icon: DocumentTextIcon,
+};
+
+function withSelfSummaryNavItem(items: NavItem[]): NavItem[] {
+  if (items.some((item) => item.path === selfSummaryNavItem.path)) return items;
+  const [first, ...rest] = items;
+  return first ? [first, selfSummaryNavItem, ...rest] : [selfSummaryNavItem];
+}
+
 const roleNavItems: Record<UserRole, NavItem[]> = {
   employee: [
     { name: '工作台', path: '/employee/dashboard', icon: HomeIcon },
     { name: '月度总结', path: '/employee/summary', icon: DocumentTextIcon },
+    { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
+    { name: '我的月度总结', path: '/employee/summary', icon: DocumentTextIcon },
     { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
+    { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   gm: [
     { name: '绩效看板', path: '/gm/analytics', icon: ChartBarIcon },
+    { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   hr: [
     { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
@@ -41,8 +59,10 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { name: '部门绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
     { name: '全公司绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
+    { name: '账号管理', path: '/hr/user-management', icon: KeyIcon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
+    { name: '满意度调查', path: '/hr/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
     { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
     { name: '日志管理', path: '/hr/logs', icon: ClipboardDocumentListIcon },
   ],
@@ -52,8 +72,10 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { name: '部门绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
     { name: '全公司绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
+    { name: '账号管理', path: '/hr/user-management', icon: KeyIcon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
+    { name: '满意度调查', path: '/hr/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
     { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
     { name: '日志管理', path: '/hr/logs', icon: ClipboardDocumentListIcon },
   ],
@@ -65,18 +87,23 @@ export const MobileNav: React.FC = () => {
   const { user } = useAuthStore();
 
   const role = (user?.role || 'employee') as UserRole;
-  const effectiveRoles = useMemo(() => (
-    Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role]
-  ), [role, user?.roles]);
+  const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam || effectiveRoles.includes('manager'));
+  const canSubmitSelfSummary = Boolean(user?.capabilities?.canSubmitSelfSummary);
   const filteredItems = useMemo(() => {
-    const items = roleNavItems[role] || roleNavItems.employee;
-    if ((role === 'hr' || role === 'admin') && !canManageTeam) {
-      return items.filter((item) => !item.path.startsWith('/manager/'));
-    }
-    return items;
-  }, [canManageTeam, role]);
-  const roleLabels = useMemo(() => {
+    const baseItems = role === 'gm' && canManageTeam
+      ? [
+          { name: '管辖绩效', path: '/manager/dashboard', icon: UserGroupIcon },
+          { name: '管辖绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
+          ...roleNavItems.gm,
+        ]
+      : roleNavItems[role] || roleNavItems.employee;
+    const roleItems = (role === 'hr' || role === 'admin') && !canManageTeam
+      ? baseItems.filter((item) => !item.path.startsWith('/manager/'))
+      : baseItems;
+    return canSubmitSelfSummary ? withSelfSummaryNavItem(roleItems) : roleItems;
+  }, [canManageTeam, canSubmitSelfSummary, role]);
+  const roleLabels = (() => {
     if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
     if (effectiveRoles.length > 0) {
       const hasAdmin = effectiveRoles.includes('admin');
@@ -94,7 +121,7 @@ export const MobileNav: React.FC = () => {
       return labels;
     }
     return [role === 'admin' ? '系统管理员' : role === 'hr' ? '人力资源' : role === 'gm' ? '总经理' : role === 'manager' ? '部门经理' : '员工'];
-  }, [effectiveRoles, role, user?.roleLabels]);
+  })();
 
   const toggleMenu = () => setIsOpen((prev) => !prev);
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -161,6 +188,18 @@ export const MobileNav: React.FC = () => {
                 </li>
               );
             })}
+            <li className="border-t border-gray-100 pt-2">
+              <Link
+                to="/change-password"
+                onClick={toggleMenu}
+                className={`flex items-center px-4 py-3 rounded-md transition-colors ${
+                  isActive('/change-password') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <KeyIcon className="h-5 w-5 mr-3" />
+                <span className="font-medium">修改密码</span>
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>

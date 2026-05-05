@@ -3,7 +3,8 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   Play, Bell, Archive, Send, FileText, CheckCircle,
-  Users, RefreshCw, Calendar, TrendingUp, Zap, ShieldCheck
+  Users, RefreshCw, Calendar, TrendingUp, Zap, ShieldCheck,
+  Database, Trash2
 } from 'lucide-react';
 import { salaryIntegrationApi } from '@/services/api';
 
@@ -33,6 +34,14 @@ interface ProgressData {
   departmentProgress: { department: string; total: number; completed: number; rate: number }[];
 }
 
+interface DemoDataStatus {
+  performanceRecords: number;
+  quarterlySummaries: number;
+  todos: number;
+  notifications: number;
+  total: number;
+}
+
 export default function MonthlyAutomation() {
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -43,6 +52,7 @@ export default function MonthlyAutomation() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [demoStatus, setDemoStatus] = useState<DemoDataStatus | null>(null);
   const [salaryPushMode, setSalaryPushMode] = useState<'monthly' | 'quarterly'>('quarterly');
   const [salaryPushConfirmed, setSalaryPushConfirmed] = useState(false);
 
@@ -61,7 +71,14 @@ export default function MonthlyAutomation() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { loadProgress(); loadLogs(); }, [loadProgress, loadLogs]);
+  const loadDemoStatus = useCallback(async () => {
+    try {
+      const r = await apiCall('/demo-data/status');
+      if (r.success) setDemoStatus(r.data || null);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadProgress(); loadLogs(); loadDemoStatus(); }, [loadProgress, loadLogs, loadDemoStatus]);
 
   const runAction = async (action: string, body?: any) => {
     setLoading(true);
@@ -71,11 +88,59 @@ export default function MonthlyAutomation() {
         toast.success(r.message || '操作成功');
         await loadProgress();
         await loadLogs();
+        await loadDemoStatus();
       } else {
         toast.error(r.message || '操作失败');
       }
     } catch (e) { toast.error('请求失败: ' + String(e)); }
     setLoading(false);
+  };
+
+  const generateDemoData = async () => {
+    if (!window.confirm(`确认生成演示数据吗？系统会先清除旧演示数据，再生成截至 ${selectedMonth} 的近 3 个月演示绩效记录；不会覆盖真实绩效记录。`)) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await apiCall('/demo-data/generate', {
+        method: 'POST',
+        body: JSON.stringify({ month: selectedMonth, monthCount: 3 }),
+      });
+      if (r.success) {
+        toast.success(r.message || '演示数据已生成');
+        await loadProgress();
+        await loadLogs();
+        await loadDemoStatus();
+      } else {
+        toast.error(r.message || '生成演示数据失败');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '生成演示数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearDemoData = async () => {
+    if (!window.confirm('确认清除所有演示数据吗？只会删除带演示标记的数据，不会删除真实绩效记录。')) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await apiCall('/demo-data', { method: 'DELETE' });
+      if (r.success) {
+        toast.success(r.message || '演示数据已清除');
+        await loadProgress();
+        await loadLogs();
+        await loadDemoStatus();
+      } else {
+        toast.error(r.message || '清除演示数据失败');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '清除演示数据失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const rateColor = (rate: number) => rate >= 80 ? 'text-green-400' : rate >= 50 ? 'text-yellow-400' : 'text-red-400';
@@ -261,6 +326,53 @@ export default function MonthlyAutomation() {
             <Send className="w-4 h-4" />
             推送到薪资系统
           </button>
+        </div>
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">演示数据</h2>
+          <p className="text-sm text-gray-400 mt-1">用于演示系统看板、评分、排名和历史趋势；演示数据有独立标记，可一键清除，不会覆盖真实绩效记录。</p>
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="bg-gray-900 rounded-lg p-6">
+            <div className="flex items-center gap-2 text-white font-medium">
+              <Database className="w-4 h-4 text-blue-400" />
+              当前演示数据
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded bg-gray-800 p-3">
+                <div className="text-gray-400">绩效记录</div>
+                <div className="text-white text-xl font-bold">{demoStatus?.performanceRecords ?? 0}</div>
+              </div>
+              <div className="rounded bg-gray-800 p-3">
+                <div className="text-gray-400">季度汇总</div>
+                <div className="text-white text-xl font-bold">{demoStatus?.quarterlySummaries ?? 0}</div>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-gray-500">合计：{demoStatus?.total ?? 0} 条演示相关数据</div>
+          </div>
+
+          <ActionCard
+            title="一键生成演示数据"
+            description={`生成截至 ${selectedMonth} 的近 3 个月演示绩效记录。会先清理旧演示数据，遇到真实绩效记录会自动跳过。`}
+            buttonLabel="生成演示数据"
+            buttonClassName="bg-blue-600 hover:bg-blue-700"
+            disabled={loading}
+            icon={<Database className="w-4 h-4" />}
+            onClick={generateDemoData}
+          />
+
+          <ActionCard
+            title="一键清除演示数据"
+            description="只清除带演示标记的数据，包括历史 E2E/示例季度汇总；真实绩效数据不会被删除。"
+            buttonLabel="清除演示数据"
+            buttonClassName="bg-red-600 hover:bg-red-700"
+            disabled={loading || !demoStatus?.total}
+            icon={<Trash2 className="w-4 h-4" />}
+            onClick={clearDemoData}
+          />
         </div>
       </motion.div>
 

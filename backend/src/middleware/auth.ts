@@ -45,8 +45,19 @@ export const verifyToken = (token: string): JWTPayload => {
   return jwt.verify(token, SECRET as jwt.Secret) as JWTPayload;
 };
 
+function isPasswordChangeAllowedPath(req: Request): boolean {
+  const path = req.path || '';
+  const originalUrl = req.originalUrl || '';
+  return (
+    path === '/me' ||
+    path === '/change-password' ||
+    originalUrl.endsWith('/auth/me') ||
+    originalUrl.includes('/auth/change-password')
+  );
+}
+
 // 认证中间件
-export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     
@@ -63,6 +74,19 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
       id: decoded.userId
     };
     req.userId = decoded.userId;
+
+    if (!isPasswordChangeAllowedPath(req)) {
+      const employee = await EmployeeModel.findById(decoded.userId);
+      if ((employee as any)?.mustChangePassword) {
+        res.status(403).json({
+          success: false,
+          code: 'PASSWORD_CHANGE_REQUIRED',
+          message: '当前账号使用临时密码，必须先修改密码'
+        });
+        return;
+      }
+    }
+
     next();
   } catch (error) {
     res.status(401).json({ success: false, message: '认证令牌无效或已过期' });
@@ -100,7 +124,7 @@ export const requireManagerCapability = async (req: Request, res: Response, next
     return;
   }
 
-  if (!['hr', 'admin'].includes(req.user.role)) {
+  if (!['gm', 'hr', 'admin'].includes(req.user.role)) {
     res.status(403).json({ success: false, message: '权限不足' });
     return;
   }

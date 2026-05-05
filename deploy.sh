@@ -19,8 +19,8 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    echo -e "${RED}❌ Docker Compose未安装${NC}"
+if ! docker compose version &> /dev/null; then
+    echo -e "${RED}❌ Docker Compose 不可用${NC}"
     exit 1
 fi
 
@@ -28,7 +28,7 @@ echo -e "${GREEN}✓ Docker环境正常${NC}"
 
 # 检查端口占用
 echo -e "\n${YELLOW}[2/6]${NC} 检查端口占用..."
-for port in 3306 3001 5173; do
+for port in 5432 3001 5173; do
     if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
         echo -e "${YELLOW}⚠️  端口 $port 已被占用，将尝试使用其他端口${NC}"
     fi
@@ -36,31 +36,31 @@ done
 
 # 停止旧服务
 echo -e "\n${YELLOW}[3/6]${NC} 停止旧服务（如果存在）..."
-docker-compose down 2>/dev/null || true
+docker compose down 2>/dev/null || true
 
 # 构建镜像
 echo -e "\n${YELLOW}[4/6]${NC} 构建Docker镜像..."
 echo -e "${GREEN}正在构建后端镜像...${NC}"
-docker-compose build backend
+docker compose build backend
 
 echo -e "${GREEN}正在构建前端镜像...${NC}"
-docker-compose build frontend
+docker compose build frontend
 
 echo -e "${GREEN}✓ 镜像构建完成${NC}"
 
 # 启动服务
 echo -e "\n${YELLOW}[5/6]${NC} 启动服务..."
-docker-compose up -d
+docker compose up -d
 
 # 等待服务就绪
 echo -e "\n${YELLOW}[6/6]${NC} 等待服务启动..."
-echo -e "${GREEN}等待MySQL初始化（约30秒）...${NC}"
+echo -e "${GREEN}等待PostgreSQL初始化（约30秒）...${NC}"
 sleep 10
 
-# 检查MySQL
+# 检查PostgreSQL
 for i in {1..30}; do
-    if docker exec ate_mysql mysqladmin ping -h localhost -u root -pperformance123 &> /dev/null; then
-        echo -e "${GREEN}✓ MySQL已就绪${NC}"
+    if docker exec ate_postgres pg_isready -U performance_user -d performance_db &> /dev/null; then
+        echo -e "${GREEN}✓ PostgreSQL已就绪${NC}"
         break
     fi
     echo -n "."
@@ -93,23 +93,21 @@ echo -e "${GREEN}✅ 部署完成！${NC}"
 echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 echo -e "\n📊 服务状态:"
-docker-compose ps
+docker compose ps
 
 echo -e "\n🌐 访问地址:"
 echo -e "  前端:  ${GREEN}http://localhost:5173${NC}"
 echo -e "  后端:  ${GREEN}http://localhost:3001/api${NC}"
-echo -e "  MySQL: ${GREEN}localhost:3306${NC}"
+echo -e "  PostgreSQL: ${GREEN}localhost:5432${NC}"
 
 echo -e "\n🔑 测试账号:"
-echo -e "  管理员: admin / 123456 / admin"
-echo -e "  员工:   姚洪 / 123456 / employee"
-echo -e "  经理:   宋魁 / 123456 / manager"
-echo -e "  总经理: 郑汝才 / 123456 / gm"
+echo -e "  账号使用姓名或工号登录；初始临时密码请通过 INITIAL_EMPLOYEE_TEMP_PASSWORD 设置。"
+echo -e "  首次登录后系统会要求修改密码；未设置自定义密码时可用身份证后六位。"
 
 echo -e "\n📝 常用命令:"
-echo -e "  查看日志: ${YELLOW}docker-compose logs -f${NC}"
-echo -e "  停止服务: ${YELLOW}docker-compose down${NC}"
-echo -e "  重启服务: ${YELLOW}docker-compose restart${NC}"
+echo -e "  查看日志: ${YELLOW}docker compose logs -f${NC}"
+echo -e "  停止服务: ${YELLOW}docker compose down${NC}"
+echo -e "  重启服务: ${YELLOW}docker compose restart${NC}"
 
 echo -e "\n💡 详细文档: ${YELLOW}查看 DEPLOY.md${NC}"
 echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"

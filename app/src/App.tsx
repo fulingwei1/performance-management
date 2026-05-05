@@ -6,8 +6,10 @@ import { Layout } from '@/components/layout/Layout';
 import { Toaster } from '@/components/ui/sonner';
 
 const Login = lazy(() => import('@/pages/Login').then((module) => ({ default: module.Login })));
+const ChangePassword = lazy(() => import('@/pages/ChangePassword').then((module) => ({ default: module.ChangePassword })));
 const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((module) => ({ default: module.EmployeeDashboard })));
 const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
+const EmployeeSatisfactionSurvey = lazy(() => import('@/pages/Employee/SatisfactionSurvey').then((module) => ({ default: module.SatisfactionSurvey })));
 const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
@@ -16,9 +18,11 @@ const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => 
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
+const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
 const LogManagement = lazy(() => import('@/pages/HR/LogManagement'));
+const HRSatisfactionSurvey = lazy(() => import('@/pages/HR/SatisfactionSurvey'));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
 
 const ROLE_HOME: Record<string, string> = {
@@ -76,8 +80,15 @@ const DISABLED_FEATURE_PATHS = [
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
 function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'manager' | 'gm' | 'hr' | 'admin'> }) {
   const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
+  }
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0
     ? user.roles
     : user?.role
@@ -96,14 +107,22 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
 // Public route: redirect authenticated users to their dashboard
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
+  if (isAuthenticated && user?.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (isAuthenticated) return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
   return <>{children}</>;
 }
 
 // Protected route: redirect non-authenticated users to login
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const { isAuthenticated, user } = useAuthStore();
+  const location = useLocation();
+  if (!isAuthenticated) {
+    const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
+  }
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -167,6 +186,11 @@ function App() {
       <Routes>
         {/* Login */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/change-password" element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        } />
         
         {/* Mobile Demo - accessible to all authenticated users */}
         <Route path="/mobile-demo" element={
@@ -195,13 +219,18 @@ function App() {
           <Route path="/employee/scores" element={<Navigate to="/employee/dashboard" replace />} />
         </Route>
 
-        {/* 参与考核人员月度总结：普通员工和参与考核的二级经理/主管都可填写 */}
-        <Route element={<ProtectedLayout allowedRoles={['employee', 'manager']} />}>
+        {/* 参与考核人员月度总结：入口按 canSubmitSelfSummary 能力控制，路由本身允许已登录角色进入并在页面内兜底提示 */}
+        <Route element={<ProtectedLayout allowedRoles={['employee', 'manager', 'gm', 'hr', 'admin']} />}>
           <Route path="/employee/summary" element={<WorkSummary />} />
         </Route>
 
+        {/* 半年度满意度调查：所有已登录员工角色都可填写自己的答卷 */}
+        <Route element={<ProtectedLayout allowedRoles={['employee', 'manager', 'gm', 'hr', 'admin']} />}>
+          <Route path="/employee/satisfaction-survey" element={<EmployeeSatisfactionSurvey />} />
+        </Route>
+
         {/* Manager routes */}
-        <Route element={<ProtectedLayout allowedRoles={['manager']} />}>
+        <Route element={<ProtectedLayout allowedRoles={['manager', 'gm']} />}>
           <Route path="/manager/dashboard" element={<ManagerDashboard />} />
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/scoring" element={<RedirectToManagerDashboard />} />
@@ -226,12 +255,14 @@ function App() {
           <Route path="/hr/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/data-io" element={<DataImportExport />} />
+          <Route path="/hr/user-management" element={<UserManagement />} />
           <Route path="/hr/data-import" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/assessment-export" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/assessment-config" element={<AssessmentConfig />} />
           <Route path="/hr/assessment-scope" element={<AssessmentConfig defaultTab="scope" />} />
           <Route path="/hr/assessment-templates" element={<AssessmentConfig defaultTab="templates" />} />
           <Route path="/hr/monthly-stars" element={<MonthlyStars />} />
+          <Route path="/hr/satisfaction-survey" element={<HRSatisfactionSurvey />} />
           <Route path="/hr/metric-library" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
           <Route path="/hr/logs" element={<LogManagement />} />
@@ -244,7 +275,7 @@ function App() {
         {/* HR/Admin merged routes */}
         <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
           <Route path="/admin/dashboard" element={<Navigate to="/hr/dashboard" replace />} />
-          <Route path="/admin/user-management" element={<Navigate to="/hr/data-io" replace />} />
+          <Route path="/admin/user-management" element={<Navigate to="/hr/user-management" replace />} />
           <Route path="/admin/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/admin/analytics" element={<Navigate to="/hr/analytics" replace />} />
           <Route path="/admin/data-export" element={<Navigate to="/hr/data-io" replace />} />

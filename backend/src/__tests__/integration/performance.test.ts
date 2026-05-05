@@ -223,8 +223,8 @@ describe('Performance API', () => {
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail for non-employee role', async () => {
-      const token = await TestHelper.getAuthToken('manager');
+    it('should fail for HR role', async () => {
+      const token = await TestHelper.getAuthToken('hr');
 
       const response = await request(app)
         .post('/api/performance/summary')

@@ -110,6 +110,7 @@ export interface ReminderParams {
   pendingCount: number;
   employeeNames: string[];
   operationGuide?: string;
+  actionPath?: string;
 }
 
 export interface OverdueParams {
@@ -198,18 +199,37 @@ function buildSystemLoginUrl(): string {
   return 'http://8.138.230.46/performance-management/login';
 }
 
-function buildLoginInstructions(): string[] {
+function buildSystemActionUrl(actionPath?: string): string {
   const loginUrl = buildSystemLoginUrl();
+  const normalizedActionPath = String(actionPath || '').trim();
+  if (!normalizedActionPath || !normalizedActionPath.startsWith('/')) {
+    return loginUrl;
+  }
+
+  try {
+    const login = new URL(loginUrl);
+    const basePath = login.pathname
+      .replace(/\/login\/?$/, '')
+      .replace(/\/+$/, '');
+    return new URL(`${basePath}${normalizedActionPath}`, login.origin).toString().replace(/\/+$/, '');
+  } catch (error) {
+    logger.warn(`[Wecom] 系统任务地址生成失败，退回登录地址: ${error}`);
+    return loginUrl;
+  }
+}
+
+function buildLoginInstructions(actionPath?: string): string[] {
+  const loginUrl = buildSystemActionUrl(actionPath);
   return [
     `系统地址：[绩效管理系统](${loginUrl})`,
-    '登录方式：姓名 + 身份证后6位',
+    '登录方式：姓名 + 当前密码；首次登录或未设置密码时，默认使用身份证后6位。',
   ];
 }
 
 // ---- 对外服务类 ----
 export class WecomWebhookService {
   private static buildReminderMarkdown(params: ReminderParams): string {
-    const { cycleName, taskType, daysLeft, deadlineDate, pendingCount, employeeNames, operationGuide } = params;
+    const { cycleName, taskType, daysLeft, deadlineDate, pendingCount, employeeNames, operationGuide, actionPath } = params;
     const urgency = daysLeft === 1 ? '🔴 **最后一天**' : daysLeft <= 3 ? '🟠 **即将截止**' : '🟡 温馨提醒';
     const names = employeeNames.length <= 20
       ? employeeNames.join('、')
@@ -225,7 +245,7 @@ export class WecomWebhookService {
       '',
       `未完成人员：${names}`,
       '',
-      ...buildLoginInstructions(),
+      ...buildLoginInstructions(actionPath),
       operationGuide || '请及时登录系统完成待办任务。',
     ].join('\n');
   }

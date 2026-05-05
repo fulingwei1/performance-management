@@ -12,9 +12,11 @@ validateEnv();
 
 import { testConnection, USE_MEMORY_DB } from './config/database';
 import { ensureLocalPostgresSchema } from './config/local-schema';
+import { buildAllowedOrigins, resolveRateLimitConfig } from './config/cors';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { auditLogMiddleware } from './middleware/auditLog';
 import { disabledFeatureMiddleware } from './middleware/disabledFeatures';
+import { requestLogger } from './middleware/requestLogger';
 
 // 导入路由（auth.ts会检查JWT_SECRET）
 import authRoutes from './routes/auth.routes';
@@ -46,6 +48,7 @@ import performanceConfigRoutes from './routes/performanceConfig.routes';
 import progressMonitorRoutes from './routes/progressMonitor.routes';
 import archiveRoutes from './routes/archive.routes';
 import employeeQuarterlyRoutes from './routes/employeeQuarterly.routes';
+import satisfactionSurveyRoutes from './routes/satisfactionSurvey.routes';
 import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
@@ -55,38 +58,15 @@ export default app;
 
 app.set('trust proxy', 1);
 
-const expandLoopbackOrigins = (origins: Array<string | undefined>) => {
-  const expanded = new Set<string>();
-  const loopbackHosts = ['localhost', '127.0.0.1', '[::1]'];
-
-  for (const origin of origins.filter(Boolean) as string[]) {
-    expanded.add(origin);
-
-    try {
-      const url = new URL(origin);
-      if (loopbackHosts.includes(url.hostname)) {
-        for (const host of loopbackHosts) {
-          const variant = new URL(origin);
-          variant.hostname = host;
-          expanded.add(variant.origin);
-        }
-      }
-    } catch {
-      expanded.add(origin);
-    }
-  }
-
-  return Array.from(expanded);
-};
-
 // 安全中间件
 app.use(helmet());
 
 // 全局限流：100次/分钟（测试环境禁用）
 if (process.env.NODE_ENV !== 'test') {
+  const rateLimitConfig = resolveRateLimitConfig(process.env);
   const globalLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 100,
+    windowMs: rateLimitConfig.windowMs,
+    max: rateLimitConfig.max,
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: '请求过于频繁，请稍后再试' }
@@ -95,8 +75,10 @@ if (process.env.NODE_ENV !== 'test') {
 
   // 登录接口限流：开发/测试环境50次/分钟，生产环境5次/分钟
   const loginLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: process.env.NODE_ENV === 'production' && process.env.PRODUCTION_MODE === 'strict' ? 5 : 50,
+    windowMs: rateLimitConfig.windowMs,
+    max: process.env.NODE_ENV === 'production' && process.env.PRODUCTION_MODE === 'strict'
+      ? rateLimitConfig.strictLoginMax
+      : rateLimitConfig.loginMax,
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, message: '登录尝试过于频繁，请1分钟后再试' }
@@ -109,23 +91,7 @@ app.use(cors({
  origin: (origin, callback) => {
   if (!origin) return callback(null, true);
 
-  const extraOrigins = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const allowedOrigins = expandLoopbackOrigins([
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:5174',
-    'http://8.138.230.46',
-    'http://8.138.230.46:5173',
-    'https://performance-management-api-three.vercel.app',
-    process.env.CORS_ORIGIN,  // 生产环境部署域名
-    process.env.FRONTEND_URL,
-    ...extraOrigins,
-  ]);
+  const allowedOrigins = buildAllowedOrigins(process.env);
 
   if (allowedOrigins.includes(origin)) {
     callback(null, true);
@@ -137,12 +103,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// 请求日志
-app.use((req, res, next) => {
- logger.info(`[Request] ${new Date().toISOString()} - ${req.method} ${req.path}`);
- next();
-});
+app.use(requestLogger);
 
 // 审计日志中间件（在路由之前，记录所有操作）
 app.use(auditLogMiddleware);
@@ -197,6 +158,7 @@ app.use('/api/performance-config', performanceConfigRoutes);
 app.use('/api/progress/monitor', progressMonitorRoutes);
 app.use('/api/archives', archiveRoutes);
 app.use('/api/employee-quarterly', employeeQuarterlyRoutes);
+app.use('/api/satisfaction-surveys', satisfactionSurveyRoutes);
 
 // 404处理
 app.use(notFoundHandler);

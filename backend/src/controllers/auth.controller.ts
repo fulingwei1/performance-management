@@ -4,6 +4,7 @@ import { EmployeeModel } from '../models/employee.model';
 import { LoginLogModel } from '../models/loginLog.model';
 import { generateToken } from '../middleware/auth';
 import { asyncHandler } from '../middleware/errorHandler';
+import { resolveSelfAssessmentEligibility } from '../services/selfAssessmentEligibility.service';
 
 const roleLabelMap: Record<string, string> = {
   employee: '员工',
@@ -33,8 +34,10 @@ async function buildEffectiveRoleInfo(employee: any) {
 
   const subordinates = await EmployeeModel.findTeamForManager(employee.id);
   const hasActiveSubordinates = subordinates.length > 0;
-  const canManageTeam = employee.role !== 'gm' && (hasActiveSubordinates || employee.role === 'manager');
+  const managerCapableRole = ['manager', 'gm', 'hr', 'admin'].includes(employee.role);
+  const canManageTeam = managerCapableRole && (hasActiveSubordinates || employee.role === 'manager');
   if (canManageTeam) roles.add('manager');
+  const selfAssessmentEligibility = await resolveSelfAssessmentEligibility(employee);
 
   return {
     roles: Array.from(roles),
@@ -42,6 +45,7 @@ async function buildEffectiveRoleInfo(employee: any) {
     capabilities: {
       canManageTeam,
       canManageSystem: roles.has('admin'),
+      canSubmitSelfSummary: selfAssessmentEligibility.canSubmitSelfSummary,
     },
   };
 }
@@ -135,16 +139,17 @@ export const authController = {
         });
       }
 
-      const loginSecret = (idCardLast6 || password || '').trim();
+      const idCardLoginSecret = idCardLast6.trim();
+      const passwordLoginSecret = password.trim();
+      const loginSecret = idCardLoginSecret || passwordLoginSecret;
 
-      // 验证登录口令 - 优先身份证后六位（若已配置），管理员可回退到密码
+      // 验证登录口令：身份证后六位和用户自设密码都可登录。
+      // 如果员工修改了密码，不能因为存在 idCardLast6Hash 就跳过 password 校验。
       let isValidPassword = false;
-      if (employee.idCardLast6Hash) {
-        isValidPassword = await EmployeeModel.verifyPassword(loginSecret.toUpperCase(), employee.idCardLast6Hash);
-      } else if (employee.password) {
-        isValidPassword = await EmployeeModel.verifyPassword(loginSecret, employee.password);
+      if (idCardLoginSecret && employee.idCardLast6Hash) {
+        isValidPassword = await EmployeeModel.verifyPassword(idCardLoginSecret.toUpperCase(), employee.idCardLast6Hash);
       }
-      if (!isValidPassword && employee.role === 'admin' && employee.password) {
+      if (!isValidPassword && employee.password) {
         isValidPassword = await EmployeeModel.verifyPassword(loginSecret, employee.password);
       }
 
@@ -209,9 +214,35 @@ export const authController = {
       });
 
       // 返回用户信息（显式排除 password，避免泄露）
-      const { id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt } = employee;
+      const {
+        id,
+        name,
+        department,
+        subDepartment,
+        role: userRole,
+        level,
+        managerId,
+        avatar,
+        mustChangePassword,
+        createdAt,
+        updatedAt
+      } = employee;
       const roleInfo = await buildEffectiveRoleInfo(employee);
-      const userInfo = { id, userId: id, name, department, subDepartment, role: userRole, level, managerId, avatar, createdAt, updatedAt, ...roleInfo };
+      const userInfo = {
+        id,
+        userId: id,
+        name,
+        department,
+        subDepartment,
+        role: userRole,
+        level,
+        managerId,
+        avatar,
+        mustChangePassword,
+        createdAt,
+        updatedAt,
+        ...roleInfo
+      };
 
       res.json({
         success: true,
@@ -254,7 +285,7 @@ export const authController = {
   // 修改密码
   changePassword: [
     body('oldPassword').notEmpty().withMessage('原密码不能为空'),
-    body('newPassword').isLength({ min: 6 }).withMessage('新密码至少6位'),
+    body('newPassword').isLength({ min: 8 }).withMessage('新密码至少8位'),
 
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -285,7 +316,14 @@ export const authController = {
       }
 
       // 验证原密码
-      const isValidPassword = await EmployeeModel.verifyPassword(oldPassword, employee.password!);
+      if (!employee.password) {
+        return res.status(400).json({
+          success: false,
+          message: '当前账号未设置密码，请联系HR重置临时密码'
+        });
+      }
+
+      const isValidPassword = await EmployeeModel.verifyPassword(oldPassword, employee.password);
 
       if (!isValidPassword) {
         return res.status(400).json({
@@ -295,7 +333,7 @@ export const authController = {
       }
 
       // 更新密码
-      await EmployeeModel.updatePassword(req.user.userId, newPassword);
+      await EmployeeModel.updatePassword(req.user.userId, newPassword, { mustChangePassword: false });
 
       res.json({
         success: true,

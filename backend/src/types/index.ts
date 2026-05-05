@@ -22,7 +22,10 @@ export interface Employee {
   password?: string;
   // 身份证后六位（bcrypt hash），仅用于登录校验；任何接口返回时必须剔除
   idCardLast6Hash?: string;
+  // 是否已录入身份证后六位；仅返回布尔值，不返回原值或 hash
+  hasIdCardLast6?: boolean;
   status?: 'active' | 'disabled' | 'inactive';
+  mustChangePassword?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

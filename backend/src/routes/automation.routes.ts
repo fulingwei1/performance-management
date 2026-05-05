@@ -29,6 +29,11 @@ router.post('/publish', authenticate, requireRole('hr', 'admin'), automationCont
 // 自动化日志
 router.get('/logs', authenticate, requireRole('hr', 'admin'), automationController.getAutomationLogs);
 
+// 演示数据管理
+router.get('/demo-data/status', authenticate, requireRole('hr', 'admin'), automationController.getDemoDataStatus);
+router.post('/demo-data/generate', authenticate, requireRole('hr', 'admin'), automationController.generateDemoData);
+router.delete('/demo-data', authenticate, requireRole('hr', 'admin'), automationController.clearDemoData);
+
 // HR解冻接口
 router.post('/unfreeze/:recordId', authenticate, requireRole('hr', 'admin'), automationController.unfreezeTask);
 router.post('/batch-unfreeze', authenticate, requireRole('hr', 'admin'), automationController.batchUnfreeze);

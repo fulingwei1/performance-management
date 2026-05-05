@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS employees (
   manager_id VARCHAR(20),
   avatar VARCHAR(255),
   password VARCHAR(255) NOT NULL,
+  must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_manager_id (manager_id),
@@ -205,7 +206,7 @@ CREATE TABLE IF NOT EXISTS promotion_approval_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 初始化数据：插入员工
--- 密码都是 bcrypt 加密后的 '123456'
+-- 空库初始化密码由 INITIAL_EMPLOYEE_TEMP_PASSWORD 提供，不再内置固定默认密码
 -- 使用 bcrypt 生成的哈希值
 
 INSERT INTO employees (id, name, department, sub_department, role, level, manager_id, password) VALUES

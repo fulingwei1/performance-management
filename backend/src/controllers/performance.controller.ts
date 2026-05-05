@@ -8,9 +8,15 @@ import {
   getConfiguredTemplateId,
   getOrgUnitKey,
   getPerformanceRankingConfig,
-  isParticipatingRecord
 } from '../services/performanceRankingConfig.service';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
+import { TodoModel } from '../models/todo.model';
+import { NotificationModel } from '../models/notification.model';
+import {
+  isSelfAssessmentEligibleRecord,
+  resolveAssessorId,
+  resolveSelfAssessmentEligibility,
+} from '../services/selfAssessmentEligibility.service';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -383,6 +389,14 @@ export const performanceController = {
       });
     }
 
+    const eligibility = await resolveSelfAssessmentEligibility(employee);
+    if (!eligibility.canSubmitSelfSummary) {
+      return res.status(403).json({
+        success: false,
+        error: '当前账号不在月度绩效自评范围内，无需提交工作总结和下月计划'
+      });
+    }
+
     // 检查是否已经提交过该月份；若是系统预生成的空草稿，允许员工补充总结
     const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
     if (existing && existing.status !== 'draft') {
@@ -623,17 +637,17 @@ export const performanceController = {
 
     if (existing.assessorId !== req.user.userId) {
       const isInTeam = await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);
-      if (
-        isInTeam &&
-        existing.status !== 'completed' &&
-        existing.status !== 'scored'
-      ) {
-        await PerformanceModel.update(existing.id, { assessorId: req.user.userId });
-      } else {
+      if (!isInTeam) {
         return res.status(403).json({
           success: false,
-          error: '只能评分自己负责的员工'
+          error: '只能评分自己负责范围内的员工'
         });
+      }
+
+      // 上级可以复核/调整下级经理已经完成的评分；
+      // 未完成记录则转给当前经理负责，避免悬挂在错误 assessor 上。
+      if (existing.status !== 'completed' && existing.status !== 'scored') {
+        await PerformanceModel.update(existing.id, { assessorId: req.user.userId });
       }
     }
     const roundedTotalScore = parseFloat(totalScore.toFixed(2));
@@ -757,11 +771,13 @@ export const performanceController = {
     }
 
     const deletedCount = await PerformanceModel.deleteByMonth(month);
+    const deletedTodoCount = await TodoModel.deletePerformanceRelated(month);
+    const deletedNotificationCount = await NotificationModel.deletePerformanceRelated(month);
 
     res.json({
       success: true,
-      message: `已删除 ${month} 共 ${deletedCount} 条绩效记录`,
-      data: { month, deletedCount }
+      message: `已删除 ${month} 共 ${deletedCount} 条绩效记录，并清理关联待办/通知`,
+      data: { month, deletedCount, deletedTodoCount, deletedNotificationCount }
     });
   }),
 
@@ -781,11 +797,13 @@ export const performanceController = {
     }
 
     const deletedCount = await PerformanceModel.deleteAll();
+    const deletedTodoCount = await TodoModel.deletePerformanceRelated();
+    const deletedNotificationCount = await NotificationModel.deletePerformanceRelated();
 
     res.json({
       success: true,
-      message: `已删除全部绩效记录，共 ${deletedCount} 条`,
-      data: { deletedCount }
+      message: `已删除全部绩效记录，共 ${deletedCount} 条，并清理关联待办/通知`,
+      data: { deletedCount, deletedTodoCount, deletedNotificationCount }
     });
   }),
 
@@ -798,7 +816,8 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
     }
     
-    // 获取所有需要考评的员工（员工 + 有直接上级的二级经理，排除总经理/HR/顶层部门经理）
+    // 获取所有需要考评的员工（普通员工 + 参与考核的经理/主管/组长）。
+    // 若上级关系暂未维护完整，后面会临时回退到 gm001 作为兜底考评人，避免该人员看不到自评任务。
     const allEmployees = await EmployeeModel.findAll();
     const rankingConfig = await getPerformanceRankingConfig();
     const validIds = new Set<string>(
@@ -807,10 +826,7 @@ export const performanceController = {
         .map((e: any) => e.id)
     );
     const assessableEmployees = allEmployees
-      .filter((e: any) => !e.status || e.status === 'active')
-      .filter((e: any) => e.role === 'employee' || e.role === 'manager')
-      .filter((e: any) => isParticipatingRecord(e, rankingConfig))
-      .filter((e: any) => e.role !== 'manager' || (e.managerId && e.managerId !== e.id && validIds.has(e.managerId)));
+      .filter((e: any) => isSelfAssessmentEligibleRecord(e, rankingConfig, { validEmployeeIds: validIds }));
     
     let createdCount = 0;
     let skippedCount = 0;
@@ -826,12 +842,9 @@ export const performanceController = {
       // 确定分组和考评人
       const groupType = getGroupType(employee.level);
 
-      // 员工/二级经理的考评人是其直接上级；没有有效上级的部门经理暂不由总经理评分。
-      // 若普通员工 managerId 缺失/无效，为避免外键失败，回退到 gm001。
-      let assessorId = 'gm001';
-      if (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)) {
-        assessorId = employee.managerId;
-      }
+      // 优先使用人事档案维护的直接上级；上级缺失/自指/无效时先回退 gm001。
+      // 后续 HR 手工维护好 manager_id 后，新生成任务会自动按真实上级分配。
+      const assessorId = resolveAssessorId(employee, validIds);
       
       // 优先使用“考核范围”里管理员给部门指定的模板；未指定时再按岗位/层级自动匹配
       const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);
@@ -887,10 +900,7 @@ export const performanceController = {
         .map((emp: any) => emp.id)
     );
     const employees = allEmployees
-      .filter((emp: any) => !emp.status || emp.status === 'active')
-      .filter((emp: any) => emp.role === 'employee' || emp.role === 'manager')
-      .filter((emp: any) => isParticipatingRecord(emp, rankingConfig))
-      .filter((emp: any) => emp.role !== 'manager' || (emp.managerId && emp.managerId !== emp.id && validIds.has(emp.managerId)));
+      .filter((emp: any) => isSelfAssessmentEligibleRecord(emp, rankingConfig, { validEmployeeIds: validIds }));
     const eligibleEmployeeIds = new Set(employees.map((emp: any) => emp.id));
     const records = (await PerformanceModel.findByMonth(month))
       .filter((record: any) => eligibleEmployeeIds.has(record.employeeId));

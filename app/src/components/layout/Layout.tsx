@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { motion } from 'framer-motion';
+import { useAuthStore } from '@/stores/authStore';
 
 interface LayoutProps {
   children: ReactNode;
@@ -9,6 +10,15 @@ interface LayoutProps {
 }
 
 export function Layout({ children, role }: LayoutProps) {
+  const { token, user, refreshCurrentUser } = useAuthStore();
+
+  useEffect(() => {
+    if (!token || !user || user.capabilities?.canSubmitSelfSummary !== undefined) return;
+    refreshCurrentUser().catch((error) => {
+      console.error('刷新用户能力失败:', error);
+    });
+  }, [refreshCurrentUser, token, user]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Desktop Sidebar */}

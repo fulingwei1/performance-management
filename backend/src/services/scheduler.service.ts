@@ -11,8 +11,8 @@ import {
   getConfiguredTemplateId,
   getOrgUnitKey,
   getPerformanceRankingConfig,
-  isParticipatingRecord
 } from './performanceRankingConfig.service';
+import { isSelfAssessmentEligibleRecord, resolveAssessorId } from './selfAssessmentEligibility.service';
 import { ProgressMonitorService } from './progressMonitor.service';
 import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
@@ -22,6 +22,7 @@ import { WecomWebhookService } from './wecomWebhook.service';
 import { resolveEmployeeWecomUserId } from './wecomDirectory.service';
 import { OrganizationModel } from '../models/organization.model';
 import { formatPublicationReadinessMessage, validatePublicationReadiness } from './publicationReadiness.service';
+import { SatisfactionSurveyService } from './satisfactionSurvey.service';
 import logger from '../config/logger';
 import { randomUUID } from 'crypto';
 
@@ -39,6 +40,11 @@ type DepartmentProgressStats = {
   wecomCount: number;
   totalPendingCount: number;
 };
+
+const LOGIN_METHOD_GUIDE = '登录方式：姓名 + 当前密码；首次登录或未设置密码时，默认使用身份证后6位。';
+const EMPLOYEE_SUMMARY_OPERATION_GUIDE = '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。';
+const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。';
+const TASK_GENERATED_OPERATION_GUIDE = `员工：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} 经理：${MANAGER_SCORING_OPERATION_GUIDE}`;
 
 export class SchedulerService {
   private static initialized = false;
@@ -113,7 +119,29 @@ export class SchedulerService {
       }
     });
 
+    // 每半年首日自动准备一次员工满意度调查；服务重启时也会兜底确保当前半年度调查存在。
+    cron.schedule('30 8 1 1,7 *', async () => {
+      logger.info('[Scheduler] 准备半年度满意度调查...');
+      try {
+        const result = await this.ensureCurrentHalfYearSatisfactionSurvey();
+        logger.info(`[Scheduler] 半年度满意度调查已就绪: ${result.period}`);
+      } catch (err) {
+        logger.error(`[Scheduler] 半年度满意度调查生成出错: ${err}`);
+      }
+    });
+
+    this.ensureCurrentHalfYearSatisfactionSurvey()
+      .then((result) => logger.info(`[Scheduler] 当前半年度满意度调查已就绪: ${result.period}`))
+      .catch((err) => logger.error(`[Scheduler] 当前半年度满意度调查兜底生成出错: ${err}`));
+
     logger.info('✅ 定时任务已启动');
+  }
+
+  /**
+   * 确保当前半年度满意度调查存在；用于服务启动兜底和每年 1/7 月自动创建。
+   */
+  static async ensureCurrentHalfYearSatisfactionSurvey(referenceDate: Date = new Date()) {
+    return SatisfactionSurveyService.ensureSurveyForDate(referenceDate, 'system');
   }
 
   /**
@@ -136,13 +164,14 @@ export class SchedulerService {
     const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 7);
 
     const allEmployees = await EmployeeModel.findAll();
-    const validIds = new Set<string>(allEmployees.map((employee: any) => employee.id));
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((employee: any) => !employee.status || employee.status === 'active')
+        .map((employee: any) => employee.id)
+    );
     const rankingConfig = await getPerformanceRankingConfig();
     const assessableEmployees = allEmployees
-      .filter((employee: any) => employee.role === 'employee' || employee.role === 'manager')
-      .filter((employee: any) => !employee.status || employee.status === 'active')
-      .filter((employee: any) => isParticipatingRecord(employee, rankingConfig))
-      .filter((employee: any) => employee.role !== 'manager' || (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)));
+      .filter((employee: any) => isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: validIds }));
 
     let createdCount = 0;
     let skippedCount = 0;
@@ -158,10 +187,7 @@ export class SchedulerService {
       }
 
       const groupType = getGroupType(employee.level);
-      let assessorId = 'gm001';
-      if (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)) {
-        assessorId = employee.managerId;
-      }
+      const assessorId = resolveAssessorId(employee, validIds);
 
       const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);
       const configuredTemplate = configuredTemplateId
@@ -193,7 +219,7 @@ export class SchedulerService {
         userId: employee.id,
         type: 'reminder',
         title: `请提交${targetMonth}月度工作总结`,
-        content: `系统已生成${targetMonth}绩效考核任务，请尽快填写上月工作总结和本月计划。`,
+        content: `系统已生成${targetMonth}绩效考核任务，请尽快填写上月工作总结和本月计划。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE}`,
         link: summaryLink
       });
 
@@ -203,7 +229,7 @@ export class SchedulerService {
           employeeId: employee.id,
           type: 'work_summary',
           title: `提交${targetMonth}月度工作总结`,
-          description: `请填写${targetMonth}工作总结和下月计划，供经理评分。`,
+          description: `请填写${targetMonth}工作总结和下月计划，供经理评分。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE}`,
           dueDate,
           link: summaryLink,
           relatedId: todoRelatedId
@@ -238,7 +264,7 @@ export class SchedulerService {
         month: targetMonth,
         totalCount: createdCount,
         dueDate: dueDate.toLocaleDateString('zh-CN'),
-        operationGuide: '员工：登录系统 → 月度总结 → 填写工作总结和下月计划；标签、合理化建议为非强制。经理：登录系统 → 工作台/评分 → 完成员工评分并查看部门报表。绩效结果会关联薪资系统绩效工资。',
+        operationGuide: TASK_GENERATED_OPERATION_GUIDE,
       }, taskGeneratedRecipients.join(','));
       taskGeneratedWecomCount = sent ? taskGeneratedRecipients.length : 0;
     }
@@ -353,7 +379,7 @@ export class SchedulerService {
       userId: r.employeeId,
       type: isLastDay ? 'deadline' : 'reminder',
       title: `${urgency}请提交${month}月度工作总结（还剩${daysLeft}天）`,
-      content: `${month}月绩效考核待提交：请登录系统进入“月度总结”，填写本月工作总结和下月工作计划；问题标签为非强制，可按实际选择；合理化建议为非强制，可匿名或显名提交。绩效结果后续会与薪资系统绩效工资部分挂钩。`,
+      content: `${month}月绩效考核待提交：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE}`,
       link: '/employee/summary',
     }));
     const filteredNotifications = forceToday ? notifications : await this.filterNotificationsAlreadySentToday(notifications);
@@ -400,7 +426,8 @@ export class SchedulerService {
         deadlineDate: deadlineDate || '',
         pendingCount: 1,
         employeeNames: [row.employeeName],
-        operationGuide: '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。',
+        operationGuide: EMPLOYEE_SUMMARY_OPERATION_GUIDE,
+        actionPath: `/employee/summary?month=${month}`,
       }, touser);
       if (sent) wecomCount++;
     }
@@ -471,7 +498,7 @@ export class SchedulerService {
         userId: managerId,
         type: isLastDay ? 'deadline' : 'reminder',
         title: `${urgency}${count}名下属${month}月绩效待打分（还剩${daysLeft}天）`,
-        content: `以下员工已提交${month}月工作总结，请登录系统进入“部门经理工作台/评分”完成打分、评价语和标签选择，并可推荐每月之星；可在部门员工报表查看月度/季度绩效。绩效结果会作为薪资系统绩效工资部分依据。待评分员工：${names}`,
+        content: `以下员工已提交${month}月工作总结。操作方法：${MANAGER_SCORING_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE} 待评分员工：${names}`,
         link: '/manager/dashboard',
       }];
       const filteredManagerNotifications = forceToday ? managerNotifications : await this.filterNotificationsAlreadySentToday(managerNotifications);
@@ -503,7 +530,8 @@ export class SchedulerService {
           deadlineDate: deadlineDate || '',
           pendingCount: count,
           employeeNames: group.employees.map((e: any) => e.employeeName),
-          operationGuide: '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。',
+          operationGuide: MANAGER_SCORING_OPERATION_GUIDE,
+          actionPath: `/manager/dashboard?month=${month}`,
         }, touser);
         wecomCount++;
       }
@@ -637,14 +665,15 @@ export class SchedulerService {
 
   private static async getAssessableEmployeeIdSet(): Promise<Set<string>> {
     const allEmployees = await EmployeeModel.findAll();
-    const validIds = new Set<string>(allEmployees.map((employee: any) => String(employee.id)));
     const rankingConfig = await getPerformanceRankingConfig();
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((employee: any) => !employee.status || employee.status === 'active')
+        .map((employee: any) => String(employee.id))
+    );
     return new Set(
       allEmployees
-        .filter((employee: any) => employee.role === 'employee' || employee.role === 'manager')
-        .filter((employee: any) => !employee.status || employee.status === 'active')
-        .filter((employee: any) => isParticipatingRecord(employee, rankingConfig))
-        .filter((employee: any) => employee.role !== 'manager' || (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)))
+        .filter((employee: any) => isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: validIds }))
         .map((employee: any) => String(employee.id)),
     );
   }
@@ -902,9 +931,7 @@ export class SchedulerService {
         .map((e: any) => e.id)
     );
     const eligibleEmployees = allEmployees
-      .filter((e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active'))
-      .filter((e: any) => isParticipatingRecord(e, rankingConfig))
-      .filter((e: any) => e.role !== 'manager' || (e.managerId && e.managerId !== e.id && validIds.has(e.managerId)));
+      .filter((e: any) => isSelfAssessmentEligibleRecord(e, rankingConfig, { validEmployeeIds: validIds }));
     const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
     // 检查所有员工是否都已完成
@@ -1016,9 +1043,7 @@ export class SchedulerService {
         .map((e: any) => e.id)
     );
     const eligibleEmployees = allEmployees
-      .filter((e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active'))
-      .filter((e: any) => isParticipatingRecord(e, rankingConfig))
-      .filter((e: any) => e.role !== 'manager' || (e.managerId && e.managerId !== e.id && validIds.has(e.managerId)));
+      .filter((e: any) => isSelfAssessmentEligibleRecord(e, rankingConfig, { validEmployeeIds: validIds }));
     const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
     if (eligibleEmployees.length === 0) {

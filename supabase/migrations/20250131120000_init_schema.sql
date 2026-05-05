@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS employees (
     manager_id TEXT,
     avatar TEXT,
     password TEXT,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

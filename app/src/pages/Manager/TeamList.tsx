@@ -406,7 +406,13 @@ export function TeamList() {
                         </div>
                       </div>
 
-                      {employee.status !== 'completed' && employee.status !== 'scored' && (
+                      {employee.status === 'completed' || employee.status === 'scored' ? (
+                        <Link to={`/manager/dashboard?employee=${employee.id}&month=${employee.month}`}>
+                          <Button variant="outline" className="mt-3 w-full">
+                            查看/调整评分
+                          </Button>
+                        </Link>
+                      ) : (
                         <Link to={`/manager/dashboard?employee=${employee.id}&month=${employee.month}&noSummary=${employee.status === 'not_submitted'}`}>
                           <Button 
                             className={`mt-3 w-full ${employee.status === 'not_submitted' ? 'bg-orange-500 hover:bg-orange-600' : ''}`}

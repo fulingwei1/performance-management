@@ -30,6 +30,7 @@ const employeeTodoConfigs: TodoConfig[] = [
 ];
 
 const managerTodoConfigs: TodoConfig[] = [
+  { type: 'work_summary', title: '我的工作总结', link: '/employee/summary', icon: <FileText className="h-4 w-4 text-blue-500" /> },
   { type: 'performance_review', title: '待打分员工', link: '/manager/scoring', icon: <Award className="h-4 w-4 text-purple-500" /> },
 ];
 

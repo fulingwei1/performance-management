@@ -30,6 +30,48 @@ const METHOD_TO_ACTION: Record<string, AuditAction> = {
   'DELETE': 'DELETE',
 };
 
+const REDACTED = '[REDACTED]';
+const SENSITIVE_KEY_PATTERNS = [
+  'password',
+  'oldpassword',
+  'newpassword',
+  'confirmpassword',
+  'idcard',
+  'idcardlast6',
+  'token',
+  'jwt',
+  'secret',
+  'authorization',
+  'cookie',
+  'apikey',
+  'accesskey',
+  'accesstoken',
+  'refreshtoken',
+];
+
+function isSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return SENSITIVE_KEY_PATTERNS.some(pattern => normalized.includes(pattern));
+}
+
+function sanitizeForAudit(value: any): any {
+  if (value === null || value === undefined) return value;
+
+  if (Array.isArray(value)) {
+    return value.map(item => sanitizeForAudit(item));
+  }
+
+  if (typeof value === 'object') {
+    const sanitized: Record<string, any> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      sanitized[key] = isSensitiveKey(key) ? REDACTED : sanitizeForAudit(nestedValue);
+    }
+    return sanitized;
+  }
+
+  return value;
+}
+
 /**
  * 从请求路径提取模块名
  */
@@ -70,7 +112,7 @@ function extractTarget(path: string, method: string): { type?: string; id?: stri
  * 生成操作描述
  */
 function generateDescription(action: AuditAction, module: string, path: string, user?: any): string {
-  const userName = user?.name || '未知用户';
+  const userName = user?.name || user?.id || user?.userId || '未知用户';
 
   if (path.includes('/login')) {
     return `${userName} 登录系统`;
@@ -118,7 +160,6 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
   const module = getModuleFromPath(req.path);
   const action = METHOD_TO_ACTION[req.method] || 'UPDATE';
   const { type: targetType, id: targetId } = extractTarget(req.path, req.method);
-  const user = req.user;
 
   // 获取请求信息
   const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
@@ -137,6 +178,7 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
     setImmediate(async () => {
       try {
         const isSuccess = res.statusCode >= 200 && res.statusCode < 300;
+        const user = req.user;
 
         // 获取用户信息
         let userId = user?.userId;
@@ -168,7 +210,7 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
           target_type: targetType,
           target_id: targetId,
           description,
-          changes: req.method !== 'DELETE' ? { body: req.body } : undefined,
+          changes: req.method !== 'DELETE' ? { body: sanitizeForAudit(req.body) } : undefined,
           ip_address: ipAddress,
           user_agent: userAgent,
           request_method: req.method,

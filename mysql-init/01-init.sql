@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS employees (
   level VARCHAR(50),
   manager_id VARCHAR(50),
   password VARCHAR(255),
+  must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
   avatar TEXT,
   status ENUM('active', 'disabled') DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -15,6 +15,7 @@ interface AuthState {
   logout: () => void;
   clearError: () => void;
   setToken: (token: string) => void;
+  refreshCurrentUser: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -81,6 +82,13 @@ export const useAuthStore = create<AuthState>()(
       setToken: (token: string) => {
         localStorage.setItem('token', token);
         set({ token });
+      },
+
+      refreshCurrentUser: async () => {
+        const response = await authApi.getCurrentUser();
+        if (response.success) {
+          set({ user: response.data, isAuthenticated: true, error: null });
+        }
       }
     }),
     {

@@ -159,7 +159,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--api-url", default=os.environ.get("API_URL", "http://localhost:3001"))
     parser.add_argument("--month", default=_now_month(), help="YYYY-MM")
-    parser.add_argument("--password", default=os.environ.get("UAT_LOGIN_SECRET", "123456"))
+    parser.add_argument("--password", default=os.environ.get("UAT_LOGIN_SECRET", ""))
     parser.add_argument("--out", default="", help="输出 markdown 报告路径（可选）")
     parser.add_argument("--skip-negative", action="store_true", help="跳过权限边界负例测试")
     args = parser.parse_args()
@@ -167,6 +167,8 @@ def main() -> int:
     api_base = str(args.api_url).rstrip("/")
     month = str(args.month).strip()
     login_secret = str(args.password)
+    if not login_secret:
+        raise RuntimeError("请通过 --password 或 UAT_LOGIN_SECRET 提供登录口令，脚本不再内置默认密码")
 
     # 展开参与者
     manager_ids = [x["managerId"] for x in DEFAULT_PARTICIPANTS]

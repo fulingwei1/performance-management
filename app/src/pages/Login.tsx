@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BarChart3, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -9,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function Login() {
   const { login, isLoading, error, clearError } = useAuthStore();
+  const location = useLocation();
   const envLabel = useMemo(() => {
     if (!import.meta.env.DEV || typeof window === 'undefined') return '';
     return `本地开发版 · ${window.location.host}`;
@@ -28,8 +30,20 @@ export function Login() {
     });
     
     if (success) {
-      const role = useAuthStore.getState().user?.role || 'employee';
+      const user = useAuthStore.getState().user;
+      if (user?.mustChangePassword) {
+        const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+        window.location.replace(`${base}/change-password`);
+        return;
+      }
+
+      const role = user?.role || 'employee';
       const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
+      const params = new URLSearchParams(location.search);
+      const redirect = params.get('redirect') || '';
+      const safeRedirect = redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/login')
+        ? redirect
+        : '';
       const redirectMap: Record<string, string> = {
         employee: '/employee/dashboard',
         manager: '/manager/dashboard',
@@ -37,7 +51,7 @@ export function Login() {
         hr: '/hr/dashboard',
         admin: '/admin/dashboard',
       };
-      window.location.replace(`${base}${redirectMap[role] || '/employee/dashboard'}`);
+      window.location.replace(`${base}${safeRedirect || redirectMap[role] || '/employee/dashboard'}`);
     }
   };
   
