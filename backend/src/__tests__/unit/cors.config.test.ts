@@ -17,6 +17,20 @@ describe('CORS and rate-limit configuration', () => {
     expect(origins.some((origin) => origin.includes('localhost'))).toBe(false);
   });
 
+  it('normalizes full frontend URLs to their origin for CORS matching', () => {
+    const origins = buildAllowedOrigins({
+      NODE_ENV: 'production',
+      FRONTEND_URL: 'http://8.138.230.46/performance-management/login',
+      CORS_ORIGINS: 'https://performance.example.com/app',
+    });
+
+    expect(origins).toEqual(expect.arrayContaining([
+      'http://8.138.230.46',
+      'https://performance.example.com',
+    ]));
+    expect(origins).not.toContain('http://8.138.230.46/performance-management/login');
+  });
+
   it('expands loopback origins for local development only', () => {
     const origins = buildAllowedOrigins({
       NODE_ENV: 'development',

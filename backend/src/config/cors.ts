@@ -15,24 +15,33 @@ function parseOriginList(value?: string): string[] {
     .filter(Boolean);
 }
 
+function normalizeOrigin(origin: string): string {
+  try {
+    return new URL(origin).origin;
+  } catch {
+    return origin;
+  }
+}
+
 function expandLoopbackOrigins(origins: Array<string | undefined>): string[] {
   const expanded = new Set<string>();
   const loopbackHosts = ['localhost', '127.0.0.1', '[::1]'];
 
   for (const origin of origins.filter(Boolean) as string[]) {
-    expanded.add(origin);
+    const normalizedOrigin = normalizeOrigin(origin);
+    expanded.add(normalizedOrigin);
 
     try {
-      const url = new URL(origin);
+      const url = new URL(normalizedOrigin);
       if (loopbackHosts.includes(url.hostname)) {
         for (const host of loopbackHosts) {
-          const variant = new URL(origin);
+          const variant = new URL(normalizedOrigin);
           variant.hostname = host;
           expanded.add(variant.origin);
         }
       }
     } catch {
-      expanded.add(origin);
+      expanded.add(normalizedOrigin);
     }
   }
 

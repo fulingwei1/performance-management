@@ -49,6 +49,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       INITIAL_EMPLOYEE_TEMP_PASSWORD: ${INITIAL_EMPLOYEE_TEMP_PASSWORD:?请在 .env 中设置初始化临时密码}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       KIMI_API_KEY: ${KIMI_API_KEY:-}
       USE_MEMORY_DB: "false"
       SALARY_SYSTEM_BASE_URL: ${SALARY_SYSTEM_BASE_URL:-http://host.docker.internal:8000}
