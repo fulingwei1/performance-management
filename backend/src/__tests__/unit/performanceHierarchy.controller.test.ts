@@ -30,6 +30,19 @@ describe('performanceController hierarchy permissions', () => {
       created_at: new Date(),
       updated_at: new Date(),
     });
+    memoryStore.assessmentTemplates.set('template-purch-junior-001', {
+      id: 'template-purch-junior-001',
+      name: '采购初级模板',
+      department_type: 'support',
+      is_default: false,
+      status: 'active',
+      applicable_roles: ['employee'],
+      applicable_levels: ['junior'],
+      applicable_positions: ['采购部', '采购组', '采购工程师'],
+      priority: 50,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
 
     memoryStore.performanceRecords.set('rec-e020-2026-04', {
       id: 'rec-e020-2026-04',
@@ -218,5 +231,65 @@ describe('performanceController hierarchy permissions', () => {
     expect(memoryStore.performanceRecords.has('rec-e-no-manager-2026-05')).toBe(false);
     expect(memoryStore.performanceRecords.has('rec-e-self-manager-2026-05')).toBe(false);
     expect(memoryStore.performanceRecords.has('rec-e-excluded-unit-2026-05')).toBe(false);
+  });
+
+  it('does not generate tasks just because an employee has a matching template', async () => {
+    memoryStore.systemSettings!.set('performance_ranking_config', {
+      id: 1,
+      settingKey: 'performance_ranking_config',
+      settingValue: JSON.stringify({
+        version: 1,
+        participation: {
+          mode: 'include',
+          enabledUnitKeys: ['工程技术中心'],
+          includedUnitKeys: ['工程技术中心'],
+          excludedUnitKeys: [],
+          includedEmployeeIds: [],
+          excludedEmployeeIds: [],
+        },
+        groupRank: {
+          defaultStrategy: { type: 'by_high_low' },
+          perUnit: {},
+        },
+        templateAssignments: {
+          采购部: 'template-purch-junior-001',
+        },
+        mergeRankGroups: [],
+      }),
+      settingType: 'json',
+      category: 'performance',
+      isPublic: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+    memoryStore.employees.set('purch-junior', {
+      department: '采购部',
+      subDepartment: '采购组',
+      level: 'junior',
+      status: 'active',
+      id: 'purch-junior',
+      name: '采购初级员工',
+      role: 'employee',
+      position: '采购工程师',
+      managerId: 'm008',
+    } as any);
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    const next = jest.fn();
+
+    performanceController.generateTasks({
+      user: { userId: 'hr001', id: 'hr001', role: 'hr' },
+      body: { month: '2026-06' },
+    } as any, { status, json } as any, next);
+
+    await new Promise(process.nextTick);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      data: expect.objectContaining({ createdCount: 2, total: 2 }),
+    }));
+    expect(memoryStore.performanceRecords.has('rec-purch-junior-2026-06')).toBe(false);
   });
 });
