@@ -6,6 +6,7 @@ import { query, USE_MEMORY_DB } from '../config/database';
 import { cache } from '../config/cache';
 import { syncDepartmentsFromEmployees } from '../config/local-schema';
 import { syncWecomUserIdsForEmployees } from './wecomDirectory.service';
+import { syncPendingPerformanceAssessorsForEmployees } from './performanceAssessorSync.service';
 
 const JSZip = require('jszip');
 
@@ -488,6 +489,9 @@ export async function importHrArchive(filePath: string) {
   await upsertArchiveEmployees(upsertOrder, managerIds);
   await normalizeEmployeeOrgPaths();
   await disableEmployeesMissingFromArchive(employees.map((employee) => employee.id));
+  const assessorSyncResult = await syncPendingPerformanceAssessorsForEmployees(
+    employees.map((employee) => employee.id)
+  );
   await syncDepartmentsFromEmployees();
   const wecomSyncResult = await syncWecomUserIdsForEmployees(
     employees.map((employee) => ({
@@ -516,6 +520,8 @@ export async function importHrArchive(filePath: string) {
     nonAssessmentRoleCount: 0,
     disabledCount: employees.length - activeEmployees.length,
     managerLinks: managerIds.size,
+    assessorSyncUpdatedRecords: assessorSyncResult.updatedRecords,
+    assessorSyncMovedTodos: assessorSyncResult.movedTodos,
     wecomMappedCount: wecomSyncResult.updated,
     departmentCounts,
   };

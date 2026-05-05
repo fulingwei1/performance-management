@@ -2,6 +2,7 @@ import { query, memoryDB, USE_MEMORY_DB } from '../config/database';
 import { cache, CACHE_KEYS } from '../config/cache';
 import { Employee, EmployeeLevel, EmployeeRole } from '../types';
 import bcrypt from 'bcryptjs';
+import { syncPendingPerformanceAssessorsForEmployees } from '../services/performanceAssessorSync.service';
 
 type EmployeeWithPassword = Employee & { password?: string };
 type PasswordUpdateOptions = {
@@ -283,8 +284,16 @@ export class EmployeeModel {
 
   // 更新员工
   static async update(id: string, updates: Partial<Employee>): Promise<Employee | null> {
+    const shouldSyncPerformanceAssessor =
+      Object.prototype.hasOwnProperty.call(updates, 'managerId') ||
+      Object.prototype.hasOwnProperty.call(updates as any, 'manager_id') ||
+      Object.prototype.hasOwnProperty.call(updates, 'status');
+
     if (USE_MEMORY_DB) {
       const result = memoryDB.employees.update(id, updates);
+      if (result && shouldSyncPerformanceAssessor) {
+        await syncPendingPerformanceAssessorsForEmployees([id]);
+      }
       return result || null;
     }
     
@@ -307,6 +316,9 @@ export class EmployeeModel {
     
     await query(sql, values);
     invalidateEmployeeCache();
+    if (shouldSyncPerformanceAssessor) {
+      await syncPendingPerformanceAssessorsForEmployees([id]);
+    }
     return this.findById(id);
   }
 

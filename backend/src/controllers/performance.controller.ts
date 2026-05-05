@@ -13,6 +13,7 @@ import {
   resolveAssessorId,
   resolveSelfAssessmentEligibility,
 } from '../services/selfAssessmentEligibility.service';
+import { syncPendingPerformanceAssessorsForEmployees } from '../services/performanceAssessorSync.service';
 import { resolveTaskTemplateForEmployee, type ResolvedTaskTemplate } from '../services/taskTemplateResolver.service';
 import '../middleware/auth'; // Request type extension
 
@@ -272,11 +273,9 @@ export const performanceController = {
       let isManagerAllowed = false;
 
       if (role === 'manager') {
-        if (record.assessorId === userId) {
-          isManagerAllowed = true;
-        } else {
-          isManagerAllowed = await EmployeeModel.isInManagerTeam(userId, record.employeeId);
-        }
+        // 经理权限只按“当前人事档案上下级树”判断，不再信历史 assessor_id。
+        // 这样员工调岗/换上级后，旧考核人不能继续查看，新考核人能接手。
+        isManagerAllowed = await EmployeeModel.isInManagerTeam(userId, record.employeeId);
       }
 
       if (!isSelf && !isManagerAllowed) {
@@ -598,7 +597,7 @@ export const performanceController = {
     }
 
     // 权限边界：只能评分自己负责的记录
-    const existing = await PerformanceModel.findById(id);
+    let existing = await PerformanceModel.findById(id);
     if (!existing) {
       return res.status(404).json({ success: false, error: '记录不存在' });
     }
@@ -675,21 +674,24 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '工作安排不能为空' });
     }
 
-    if (existing.assessorId !== req.user.userId) {
-      const isInTeam = await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);
-      if (!isInTeam) {
-        return res.status(403).json({
-          success: false,
-          error: '只能评分自己负责范围内的员工'
-        });
-      }
-
-      // 上级可以复核/调整下级经理已经完成的评分；
-      // 未完成记录则转给当前经理负责，避免悬挂在错误 assessor 上。
-      if (existing.status !== 'completed' && existing.status !== 'scored') {
-        await PerformanceModel.update(existing.id, { assessorId: req.user.userId });
-      }
+    const isPrivileged = req.user.role === 'hr' || req.user.role === 'gm' || req.user.role === 'admin';
+    const isInTeam = isPrivileged
+      ? true
+      : await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);
+    if (!isInTeam) {
+      return res.status(403).json({
+        success: false,
+        error: '只能评分自己负责范围内的员工'
+      });
     }
+
+    if (existing.status !== 'completed' && existing.status !== 'scored') {
+      await syncPendingPerformanceAssessorsForEmployees([existing.employeeId]);
+      existing = await PerformanceModel.findById(id) || existing;
+    }
+
+    // 上级可以复核/调整下级经理负责的评分；未完成记录的直接考核人由同步服务按当前 manager_id 维护，
+    // 不在这里改成“当前登录人”，避免上级复核时覆盖直属考核人。
     const roundedTotalScore = parseFloat(totalScore.toFixed(2));
     const evidenceText = typeof scoreEvidence === 'string' ? scoreEvidence.trim() : '';
     const starRecommended = monthlyStarRecommended === true;

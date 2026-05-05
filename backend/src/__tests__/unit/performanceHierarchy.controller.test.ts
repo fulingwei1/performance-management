@@ -90,6 +90,47 @@ describe('performanceController hierarchy permissions', () => {
     });
   });
 
+  it('uses current hierarchy, not historical assessor_id, when viewing a record', async () => {
+    memoryStore.employees.set('e020', {
+      ...(memoryStore.employees.get('e020') as any),
+      managerId: 'm008',
+    } as any);
+
+    const oldAssessorJson = jest.fn();
+    const oldAssessorStatus = jest.fn().mockReturnValue({ json: oldAssessorJson });
+    const oldAssessorNext = jest.fn();
+
+    performanceController.getRecordById({
+      user: { userId: 'e124', id: 'e124', role: 'manager' },
+      params: { id: 'rec-e020-2026-04' },
+    } as any, { status: oldAssessorStatus, json: oldAssessorJson } as any, oldAssessorNext);
+
+    await new Promise(process.nextTick);
+
+    expect(oldAssessorStatus).toHaveBeenCalledWith(403);
+    expect(oldAssessorJson).toHaveBeenCalledWith(expect.objectContaining({
+      success: false,
+      error: '无权访问该绩效记录',
+    }));
+
+    const newAssessorJson = jest.fn();
+    const newAssessorStatus = jest.fn().mockReturnValue({ json: newAssessorJson });
+    const newAssessorNext = jest.fn();
+
+    performanceController.getRecordById({
+      user: { userId: 'm008', id: 'm008', role: 'manager' },
+      params: { id: 'rec-e020-2026-04' },
+    } as any, { status: newAssessorStatus, json: newAssessorJson } as any, newAssessorNext);
+
+    await new Promise(process.nextTick);
+
+    expect(newAssessorStatus).not.toHaveBeenCalledWith(403);
+    expect(newAssessorJson).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      data: expect.objectContaining({ employeeId: 'e020' }),
+    }));
+  });
+
   it('generates monthly tasks only for active employees with a valid manager_id relationship', async () => {
     memoryStore.systemSettings!.set('performance_ranking_config', {
       id: 1,
