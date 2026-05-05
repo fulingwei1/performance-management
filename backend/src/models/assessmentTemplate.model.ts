@@ -662,7 +662,6 @@ export class AssessmentTemplateModel {
     candidates.push(normalizedLevel);
 
     if (normalizedLevel === 'assistant') candidates.push('junior');
-    if (normalizedLevel === 'intermediate') candidates.push('junior');
 
     return Array.from(new Set(candidates.filter(Boolean)));
   }
@@ -711,6 +710,11 @@ export class AssessmentTemplateModel {
           const hasSpecificPositionOrLevelRule = positions.length > 0 || levels.length > 0;
           const positionCandidates = this.getPositionCandidates(employee).map(this.normalizeMatchValue);
           const normalizedTemplatePositions = positions.map(this.normalizeMatchValue);
+          const levelMatched = levels.length > 0 && levelCandidates.some(levelCandidate => levels.includes(levelCandidate));
+
+          if (levels.length > 0 && !levelMatched) {
+            return { template, score: 0 };
+          }
 
           // 岗位/部门线索精确匹配：HR 档案里很多技术员工 position 只有“工程师”，
           // 需要结合 subDepartment（如 PLC 部/PLC四组、测试部、结构组）识别实际任职资格模板。
@@ -718,13 +722,13 @@ export class AssessmentTemplateModel {
             if (positionCandidates.some(candidate => normalizedTemplatePositions.includes(candidate))) {
               score += 80;
               // 岗位 + 层级同时匹配
-              if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
+              if (levelMatched) {
                 score += 20;
               }
             }
           } else if (levels.length > 0) {
             // 仅层级匹配
-            if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
+            if (levelMatched) {
               score += 60;
             }
           }

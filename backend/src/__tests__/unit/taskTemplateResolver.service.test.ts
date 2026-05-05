@@ -180,4 +180,35 @@ describe('resolveTaskTemplateForEmployee', () => {
       source: 'auto_match',
     });
   });
+
+  it('does not assign junior department templates to intermediate or senior employees', async () => {
+    const config = {
+      ...baseConfig,
+      templateAssignments: {
+        工程技术中心: 'template-elec-default',
+      },
+    };
+
+    await expect(resolveTaskTemplateForEmployee({
+      role: 'employee',
+      level: 'intermediate',
+      position: '工程师',
+      department: '工程技术中心',
+      subDepartment: 'PLC 部/PLC四组',
+    }, config)).resolves.toMatchObject({
+      id: 'template-elec-default',
+      source: 'unit_config',
+    });
+
+    await expect(resolveTaskTemplateForEmployee({
+      role: 'manager',
+      level: 'senior',
+      position: '组长',
+      department: '工程技术中心',
+      subDepartment: '测试部/白色家电组',
+    }, config)).resolves.toMatchObject({
+      id: 'template-elec-default',
+      source: 'unit_config',
+    });
+  });
 });
