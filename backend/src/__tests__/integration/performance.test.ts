@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from '../../index';
 import { validSummaryData, validScoreData } from '../fixtures/mockData';
 import { TestHelper } from '../helpers/testHelper';
+import { TodoModel } from '../../models/todo.model';
 
 describe('Performance API', () => {
   describe('GET /api/performance/my-records', () => {
@@ -175,6 +176,15 @@ describe('Performance API', () => {
       expect(createResponse.status).toBe(200);
       expect(createResponse.body.data).toHaveProperty('status', 'draft');
 
+      const workSummaryTodo = await TodoModel.create({
+        employeeId: 'e034',
+        type: 'work_summary',
+        title: `提交${month}月度工作总结`,
+        dueDate: new Date('2025-01-07T00:00:00+08:00'),
+        link: `/employee/summary?month=${month}`,
+        relatedId: TodoModel.performanceSummaryRelatedId(month),
+      });
+
       const response = await request(app)
         .post('/api/performance/summary')
         .set('Authorization', `Bearer ${employeeToken}`)
@@ -191,6 +201,20 @@ describe('Performance API', () => {
         selfSummary: '补充上月工作总结',
         nextMonthPlan: '继续完成重点任务',
         status: 'submitted'
+      });
+
+      await expect(TodoModel.findById(workSummaryTodo.id)).resolves.toMatchObject({
+        status: 'completed',
+      });
+      await expect(TodoModel.findExisting(
+        'm011',
+        'performance_review',
+        TodoModel.performanceReviewRelatedId(createResponse.body.data.id),
+      )).resolves.toMatchObject({
+        employeeId: 'm011',
+        type: 'performance_review',
+        status: 'pending',
+        link: `/manager/scoring?month=${month}`,
       });
     });
 
@@ -276,6 +300,22 @@ describe('Performance API', () => {
 
     it('should submit score for employee', async () => {
       const token = await TestHelper.getAuthToken('manager');
+      const reviewRelatedId = TodoModel.performanceReviewRelatedId(validScoreData.id);
+      const existingReviewTodo = await TodoModel.findExisting('m011', 'performance_review', reviewRelatedId);
+      const reviewTodo = existingReviewTodo || await TodoModel.create({
+        employeeId: 'm011',
+        type: 'performance_review',
+        title: '评分周欢欢2024-03月绩效',
+        link: '/manager/scoring?month=2024-03',
+        relatedId: reviewRelatedId,
+      });
+      const workSummaryTodo = await TodoModel.create({
+        employeeId: 'e034',
+        type: 'work_summary',
+        title: '提交2024-03月度工作总结',
+        link: '/employee/summary?month=2024-03',
+        relatedId: TodoModel.performanceSummaryRelatedId('2024-03'),
+      });
 
       const response = await request(app)
         .post('/api/performance/score')
@@ -287,6 +327,12 @@ describe('Performance API', () => {
       expect(response.body.data).toHaveProperty('totalScore');
       expect(response.body.data).toHaveProperty('level');
       expect(['L1', 'L2', 'L3', 'L4', 'L5']).toContain(response.body.data.level);
+      await expect(TodoModel.findById(reviewTodo.id)).resolves.toMatchObject({
+        status: 'completed',
+      });
+      await expect(TodoModel.findById(workSummaryTodo.id)).resolves.toMatchObject({
+        status: 'completed',
+      });
     });
 
     it('should fail with invalid score values', async () => {

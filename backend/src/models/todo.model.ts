@@ -29,6 +29,14 @@ export interface CreateTodoInput {
 }
 
 export class TodoModel {
+  static performanceSummaryRelatedId(month: string): string {
+    return `performance-summary-${month}`;
+  }
+
+  static performanceReviewRelatedId(recordId: string): string {
+    return `performance-review-${recordId}`;
+  }
+
   static async create(input: CreateTodoInput): Promise<Todo> {
     const id = uuidv4();
 
@@ -92,7 +100,7 @@ export class TodoModel {
     if (USE_MEMORY_DB) {
       if (!memoryStore.todos) memoryStore.todos = new Map();
       const todo = memoryStore.todos.get(id) as Todo | undefined;
-      if (todo && todo.employeeId === employeeId) {
+      if (todo && todo.employeeId === employeeId && todo.status !== 'completed') {
         todo.status = 'completed';
         todo.completedAt = new Date();
         memoryStore.todos.set(id, todo);
@@ -102,11 +110,44 @@ export class TodoModel {
     }
 
     const sql = `
-      UPDATE todos SET status = 'completed', completed_at = NOW()
-      WHERE id = $1 AND employee_id = $2 AND status = 'pending'
+      UPDATE todos SET status = 'completed', completed_at = COALESCE(completed_at, NOW())
+      WHERE id = $1 AND employee_id = $2 AND status IN ('pending', 'overdue')
     `;
     await query(sql, [id, employeeId]);
     return true;
+  }
+
+  static async completeByRelatedId(type: TodoType, relatedId: string, employeeId?: string): Promise<number> {
+    if (USE_MEMORY_DB) {
+      if (!memoryStore.todos) memoryStore.todos = new Map();
+      let count = 0;
+      for (const [, todo] of memoryStore.todos.entries()) {
+        const t = todo as Todo;
+        if (t.type !== type) continue;
+        if (t.relatedId !== relatedId) continue;
+        if (employeeId && t.employeeId !== employeeId) continue;
+        if (t.status === 'completed') continue;
+        t.status = 'completed';
+        t.completedAt = new Date();
+        count++;
+      }
+      return count;
+    }
+
+    const params: any[] = [type, relatedId];
+    let sql = `
+      UPDATE todos
+      SET status = 'completed', completed_at = COALESCE(completed_at, NOW())
+      WHERE type = $1
+        AND related_id = $2
+        AND status IN ('pending', 'overdue')
+    `;
+    if (employeeId) {
+      params.push(employeeId);
+      sql += ` AND employee_id = $3`;
+    }
+    const result = await query(sql, params);
+    return (result as any).affectedRows ?? (result as any).rowCount ?? 0;
   }
 
   static async checkOverdue(): Promise<number> {
@@ -181,7 +222,7 @@ export class TodoModel {
       if (!memoryStore.todos) memoryStore.todos = new Map();
       for (const todo of memoryStore.todos.values()) {
         const t = todo as Todo;
-        if (t.employeeId === employeeId && t.type === type && t.relatedId === relatedId && t.status === 'pending') {
+        if (t.employeeId === employeeId && t.type === type && t.relatedId === relatedId && t.status !== 'completed') {
           return t;
         }
       }
@@ -193,7 +234,7 @@ export class TodoModel {
         due_date as "dueDate", status, link, related_id as "relatedId",
         created_at as "createdAt", completed_at as "completedAt"
       FROM todos
-      WHERE employee_id = $1 AND type = $2 AND related_id = $3 AND status = 'pending'
+      WHERE employee_id = $1 AND type = $2 AND related_id = $3 AND status IN ('pending', 'overdue')
       LIMIT 1
     `;
     const results = await query(sql, [employeeId, type, relatedId]);

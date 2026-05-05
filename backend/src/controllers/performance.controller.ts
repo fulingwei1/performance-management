@@ -29,6 +29,29 @@ const normalizeOptionalText = (input: unknown): string => {
   return input.trim();
 };
 
+const managerScoringLink = (month: string): string => `/manager/scoring?month=${encodeURIComponent(month)}`;
+
+async function ensurePerformanceReviewTodo(record: any, employeeName?: string) {
+  if (!record || record.status !== 'submitted') return;
+  const assessorId = String(record.assessorId || '').trim();
+  if (!assessorId) return;
+
+  const relatedId = TodoModel.performanceReviewRelatedId(String(record.id));
+  const existingTodo = await TodoModel.findExisting(assessorId, 'performance_review', relatedId);
+  if (existingTodo) return;
+
+  const displayName = employeeName || record.employeeName || '下属';
+  await TodoModel.create({
+    employeeId: assessorId,
+    type: 'performance_review',
+    title: `评分${displayName}${record.month}月绩效`,
+    description: `${displayName}已提交${record.month}月工作总结，请完成绩效评分。`,
+    dueDate: record.deadline ? new Date(record.deadline) : undefined,
+    link: managerScoringLink(String(record.month)),
+    relatedId,
+  });
+}
+
 export const performanceController = {
   // 获取当前用户的绩效记录
   getMyRecords: asyncHandler(async (req: Request, res: Response) => {
@@ -432,6 +455,13 @@ export const performanceController = {
       groupType
     });
 
+    await TodoModel.completeByRelatedId(
+      'work_summary',
+      TodoModel.performanceSummaryRelatedId(month),
+      employee.id,
+    );
+    await ensurePerformanceReviewTodo(record, employee.name);
+
     res.status(201).json({
       success: true,
       data: record,
@@ -707,6 +737,16 @@ export const performanceController = {
 
     // 更新排名
     await PerformanceModel.updateRanks(record.month);
+
+    await TodoModel.completeByRelatedId(
+      'work_summary',
+      TodoModel.performanceSummaryRelatedId(record.month),
+      record.employeeId,
+    );
+    await TodoModel.completeByRelatedId(
+      'performance_review',
+      TodoModel.performanceReviewRelatedId(record.id),
+    );
 
     res.json({
       success: true,

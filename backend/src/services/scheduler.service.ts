@@ -32,6 +32,7 @@ type ReminderSendStats = {
   emailCount: number;
   wecomCount: number;
   recipientCount?: number;
+  todoCount?: number;
 };
 
 type DepartmentProgressStats = {
@@ -159,7 +160,7 @@ export class SchedulerService {
   }> {
     const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
     const targetMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
-    const todoRelatedId = `performance-summary-${targetMonth}`;
+    const todoRelatedId = TodoModel.performanceSummaryRelatedId(targetMonth);
     const summaryLink = `/employee/summary?month=${targetMonth}`;
     const dueDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 7);
 
@@ -449,6 +450,7 @@ export class SchedulerService {
     // 查找 submitted 状态的记录（员工已提交，等经理打分）
     const sql = `
       SELECT pr.employee_id as "employeeId", pr.assessor_id as "assessorId",
+             pr.id as "recordId", pr.deadline,
              e.name as "employeeName", e.department,
              mgr.name as "managerName", mgr.email as "managerEmail",
              mgr.wecom_user_id as "managerWecomUserId"
@@ -488,10 +490,28 @@ export class SchedulerService {
     let notificationCount = 0;
     let emailCount = 0;
     let wecomCount = 0;
+    let todoCount = 0;
 
     for (const [managerId, group] of Object.entries(byManager)) {
       const names = group.employees.map((e: any) => e.employeeName).join('、');
       const count = group.employees.length;
+
+      for (const employeeRecord of group.employees) {
+        const relatedId = TodoModel.performanceReviewRelatedId(String(employeeRecord.recordId));
+        const existingTodo = await TodoModel.findExisting(managerId, 'performance_review', relatedId);
+        if (!existingTodo) {
+          await TodoModel.create({
+            employeeId: managerId,
+            type: 'performance_review',
+            title: `评分${employeeRecord.employeeName}${month}月绩效`,
+            description: `${employeeRecord.employeeName}已提交${month}月工作总结，请完成绩效评分。`,
+            dueDate: employeeRecord.deadline ? new Date(employeeRecord.deadline) : undefined,
+            link: `/manager/scoring?month=${month}`,
+            relatedId,
+          });
+          todoCount++;
+        }
+      }
 
       // 站内通知经理
       const managerNotifications: CreateNotificationInput[] = [{
@@ -538,7 +558,7 @@ export class SchedulerService {
 
       logger.info(`[Scheduler] 催经理 ${group.manager.name} 打分: ${count}人 (${names})`);
     }
-    return { pendingCount: submitted.length, notificationCount, emailCount, wecomCount, recipientCount: Object.keys(byManager).length };
+    return { pendingCount: submitted.length, notificationCount, emailCount, wecomCount, recipientCount: Object.keys(byManager).length, todoCount };
   }
 
   /**
