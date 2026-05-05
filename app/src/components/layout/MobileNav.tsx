@@ -9,6 +9,7 @@ import {
   Cog6ToothIcon,
   DocumentTextIcon,
   HomeIcon,
+  KeyIcon,
   StarIcon,
   Squares2X2Icon,
   UserGroupIcon,

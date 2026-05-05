@@ -9,6 +9,7 @@ import {
   Database,
   Zap,
   ClipboardList,
+  KeyRound,
   MessageSquare,
   type LucideIcon
 } from 'lucide-react';
