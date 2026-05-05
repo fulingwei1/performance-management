@@ -8,6 +8,21 @@ describe('SchedulerService monthly performance task generation', () => {
     memoryStore.notifications = new Map();
     memoryStore.todos = new Map();
     memoryStore.systemSettings = new Map();
+    memoryStore.assessmentTemplates = new Map([
+      ['template-eng-default', {
+        id: 'template-eng-default',
+        name: '工程技术部门标准模板',
+        department_type: 'engineering',
+        is_default: true,
+        status: 'active',
+        applicable_roles: [],
+        applicable_levels: [],
+        applicable_positions: [],
+        priority: 0,
+        created_at: new Date(),
+        updated_at: new Date(),
+      } as any],
+    ]);
   });
 
   it('should generate previous-month performance records, todos and notifications on monthly trigger', async () => {

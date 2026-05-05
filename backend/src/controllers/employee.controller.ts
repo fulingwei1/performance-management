@@ -3,8 +3,15 @@ import { body, param, validationResult } from 'express-validator';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeRole, EmployeeLevel } from '../types';
-import { getOrgUnitKey } from '../services/performanceRankingConfig.service';
-import { resolveSelfAssessmentEligibility } from '../services/selfAssessmentEligibility.service';
+import {
+  getOrgUnitKey,
+  getPerformanceRankingConfig,
+  isParticipatingRecord,
+} from '../services/performanceRankingConfig.service';
+import {
+  hasValidAssessorId,
+  resolveSelfAssessmentEligibility,
+} from '../services/selfAssessmentEligibility.service';
 
 function normalizeManagerId(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
@@ -40,16 +47,25 @@ export const employeeController = {
       },
     };
 
+    const rankingConfig = await getPerformanceRankingConfig();
+    const allEmployees = await EmployeeModel.findAll();
+    const activeEmployeeIds = new Set(
+      (allEmployees as any[])
+        .filter((employee) => !employee.status || employee.status === 'active')
+        .map((employee) => employee.id)
+    );
     const subordinates = await EmployeeModel.findTeamForManager(req.user.userId);
     if (subordinates.length > 0) {
       const members = subordinates.map((employee) => {
+        const participating = isParticipatingRecord(employee, rankingConfig)
+          && hasValidAssessorId(employee, activeEmployeeIds);
         return {
           employeeId: employee.id,
           name: employee.name,
           department: employee.department,
           subDepartment: employee.subDepartment,
           unitKey: getOrgUnitKey(employee),
-          participating: true,
+          participating,
         };
       });
 

@@ -6,6 +6,7 @@ describe('performanceController hierarchy permissions', () => {
     memoryStore.employees = new Map();
     memoryStore.performanceRecords = new Map();
     memoryStore.systemSettings = new Map();
+    memoryStore.assessmentTemplates = new Map();
 
     const base = {
       department: '工程技术中心',
@@ -16,6 +17,19 @@ describe('performanceController hierarchy permissions', () => {
     memoryStore.employees.set('m008', { ...base, id: 'm008', name: '王俊', role: 'manager', managerId: 'gm001' } as any);
     memoryStore.employees.set('e124', { ...base, id: 'e124', name: '杨帮', role: 'manager', managerId: 'm008', subDepartment: 'PLC 部/PLC四组' } as any);
     memoryStore.employees.set('e020', { ...base, id: 'e020', name: '黄亿豪', role: 'employee', managerId: 'e124', subDepartment: 'PLC 部/PLC四组', level: 'junior' } as any);
+    memoryStore.assessmentTemplates.set('template-eng-default', {
+      id: 'template-eng-default',
+      name: '工程技术部门标准模板',
+      department_type: 'engineering',
+      is_default: true,
+      status: 'active',
+      applicable_roles: [],
+      applicable_levels: [],
+      applicable_positions: [],
+      priority: 0,
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
 
     memoryStore.performanceRecords.set('rec-e020-2026-04', {
       id: 'rec-e020-2026-04',
@@ -77,6 +91,32 @@ describe('performanceController hierarchy permissions', () => {
   });
 
   it('generates monthly tasks only for active employees with a valid manager_id relationship', async () => {
+    memoryStore.systemSettings!.set('performance_ranking_config', {
+      id: 1,
+      settingKey: 'performance_ranking_config',
+      settingValue: JSON.stringify({
+        version: 1,
+        participation: {
+          mode: 'include',
+          enabledUnitKeys: ['工程技术中心'],
+          includedUnitKeys: ['工程技术中心'],
+          excludedUnitKeys: [],
+          includedEmployeeIds: [],
+          excludedEmployeeIds: [],
+        },
+        groupRank: {
+          defaultStrategy: { type: 'by_high_low' },
+          perUnit: {},
+        },
+        templateAssignments: {},
+        mergeRankGroups: [],
+      }),
+      settingType: 'json',
+      category: 'performance',
+      isPublic: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
     memoryStore.employees.set('e-no-manager', {
       department: '工程技术中心',
       subDepartment: 'PLC 部',
@@ -96,6 +136,16 @@ describe('performanceController hierarchy permissions', () => {
       name: '自指上级员工',
       role: 'employee',
       managerId: 'e-self-manager',
+    } as any);
+    memoryStore.employees.set('e-excluded-unit', {
+      department: '人力行政部',
+      subDepartment: '行政组',
+      level: 'junior',
+      status: 'active',
+      id: 'e-excluded-unit',
+      name: '未纳入部门员工',
+      role: 'employee',
+      managerId: 'm008',
     } as any);
 
     const json = jest.fn();
@@ -126,5 +176,6 @@ describe('performanceController hierarchy permissions', () => {
     expect(memoryStore.performanceRecords.has('rec-m008-2026-05')).toBe(false);
     expect(memoryStore.performanceRecords.has('rec-e-no-manager-2026-05')).toBe(false);
     expect(memoryStore.performanceRecords.has('rec-e-self-manager-2026-05')).toBe(false);
+    expect(memoryStore.performanceRecords.has('rec-e-excluded-unit-2026-05')).toBe(false);
   });
 });

@@ -4,11 +4,7 @@ import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { getGroupType, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
-import {
-  getConfiguredTemplateId,
-  getOrgUnitKey,
-  getPerformanceRankingConfig,
-} from '../services/performanceRankingConfig.service';
+import { getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { TodoModel } from '../models/todo.model';
 import { NotificationModel } from '../models/notification.model';
@@ -17,6 +13,7 @@ import {
   resolveAssessorId,
   resolveSelfAssessmentEligibility,
 } from '../services/selfAssessmentEligibility.service';
+import { resolveTaskTemplateForEmployee, type ResolvedTaskTemplate } from '../services/taskTemplateResolver.service';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -880,6 +877,39 @@ export const performanceController = {
     );
     const assessableEmployees = allEmployees
       .filter((e: any) => isSelfAssessmentEligibleRecord(e, rankingConfig, { validEmployeeIds: validIds }));
+
+    const templateByEmployeeId = new Map<string, ResolvedTaskTemplate>();
+    const missingTemplateEmployees: Array<{
+      employeeId: string;
+      name: string;
+      department?: string;
+      subDepartment?: string;
+    }> = [];
+
+    for (const employee of assessableEmployees) {
+      const template = await resolveTaskTemplateForEmployee(employee, rankingConfig);
+      if (template) {
+        templateByEmployeeId.set(employee.id, template);
+      } else {
+        missingTemplateEmployees.push({
+          employeeId: employee.id,
+          name: employee.name,
+          department: employee.department,
+          subDepartment: employee.subDepartment,
+        });
+      }
+    }
+
+    if (missingTemplateEmployees.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: `还有 ${missingTemplateEmployees.length} 名参与考核员工没有可用考核模板，请先在考核范围/模板配置中选择模板`,
+        data: {
+          missingCount: missingTemplateEmployees.length,
+          examples: missingTemplateEmployees.slice(0, 20),
+        },
+      });
+    }
     
     let createdCount = 0;
     let skippedCount = 0;
@@ -901,17 +931,8 @@ export const performanceController = {
         continue;
       }
       
-      // 优先使用“考核范围”里管理员给部门指定的模板；未指定时再按岗位/层级自动匹配
-      const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);
-      const configuredTemplate = configuredTemplateId
-        ? await AssessmentTemplateModel.findById(configuredTemplateId, false)
-        : null;
-      const template = configuredTemplate || await AssessmentTemplateModel.findMatchingTemplate({
-        role: employee.role || '',
-        level: employee.level || '',
-        position: (employee as any).position || employee.subDepartment || employee.department || '',
-        department: employee.department || ''
-      });
+      // 模板已经在生成前统一校验过；这里直接使用校验后的结果，避免生成“无模板任务”。
+      const template = templateByEmployeeId.get(employee.id);
       
       const recordId = `rec-${employee.id}-${month}`;
       

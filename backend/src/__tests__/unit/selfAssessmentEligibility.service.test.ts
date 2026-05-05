@@ -46,7 +46,7 @@ describe('selfAssessmentEligibility service', () => {
     expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'manager', managerId: '' }, config, { validEmployeeIds: new Set(['e001']) })).toBe(false);
   });
 
-  it('ignores scope config when the upper assessor relationship is valid', () => {
+  it('requires both participation scope and valid manager_id before showing own summary', () => {
     const config = buildDefaultPerformanceRankingConfig();
     config.participation.mode = 'include';
     config.participation.includedUnitKeys = ['项目管理部'];
@@ -57,17 +57,26 @@ describe('selfAssessmentEligibility service', () => {
       { ...baseEmployee, role: 'manager', managerId: 'm008' },
       config,
       { validEmployeeIds }
+    )).toBe(false);
+
+    config.participation.includedUnitKeys = ['工程技术中心'];
+    config.participation.enabledUnitKeys = ['工程技术中心'];
+
+    expect(isSelfAssessmentEligibleRecord(
+      { ...baseEmployee, role: 'manager', managerId: 'm008' },
+      config,
+      { validEmployeeIds }
     )).toBe(true);
   });
 
-  it('does not use role or manual exclusion as the source of assessment relationship', () => {
+  it('does not use role as the source of assessment relationship, but respects manual exclusion', () => {
     const config = buildDefaultPerformanceRankingConfig();
     config.participation.excludedEmployeeIds = ['e001'];
     const validEmployeeIds = new Set(['m008', 'e001']);
 
     expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'gm', managerId: 'm008' } as any, buildDefaultPerformanceRankingConfig(), { validEmployeeIds })).toBe(true);
     expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'hr', managerId: 'm008' } as any, buildDefaultPerformanceRankingConfig(), { validEmployeeIds })).toBe(true);
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'employee', managerId: 'm008' }, config, { validEmployeeIds })).toBe(true);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'employee', managerId: 'm008' }, config, { validEmployeeIds })).toBe(false);
   });
 
   it('uses valid manager as assessor and returns null when the relationship is missing or invalid', () => {
