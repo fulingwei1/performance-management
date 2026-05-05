@@ -9,9 +9,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { format } from 'date-fns';
 import { employeeApi, employeeQuarterlyApi } from '@/services/api';
 import { getLevelColor, getLevelLabel } from '@/lib/config';
+import { getDefaultAssessmentMonth, isValidAssessmentMonth } from '@/lib/assessmentMonth';
 import { toast } from 'sonner';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 
@@ -36,8 +36,11 @@ export function TeamList() {
   const [subordinates, setSubordinates] = useState<any[]>([]);
   const [quarterlySummaries, setQuarterlySummaries] = useState<any[]>([]);
   
-  // 默认当前月份，也支持从工作台点击数字时带入月份
-  const currentMonth = searchParams.get('month') || format(new Date(), 'yyyy-MM');
+  // 默认当前考核月份，也支持从工作台点击数字时带入月份
+  const monthParam = searchParams.get('month');
+  const currentMonth = isValidAssessmentMonth(monthParam)
+    ? monthParam
+    : getDefaultAssessmentMonth();
   const currentQuarter = useMemo(() => getQuarterFromMonth(currentMonth), [currentMonth]);
   
   // 获取下属员工列表

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TrendChart } from '@/components/charts/TrendChart';
 import { RadarChart } from '@/components/charts/RadarChart';
 import { TalentGrid } from '@/components/stats/TalentGrid';
-import { 
+import {
   Users, 
   TrendingUp, 
   TrendingDown,
@@ -23,9 +23,9 @@ import {
   RefreshCw,
   Tags
 } from 'lucide-react';
-import { format } from 'date-fns';
 import keywordsData from '@/data/evaluation-keywords.json';
 import { topTagEntries } from '@/lib/performanceTagAnalytics';
+import { getDefaultAssessmentMonth, getPreviousMonthFromValue } from '@/lib/assessmentMonth';
 
 // 时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -42,7 +42,7 @@ export function Analytics() {
   const [timeRange, setTimeRange] = useState('6');
   const [hasDemoData, setHasDemoData] = useState(false);
 
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  const currentMonth = getDefaultAssessmentMonth();
   const keywordLabelMap = useMemo(() => {
     const entries = [...(keywordsData.positive || []), ...(keywordsData.negative || [])].map((item: any) => [item.id, item.text]);
     return new Map<string, string>(entries);
@@ -86,7 +86,7 @@ export function Analytics() {
   const stats = useMemo(() => {
     // 只获取有评分的记录（解决月初未评分问题）
     const currentMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
-    const previousMonth = format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM');
+    const previousMonth = getPreviousMonthFromValue(currentMonth);
     const previousMonthRecords = realRecords.filter(r => r.month === previousMonth && r.totalScore > 0);
     
     const currentAvg = currentMonthRecords.length > 0
@@ -127,7 +127,7 @@ export function Analytics() {
   const radarData = useMemo(() => {
     // 只获取有评分的记录（解决月初未评分问题）
     const currentMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
-    const previousMonth = format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM');
+    const previousMonth = getPreviousMonthFromValue(currentMonth);
     const previousMonthRecords = realRecords.filter(r => r.month === previousMonth && r.totalScore > 0);
     
     const calcAvg = (recs: any[], key: string) => 

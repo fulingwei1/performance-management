@@ -15,6 +15,7 @@ import { getLevelLabel, getLevelColor } from '@/lib/config';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { performanceApi, employeeApi, employeeQuarterlyApi } from '@/services/api';
+import { getDefaultAssessmentMonth, isValidAssessmentMonth } from '@/lib/assessmentMonth';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 
@@ -64,7 +65,9 @@ export function ScoringManagement({
   
   const [searchQuery] = useState('');
   const statusFilter = 'all';
-  const initialMonth = monthParam || month || format(new Date(), 'yyyy-MM');
+  const initialMonth = isValidAssessmentMonth(monthParam)
+    ? monthParam
+    : month || getDefaultAssessmentMonth();
   const [viewMode, setViewMode] = useState<'month' | 'employee'>('month');
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employeeParam || '');

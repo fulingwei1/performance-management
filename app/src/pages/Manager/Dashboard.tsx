@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { format } from 'date-fns';
 import { employeeApi, performanceApi, todoApi } from '@/services/api';
+import { getDefaultAssessmentMonth, getPreviousMonthValue, isValidAssessmentMonth } from '@/lib/assessmentMonth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -50,11 +51,6 @@ const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
   };
 });
 
-function getPreviousMonthValue(referenceDate = new Date()) {
-  const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
-  return format(date, 'yyyy-MM');
-}
-
 export function ManagerDashboard() {
   const { user } = useAuthStore();
   const { records, fetchTeamRecords } = usePerformanceStore();
@@ -62,9 +58,9 @@ export function ManagerDashboard() {
   const [subordinates, setSubordinates] = useState<any[]>([]);
   const [participationSummary, setParticipationSummary] = useState<ParticipationSummary | null>(null);
   const monthParam = searchParams.get('month');
-  const initialSelectedMonth = monthParam && /^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam)
+  const initialSelectedMonth = isValidAssessmentMonth(monthParam)
     ? monthParam
-    : format(new Date(), 'yyyy-MM');
+    : getDefaultAssessmentMonth();
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
   const [mySummaryRecord, setMySummaryRecord] = useState<any>(null);
   const summaryMonth = useMemo(() => getPreviousMonthValue(), []);
