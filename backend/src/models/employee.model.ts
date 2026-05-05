@@ -16,19 +16,6 @@ function isActiveEmployee(employee: any): boolean {
   return !employee?.status || employee.status === 'active';
 }
 
-function isAssessableRole(employee: any): boolean {
-  return employee?.role === 'employee' || employee?.role === 'manager';
-}
-
-function isInDepartmentScope(employee: any, manager: any): boolean {
-  if (!manager?.department || employee?.department !== manager.department) return false;
-  const managerSubDepartment = String(manager.subDepartment || '').trim();
-  if (!managerSubDepartment) return true;
-
-  const employeeSubDepartment = String(employee.subDepartment || '').trim();
-  return employeeSubDepartment === managerSubDepartment || employeeSubDepartment.startsWith(`${managerSubDepartment}/`);
-}
-
 function normalizeManagerId(value: unknown): string {
   return String(value || '').trim();
 }
@@ -174,8 +161,7 @@ export class EmployeeModel {
   static async findDirectReportsForManager(managerId: string): Promise<Employee[]> {
     return (await this.findByManagerId(managerId))
       .filter((employee: any) => employee.id !== managerId)
-      .filter(isActiveEmployee)
-      .filter(isAssessableRole);
+      .filter(isActiveEmployee);
   }
 
   // 获取部门下的所有员工
@@ -201,20 +187,16 @@ export class EmployeeModel {
     return await query(sql, [department, department]) as Employee[];
   }
 
-  // 获取经理负责的团队成员：
-  // 1. 优先使用人事档案维护的 manager_id 多级上下级树；
-  // 2. 返回直接下级 + 下级经理继续管辖的下下级；
-  // 3. 若档案暂未维护直接下级，则保留原先按部门/小组兜底，避免小组长暂时看不到团队。
+  // 获取某个员工负责的团队成员：
+  // 1. 只使用人事档案维护的 manager_id 多级上下级树；
+  // 2. 返回直接下级 + 下级继续管辖的下下级；
+  // 3. 不按级别/岗位/部门兜底猜团队，避免错误生成考核关系。
   static async findTeamForManager(managerId: string): Promise<Employee[]> {
     const manager = await this.findById(managerId);
-    const allEmployees = (await this.findAll() as any[]);
-
-    if (manager?.role === 'gm') {
-      return allEmployees
-        .filter((employee: any) => employee.id !== managerId)
-        .filter(isActiveEmployee)
-        .filter(isAssessableRole) as Employee[];
+    if (!manager) {
+      return [];
     }
+    const allEmployees = (await this.findAll() as any[]);
 
     const byManagerId = new Map<string, any[]>();
 
@@ -232,7 +214,7 @@ export class EmployeeModel {
         if (!employee?.id || seen.has(employee.id)) continue;
         seen.add(employee.id);
 
-        if (isActiveEmployee(employee) && isAssessableRole(employee)) {
+        if (isActiveEmployee(employee)) {
           scopedEmployees.push(employee);
         }
 
@@ -243,17 +225,10 @@ export class EmployeeModel {
 
     visit(managerId);
 
-    if (scopedEmployees.length > 0 || !manager) {
+    if (scopedEmployees.length > 0) {
       return scopedEmployees as Employee[];
     }
-
-    const employees = allEmployees
-      .filter((employee: any) => employee.id !== managerId)
-      .filter(isActiveEmployee)
-      .filter(isAssessableRole)
-      .filter((employee: any) => isInDepartmentScope(employee, manager));
-
-    return employees as Employee[];
+    return [];
   }
 
   static async isInManagerTeam(managerId: string, employeeId: string): Promise<boolean> {

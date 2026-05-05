@@ -88,10 +88,14 @@ export const MobileNav: React.FC = () => {
 
   const role = (user?.role || 'employee') as UserRole;
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
-  const canManageTeam = Boolean(user?.capabilities?.canManageTeam || effectiveRoles.includes('manager'));
+  const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const canSubmitSelfSummary = Boolean(user?.capabilities?.canSubmitSelfSummary);
   const filteredItems = useMemo(() => {
-    const baseItems = role === 'gm' && canManageTeam
+    const baseItems = (role === 'employee' || role === 'manager') && canManageTeam
+      ? roleNavItems.manager
+      : role === 'manager' && !canManageTeam
+        ? roleNavItems.employee
+        : role === 'gm' && canManageTeam
       ? [
           { name: '管辖绩效', path: '/manager/dashboard', icon: UserGroupIcon },
           { name: '管辖绩效看板', path: '/manager/analytics', icon: ChartBarIcon },

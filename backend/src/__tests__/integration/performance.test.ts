@@ -247,8 +247,8 @@ describe('Performance API', () => {
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail for HR role', async () => {
-      const token = await TestHelper.getAuthToken('hr');
+    it('should fail when the user has no valid upper assessor relationship', async () => {
+      const token = await TestHelper.getAuthToken('manager');
 
       const response = await request(app)
         .post('/api/performance/summary')

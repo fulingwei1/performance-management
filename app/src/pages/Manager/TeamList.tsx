@@ -57,7 +57,7 @@ export function TeamList() {
       }
     };
     
-    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
     if (user && canManageTeam) {
       fetchSubordinates();
     }
@@ -71,7 +71,7 @@ export function TeamList() {
   }, [user, currentMonth, fetchTeamRecords]);
 
   useEffect(() => {
-    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
     if (!user || !canManageTeam || !currentQuarter.year || !currentQuarter.quarter) return;
 
     employeeQuarterlyApi.getTeam(currentQuarter)

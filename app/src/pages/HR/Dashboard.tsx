@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { settingsApi, performanceApi, performanceConfigApi } from '@/services/api';
+import { performanceApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -32,17 +32,6 @@ import { TodoSection } from '@/components/dashboard/TodoSection';
 import { todoApi } from '@/services/api';
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
-
-type RankingConfig = {
-  participation?: {
-    mode?: 'include' | 'exclude';
-    enabledUnitKeys?: string[];
-    includedUnitKeys?: string[];
-    excludedUnitKeys?: string[];
-    includedEmployeeIds?: string[];
-    excludedEmployeeIds?: string[];
-  };
-};
 
 interface ImprovementSuggestionSummary {
   totalCount: number;
@@ -58,74 +47,15 @@ interface ImprovementSuggestionSummary {
   }>;
 }
 
-const ASSESSMENT_ROLES = new Set(['employee', 'manager']);
-
-function getEmployeeUnitKey(employee: any): string {
-  const dept = String(employee?.department || '').trim();
-  const sub = String(employee?.subDepartment || '').trim();
-  if (dept && sub) return `${dept}/${sub}`;
-  return dept || sub;
-}
-
 function displaySubDepartment(subDepartment?: string): string {
   const normalized = String(subDepartment || '').trim();
   return normalized && normalized !== '/' ? normalized : '直属/未分组';
 }
 
-function cleanList(values?: string[]): string[] {
-  return (values || []).map((value) => String(value || '').trim()).filter(Boolean);
-}
-
-function matchesConfiguredUnit(unitKey: string, configuredKey: string): boolean {
-  return configuredKey === unitKey || unitKey.startsWith(`${configuredKey}/`);
-}
-
-function resolveUnitDecision(
-  unitKey: string,
-  includedUnitKeys: string[],
-  excludedUnitKeys: string[]
-): 'include' | 'exclude' | null {
-  let bestLength = -1;
-  let decision: 'include' | 'exclude' | null = null;
-
-  for (const key of includedUnitKeys) {
-    if (matchesConfiguredUnit(unitKey, key) && key.length > bestLength) {
-      bestLength = key.length;
-      decision = 'include';
-    }
-  }
-
-  for (const key of excludedUnitKeys) {
-    if (matchesConfiguredUnit(unitKey, key) && key.length >= bestLength) {
-      bestLength = key.length;
-      decision = 'exclude';
-    }
-  }
-
-  return decision;
-}
-
-function isParticipatingEmployee(employee: any, config: RankingConfig | null): boolean {
-  const participation = config?.participation;
-  if (!participation) return true;
-
-  const legacyEnabledUnitKeys = cleanList(participation.enabledUnitKeys);
-  const includedUnitKeys = cleanList(
-    participation.includedUnitKeys?.length ? participation.includedUnitKeys : legacyEnabledUnitKeys
-  );
-  const excludedUnitKeys = cleanList(participation.excludedUnitKeys);
-  const includedEmployeeIds = cleanList(participation.includedEmployeeIds);
-  const excludedEmployeeIds = cleanList(participation.excludedEmployeeIds);
-  const mode = participation.mode || (legacyEnabledUnitKeys.length > 0 ? 'include' : 'exclude');
+function hasValidManagerRelationship(employee: any, activeEmployeeIds: Set<string>): boolean {
   const employeeId = String(employee?.id || '').trim();
-
-  if (employeeId && excludedEmployeeIds.includes(employeeId)) return false;
-  if (employeeId && includedEmployeeIds.includes(employeeId)) return true;
-
-  const unitDecision = resolveUnitDecision(getEmployeeUnitKey(employee), includedUnitKeys, excludedUnitKeys);
-  if (unitDecision) return unitDecision === 'include';
-
-  return mode !== 'include';
+  const managerId = String(employee?.managerId || '').trim();
+  return Boolean(managerId && managerId !== employeeId && activeEmployeeIds.has(managerId));
 }
 
 export function HRDashboard() {
@@ -138,17 +68,14 @@ export function HRDashboard() {
   } = useHRStore();
   
   const [currentMonth, setCurrentMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [, setAssessmentScope] = useState<{ rootDepts: string[]; subDeptsByRoot: Record<string, string[]> }>({ rootDepts: [], subDeptsByRoot: {} });
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'status'>('score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
-  const [rankingConfig, setRankingConfig] = useState<RankingConfig | null>(null);
   const [suggestionSummary, setSuggestionSummary] = useState<ImprovementSuggestionSummary | null>(null);
   const todoRole = user?.role === 'admin' ? 'admin' : 'hr';
-  const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [user?.role];
   const showSuggestionSummary = user?.role === 'admin';
   
   useEffect(() => {
@@ -156,15 +83,6 @@ export function HRDashboard() {
     fetchAllPerformanceRecords();
   }, [fetchEmployees, fetchAllPerformanceRecords]);
   
-  useEffect(() => {
-    settingsApi.getAssessmentScope().then((res) => {
-      if (res.success && res.data) setAssessmentScope(res.data);
-    }).catch(() => {});
-    performanceConfigApi.getRankingConfig().then((res) => {
-      if (res.success && res.data) setRankingConfig(res.data);
-    }).catch(() => {});
-  }, []);
-
   useEffect(() => {
     if (!showSuggestionSummary) return;
     performanceApi.getImprovementSuggestions({ month: currentMonth, scope: 'all' })
@@ -174,23 +92,18 @@ export function HRDashboard() {
       .catch(() => {});
   }, [currentMonth, showSuggestionSummary]);
   
-  const inScopeEmployees = employeesList.filter((employee: any) => {
-    if (employee.status && employee.status !== 'active') return false;
-    if (!ASSESSMENT_ROLES.has(employee.role)) return false;
-    return isParticipatingEmployee(employee, rankingConfig);
-  });
   const activeEmployeeIds = new Set(
     employeesList
       .filter((employee: any) => !employee.status || employee.status === 'active')
       .map((employee: any) => employee.id)
   );
-  const assessableInScopeEmployees = inScopeEmployees.filter((employee: any) => (
-    employee.role !== 'manager' ||
-    (employee.managerId && employee.managerId !== employee.id && activeEmployeeIds.has(employee.managerId))
-  ));
+  const assessableInScopeEmployees = employeesList.filter((employee: any) => {
+    if (employee.status && employee.status !== 'active') return false;
+    return hasValidManagerRelationship(employee, activeEmployeeIds);
+  });
   const activeCompanyEmployees = employeesList.filter((employee: any) => {
     if (employee.status && employee.status !== 'active') return false;
-    return ASSESSMENT_ROLES.has(employee.role);
+    return true;
   });
   const inScopeEmployeeIds = new Set(assessableInScopeEmployees.map((employee: any) => employee.id));
   const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));

@@ -34,8 +34,7 @@ async function buildEffectiveRoleInfo(employee: any) {
 
   const subordinates = await EmployeeModel.findTeamForManager(employee.id);
   const hasActiveSubordinates = subordinates.length > 0;
-  const managerCapableRole = ['manager', 'gm', 'hr', 'admin'].includes(employee.role);
-  const canManageTeam = managerCapableRole && (hasActiveSubordinates || employee.role === 'manager');
+  const canManageTeam = hasActiveSubordinates;
   if (canManageTeam) roles.add('manager');
   const selfAssessmentEligibility = await resolveSelfAssessmentEligibility(employee);
 

@@ -75,4 +75,56 @@ describe('performanceController hierarchy permissions', () => {
       managerComment: '上级复核后调整评分',
     });
   });
+
+  it('generates monthly tasks only for active employees with a valid manager_id relationship', async () => {
+    memoryStore.employees.set('e-no-manager', {
+      department: '工程技术中心',
+      subDepartment: 'PLC 部',
+      level: 'senior',
+      status: 'active',
+      id: 'e-no-manager',
+      name: '无上级员工',
+      role: 'employee',
+      managerId: '',
+    } as any);
+    memoryStore.employees.set('e-self-manager', {
+      department: '工程技术中心',
+      subDepartment: 'PLC 部',
+      level: 'senior',
+      status: 'active',
+      id: 'e-self-manager',
+      name: '自指上级员工',
+      role: 'employee',
+      managerId: 'e-self-manager',
+    } as any);
+
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    const res = { status, json } as any;
+    const next = jest.fn();
+
+    performanceController.generateTasks({
+      user: { userId: 'hr001', id: 'hr001', role: 'hr' },
+      body: { month: '2026-05' },
+    } as any, res, next);
+
+    await new Promise(process.nextTick);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      data: expect.objectContaining({ createdCount: 2, total: 2 }),
+    }));
+    expect(memoryStore.performanceRecords.get('rec-e124-2026-05')).toMatchObject({
+      employeeId: 'e124',
+      assessorId: 'm008',
+    });
+    expect(memoryStore.performanceRecords.get('rec-e020-2026-05')).toMatchObject({
+      employeeId: 'e020',
+      assessorId: 'e124',
+    });
+    expect(memoryStore.performanceRecords.has('rec-m008-2026-05')).toBe(false);
+    expect(memoryStore.performanceRecords.has('rec-e-no-manager-2026-05')).toBe(false);
+    expect(memoryStore.performanceRecords.has('rec-e-self-manager-2026-05')).toBe(false);
+  });
 });

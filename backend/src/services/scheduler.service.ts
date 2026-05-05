@@ -189,6 +189,10 @@ export class SchedulerService {
 
       const groupType = getGroupType(employee.level);
       const assessorId = resolveAssessorId(employee, validIds);
+      if (!assessorId) {
+        skippedCount++;
+        continue;
+      }
 
       const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);
       const configuredTemplate = configuredTemplateId

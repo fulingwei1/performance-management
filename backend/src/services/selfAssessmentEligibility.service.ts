@@ -1,10 +1,6 @@
 import type { Employee } from '../types';
 import { EmployeeModel } from '../models/employee.model';
-import {
-  getPerformanceRankingConfig,
-  isParticipatingRecord,
-  type PerformanceRankingConfigV1,
-} from './performanceRankingConfig.service';
+import type { PerformanceRankingConfigV1 } from './performanceRankingConfig.service';
 
 export type SelfAssessmentEligibility = {
   canSubmitSelfSummary: boolean;
@@ -16,11 +12,6 @@ export type SelfAssessmentEligibility = {
 
 function isActive(employee: Partial<Employee>): boolean {
   return !employee.status || employee.status === 'active';
-}
-
-function isSelfAssessmentRole(role?: string): boolean {
-  // 当前月度绩效自评对象是普通员工和需要被上级考核的经理/主管/组长。
-  return role === 'employee' || role === 'manager';
 }
 
 export function hasValidAssessorId(
@@ -35,31 +26,19 @@ export function hasValidAssessorId(
 
 export function isSelfAssessmentEligibleRecord(
   employee: Partial<Employee> & { id?: string; employeeId?: string },
-  config: PerformanceRankingConfigV1,
+  _config: PerformanceRankingConfigV1,
   options: { validEmployeeIds?: Set<string> } = {}
 ): boolean {
-  const participating = isParticipatingRecord(
-    {
-      employeeId: employee.employeeId || employee.id,
-      department: employee.department,
-      subDepartment: employee.subDepartment,
-    },
-    config
-  );
   const hasValidAssessor = hasValidAssessorId(employee, options.validEmployeeIds);
-  return (
-    isActive(employee) &&
-    isSelfAssessmentRole(employee.role) &&
-    (participating || hasValidAssessor)
-  );
+  return isActive(employee) && hasValidAssessor;
 }
 
 export async function resolveSelfAssessmentEligibility(
   employee: Partial<Employee> & { id?: string; employeeId?: string }
 ): Promise<SelfAssessmentEligibility> {
-  const config = await getPerformanceRankingConfig();
   const active = isActive(employee);
-  const roleEligible = isSelfAssessmentRole(employee.role);
+  // 是否需要自评只由人事档案上下级决定；系统角色/级别只作展示和权限辅助，不决定考核关系。
+  const roleEligible = true;
   let hasValidAssessor = false;
   const managerId = String(employee.managerId || '').trim();
   const employeeId = String(employee.employeeId || employee.id || '').trim();
@@ -67,17 +46,10 @@ export async function resolveSelfAssessmentEligibility(
     const manager = await EmployeeModel.findById(managerId);
     hasValidAssessor = Boolean(manager && isActive(manager));
   }
-  const participating = isParticipatingRecord(
-    {
-      employeeId: employee.employeeId || employee.id,
-      department: employee.department,
-      subDepartment: employee.subDepartment,
-    },
-    config
-  );
+  const participating = hasValidAssessor;
 
   return {
-    canSubmitSelfSummary: active && roleEligible && (participating || hasValidAssessor),
+    canSubmitSelfSummary: active && hasValidAssessor,
     roleEligible,
     active,
     participating,
@@ -87,12 +59,11 @@ export async function resolveSelfAssessmentEligibility(
 
 export function resolveAssessorId(
   employee: Partial<Employee>,
-  validEmployeeIds: Set<string>,
-  fallbackAssessorId = 'gm001'
-): string {
+  validEmployeeIds: Set<string>
+): string | null {
   const managerId = String(employee.managerId || '').trim();
   if (managerId && managerId !== employee.id && validEmployeeIds.has(managerId)) {
     return managerId;
   }
-  return fallbackAssessorId;
+  return null;
 }

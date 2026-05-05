@@ -20,12 +20,18 @@ describe('selfAssessmentEligibility service', () => {
     status: 'active' as const,
   };
 
-  it('allows active employees and managers in assessment scope to submit self summary', async () => {
+  it('allows any active employee with a valid upper assessor to submit self summary', async () => {
     const config = buildDefaultPerformanceRankingConfig();
+    memoryStore.employees.set('m008', {
+      ...baseEmployee,
+      id: 'm008',
+      name: '上级',
+      role: 'manager',
+    } as any);
 
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'employee' }, config)).toBe(true);
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'manager', managerId: 'm008' }, config)).toBe(true);
-    await expect(resolveSelfAssessmentEligibility({ ...baseEmployee, role: 'manager' })).resolves.toMatchObject({
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'employee', managerId: 'm008' }, config, { validEmployeeIds: new Set(['m008', 'e001']) })).toBe(true);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'hr', managerId: 'm008' } as any, config, { validEmployeeIds: new Set(['m008', 'e001']) })).toBe(true);
+    await expect(resolveSelfAssessmentEligibility({ ...baseEmployee, role: 'manager', managerId: 'm008' })).resolves.toMatchObject({
       active: true,
       roleEligible: true,
       participating: true,
@@ -33,14 +39,14 @@ describe('selfAssessmentEligibility service', () => {
     });
   });
 
-  it('does not require a currently valid manager_id before showing own summary', () => {
+  it('requires a valid manager_id before showing own summary', () => {
     const config = buildDefaultPerformanceRankingConfig();
 
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'manager', managerId: 'e001' }, config)).toBe(true);
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'manager', managerId: '' }, config)).toBe(true);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'manager', managerId: 'e001' }, config, { validEmployeeIds: new Set(['e001']) })).toBe(false);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'manager', managerId: '' }, config, { validEmployeeIds: new Set(['e001']) })).toBe(false);
   });
 
-  it('allows people with a valid upper assessor even when the current scope config is narrow', () => {
+  it('ignores scope config when the upper assessor relationship is valid', () => {
     const config = buildDefaultPerformanceRankingConfig();
     config.participation.mode = 'include';
     config.participation.includedUnitKeys = ['项目管理部'];
@@ -54,20 +60,21 @@ describe('selfAssessmentEligibility service', () => {
     )).toBe(true);
   });
 
-  it('excludes non self-assessment roles and excluded employees', () => {
+  it('does not use role or manual exclusion as the source of assessment relationship', () => {
     const config = buildDefaultPerformanceRankingConfig();
     config.participation.excludedEmployeeIds = ['e001'];
+    const validEmployeeIds = new Set(['m008', 'e001']);
 
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'gm' }, buildDefaultPerformanceRankingConfig())).toBe(false);
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'hr' }, buildDefaultPerformanceRankingConfig())).toBe(false);
-    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'employee' }, config)).toBe(false);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'gm', managerId: 'm008' } as any, buildDefaultPerformanceRankingConfig(), { validEmployeeIds })).toBe(true);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'hr', managerId: 'm008' } as any, buildDefaultPerformanceRankingConfig(), { validEmployeeIds })).toBe(true);
+    expect(isSelfAssessmentEligibleRecord({ ...baseEmployee, role: 'employee', managerId: 'm008' }, config, { validEmployeeIds })).toBe(true);
   });
 
-  it('uses valid manager as assessor and falls back to gm001 when the relationship is missing or invalid', () => {
+  it('uses valid manager as assessor and returns null when the relationship is missing or invalid', () => {
     const validIds = new Set(['gm001', 'm008', 'e001']);
 
     expect(resolveAssessorId({ id: 'e001', role: 'employee', managerId: 'm008' } as any, validIds)).toBe('m008');
-    expect(resolveAssessorId({ id: 'e001', role: 'manager', managerId: 'e001' } as any, validIds)).toBe('gm001');
-    expect(resolveAssessorId({ id: 'e001', role: 'manager', managerId: 'missing' } as any, validIds)).toBe('gm001');
+    expect(resolveAssessorId({ id: 'e001', role: 'manager', managerId: 'e001' } as any, validIds)).toBeNull();
+    expect(resolveAssessorId({ id: 'e001', role: 'manager', managerId: 'missing' } as any, validIds)).toBeNull();
   });
 });

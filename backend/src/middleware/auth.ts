@@ -119,16 +119,6 @@ export const requireManagerCapability = async (req: Request, res: Response, next
     return;
   }
 
-  if (req.user.role === 'manager') {
-    next();
-    return;
-  }
-
-  if (!['gm', 'hr', 'admin'].includes(req.user.role)) {
-    res.status(403).json({ success: false, message: '权限不足' });
-    return;
-  }
-
   try {
     const activeSubordinates = await EmployeeModel.findTeamForManager(req.user.userId);
     if (activeSubordinates.length > 0) {

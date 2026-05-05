@@ -101,12 +101,11 @@ export function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
 
-  const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
-  const canManageTeam = Boolean(user?.capabilities?.canManageTeam || effectiveRoles.includes('manager'));
+  const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const baseNavItems = role === 'employee'
-    ? employeeNavItems
+    ? (canManageTeam ? managerNavItems : employeeNavItems)
     : role === 'manager'
-    ? managerNavItems
+    ? (canManageTeam ? managerNavItems : employeeNavItems)
     : role === 'gm'
     ? (canManageTeam ? gmManagerNavItems : gmNavItems)
     : canManageTeam

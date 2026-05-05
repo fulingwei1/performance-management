@@ -496,7 +496,7 @@ export const performanceController = {
       });
     }
 
-    // 权限边界：只能给自己负责范围内的员工创建空记录
+    // 权限边界：只能给自己管辖树内的员工创建空记录；直接考核人仍以员工档案 manager_id 为准。
     const isInTeam = await EmployeeModel.isInManagerTeam(req.user.userId, employee.id);
     if (!isInTeam) {
       return res.status(403).json({
@@ -504,19 +504,32 @@ export const performanceController = {
         error: '只能为自己的下属创建空记录'
       });
     }
+    const activeEmployees = await EmployeeModel.findAll();
+    const activeEmployeeIds = new Set(
+      activeEmployees
+        .filter((item: any) => !item.status || item.status === 'active')
+        .map((item: any) => item.id)
+    );
+    const assessorId = resolveAssessorId(employee, activeEmployeeIds);
+    if (!assessorId) {
+      return res.status(400).json({
+        success: false,
+        error: '该员工未维护有效上级，无法创建绩效任务'
+      });
+    }
 
     const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
     if (existing) {
       if (
-        existing.assessorId !== req.user.userId &&
+        existing.assessorId !== assessorId &&
         existing.status !== 'completed' &&
         existing.status !== 'scored'
       ) {
-        const reassigned = await PerformanceModel.update(existing.id, { assessorId: req.user.userId });
+        const reassigned = await PerformanceModel.update(existing.id, { assessorId });
         return res.json({
           success: true,
           data: reassigned || existing,
-          message: '绩效记录已转为当前经理负责'
+          message: '绩效记录已按人事档案上级关系更新考核人'
         });
       }
 
@@ -537,7 +550,7 @@ export const performanceController = {
     const record = await PerformanceModel.saveSummary({
       id: recordId,
       employeeId: employee.id,
-      assessorId: req.user.userId,
+      assessorId,
       month,
       selfSummary: '',
       nextMonthPlan: '',
@@ -856,8 +869,8 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
     }
     
-    // 获取所有需要考评的员工（普通员工 + 参与考核的经理/主管/组长）。
-    // 若上级关系暂未维护完整，后面会临时回退到 gm001 作为兜底考评人，避免该人员看不到自评任务。
+    // 获取所有需要考评的员工：只看人事档案上下级关系。
+    // 有有效 manager_id 才生成任务；上级缺失/自指/无效时不兜底到任何人，避免系统猜错考核关系。
     const allEmployees = await EmployeeModel.findAll();
     const rankingConfig = await getPerformanceRankingConfig();
     const validIds = new Set<string>(
@@ -882,9 +895,11 @@ export const performanceController = {
       // 确定分组和考评人
       const groupType = getGroupType(employee.level);
 
-      // 优先使用人事档案维护的直接上级；上级缺失/自指/无效时先回退 gm001。
-      // 后续 HR 手工维护好 manager_id 后，新生成任务会自动按真实上级分配。
       const assessorId = resolveAssessorId(employee, validIds);
+      if (!assessorId) {
+        skippedCount++;
+        continue;
+      }
       
       // 优先使用“考核范围”里管理员给部门指定的模板；未指定时再按岗位/层级自动匹配
       const configuredTemplateId = getConfiguredTemplateId(getOrgUnitKey(employee), rankingConfig);

@@ -37,21 +37,25 @@ export function Login() {
         return;
       }
 
-      const role = user?.role || 'employee';
       const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
       const params = new URLSearchParams(location.search);
       const redirect = params.get('redirect') || '';
       const safeRedirect = redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/login')
         ? redirect
         : '';
+      const role = user?.role || 'employee';
+      const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
       const redirectMap: Record<string, string> = {
         employee: '/employee/dashboard',
-        manager: '/manager/dashboard',
+        manager: canManageTeam ? '/manager/dashboard' : '/employee/dashboard',
         gm: '/gm/analytics',
         hr: '/hr/dashboard',
         admin: '/admin/dashboard',
       };
-      window.location.replace(`${base}${safeRedirect || redirectMap[role] || '/employee/dashboard'}`);
+      const relationshipHome = (role === 'employee' || role === 'manager') && canManageTeam
+        ? '/manager/dashboard'
+        : redirectMap[role] || '/employee/dashboard';
+      window.location.replace(`${base}${safeRedirect || relationshipHome}`);
     }
   };
   

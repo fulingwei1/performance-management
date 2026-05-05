@@ -33,6 +33,18 @@ const ROLE_HOME: Record<string, string> = {
   admin: '/hr/dashboard',
 };
 
+function getHomeForUser(user: any): string {
+  if (!user?.role) return '/employee/dashboard';
+  const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
+  if ((user.role === 'employee' || user.role === 'manager') && canManageTeam) {
+    return '/manager/dashboard';
+  }
+  if (user.role === 'manager' && !canManageTeam) {
+    return '/employee/dashboard';
+  }
+  return ROLE_HOME[user.role] || '/employee/dashboard';
+}
+
 const DISABLED_FEATURE_PATHS = [
   '/notifications',
   '/employee/assignments',
@@ -89,13 +101,18 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
   if (user?.mustChangePassword && location.pathname !== '/change-password') {
     return <Navigate to="/change-password" replace />;
   }
+  const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0
     ? user.roles
     : user?.role
       ? [user.role]
       : [];
+  if (canManageTeam && !effectiveRoles.includes('manager')) effectiveRoles.push('manager');
+  if (location.pathname.startsWith('/manager') && !canManageTeam) {
+    return <Navigate to={getHomeForUser(user)} replace />;
+  }
   const hasAllowedRole = effectiveRoles.some((role) => allowedRoles.includes(role as any));
-  if (!user?.role || !hasAllowedRole) return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
+  if (!user?.role || !hasAllowedRole) return <Navigate to={getHomeForUser(user)} replace />;
 
   return (
     <Layout role={user.role as any}>
@@ -108,7 +125,7 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   if (isAuthenticated && user?.mustChangePassword) return <Navigate to="/change-password" replace />;
-  if (isAuthenticated) return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
+  if (isAuthenticated) return <Navigate to={getHomeForUser(user)} replace />;
   return <>{children}</>;
 }
 
@@ -133,7 +150,7 @@ function DisabledFeatureRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Navigate to={ROLE_HOME[user?.role || 'employee']} replace />;
+  return <Navigate to={getHomeForUser(user)} replace />;
 }
 
 function RedirectToManagerDashboard() {

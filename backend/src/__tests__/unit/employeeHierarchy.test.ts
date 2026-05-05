@@ -27,15 +27,16 @@ describe('EmployeeModel manager hierarchy', () => {
 
     await expect(EmployeeModel.findDirectReportsForManager('m008')).resolves.toEqual([
       expect.objectContaining({ id: 'e124' }),
+      expect.objectContaining({ id: 'hr001' }),
     ]);
 
     const wangScope = await EmployeeModel.findTeamForManager('m008');
-    expect(wangScope.map((employee) => employee.id)).toEqual(['e124', 'e020', 'e110']);
+    expect(wangScope.map((employee) => employee.id)).toEqual(['e124', 'e020', 'e110', 'hr001']);
     await expect(EmployeeModel.isInManagerTeam('m008', 'e020')).resolves.toBe(true);
     await expect(EmployeeModel.isInManagerTeam('gm001', 'e110')).resolves.toBe(true);
   });
 
-  it('keeps department fallback when HR hierarchy has no direct reports yet', async () => {
+  it('does not infer a team from department when manager_id is not maintained', async () => {
     addEmployee({ id: 'e124', name: '杨帮', role: 'manager', subDepartment: 'PLC 部/PLC四组' });
     addEmployee({ id: 'e020', name: '黄亿豪', role: 'employee', managerId: 'm008', subDepartment: 'PLC 部/PLC四组' });
     addEmployee({ id: 'e110', name: '杜鹏', role: 'employee', managerId: 'm008', subDepartment: 'PLC 部/PLC四组' });
@@ -43,6 +44,14 @@ describe('EmployeeModel manager hierarchy', () => {
 
     const yangScope = await EmployeeModel.findTeamForManager('e124');
 
-    expect(yangScope.map((employee) => employee.id)).toEqual(['e020', 'e110']);
+    expect(yangScope.map((employee) => employee.id)).toEqual([]);
+  });
+
+  it('does not treat the gm role as an automatic all-company fallback', async () => {
+    addEmployee({ id: 'gm001', name: '郑汝才', role: 'gm' });
+    addEmployee({ id: 'm008', name: '王俊', role: 'manager', managerId: 'missing' });
+    addEmployee({ id: 'e020', name: '黄亿豪', role: 'employee', managerId: 'm008' });
+
+    await expect(EmployeeModel.findTeamForManager('gm001')).resolves.toEqual([]);
   });
 });

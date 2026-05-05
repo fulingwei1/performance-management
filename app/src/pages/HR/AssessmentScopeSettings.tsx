@@ -104,8 +104,6 @@ const defaultConfig: RankingConfig = {
   mergeRankGroups: [],
 };
 
-const ASSESSMENT_ROLES = new Set(['employee', 'manager']);
-
 function cleanSegment(value?: string): string {
   const normalized = String(value || '').trim();
   return normalized && normalized !== '/' && normalized !== '-' ? normalized : '';
@@ -164,6 +162,11 @@ function isParticipatingEmployee(
 
 function isDescendantKey(value: string, key: string): boolean {
   return value === key || value.startsWith(`${key}/`);
+}
+
+function hasValidManagerRelationship(employee: Employee, activeEmployeeIds: Set<string>): boolean {
+  const managerId = String(employee.managerId || '').trim();
+  return Boolean(managerId && managerId !== employee.id && activeEmployeeIds.has(managerId));
 }
 
 function getTemplateTypeLabel(departmentType?: string): string {
@@ -372,11 +375,7 @@ export default function AssessmentScopeSettings() {
   const activeEmployees = useMemo(
     () => employees.filter((employee) => (
       (!employee.status || employee.status === 'active') &&
-      ASSESSMENT_ROLES.has(employee.role) &&
-      (
-        employee.role !== 'manager' ||
-        Boolean(employee.managerId && employee.managerId !== employee.id && activeEmployeeIds.has(employee.managerId))
-      )
+      hasValidManagerRelationship(employee, activeEmployeeIds)
     )),
     [activeEmployeeIds, employees]
   );

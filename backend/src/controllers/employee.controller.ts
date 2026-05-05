@@ -3,7 +3,8 @@ import { body, param, validationResult } from 'express-validator';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeRole, EmployeeLevel } from '../types';
-import { getOrgUnitKey, getPerformanceRankingConfig, isParticipatingRecord } from '../services/performanceRankingConfig.service';
+import { getOrgUnitKey } from '../services/performanceRankingConfig.service';
+import { resolveSelfAssessmentEligibility } from '../services/selfAssessmentEligibility.service';
 
 function normalizeManagerId(value: unknown): string | null | undefined {
   if (value === undefined) return undefined;
@@ -23,15 +24,8 @@ export const employeeController = {
       return res.status(404).json({ success: false, error: '员工不存在' });
     }
 
-    const config = await getPerformanceRankingConfig();
-    const selfParticipating = isParticipatingRecord(
-      {
-        employeeId: currentEmployee.id,
-        department: currentEmployee.department,
-        subDepartment: currentEmployee.subDepartment,
-      },
-      config
-    );
+    const selfEligibility = await resolveSelfAssessmentEligibility(currentEmployee);
+    const selfParticipating = selfEligibility.canSubmitSelfSummary;
 
     const selfUnitKey = getOrgUnitKey(currentEmployee);
     const responseData: Record<string, unknown> = {
@@ -49,22 +43,13 @@ export const employeeController = {
     const subordinates = await EmployeeModel.findTeamForManager(req.user.userId);
     if (subordinates.length > 0) {
       const members = subordinates.map((employee) => {
-        const participating = isParticipatingRecord(
-          {
-            employeeId: employee.id,
-            department: employee.department,
-            subDepartment: employee.subDepartment,
-          },
-          config
-        );
-
         return {
           employeeId: employee.id,
           name: employee.name,
           department: employee.department,
           subDepartment: employee.subDepartment,
           unitKey: getOrgUnitKey(employee),
-          participating,
+          participating: true,
         };
       });
 

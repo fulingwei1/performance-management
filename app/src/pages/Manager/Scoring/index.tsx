@@ -102,7 +102,7 @@ export function ScoringManagement({
   }, [initialMonth]);
   
   useEffect(() => {
-    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
     if (user && canManageTeam) {
       employeeApi.getSubordinates().then(r => { if (r.success) setSubordinates(r.data); }).catch((error) => { console.error(error); toast.error('获取下属列表失败'); });
     }
@@ -113,7 +113,7 @@ export function ScoringManagement({
   const currentQuarter = useMemo(() => getQuarterFromMonth(selectedMonth), [selectedMonth]);
 
   useEffect(() => {
-    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
     if (!user || !canManageTeam || !currentQuarter.year || !currentQuarter.quarter) return;
 
     employeeQuarterlyApi.getTeam(currentQuarter)
@@ -132,7 +132,7 @@ export function ScoringManagement({
   }, [viewMode, selectedEmployeeId, subordinates]);
 
   useEffect(() => {
-    const canManageTeam = Boolean(user?.capabilities?.canManageTeam || user?.roles?.includes('manager') || user?.role === 'manager');
+    const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
     if (!user || !canManageTeam || viewMode !== 'employee') return;
 
     performanceApi.getTeamRecords()
