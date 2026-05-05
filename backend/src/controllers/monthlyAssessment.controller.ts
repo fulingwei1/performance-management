@@ -10,12 +10,16 @@ async function canAccessEmployeeAssessment(req: Request, employeeId: string): Pr
   if (isPrivilegedRole(req.user.role)) return true;
   if (req.user.userId === employeeId) return true;
 
-  if (req.user.role === 'manager') {
-    const employee = await EmployeeModel.findById(employeeId);
-    return employee?.managerId === req.user.userId;
-  }
+  return EmployeeModel.isInManagerTeam(req.user.userId, employeeId);
 
-  return false;
+}
+
+async function scopeAssessmentsForUser(req: Request, assessments: MonthlyAssessment[]): Promise<MonthlyAssessment[]> {
+  if (!req.user) return [];
+  if (isPrivilegedRole(req.user.role)) return assessments;
+  const team = await EmployeeModel.findTeamForManager(req.user.userId);
+  const allowedIds = new Set([req.user.userId, ...team.map((employee) => employee.id)]);
+  return assessments.filter((assessment) => allowedIds.has(assessment.employeeId));
 }
 
 /**
@@ -65,7 +69,11 @@ export const createOrUpdateAssessment = asyncHandler(async (req: Request, res: R
     return res.status(404).json({ success: false, message: '员工不存在' });
   }
 
-  if (!(await canAccessEmployeeAssessment(req, employeeId)) || req.user.role === 'employee') {
+  if (req.user.userId === employeeId && !isPrivilegedRole(req.user.role)) {
+    return res.status(403).json({ success: false, message: '不能给自己评分' });
+  }
+
+  if (!(await canAccessEmployeeAssessment(req, employeeId))) {
     return res.status(403).json({ success: false, message: '无权为该员工评分' });
   }
 
@@ -153,12 +161,18 @@ export const getAssessmentByMonth = asyncHandler(async (req: Request, res: Respo
 export const getMonthlyList = asyncHandler(async (req: Request, res: Response) => {
   const { month } = req.query;
 
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: '未认证' });
+  }
+
   let assessments: MonthlyAssessment[];
   if (month && typeof month === 'string') {
     assessments = await MonthlyAssessmentModel.findByMonth(month);
   } else {
     assessments = await MonthlyAssessmentModel.findAll();
   }
+
+  assessments = await scopeAssessmentsForUser(req, assessments);
 
   res.json({ success: true, data: assessments });
 });
@@ -231,15 +245,12 @@ export const submitScore = asyncHandler(async (req: Request, res: Response) => {
     return res.status(404).json({ success: false, message: '评分记录不存在' });
   }
 
-  // 检查权限：主管只能给下属评分
-  if (req.user.role === 'employee') {
-    return res.status(403).json({ success: false, message: '无权评分' });
+  // 检查权限：主管/组长只能给当前汇报线内下属评分，不能给自己评分
+  if (req.user.userId === existing.employeeId && !isPrivilegedRole(req.user.role)) {
+    return res.status(403).json({ success: false, message: '不能给自己评分' });
   }
-  if (req.user.role === 'manager') {
-    const employee = await EmployeeModel.findById(existing.employeeId);
-    if (employee?.managerId !== req.user.userId && !isPrivilegedRole(req.user.role)) {
-      return res.status(403).json({ success: false, message: '无权为该员工评分' });
-    }
+  if (!(await canAccessEmployeeAssessment(req, existing.employeeId))) {
+    return res.status(403).json({ success: false, message: '无权为该员工评分' });
   }
 
   const updated = await MonthlyAssessmentModel.update(id, {

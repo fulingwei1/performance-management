@@ -62,9 +62,10 @@ export class MonthlyAssessmentModel {
       const sql = `
         INSERT INTO monthly_assessments (
           id, employee_id, month, template_id, template_name, 
-          department_type, scores, total_score, evaluator_id, 
-          evaluator_name, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          department_type, scores, total_score, evaluator_id, evaluator_name,
+          self_summary, next_month_plan, manager_comment, next_month_work_arrangement,
+          status, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING *
       `;
       
@@ -79,6 +80,11 @@ export class MonthlyAssessmentModel {
         data.totalScore,
         data.evaluatorId,
         data.evaluatorName,
+        data.selfSummary || null,
+        data.nextMonthPlan || null,
+        data.managerComment || null,
+        data.nextMonthWorkArrangement || null,
+        data.status || 'draft',
         now,
         now
       ]);
@@ -149,6 +155,23 @@ export class MonthlyAssessmentModel {
       if (data.totalScore !== undefined) {
         updates.push(`total_score = $${paramIndex++}`);
         params.push(data.totalScore);
+      }
+
+      const fieldMap: Array<[keyof MonthlyAssessment, string, (value: any) => any]> = [
+        ['selfSummary', 'self_summary', (value) => value],
+        ['nextMonthPlan', 'next_month_plan', (value) => value],
+        ['managerComment', 'manager_comment', (value) => value],
+        ['nextMonthWorkArrangement', 'next_month_work_arrangement', (value) => value],
+        ['status', 'status', (value) => value],
+        ['evaluatorId', 'evaluator_id', (value) => value],
+        ['evaluatorName', 'evaluator_name', (value) => value],
+      ];
+
+      for (const [key, column, normalize] of fieldMap) {
+        if (data[key] !== undefined) {
+          updates.push(`${column} = $${paramIndex++}`);
+          params.push(normalize(data[key]));
+        }
       }
       
       if (updates.length === 0) return null;
@@ -287,6 +310,11 @@ export class MonthlyAssessmentModel {
       totalScore: parseFloat(row.total_score || row.totalScore),
       evaluatorId: row.evaluator_id || row.evaluatorId,
       evaluatorName: row.evaluator_name || row.evaluatorName,
+      selfSummary: row.self_summary || row.selfSummary,
+      nextMonthPlan: row.next_month_plan || row.nextMonthPlan,
+      managerComment: row.manager_comment || row.managerComment,
+      nextMonthWorkArrangement: row.next_month_work_arrangement || row.nextMonthWorkArrangement,
+      status: row.status,
       createdAt: row.created_at || row.createdAt,
       updatedAt: row.updated_at || row.updatedAt
     };

@@ -8,8 +8,9 @@ import { OrganizationModel } from '../models/organization.model';
 import { EmployeeModel } from '../models/employee.model';
 
 function buildTree(departments: Department[]): Department[] {
+  const deduped = OrganizationModel.dedupeDepartments(departments);
   const map = new Map<string, Department>();
-  departments.forEach(d => map.set(d.id, { ...d, children: [] }));
+  deduped.forEach(d => map.set(d.id, { ...d, children: [] }));
 
   const roots: Department[] = [];
   map.forEach(d => {
@@ -26,9 +27,18 @@ function buildTree(departments: Department[]): Department[] {
 }
 
 export const departmentController = {
+  getAll: asyncHandler(async (_req: Request, res: Response) => {
+    if (USE_MEMORY_DB) {
+      const all = OrganizationModel.dedupeDepartments(Array.from(memoryStore.departments.values()));
+      return res.json({ success: true, data: all });
+    }
+    const departments = await OrganizationModel.findAllDepartments();
+    res.json({ success: true, data: departments });
+  }),
+
   getTree: asyncHandler(async (_req: Request, res: Response) => {
     if (USE_MEMORY_DB) {
-      const all = Array.from(memoryStore.departments.values());
+      const all = OrganizationModel.dedupeDepartments(Array.from(memoryStore.departments.values()));
       const tree = buildTree(all);
       return res.json({ success: true, data: tree });
     }

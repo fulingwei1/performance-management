@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { FileText, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
@@ -16,7 +16,6 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { performanceApi, employeeApi, employeeQuarterlyApi } from '@/services/api';
 import { getDefaultAssessmentMonth, isValidAssessmentMonth } from '@/lib/assessmentMonth';
-import { useMemo } from 'react';
 import { toast } from 'sonner';
 
 // Sub-components
@@ -36,15 +35,6 @@ function getQuarterKeyFromMonth(month: string) {
   const { year, quarter } = getQuarterFromMonth(month);
   return `${year}-Q${quarter}`;
 }
-
-const MONTH_OPTIONS = Array.from({ length: 18 }, (_, index) => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - index);
-  return {
-    value: format(date, 'yyyy-MM'),
-    label: format(date, 'yyyy年M月')
-  };
-});
 
 export function ScoringManagement({
   embedded = false,
@@ -70,6 +60,14 @@ export function ScoringManagement({
     : month || getDefaultAssessmentMonth();
   const [viewMode, setViewMode] = useState<'month' | 'employee'>('month');
   const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+  const monthOptions = useMemo(() => Array.from({ length: 18 }, (_, index) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - index);
+    return {
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'yyyy年M月')
+    };
+  }), []);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employeeParam || '');
   const [teamHistoryRecords, setTeamHistoryRecords] = useState<any[]>([]);
   const [historyQuarterlySummaries, setHistoryQuarterlySummaries] = useState<any[]>([]);
@@ -353,7 +351,8 @@ export function ScoringManagement({
       monthlyStarRecommended,
       monthlyStarCategory,
       monthlyStarReason,
-      monthlyStarPublic
+      monthlyStarPublic,
+      expectedUpdatedAt: selectedRecord?.updatedAt
     });
     if (success) {
       setIsDrawerOpen(false); setSelectedRecord(null); setIsNoSummary(false);
@@ -486,7 +485,7 @@ export function ScoringManagement({
                     <SelectValue placeholder="选择月份" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MONTH_OPTIONS.map((option) => (
+                    {monthOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>

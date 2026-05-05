@@ -3,6 +3,12 @@ import app from '../../index';
 import { validSummaryData, validScoreData } from '../fixtures/mockData';
 import { TestHelper } from '../helpers/testHelper';
 import { TodoModel } from '../../models/todo.model';
+import { PerformanceModel } from '../../models/performance.model';
+
+const getExpectedUpdatedAt = async (recordId: string): Promise<string | undefined> => {
+  const record = await PerformanceModel.findById(recordId);
+  return record?.updatedAt ? new Date(record.updatedAt).toISOString() : undefined;
+};
 
 describe('Performance API', () => {
   describe('GET /api/performance/my-records', () => {
@@ -378,6 +384,7 @@ describe('Performance API', () => {
 
     it('should calculate correct total score and level', async () => {
       const token = await TestHelper.getAuthToken('manager');
+      const expectedUpdatedAt = await getExpectedUpdatedAt('rec-e034-2024-03');
 
       const response = await request(app)
         .post('/api/performance/score')
@@ -390,7 +397,8 @@ describe('Performance API', () => {
           qualityImprovement: 1.5,
           managerComment: '表现优秀',
           nextMonthWorkArrangement: '继续当前工作',
-          scoreEvidence: '连续完成关键交付并主动支援团队解决问题'
+          scoreEvidence: '连续完成关键交付并主动支援团队解决问题',
+          expectedUpdatedAt
         });
 
       expect(response.status).toBe(200);
@@ -464,6 +472,7 @@ describe('Performance API', () => {
 
     it('should correctly calculate L5 score', async () => {
       const token = await TestHelper.getAuthToken('manager');
+      const expectedUpdatedAt = await getExpectedUpdatedAt('rec-e034-2024-03');
 
       const response = await request(app)
         .post('/api/performance/score')
@@ -476,7 +485,8 @@ describe('Performance API', () => {
           qualityImprovement: 1.5,
           managerComment: '优秀表现',
           nextMonthWorkArrangement: '继续当前项目',
-          scoreEvidence: '承担核心项目并提前完成交付，客户反馈优秀'
+          scoreEvidence: '承担核心项目并提前完成交付，客户反馈优秀',
+          expectedUpdatedAt
         });
 
       expect(response.status).toBe(200);
@@ -487,6 +497,7 @@ describe('Performance API', () => {
 
     it('should correctly calculate L3 score', async () => {
       const token = await TestHelper.getAuthToken('manager');
+      const expectedUpdatedAt = await getExpectedUpdatedAt('rec-e034-2024-03');
 
       const response = await request(app)
         .post('/api/performance/score')
@@ -498,7 +509,8 @@ describe('Performance API', () => {
           projectFeedback: 1.0,
           qualityImprovement: 1.0,
           managerComment: '良好表现',
-          nextMonthWorkArrangement: '继续当前项目'
+          nextMonthWorkArrangement: '继续当前项目',
+          expectedUpdatedAt
         });
 
       expect(response.status).toBe(200);
@@ -509,6 +521,7 @@ describe('Performance API', () => {
 
     it('should correctly calculate L1 score', async () => {
       const token = await TestHelper.getAuthToken('manager');
+      const expectedUpdatedAt = await getExpectedUpdatedAt('rec-e034-2024-03');
 
       const response = await request(app)
         .post('/api/performance/score')
@@ -521,7 +534,8 @@ describe('Performance API', () => {
           qualityImprovement: 0.5,
           managerComment: '需要改进',
           nextMonthWorkArrangement: '加强培训',
-          scoreEvidence: '多次延期且质量问题反复出现，需要重点辅导'
+          scoreEvidence: '多次延期且质量问题反复出现，需要重点辅导',
+          expectedUpdatedAt
         });
 
       expect(response.status).toBe(200);

@@ -87,12 +87,15 @@ function getModuleFromPath(path: string): string {
 /**
  * 从请求路径提取目标类型和ID
  */
-function extractTarget(path: string, method: string): { type?: string; id?: string } {
+function extractTarget(path: string, method: string, body?: any): { type?: string; id?: string } {
   // 示例：/api/performance/summary -> type: record
   // 示例：/api/performance/rec-123 -> type: record, id: rec-123
   // 示例：/api/promotion-requests/pr-123/manager-approve -> type: request, id: pr-123
 
   if (path.includes('/performance/')) {
+    if (path.endsWith('/performance/score') && body?.id) {
+      return { type: 'performance_record', id: String(body.id) };
+    }
     const match = path.match(/\/performance\/([^\/]+)/);
     if (match && match[1] !== 'summary') {
       return { type: 'performance_record', id: match[1] };
@@ -159,7 +162,7 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
   // 提取操作信息
   const module = getModuleFromPath(req.path);
   const action = METHOD_TO_ACTION[req.method] || 'UPDATE';
-  const { type: targetType, id: targetId } = extractTarget(req.path, req.method);
+  const { type: targetType, id: targetId } = extractTarget(req.path, req.method, req.body);
 
   // 获取请求信息
   const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
@@ -216,7 +219,7 @@ export const auditLogMiddleware = async (req: Request, res: Response, next: Next
           request_method: req.method,
           request_url: req.originalUrl,
           result: isSuccess ? 'SUCCESS' : 'FAILED',
-          error_message: !isSuccess ? body?.message : undefined,
+          error_message: !isSuccess ? (body?.message ?? body?.error) : undefined,
         });
 
         logger.info(` ${action} ${module} - ${description} - ${isSuccess ? 'SUCCESS' : 'FAILED'} (${Date.now() - startTime}ms)`);

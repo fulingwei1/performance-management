@@ -7,7 +7,6 @@ export const createEmployeeActions = (set: any, get: any) => ({
     try {
       const response = await hrApi.getAllEmployees();
       if (response.success) {
-        const managers = (response.data || []).filter((e: any) => e.role === 'manager');
         set({ employeesList: response.data, loading: false });
       } else {
         console.error('[hrStore] 加载员工失败:', response.error);

@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>()(
           } else {
             set({ 
               isLoading: false, 
-              error: response.error || '登录失败' 
+              error: response.error || response.message || '登录失败'
             });
             return false;
           }
@@ -85,9 +85,25 @@ export const useAuthStore = create<AuthState>()(
       },
 
       refreshCurrentUser: async () => {
-        const response = await authApi.getCurrentUser();
-        if (response.success) {
-          set({ user: response.data, isAuthenticated: true, error: null });
+        try {
+          const response = await authApi.getCurrentUser();
+          if (response.success) {
+            set({ user: response.data, isAuthenticated: true, error: null });
+            return;
+          }
+          localStorage.removeItem('token');
+          localStorage.removeItem('auth-storage');
+          set({ user: null, token: null, isAuthenticated: false, error: response.error || response.message || '登录已过期，请重新登录' });
+        } catch (error: any) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('auth-storage');
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            error: error.message || '登录已过期，请重新登录'
+          });
+          throw error;
         }
       }
     }),

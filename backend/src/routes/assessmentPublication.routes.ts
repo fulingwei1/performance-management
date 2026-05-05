@@ -14,6 +14,13 @@ const publishValidation = [
 ];
 
 // 发布某月的考核结果（HR/Admin）
+router.post('/',
+  authenticate,
+  requireRole('hr', 'admin'),
+  validate(publishValidation),
+  assessmentPublicationController.publish
+);
+
 router.post('/publish', 
   authenticate, 
   requireRole('hr', 'admin'), 

@@ -27,6 +27,10 @@ export const createEmployeeValidation = [
   body('level')
     .optional()
     .isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别值无效'),
+
+  body('status')
+    .optional()
+    .isIn(['active', 'disabled']).withMessage('状态值无效'),
   
   // 可选：密码（兼容旧登录）；优先使用身份证后六位作为登录口令
   body('password')

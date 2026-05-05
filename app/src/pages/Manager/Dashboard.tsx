@@ -41,16 +41,6 @@ interface ParticipationSummary {
   };
 }
 
-// 月份选项
-const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
-  const date = new Date();
-  date.setMonth(date.getMonth() - i);
-  return {
-    value: format(date, 'yyyy-MM'),
-    label: format(date, 'yyyy年M月')
-  };
-});
-
 export function ManagerDashboard() {
   const { user } = useAuthStore();
   const { records, fetchTeamRecords } = usePerformanceStore();
@@ -64,6 +54,14 @@ export function ManagerDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
   const [mySummaryRecord, setMySummaryRecord] = useState<any>(null);
   const summaryMonth = useMemo(() => getPreviousMonthValue(), []);
+  const monthOptions = useMemo(() => Array.from({ length: 12 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - i);
+    return {
+      value: format(date, 'yyyy-MM'),
+      label: format(date, 'yyyy年M月')
+    };
+  }), []);
   
   // 使用选择的月份
   const currentMonth = selectedMonth;
@@ -197,7 +195,7 @@ export function ManagerDashboard() {
               <SelectValue placeholder="选择月份" />
             </SelectTrigger>
             <SelectContent>
-              {MONTH_OPTIONS.map((opt) => (
+              {monthOptions.map((opt) => (
                 <SelectItem key={opt.value} value={opt.value}>
                   {opt.label}
                 </SelectItem>

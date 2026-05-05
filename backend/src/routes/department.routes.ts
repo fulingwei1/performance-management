@@ -4,6 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/', authenticate, departmentController.getAll);
 router.get('/tree', authenticate, departmentController.getTree);
 router.post('/', authenticate, requireRole('hr', 'admin'), departmentController.create);
 router.put('/:id', authenticate, requireRole('hr', 'admin'), departmentController.update);

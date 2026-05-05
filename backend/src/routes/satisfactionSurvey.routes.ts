@@ -6,6 +6,7 @@ const router = Router();
 
 router.get('/current', authenticate, satisfactionSurveyController.getCurrent);
 router.post('/current/ensure', authenticate, requireRole('hr', 'admin'), satisfactionSurveyController.ensureCurrent);
+router.post('/respond', authenticate, satisfactionSurveyController.submitCurrentResponse);
 
 router.get('/', authenticate, requireRole('hr', 'admin'), satisfactionSurveyController.list);
 router.get('/:id/stats', authenticate, requireRole('hr', 'admin'), satisfactionSurveyController.getStats);

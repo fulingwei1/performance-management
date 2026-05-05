@@ -7,6 +7,9 @@ const router = Router();
 // 所有路由需认证
 router.use(authenticate);
 
+// 兼容前端/测试旧路径：GET /api/template-bindings 等价于 HR 查全部绑定
+router.get('/', requireRole('hr', 'admin'), ctrl.getAllBindings);
+
 // 绑定操作
 router.post('/', requireRole('hr', 'admin'), ctrl.bindTemplate);          // 单个绑定
 router.post('/batch', requireRole('hr', 'admin'), ctrl.batchBind);        // 批量绑定

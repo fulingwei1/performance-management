@@ -78,5 +78,29 @@ export const quarterlySummaryController = {
 
     const records = await QuarterlySummaryModel.findByManagerId(userId, quarter);
     res.json({ success: true, data: records });
+  }),
+
+  getSummaries: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: '未认证' });
+    }
+
+    const quarter = req.query.quarter as string | undefined;
+    if (quarter && !QUARTER_REGEX.test(quarter)) {
+      return res.status(400).json({ success: false, message: '季度格式应为 YYYY-Q1' });
+    }
+
+    const { userId, role } = req.user;
+    if (role === 'manager') {
+      const records = await QuarterlySummaryModel.findByManagerId(userId, quarter);
+      return res.json({ success: true, data: records });
+    }
+
+    if (!['hr', 'gm', 'admin'].includes(role)) {
+      return res.status(403).json({ success: false, message: '权限不足' });
+    }
+
+    const records = await QuarterlySummaryModel.findAll(quarter);
+    res.json({ success: true, data: records });
   })
 };

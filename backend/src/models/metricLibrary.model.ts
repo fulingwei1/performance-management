@@ -417,5 +417,42 @@ export class MetricLibraryModel {
         await this.createMetric(metric);
       }
     }
+
+    await this.initializeDefaultMetricTemplates();
+  }
+
+  static async initializeDefaultMetricTemplates(): Promise<void> {
+    const existingTemplates = await this.findAllTemplates();
+    const existingIds = new Set(existingTemplates.map(template => template.id));
+    const defaultTemplates: Omit<MetricTemplate, 'createdAt' | 'updatedAt'>[] = [
+      {
+        id: 'metric-template-standard',
+        name: '通用绩效指标模板',
+        description: '用于未配置专用模板岗位的默认指标组合。',
+        metrics: [
+          { metricId: 'metric-task-completion', weight: 40, required: true },
+          { metricId: 'metric-initiative', weight: 30, required: true },
+          { metricId: 'metric-quality', weight: 30, required: true },
+        ],
+        status: 'active',
+      },
+      {
+        id: 'metric-template-junior',
+        name: '初级/助理成长指标模板',
+        description: '强化任务质量、规范执行和学习成长，适用于初级与助理员工。',
+        metrics: [
+          { metricId: 'metric-task-completion', weight: 35, required: true },
+          { metricId: 'metric-quality', weight: 40, required: true },
+          { metricId: 'metric-initiative', weight: 25, required: true },
+        ],
+        status: 'active',
+      },
+    ];
+
+    for (const template of defaultTemplates) {
+      if (!existingIds.has(template.id)) {
+        await this.createTemplate(template);
+      }
+    }
   }
 }

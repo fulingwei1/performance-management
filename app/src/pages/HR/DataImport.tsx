@@ -63,8 +63,8 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
       onImported?.();
     } catch (error: any) {
       const errData = error?.response?.data;
-      toast.error(errData?.message || '导入失败');
-      setResult({ success: false, ...errData });
+      toast.error(errData?.message || error?.message || '导入失败');
+      setResult({ success: false, ...(errData || { message: error?.message || '导入失败' }) });
     } finally {
       setUploading(false);
     }

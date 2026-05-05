@@ -51,7 +51,8 @@ export class EmployeeModel {
   // 根据姓名查找员工（MySQL + optional read cache）
   static async findByName(name: string): Promise<EmployeeWithPassword | null> {
     if (USE_MEMORY_DB) {
-      return memoryDB.employees.findByName(name) as EmployeeWithPassword | null;
+      const matches = memoryDB.employees.findAll().filter((employee: any) => employee.name === name);
+      return matches.length === 1 ? matches[0] as EmployeeWithPassword : null;
     }
     const cacheKey = CACHE_KEYS.employeeByName(name);
     const cached = cache.get<EmployeeWithPassword>(cacheKey);
@@ -69,7 +70,7 @@ export class EmployeeModel {
       WHERE name = ?
     `;
     const results = (await query(sql, [name])) as EmployeeWithPassword[];
-    const row = results.length > 0 ? results[0] : null;
+    const row = results.length === 1 ? results[0] : null;
     if (row) cache.set(cacheKey, row);
     return row;
   }
@@ -378,6 +379,22 @@ export class EmployeeModel {
     return (result?.affectedRows ?? 0) > 0;
   }
 
+  static async clearIdCardLast6(id: string): Promise<boolean> {
+    if (USE_MEMORY_DB) {
+      const emp = memoryDB.employees.findById(id);
+      if (!emp) return false;
+      memoryDB.employees.update(id, { idCardLast6Hash: undefined } as any);
+      return true;
+    }
+
+    const result = (await query(
+      'UPDATE employees SET id_card_last6_hash = NULL WHERE id = ?',
+      [id]
+    )) as { affectedRows?: number };
+    if ((result?.affectedRows ?? 0) > 0) invalidateEmployeeCache();
+    return (result?.affectedRows ?? 0) > 0;
+  }
+
   // 更新身份证后六位（用于登录，存 bcrypt hash）
   static async updateIdCardLast6(id: string, idCardLast6: string): Promise<boolean> {
     const normalized = idCardLast6.trim().toUpperCase();
@@ -419,9 +436,7 @@ export class EmployeeModel {
          sub_department = EXCLUDED.sub_department,
          role = EXCLUDED.role,
          level = EXCLUDED.level,
-         manager_id = EXCLUDED.manager_id,
-         password = EXCLUDED.password,
-         must_change_password = EXCLUDED.must_change_password`,
+         manager_id = EXCLUDED.manager_id`,
         [
           employee.id,
           employee.name,

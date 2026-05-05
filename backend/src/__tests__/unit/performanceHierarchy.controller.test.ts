@@ -71,6 +71,7 @@ describe('performanceController hierarchy permissions', () => {
   });
 
   it('allows an upper manager to adjust a completed score from a subordinate manager', async () => {
+    const currentRecord = memoryStore.performanceRecords.get('rec-e020-2026-04') as any;
     const json = jest.fn();
     const status = jest.fn().mockReturnValue({ json });
     const res = { status, json } as any;
@@ -86,6 +87,7 @@ describe('performanceController hierarchy permissions', () => {
         qualityImprovement: 1,
         managerComment: '上级复核后调整评分',
         nextMonthWorkArrangement: '继续做好项目交付',
+        expectedUpdatedAt: new Date(currentRecord.updatedAt).toISOString(),
       },
     } as any, res, next);
 

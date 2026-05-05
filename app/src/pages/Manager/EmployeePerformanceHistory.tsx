@@ -118,7 +118,7 @@ export function EmployeePerformanceHistory({
     >
       {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate('/manager/scoring')}>
+        <Button variant="ghost" onClick={() => navigate('/manager/dashboard')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           返回
         </Button>

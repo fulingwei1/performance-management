@@ -29,6 +29,7 @@ const authenticateWithTokenParam = (req: Request, res: Response, next: NextFunct
 };
 
 router.get('/monthly-performance', authenticateWithTokenParam, requireRole('hr', 'admin'), exportController.exportMonthlyPerformance);
+router.get('/performance', authenticateWithTokenParam, requireRole('hr', 'admin'), exportController.exportMonthlyPerformance);
 
 router.get('/annual-performance', authenticateWithTokenParam, requireRole('hr', 'admin'), exportController.exportAnnualPerformance);
 

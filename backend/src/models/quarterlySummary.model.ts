@@ -107,6 +107,23 @@ export class QuarterlySummaryModel {
     return results.map(this.formatRecord);
   }
 
+  static async findAll(quarter?: string): Promise<QuarterlySummary[]> {
+    if (USE_MEMORY_DB) {
+      const records = Array.from(memoryStore.quarterlySummaries.values()) as QuarterlySummary[];
+      return quarter ? records.filter(record => record.quarter === quarter) : records;
+    }
+
+    let sql = 'SELECT * FROM quarterly_summaries';
+    const params: any[] = [];
+    if (quarter) {
+      sql += ' WHERE quarter = ?';
+      params.push(quarter);
+    }
+    sql += ' ORDER BY updated_at DESC';
+    const results = await query(sql, params);
+    return results.map(this.formatRecord);
+  }
+
   private static formatRecord(row: any): QuarterlySummary {
     return {
       id: row.id,

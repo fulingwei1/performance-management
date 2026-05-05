@@ -72,29 +72,53 @@ export const submitSummaryValidation = [
 export const submitScoreValidation = [
   body('id')
     .notEmpty().withMessage('记录ID不能为空'),
-  
+
   body('taskCompletion')
-    .notEmpty().withMessage('任务完成度不能为空')
-    .isFloat({ min: 0, max: 5 }).withMessage('任务完成度必须在0-5之间'),
-  
+    .optional()
+    .isFloat({ min: 0.5, max: 1.5 }).withMessage('任务完成度必须在0.5-1.5之间'),
+
   body('initiative')
-    .notEmpty().withMessage('主动性不能为空')
-    .isFloat({ min: 0, max: 5 }).withMessage('主动性必须在0-5之间'),
-  
+    .optional()
+    .isFloat({ min: 0.5, max: 1.5 }).withMessage('主动性必须在0.5-1.5之间'),
+
   body('projectFeedback')
-    .notEmpty().withMessage('项目反馈不能为空')
-    .isFloat({ min: 0, max: 5 }).withMessage('项目反馈必须在0-5之间'),
-  
+    .optional()
+    .isFloat({ min: 0.5, max: 1.5 }).withMessage('项目反馈必须在0.5-1.5之间'),
+
   body('qualityImprovement')
-    .notEmpty().withMessage('质量改进不能为空')
-    .isFloat({ min: 0, max: 5 }).withMessage('质量改进必须在0-5之间'),
-  
+    .optional()
+    .isFloat({ min: 0.5, max: 1.5 }).withMessage('质量改进必须在0.5-1.5之间'),
+
+  body('metricScores')
+    .optional()
+    .isArray({ min: 1 }).withMessage('动态指标评分不能为空'),
+
+  body('metricScores.*.score')
+    .optional()
+    .isFloat({ min: 0.5, max: 1.5 }).withMessage('动态指标分数必须在0.5-1.5之间'),
+
+  body('expectedUpdatedAt')
+    .optional()
+    .isISO8601().withMessage('记录版本时间格式无效'),
+
+  body().custom((_, { req }) => {
+    const hasMetricScores = Array.isArray(req.body?.metricScores) && req.body.metricScores.length > 0;
+    if (hasMetricScores) return true;
+
+    const requiredLegacyFields = ['taskCompletion', 'initiative', 'projectFeedback', 'qualityImprovement'];
+    const missingField = requiredLegacyFields.find((field) => req.body?.[field] === undefined || req.body?.[field] === null || req.body?.[field] === '');
+    if (missingField) {
+      throw new Error('请提交动态指标评分，或完整填写四项固定评分');
+    }
+    return true;
+  }),
+
   body('managerComment')
     .notEmpty().withMessage('经理评价不能为空')
     .isLength({ max: 2000 }).withMessage('经理评价不能超过2000个字符'),
-  
+
   body('nextMonthWorkArrangement')
-    .optional()
+    .notEmpty().withMessage('下月工作安排不能为空')
     .isLength({ max: 2000 }).withMessage('下月工作安排不能超过2000个字符'),
 
   body('evaluationKeywords')

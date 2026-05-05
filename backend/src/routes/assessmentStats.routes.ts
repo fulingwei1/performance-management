@@ -18,4 +18,7 @@ router.get('/monthly/:month', statsController.getMonthlyStats);
 // 评分分布
 router.get('/score-distribution', statsController.getScoreDistribution);
 
+// 兼容旧前端/测试路径：/api/stats/2026-04
+router.get('/:month', statsController.getMonthlyStats);
+
 export default router;

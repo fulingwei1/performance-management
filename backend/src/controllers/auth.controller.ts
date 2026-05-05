@@ -315,14 +315,20 @@ export const authController = {
       }
 
       // 验证原密码
-      if (!employee.password) {
+      if (!employee.password && !employee.idCardLast6Hash) {
         return res.status(400).json({
           success: false,
           message: '当前账号未设置密码，请联系HR重置临时密码'
         });
       }
 
-      const isValidPassword = await EmployeeModel.verifyPassword(oldPassword, employee.password);
+      let isValidPassword = false;
+      if (employee.password) {
+        isValidPassword = await EmployeeModel.verifyPassword(oldPassword, employee.password);
+      }
+      if (!isValidPassword && employee.idCardLast6Hash) {
+        isValidPassword = await EmployeeModel.verifyPassword(String(oldPassword).trim().toUpperCase(), employee.idCardLast6Hash);
+      }
 
       if (!isValidPassword) {
         return res.status(400).json({
@@ -333,6 +339,7 @@ export const authController = {
 
       // 更新密码
       await EmployeeModel.updatePassword(req.user.userId, newPassword, { mustChangePassword: false });
+      await EmployeeModel.clearIdCardLast6(req.user.userId);
 
       res.json({
         success: true,

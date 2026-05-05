@@ -211,6 +211,50 @@ export const getAnomalyStats = async (req: Request, res: Response) => {
 
 // ====== 以下为新增 AI 端点 ======
 
+/**
+ * GET /ai/suggestions
+ * 返回前端可用的 AI 辅助入口清单；不直接调用外部模型，避免把“入口发现”变成高成本/易失败接口。
+ */
+export const getSuggestions = async (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: [
+      {
+        id: 'self-summary',
+        title: '员工月度总结润色',
+        description: '根据工作要点生成/润色本月工作总结。',
+        method: 'POST',
+        endpoint: '/api/ai/self-summary',
+        roles: ['employee', 'manager']
+      },
+      {
+        id: 'next-month-plan',
+        title: '下月计划生成',
+        description: '根据当前工作重点生成下月计划草稿。',
+        method: 'POST',
+        endpoint: '/api/ai/next-month-plan',
+        roles: ['employee', 'manager']
+      },
+      {
+        id: 'manager-comment',
+        title: '经理评语辅助',
+        description: '根据员工总结和评分生成经理评语建议。',
+        method: 'POST',
+        endpoint: '/api/ai/manager-comment',
+        roles: ['manager', 'gm', 'hr', 'admin']
+      },
+      {
+        id: 'work-arrangement',
+        title: '下月工作安排建议',
+        description: '根据团队情况生成下月工作安排草稿。',
+        method: 'POST',
+        endpoint: '/api/ai/work-arrangement',
+        roles: ['manager', 'gm', 'hr', 'admin']
+      }
+    ]
+  });
+};
+
 /** 通用 AI 调用处理器 */
 async function handleAIPrompt(req: Request, res: Response, promptFn: (data: any) => { prompt: string; systemPrompt?: string }) {
   try {

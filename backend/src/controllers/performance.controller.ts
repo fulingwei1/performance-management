@@ -15,6 +15,8 @@ import {
 } from '../services/selfAssessmentEligibility.service';
 import { syncPendingPerformanceAssessorsForEmployees } from '../services/performanceAssessorSync.service';
 import { resolveTaskTemplateForEmployee, type ResolvedTaskTemplate } from '../services/taskTemplateResolver.service';
+import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
+import { validateTaskCreationMonth } from '../utils/assessmentMonthGuard';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -28,6 +30,50 @@ const normalizeOptionalText = (input: unknown): string => {
 };
 
 const managerScoringLink = (month: string): string => `/manager/scoring?month=${encodeURIComponent(month)}`;
+
+function hideUnpublishedScore(record: any): any {
+  if (!record) return record;
+  return {
+    ...record,
+    taskCompletion: null,
+    initiative: null,
+    projectFeedback: null,
+    qualityImprovement: null,
+    totalScore: null,
+    normalizedScore: null,
+    level: null,
+    managerComment: '',
+    nextMonthWorkArrangement: '',
+    metricScores: undefined,
+    evaluationKeywords: [],
+    issueTypeTags: [],
+    highlightTags: [],
+    workTypeTags: [],
+    improvementActionTags: [],
+    issueAttributionTags: [],
+    workloadTags: [],
+    managerSuggestionTags: [],
+    scoreEvidence: '',
+    groupRank: 0,
+    crossDeptRank: 0,
+    departmentRank: 0,
+    companyRank: 0,
+    isPublished: false,
+  };
+}
+
+async function filterRecordsByPublication(records: any[]): Promise<any[]> {
+  const months = Array.from(new Set(records.map((record) => String(record.month || '')).filter(Boolean)));
+  const publishedEntries = await Promise.all(
+    months.map(async (month) => [month, await AssessmentPublicationModel.isPublished(month)] as const)
+  );
+  const publishedByMonth = new Map(publishedEntries);
+  return records.map((record) => (
+    publishedByMonth.get(record.month)
+      ? { ...record, isPublished: true }
+      : hideUnpublishedScore(record)
+  ));
+}
 
 async function ensurePerformanceReviewTodo(record: any, employeeName?: string) {
   if (!record || record.status !== 'submitted') return;
@@ -61,9 +107,10 @@ export const performanceController = {
     }
 
     const records = await PerformanceModel.findByEmployeeId(req.user.userId);
+    const visibleRecords = await filterRecordsByPublication(records as any[]);
     res.json({
       success: true,
-      data: records
+      data: visibleRecords
     });
   }),
 
@@ -88,9 +135,10 @@ export const performanceController = {
       });
     }
 
+    const isPublished = await AssessmentPublicationModel.isPublished(monthStr);
     res.json({
       success: true,
-      data: record
+      data: isPublished ? { ...record, isPublished: true } : hideUnpublishedScore(record)
     });
   }),
 
@@ -299,9 +347,24 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '记录ID不能为空' });
     }
 
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
+
     const record = await PerformanceModel.findById(id);
     if (!record) {
       return res.status(404).json({ success: false, error: '记录不存在' });
+    }
+
+    const role = req.user.role;
+    const userId = req.user.userId;
+    const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
+    const isSelf = record.employeeId === userId;
+    const isManagerAllowed = role === 'manager'
+      ? await EmployeeModel.isInManagerTeam(userId, record.employeeId)
+      : false;
+    if (!isPrivileged && !isSelf && !isManagerAllowed) {
+      return res.status(403).json({ success: false, error: '无权访问该绩效记录模板' });
     }
 
     // 记录上已有模板ID，直接返回
@@ -475,6 +538,10 @@ export const performanceController = {
     if (!month || (typeof month === 'string' && month.trim() === '')) {
       return res.status(400).json({ success: false, error: '月份不能为空' });
     }
+    const monthRangeError = validateTaskCreationMonth(String(month).trim(), { skipInTest: true });
+    if (monthRangeError) {
+      return res.status(400).json({ success: false, error: monthRangeError });
+    }
 
     if (!req.user) {
       return res.status(401).json({
@@ -585,6 +652,7 @@ export const performanceController = {
       monthlyStarPublic,
       // 动态模板评分
       metricScores,
+      expectedUpdatedAt,
     } = req.body;
 
     // 验证 id
@@ -690,6 +758,17 @@ export const performanceController = {
       existing = await PerformanceModel.findById(id) || existing;
     }
 
+    const isAdjustingCompletedScore = existing.status === 'completed' || existing.status === 'scored';
+    const expectedUpdatedAtValue = typeof expectedUpdatedAt === 'string' && expectedUpdatedAt.trim()
+      ? expectedUpdatedAt.trim()
+      : undefined;
+    if (isAdjustingCompletedScore && !expectedUpdatedAtValue) {
+      return res.status(409).json({
+        success: false,
+        error: '该绩效记录已完成评分。请刷新页面后再调整，避免覆盖他人的评分。'
+      });
+    }
+
     // 上级可以复核/调整下级经理负责的评分；未完成记录的直接考核人由同步服务按当前 manager_id 维护，
     // 不在这里改成“当前登录人”，避免上级复核时覆盖直属考核人。
     const roundedTotalScore = parseFloat(totalScore.toFixed(2));
@@ -740,15 +819,20 @@ export const performanceController = {
       templateId: existing.templateId || undefined,
       templateName: existing.templateName || undefined,
       departmentType: existing.departmentType || undefined,
-      metricScores: processedMetricScores || undefined
+      metricScores: processedMetricScores || undefined,
+      expectedUpdatedAt: isAdjustingCompletedScore ? expectedUpdatedAtValue : undefined
     });
 
     if (!record) {
-      return res.status(404).json({ success: false, error: '记录不存在' });
+      const stillExists = await PerformanceModel.findById(id);
+      if (!stillExists) {
+        return res.status(404).json({ success: false, error: '记录不存在' });
+      }
+      return res.status(409).json({
+        success: false,
+        error: '评分已被其他请求更新，请刷新后再提交。'
+      });
     }
-
-    // 更新排名
-    await PerformanceModel.updateRanks(record.month);
 
     await TodoModel.completeByRelatedId(
       'work_summary',
@@ -792,7 +876,7 @@ export const performanceController = {
   // 按月份删除记录（HR）
   deleteRecordsByMonth: asyncHandler(async (req: Request, res: Response) => {
     const month = req.params.month as string;
-    const { confirm, force } = req.body as { confirm: string; force?: boolean };
+    const { confirm, force } = (req.body || {}) as { confirm?: string; force?: boolean };
 
     // 验证月份格式
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
@@ -800,12 +884,12 @@ export const performanceController = {
     }
 
     // 验证确认信息
-    if (!confirm || confirm.trim() === '') {
+    if (!confirm || String(confirm).trim() === '') {
       return res.status(400).json({ success: false, error: '请填写确认信息' });
     }
 
     // 必须输入目标月份作为确认
-    if (confirm !== month) {
+    if (String(confirm).trim() !== month) {
       return res.status(400).json({
         success: false,
         error: '确认信息不匹配，请输入要删除的月份（YYYY-MM）'

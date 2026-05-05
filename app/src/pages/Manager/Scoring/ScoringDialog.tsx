@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { FileText, Send, X, AlertCircle, TrendingUp, Clock, WalletCards } from 'lucide-react';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -125,6 +125,7 @@ export function ScoringDialog({
   totalScore, loading, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
+  const managerCommentRef = useRef(managerComment);
   const [salaryForecast, setSalaryForecast] = useState<SalaryForecastRow | null>(null);
   const [salaryForecastLoading, setSalaryForecastLoading] = useState(false);
   const [salaryForecastError, setSalaryForecastError] = useState('');
@@ -143,7 +144,7 @@ export function ScoringDialog({
   };
 
   // 将选中的关键词转换为文本
-  const getKeywordText = (keywordIds: string[]) => {
+  const getKeywordText = useCallback((keywordIds: string[]) => {
     const allKeywords = [...keywordsData.positive, ...keywordsData.negative];
     const selected = allKeywords.filter((kw: any) => keywordIds.includes(kw.id));
     const positive = selected.filter((kw: any) => kw.id.startsWith('p')).map((kw: any) => kw.text);
@@ -158,12 +159,16 @@ export function ScoringDialog({
       text += `待改进：${negative.join('、')}`;
     }
     return text;
-  };
+  }, []);
 
   // 当关键词变化时，自动更新评语
   useEffect(() => {
     setSelectedKeywords(evaluationKeywords || []);
   }, [evaluationKeywords, selectedRecord?.id, open]);
+
+  useEffect(() => {
+    managerCommentRef.current = managerComment;
+  }, [managerComment]);
 
   useEffect(() => {
     setEvaluationKeywords(selectedKeywords);
@@ -237,29 +242,11 @@ export function ScoringDialog({
   useEffect(() => {
     if (selectedKeywords.length > 0) {
       const keywordText = getKeywordText(selectedKeywords);
-      if (keywordText) {
-        // 如果评语为空，直接设置
-        if (!managerComment.trim()) {
-          setManagerComment(keywordText + '。\n\n');
-        } else {
-          // 如果评语不为空，检查是否已包含关键词标记
-          const hasKeywordMarker = managerComment.includes('优点：') || managerComment.includes('待改进：');
-          if (!hasKeywordMarker) {
-            // 在开头插入关键词
-            setManagerComment(keywordText + '。\n\n' + managerComment);
-          }
-        }
-      }
-    } else if (managerComment.includes('优点：') || managerComment.includes('待改进：')) {
-      const cleaned = managerComment
-        .replace(/^优点：.*?(?:；待改进：.*?)?。\n\n/s, '')
-        .replace(/^待改进：.*?。\n\n/s, '')
-        .trimStart();
-      if (cleaned !== managerComment) {
-        setManagerComment(cleaned);
+      if (keywordText && !managerCommentRef.current.trim()) {
+        setManagerComment(keywordText + '。\n\n');
       }
     }
-  }, [selectedKeywords]);
+  }, [getKeywordText, selectedKeywords, setManagerComment]);
 
   const getGroupBadge = (groupType: 'high' | 'low' | null, level?: any) => {
     const resolved = resolveGroupType(groupType, level);

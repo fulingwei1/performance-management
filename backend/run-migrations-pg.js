@@ -32,6 +32,10 @@ const migrationFiles = [
   'src/migrations/021_employee_must_change_password.sql',
   'src/migrations/022_create_automation_logs.sql',
   'src/migrations/023_satisfaction_surveys.sql',
+  'migrations/024_monthly_assessment_detail_fields.sql',
+  'migrations/025_assessment_cycles_and_publications.sql',
+  'migrations/026_fix_ranking_departments_and_metric_templates.sql',
+  'migrations/027_fix_employee_manager_and_assessor_integrity.sql',
 ];
 
 async function runMigrations() {

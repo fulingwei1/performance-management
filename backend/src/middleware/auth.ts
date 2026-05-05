@@ -21,7 +21,13 @@ declare global {
 // JWT Secret - 优先从环境变量获取，测试环境使用默认值
 const getJWTSecret = (): string => {
   const envSecret = process.env.JWT_SECRET;
-  if (envSecret) return envSecret;
+  if (envSecret) {
+    if (process.env.NODE_ENV !== 'test' && envSecret.length < 32) {
+      logger.error('❌ 错误: JWT_SECRET长度不足，生产/开发环境至少需要32个字符');
+      process.exit(1);
+    }
+    return envSecret;
+  }
   if (process.env.NODE_ENV === 'test') return 'test-secret-key';
   
   logger.error('❌ 错误: JWT_SECRET环境变量未设置');
@@ -68,15 +74,25 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
     
     const token = authHeader.substring(7);
     const decoded = verifyToken(token);
-    
+
+    const employee = await EmployeeModel.findById(decoded.userId);
+    if (!employee) {
+      res.status(401).json({ success: false, message: '认证用户不存在或已被删除' });
+      return;
+    }
+    if ((employee as any).status === 'disabled') {
+      res.status(403).json({ success: false, message: '该账号已被禁用，请联系管理员' });
+      return;
+    }
+
     req.user = {
       ...decoded,
+      role: employee.role,
       id: decoded.userId
     };
     req.userId = decoded.userId;
 
     if (!isPasswordChangeAllowedPath(req)) {
-      const employee = await EmployeeModel.findById(decoded.userId);
       if ((employee as any)?.mustChangePassword) {
         res.status(403).json({
           success: false,

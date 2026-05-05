@@ -58,19 +58,17 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
       const uniqueMonths = [...new Set(records.map(r => r.month))];
       const statusMap: Record<string, boolean> = {};
       
-      await Promise.all(
-        uniqueMonths.map(async (month) => {
-          try {
-            const response = await assessmentPublicationApi.checkPublished(month);
-            if (response.success) {
-              statusMap[month] = response.data.isPublished;
-            }
-          } catch (error) {
-            console.error(`检查 ${month} 发布状态失败:`, error);
-            statusMap[month] = false;
+      for (const month of uniqueMonths) {
+        try {
+          const response = await assessmentPublicationApi.checkPublished(month);
+          if (response.success) {
+            statusMap[month] = response.data.isPublished;
           }
-        })
-      );
+        } catch (error) {
+          console.error(`检查 ${month} 发布状态失败:`, error);
+          statusMap[month] = false;
+        }
+      }
       
       setPublicationStatus(statusMap);
     };

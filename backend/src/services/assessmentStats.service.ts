@@ -136,7 +136,8 @@ export async function getEmployeePerformanceTrend(employeeId: string): Promise<E
       return null;
     }
     
-    const scores: number[] = assessments.map((a: any) => a.totalScore);
+    const orderedAssessments = [...assessments].sort((a: any, b: any) => String(a.month).localeCompare(String(b.month)));
+    const scores: number[] = orderedAssessments.map((a: any) => a.totalScore);
     const avgScore = scores.reduce((sum: number, s: number) => sum + s, 0) / scores.length;
     
     // 计算趋势（最近3次）
@@ -152,7 +153,7 @@ export async function getEmployeePerformanceTrend(employeeId: string): Promise<E
     
     return {
       employeeId,
-      employeeName: assessments[0].employeeName,
+      employeeName: orderedAssessments[orderedAssessments.length - 1]?.employeeName || assessments[0].employeeName,
       avgScore: parseFloat(avgScore.toFixed(2)),
       trend,
       recentScores: scores.slice(-6), // 最近6次

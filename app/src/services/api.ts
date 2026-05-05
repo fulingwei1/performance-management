@@ -55,10 +55,11 @@ const secureDownload = async (url: string, filename: string) => {
   });
   if (!res.ok) {
     const errorData = await readErrorPayload(res);
+    const message = errorData.message ?? errorData.error ?? '下载失败';
     if (res.status === 401) {
-      handleUnauthorized(errorData.message);
+      handleUnauthorized(message);
     }
-    throw new Error(errorData.message || '下载失败');
+    throw new Error(message);
   }
   const blob = await res.blob();
   const a = document.createElement('a');
@@ -71,40 +72,64 @@ const secureDownload = async (url: string, filename: string) => {
 // 通用请求函数
 export const request = async (url: string, options: RequestInit = {}) => {
   const token = getToken();
-  
+  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...options.headers as Record<string, string>
   };
+
+  if (!isFormDataBody) {
+    headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+  }
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
-  try {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
-      ...options,
-      headers
-    });
 
-    const data = await readErrorPayload(response);
-    
-    if (!response.ok) {
-      const message = data.message ?? data.error ?? '请求失败';
-      if (response.status === 403 && data.code === 'PASSWORD_CHANGE_REQUIRED') {
-        redirectToChangePassword();
+  const method = (options.method || 'GET').toUpperCase();
+  const maxAttempts = method === 'GET' ? 2 : 1;
+  const timeoutMs = Number((import.meta as any).env.VITE_API_TIMEOUT_MS || 15000);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers,
+        signal: options.signal || controller.signal
+      });
+
+      window.clearTimeout(timeoutId);
+      const data = await readErrorPayload(response);
+
+      if (!response.ok) {
+        const message = data.message ?? data.error ?? '请求失败';
+        if (response.status === 403 && data.code === 'PASSWORD_CHANGE_REQUIRED') {
+          redirectToChangePassword();
+        }
+        if (response.status === 401 && url !== '/auth/login') {
+          handleUnauthorized(message);
+        }
+        throw new Error(message);
       }
-      if (response.status === 401 && url !== '/auth/login') {
-        handleUnauthorized(message);
+
+      return data;
+    } catch (error: any) {
+      window.clearTimeout(timeoutId);
+      const isAbort = error?.name === 'AbortError';
+      if (attempt < maxAttempts && method === 'GET' && !isAbort) {
+        continue;
       }
-      throw new Error(message);
+      console.error('API请求错误:', error);
+      if (isAbort) {
+        throw new Error('请求超时，请稍后重试');
+      }
+      throw error;
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API请求错误:', error);
-    throw error;
   }
+
+  throw new Error('请求失败');
 };
 
 // 认证相关API
@@ -266,6 +291,9 @@ export const performanceApi = {
   
   // 获取绩效记录对应的评分模板（用于动态渲染评分表单）
   getRecordTemplate: (id: string) => request(`/performance/${id}/template`),
+
+  // 根据ID获取绩效记录
+  getRecordById: (id: string) => request(`/performance/${id}`),
   
   // 经理评分
   submitScore: (data: {
@@ -289,6 +317,7 @@ export const performanceApi = {
     monthlyStarCategory?: string;
     monthlyStarReason?: string;
     monthlyStarPublic?: boolean;
+    expectedUpdatedAt?: string;
     // 动态模板评分
     templateId?: string;
     templateName?: string;
@@ -1067,25 +1096,15 @@ export const dataImportApi = {
     return secureDownload(`${API_BASE_URL}/data-import/template/employees`, '员工导入模板.xlsx');
   },
   importEmployees: async (formData: FormData) => {
-    const token = getToken();
-    const res = await fetch(`${API_BASE_URL}/data-import/employees`, {
+    return request('/data-import/employees', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
-    const data = await res.json();
-    if (!res.ok) throw { response: { data } };
-    return data;
   },
   importHrArchive: async (formData: FormData) => {
-    const token = getToken();
-    const res = await fetch(`${API_BASE_URL}/data-import/hr-archive`, {
+    return request('/data-import/hr-archive', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
-    const data = await res.json();
-    if (!res.ok) throw { response: { data } };
-    return data;
   },
 };

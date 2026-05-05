@@ -23,6 +23,7 @@ const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
 const LogManagement = lazy(() => import('@/pages/HR/LogManagement'));
 const HRSatisfactionSurvey = lazy(() => import('@/pages/HR/SatisfactionSurvey'));
 const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
+const NotFound = lazy(() => import('@/pages/NotFound'));
 
 const ROLE_HOME: Record<string, string> = {
   employee: '/employee/dashboard',
@@ -102,11 +103,14 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
   }
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0
-    ? user.roles
+    ? [...user.roles]
     : user?.role
       ? [user.role]
       : [];
   if (canManageTeam && !effectiveRoles.includes('manager')) effectiveRoles.push('manager');
+  if ((user?.role === 'manager' || user?.capabilities?.canSubmitSelfSummary) && !effectiveRoles.includes('employee')) {
+    effectiveRoles.push('employee');
+  }
   if (location.pathname.startsWith('/manager') && !canManageTeam) {
     return <Navigate to={getHomeForUser(user)} replace />;
   }
@@ -140,6 +144,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/change-password" replace />;
   }
   return <>{children}</>;
+}
+
+function MobileDemoRoute() {
+  const { user } = useAuthStore();
+  return (
+    <Layout role={(user?.role || 'employee') as any}>
+      <MobileDemo />
+    </Layout>
+  );
 }
 
 function DisabledFeatureRedirect() {
@@ -196,6 +209,26 @@ function EmployeePerformanceHistoryWrapper() {
 }
 
 function App() {
+  const { isAuthenticated, token, refreshCurrentUser, logout } = useAuthStore();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) {
+      setAuthChecked(true);
+      return;
+    }
+
+    refreshCurrentUser()
+      .catch(() => {
+        logout();
+      })
+      .finally(() => setAuthChecked(true));
+  }, [isAuthenticated, token, refreshCurrentUser, logout]);
+
+  if (!authChecked) {
+    return <div className="p-4 text-center text-gray-500">正在校验登录状态...</div>;
+  }
+
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Suspense fallback={<div className="p-4 text-center text-gray-500">页面加载中...</div>}>
@@ -211,9 +244,7 @@ function App() {
         {/* Mobile Demo - accessible to all authenticated users */}
         <Route path="/mobile-demo" element={
           <ProtectedRoute>
-            <Layout>
-              <MobileDemo />
-            </Layout>
+            <MobileDemoRoute />
           </ProtectedRoute>
         } />
 
@@ -300,7 +331,7 @@ function App() {
 
         {/* Default redirects */}
         <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
       <Toaster position="top-right" />

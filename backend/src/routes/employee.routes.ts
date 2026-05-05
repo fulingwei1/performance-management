@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { employeeController } from '../controllers/employee.controller';
 import { authenticate, requireManagerCapability, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validation';
@@ -8,6 +9,15 @@ import {
 } from '../validators/employee.validator';
 
 const router = Router();
+
+const createEmployeeLimiter = rateLimit({
+  windowMs: Number(process.env.EMPLOYEE_CREATE_RATE_LIMIT_WINDOW_MS || 60_000),
+  max: Number(process.env.EMPLOYEE_CREATE_RATE_LIMIT_MAX || 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'test' && req.get('X-Test-Rate-Limit') !== 'true',
+  message: { success: false, message: '员工创建过于频繁，请稍后再试' },
+});
 
 // 获取所有员工（需要认证）
 router.get('/', authenticate, employeeController.getAllEmployees);
@@ -28,7 +38,7 @@ router.get('/role/:role', authenticate, employeeController.getEmployeesByRole);
 router.get('/:id', authenticate, employeeController.getEmployeeById);
 
 // 创建员工（需要HR或Admin权限）
-router.post('/', authenticate, requireRole('hr', 'admin'), validate(createEmployeeValidation), employeeController.createEmployee);
+router.post('/', authenticate, requireRole('hr', 'admin'), createEmployeeLimiter, validate(createEmployeeValidation), employeeController.createEmployee);
 
 // 更新员工（需要HR或Admin权限）
 router.put('/:id', authenticate, requireRole('hr', 'admin'), validate(updateEmployeeValidation), employeeController.updateEmployee);

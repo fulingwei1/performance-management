@@ -212,7 +212,11 @@ export const metricLibraryController = {
   // 获取所有模板
   getAllTemplates: async (_req: Request, res: Response) => {
     try {
-      const templates = await MetricLibraryModel.findAllTemplates();
+      let templates = await MetricLibraryModel.findAllTemplates();
+      if (templates.length === 0) {
+        await MetricLibraryModel.initializeDefaultMetrics();
+        templates = await MetricLibraryModel.findAllTemplates();
+      }
       res.json({ success: true, data: templates });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });

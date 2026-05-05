@@ -58,6 +58,21 @@ export default app;
 
 app.set('trust proxy', 1);
 
+// 统一错误响应格式：历史接口有的返回 message，有的返回 error；失败响应同时带上两者，便于前端和 API 测试统一处理。
+app.use((req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = (body?: any) => {
+    if (body && typeof body === 'object' && !Buffer.isBuffer(body) && body.success === false) {
+      const normalizedBody = { ...body };
+      if (normalizedBody.message && !normalizedBody.error) normalizedBody.error = normalizedBody.message;
+      if (normalizedBody.error && !normalizedBody.message) normalizedBody.message = normalizedBody.error;
+      return originalJson(normalizedBody);
+    }
+    return originalJson(body);
+  };
+  next();
+});
+
 // 安全中间件
 app.use(helmet());
 
@@ -87,6 +102,20 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // CORS - 精确匹配项目域名
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin) return next();
+
+  const allowedOrigins = buildAllowedOrigins(process.env);
+  if (allowedOrigins.includes(origin)) return next();
+
+  return res.status(403).json({
+    success: false,
+    message: 'Not allowed by CORS',
+    error: 'Not allowed by CORS'
+  });
+});
+
 app.use(cors({
  origin: (origin, callback) => {
   if (!origin) return callback(null, true);
@@ -96,7 +125,7 @@ app.use(cors({
   if (allowedOrigins.includes(origin)) {
     callback(null, true);
   } else {
-    callback(new Error('Not allowed by CORS'));
+    callback(null, false);
   }
  },
  credentials: true
@@ -117,9 +146,7 @@ const healthHandler = (req: express.Request, res: express.Response) => {
  res.json({
   success: true,
   message: '服务器运行正常',
- timestamp: new Date().toISOString(),
- url: req.url,
- env: process.env.NODE_ENV
+  timestamp: new Date().toISOString(),
  });
 };
 

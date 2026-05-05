@@ -4,6 +4,27 @@ import { SalaryIntegrationService } from '../services/salaryIntegration.service'
 
 export const salaryIntegrationController = {
   /**
+   * GET /api/integrations/salary/status
+   * 只返回连接配置状态，不暴露 token。
+   */
+  getStatus: asyncHandler(async (_req: Request, res: Response) => {
+    const baseUrl = (process.env.SALARY_SYSTEM_BASE_URL || process.env.SALARY_API_URL || '').trim();
+    const hasToken = Boolean((process.env.SALARY_SYSTEM_PUSH_TOKEN || '').trim());
+
+    res.json({
+      success: true,
+      data: {
+        configured: Boolean(baseUrl && hasToken),
+        hasBaseUrl: Boolean(baseUrl),
+        hasPushToken: hasToken,
+        baseUrl: baseUrl ? baseUrl.replace(/\/\/.*@/, '//***@') : '',
+        pushRequiresAdminConfirmation: true,
+        supportedPeriods: ['monthly', 'quarterly']
+      }
+    });
+  }),
+
+  /**
    * POST /api/salary-integration/salary-forecast
    * 经理评分时只读查看绩效工资预测，不暴露完整薪资字段。
    */

@@ -197,8 +197,13 @@ const initialEmployees = [
 // 初始化数据
 export const initializeData = async (): Promise<void> => {
   if (isInitialized) {
-    logger.info('✅ 数据已初始化，跳过');
-    return;
+    if (USE_MEMORY_DB && memoryDB.employees.findAll().length === 0) {
+      logger.info('🔄 内存数据库为空，重新初始化测试数据');
+      isInitialized = false;
+    } else {
+      logger.info('✅ 数据已初始化，跳过');
+      return;
+    }
   }
 
   try {

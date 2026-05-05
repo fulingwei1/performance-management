@@ -15,13 +15,17 @@ import {
   generateSelfSummary,
   generateNextMonthPlan,
   generateManagerComment,
-  generateWorkArrangement
+  generateWorkArrangement,
+  getSuggestions
 } from '../controllers/ai.controller';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const router = express.Router();
 
 router.use(authenticate);
+
+// AI 功能入口发现（轻量元数据，不调用外部模型）
+router.get('/suggestions', getSuggestions);
 
 // AI 季度总结生成
 router.post('/quarterly-summary', requireRole('manager', 'gm', 'hr', 'admin'), generateQuarterlySummary);

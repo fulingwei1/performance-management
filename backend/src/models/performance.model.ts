@@ -51,8 +51,8 @@ export class PerformanceModel {
         e.level as "employeeLevel",
         m.name as "assessorName"
       FROM performance_records r
-      JOIN employees e ON r.employee_id = e.id
-      JOIN employees m ON r.assessor_id = m.id
+      LEFT JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.id = ?
     `;
     const results = await query(sql, [id]);
@@ -75,8 +75,8 @@ export class PerformanceModel {
         e.level as "employeeLevel",
         m.name as "assessorName"
       FROM performance_records r
-      JOIN employees e ON r.employee_id = e.id
-      JOIN employees m ON r.assessor_id = m.id
+      LEFT JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.employee_id = ?
       ORDER BY r.month DESC
     `;
@@ -115,8 +115,8 @@ export class PerformanceModel {
         e.level as "employeeLevel",
         m.name as "assessorName"
       FROM performance_records r
-      JOIN employees e ON r.employee_id = e.id
-      JOIN employees m ON r.assessor_id = m.id
+      LEFT JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.employee_id IN (${placeholders})
         AND (e.status = 'active' OR e.status IS NULL)
     `;
@@ -149,10 +149,9 @@ export class PerformanceModel {
         e.level as "employeeLevel",
         m.name as "assessorName"
       FROM performance_records r
-      JOIN employees e ON r.employee_id = e.id
-      JOIN employees m ON r.assessor_id = m.id
+      LEFT JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.month = ?
-        AND (e.status = 'active' OR e.status IS NULL)
       ORDER BY r.total_score DESC
     `;
     const results = await query(sql, [month]);
@@ -175,9 +174,8 @@ export class PerformanceModel {
         e.level as "employeeLevel",
         m.name as "assessorName"
       FROM performance_records r
-      JOIN employees e ON r.employee_id = e.id
-      JOIN employees m ON r.assessor_id = m.id
-      WHERE (e.status = 'active' OR e.status IS NULL)
+      LEFT JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees m ON r.assessor_id = m.id
       ORDER BY r.month DESC, r.total_score DESC
     `;
     const results = await query(sql, []);
@@ -202,8 +200,8 @@ export class PerformanceModel {
         e.level as "employeeLevel",
         m.name as "assessorName"
       FROM performance_records r
-      JOIN employees e ON r.employee_id = e.id
-      JOIN employees m ON r.assessor_id = m.id
+      LEFT JOIN employees e ON r.employee_id = e.id
+      LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.employee_id = ? AND r.month = ?
       LIMIT 1
     `;
@@ -214,20 +212,35 @@ export class PerformanceModel {
 
   // 更新记录（通用）
   static async update(id: string, data: Partial<PerformanceRecord>): Promise<PerformanceRecord | null> {
+    const allowedFields: Record<string, string> = {
+      assessorId: 'assessor_id',
+      companyRank: 'company_rank',
+      departmentRank: 'department_rank',
+      groupRank: 'group_rank',
+      crossDeptRank: 'cross_dept_rank',
+      status: 'status',
+      frozen: 'frozen',
+      deadline: 'deadline',
+      templateId: 'template_id',
+      templateName: 'template_name',
+      departmentType: 'department_type',
+    };
+    const keys = Object.keys(data).filter(k => Object.prototype.hasOwnProperty.call(allowedFields, k));
+    if (keys.length === 0) return this.findById(id);
+
     if (USE_MEMORY_DB) {
+      const safeUpdates = keys.reduce((acc, key) => {
+        (acc as any)[key] = (data as any)[key];
+        return acc;
+      }, {} as Partial<PerformanceRecord>);
       const updated = memoryDB.performanceRecords.update(id, {
-        ...data,
+        ...safeUpdates,
         updatedAt: new Date()
       });
       return updated ? this.enrichRecord(updated) : null;
     }
 
-    // 构建动态 SQL
-    const keys = Object.keys(data).filter(k => k !== 'id' && k !== 'createdAt' && k !== 'updatedAt');
-    if (keys.length === 0) return this.findById(id);
-
-    const snakeCaseKeys = keys.map(k => k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`));
-    const setClause = snakeCaseKeys.map((k, i) => `${k} = $${i + 2}`).join(', ');
+    const snakeCaseKeys = keys.map(k => allowedFields[k]);
     const values = keys.map(k => (data as any)[k]);
     
     // 注意：这里的 SQL 语法是 Postgres 的 ($1, $2...)，之前的是 ?
@@ -376,6 +389,8 @@ export class PerformanceModel {
     templateName?: string;
     departmentType?: string;
     metricScores?: MetricScore[];
+    // 并发保护：已完成记录复核/调整时，前端必须带上打开页面时看到的更新时间
+    expectedUpdatedAt?: Date | string;
   }): Promise<PerformanceRecord | null> {
     if (USE_MEMORY_DB) {
       const record = memoryDB.performanceRecords.findById(data.id);
@@ -383,6 +398,17 @@ export class PerformanceModel {
       
       const existing = memoryDB.performanceRecords.findById(data.id);
       if (!existing) return null;
+      const isAlreadyCompleted = existing.status === 'completed' || existing.status === 'scored';
+      if (data.expectedUpdatedAt) {
+        const currentUpdatedAt = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+        const expectedUpdatedAt = new Date(data.expectedUpdatedAt).getTime();
+        if (!currentUpdatedAt || !expectedUpdatedAt || currentUpdatedAt !== expectedUpdatedAt) {
+          return null;
+        }
+      } else if (isAlreadyCompleted) {
+        return null;
+      }
+
       const updated = memoryDB.performanceRecords.update(data.id, {
         taskCompletion: data.taskCompletion,
         initiative: data.initiative,
@@ -421,6 +447,7 @@ export class PerformanceModel {
       return updated ? this.enrichRecord(updated) : null;
     }
     
+    const hasExpectedUpdatedAt = Boolean(data.expectedUpdatedAt);
     const sql = `
       UPDATE performance_records SET
         task_completion = ?,
@@ -452,9 +479,14 @@ export class PerformanceModel {
         status = 'completed',
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
+        ${
+          hasExpectedUpdatedAt
+            ? "AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ?::timestamp)"
+            : "AND COALESCE(status, '') NOT IN ('completed', 'scored')"
+        }
     `;
 
-    await query(sql, [
+    const params: any[] = [
       data.taskCompletion,
       data.initiative,
       data.projectFeedback,
@@ -482,7 +514,15 @@ export class PerformanceModel {
       data.departmentType || null,
       data.metricScores ? JSON.stringify(data.metricScores) : null,
       data.id
-    ]);
+    ];
+    if (hasExpectedUpdatedAt) {
+      params.push(data.expectedUpdatedAt);
+    }
+
+    const result = await query(sql, params);
+    if ((result as any).affectedRows === 0) {
+      return null;
+    }
     
     const record = await this.findById(data.id);
     if (record) {
@@ -550,15 +590,54 @@ export class PerformanceModel {
     }
 
     // 将排名结果写回（未参与部门/未命中合并分组 => rank=0）
-    for (const r of completed) {
+    const rankUpdates = completed.map((r) => {
       const isIncluded = companyRankMap.has(r.id);
-      await this.update(r.id, {
+      return {
+        id: r.id,
         companyRank: isIncluded ? (companyRankMap.get(r.id) || 0) : 0,
         departmentRank: isIncluded ? (departmentRankMap.get(r.id) || 0) : 0,
         groupRank: isIncluded ? (groupRankMap.get(r.id) || 0) : 0,
         crossDeptRank: isIncluded ? (crossDeptRankMap.get(r.id) || 0) : 0,
-      });
+      };
+    });
+
+    if (rankUpdates.length === 0) {
+      return;
     }
+
+    if (USE_MEMORY_DB) {
+      for (const update of rankUpdates) {
+        memoryDB.performanceRecords.update(update.id, {
+          companyRank: update.companyRank,
+          departmentRank: update.departmentRank,
+          groupRank: update.groupRank,
+          crossDeptRank: update.crossDeptRank,
+          updatedAt: new Date(),
+        } as any);
+      }
+      return;
+    }
+
+    const values: any[] = [];
+    const valuePlaceholders = rankUpdates.map((update) => {
+      values.push(update.id, update.companyRank, update.departmentRank, update.groupRank, update.crossDeptRank);
+      return '(?, ?, ?, ?, ?)';
+    }).join(', ');
+
+    await query(
+      `
+        UPDATE performance_records AS pr
+        SET
+          company_rank = v.company_rank::int,
+          department_rank = v.department_rank::int,
+          group_rank = v.group_rank::int,
+          cross_dept_rank = v.cross_dept_rank::int,
+          updated_at = CURRENT_TIMESTAMP
+        FROM (VALUES ${valuePlaceholders}) AS v(id, company_rank, department_rank, group_rank, cross_dept_rank)
+        WHERE pr.id = v.id::text
+      `,
+      values
+    );
   }
 
   // 删除记录

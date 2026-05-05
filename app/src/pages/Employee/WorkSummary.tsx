@@ -41,13 +41,12 @@ export function WorkSummary() {
   const [improvementSuggestion, setImprovementSuggestion] = useState('');
   const [suggestionAnonymous, setSuggestionAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, _setShowSuccess] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
   
   // 冻结状态
   const [frozen, setFrozen] = useState(false);
   const [deadline, setDeadline] = useState<string | undefined>(undefined);
-  const [recordId, setRecordId] = useState<string | null>(null);
   const [recordStatus, setRecordStatus] = useState<string | null>(null);
   const isSubmittedRecord = ['submitted', 'completed', 'scored'].includes(recordStatus || '');
   const isReadOnly = frozen || isSubmittedRecord;
@@ -62,7 +61,6 @@ export function WorkSummary() {
         const response = await performanceApi.getMyRecordByMonth(monthStr);
         if (response.success && response.data) {
           const record = response.data;
-          setRecordId(record.id);
           setFrozen(record.frozen || false);
           setDeadline(record.deadline);
           setRecordStatus(record.status || null);
@@ -76,7 +74,6 @@ export function WorkSummary() {
           setSuggestionAnonymous(record.suggestionAnonymous === true);
         } else {
           // 该月份无记录，清空状态
-          setRecordId(null);
           setFrozen(false);
           setDeadline(undefined);
           setRecordStatus(null);
@@ -102,10 +99,10 @@ export function WorkSummary() {
     setIsSubmitting(true);
     
     const monthStr = format(month, 'yyyy-MM');
-    const recordId = `rec-${user.id}-${monthStr}`;
+    const nextRecordId = `rec-${user.id}-${monthStr}`;
     
     const success = await saveSummary({
-      id: recordId,
+      id: nextRecordId,
       employeeId: user.id,
       employeeName: user.name,
       department: user.department,
@@ -123,7 +120,8 @@ export function WorkSummary() {
     
     if (success && !isDraft) {
       setRecordStatus('submitted');
-      navigate('/employee/dashboard');
+      setShowSuccess(true);
+      setTimeout(() => navigate('/employee/dashboard'), 800);
     } else if (success && isDraft) {
       setRecordStatus('draft');
       setShowDraftSuccess(true);
@@ -314,7 +312,7 @@ export function WorkSummary() {
                     <CalendarComponent
                       mode="single"
                       selected={month}
-                      onSelect={(date) => date && setMonth(date)}
+                      onSelect={(date) => date && setMonth(new Date(date.getFullYear(), date.getMonth(), 1))}
                       initialFocus
                     />
                   </PopoverContent>

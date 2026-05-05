@@ -33,8 +33,8 @@ router.get('/team-records', authenticate, requireManagerCapability, performanceC
 	  // 获取每月之星推荐汇总
 	  router.get('/monthly-stars/:month', authenticate, requireRole('gm', 'hr', 'admin'), performanceController.getMonthlyStars);
 
-	  // 获取员工合理化建议汇总：只给管理员看，匿名建议不返回提交人
-	  router.get('/improvement-suggestions', authenticate, requireRole('admin'), performanceController.getImprovementSuggestions);
+		  // 获取员工合理化建议汇总：经理看管辖范围，HR/GM/Admin 可看全量，匿名建议不返回提交人
+		  router.get('/improvement-suggestions', authenticate, requireRole('manager', 'gm', 'hr', 'admin'), performanceController.getImprovementSuggestions);
 
   // 删除全公司所有绩效记录（HR）
   router.delete('/all-records', authenticate, requireRole('hr', 'admin'), performanceController.deleteAllRecords);

@@ -50,6 +50,26 @@ const topTagEntries = (records: any[], field: string, limit = 8): Array<[string,
     .slice(0, limit);
 };
 
+const isPrivilegedRole = (role?: string) => role === 'hr' || role === 'gm' || role === 'admin';
+
+const getScopedRecords = async (req: Request, month?: string): Promise<any[]> => {
+  if (!req.user) return [];
+  if (isPrivilegedRole(req.user.role)) {
+    return month ? PerformanceModel.findByMonth(month) : PerformanceModel.findAll();
+  }
+  return PerformanceModel.findByAssessorId(req.user.userId, month);
+};
+
+const canAccessEmployeeTrend = async (req: Request, employeeId: string): Promise<boolean> => {
+  if (!req.user) return false;
+  if (isPrivilegedRole(req.user.role)) return true;
+  if (req.user.userId === employeeId) return true;
+  if (req.user.role === 'manager') {
+    return EmployeeModel.isInManagerTeam(req.user.userId, employeeId);
+  }
+  return false;
+};
+
 const formatTagSection = (lines: string[], title: string, entries: Array<[string, number]>) => {
   lines.push(title);
   if (entries.length === 0) {
@@ -65,7 +85,7 @@ const formatTagSection = (lines: string[], title: string, entries: Array<[string
 export const getPerformanceDistribution = asyncHandler(async (req: Request, res: Response) => {
   const { month, department } = req.query;
 
-  const allRecords = await PerformanceModel.findByMonth(month as string || new Date().toISOString().slice(0, 7));
+  const allRecords = await getScopedRecords(req, month as string || new Date().toISOString().slice(0, 7));
   const distribution = department 
     ? allRecords.filter(r => r.department === department)
     : allRecords;
@@ -87,46 +107,45 @@ export const getPerformanceDistribution = asyncHandler(async (req: Request, res:
 export const getDepartmentComparison = asyncHandler(async (req: Request, res: Response) => {
   const { startMonth, endMonth } = req.query;
 
-  const employees = await EmployeeModel.findAll();
-  const departments = [...new Set(employees.map(e => e.department).filter(Boolean))];
+  const recordsByDepartment = new Map<string, any[]>();
 
-  const comparison = await Promise.all(
-    departments.map(async (dept) => {
-      const allRecords: any[] = [];
-      
-      if (startMonth && endMonth) {
-        const start = new Date(startMonth as string + '-01');
-        const end = new Date(endMonth as string + '-01');
-        const current = new Date(start);
-        while (current <= end) {
-          const monthStr = current.toISOString().slice(0, 7);
-          const monthRecords = await PerformanceModel.findByMonth(monthStr);
-          allRecords.push(...monthRecords.filter(r => r.department === dept && isRealRecord(r) && isScoredRecord(r)));
-          current.setMonth(current.getMonth() + 1);
-        }
-      } else {
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        const monthRecords = await PerformanceModel.findByMonth(currentMonth);
-        allRecords.push(...monthRecords.filter(r => r.department === dept && isRealRecord(r) && isScoredRecord(r)));
-      }
+  const pushRecords = (records: any[]) => {
+    records
+      .filter((record) => record.department && isRealRecord(record) && isScoredRecord(record))
+      .forEach((record) => {
+        const dept = record.department;
+        if (!recordsByDepartment.has(dept)) recordsByDepartment.set(dept, []);
+        recordsByDepartment.get(dept)!.push(record);
+      });
+  };
 
-      if (allRecords.length === 0) {
-        return { department: dept, avgScore: 0, excellentRate: 0, poorRate: 0, totalCount: 0 };
-      }
+  if (startMonth && endMonth) {
+    const start = new Date(startMonth as string + '-01');
+    const end = new Date(endMonth as string + '-01');
+    const current = new Date(start);
+    while (current <= end) {
+      const monthStr = current.toISOString().slice(0, 7);
+      pushRecords(await getScopedRecords(req, monthStr));
+      current.setMonth(current.getMonth() + 1);
+    }
+  } else {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    pushRecords(await getScopedRecords(req, currentMonth));
+  }
 
-      const avgScore = allRecords.reduce((sum, r) => sum + r.totalScore, 0) / allRecords.length;
-      const excellentRate = allRecords.filter(r => r.totalScore >= 1.4).length / allRecords.length;
-      const poorRate = allRecords.filter(r => r.totalScore < 0.65).length / allRecords.length;
+  const comparison = Array.from(recordsByDepartment.entries()).map(([dept, allRecords]) => {
+    const avgScore = allRecords.reduce((sum, r) => sum + r.totalScore, 0) / allRecords.length;
+    const excellentRate = allRecords.filter(r => r.totalScore >= 1.4).length / allRecords.length;
+    const poorRate = allRecords.filter(r => r.totalScore < 0.65).length / allRecords.length;
 
-      return {
-        department: dept,
-        avgScore: parseFloat(avgScore.toFixed(2)),
-        excellentRate: parseFloat((excellentRate * 100).toFixed(2)),
-        poorRate: parseFloat((poorRate * 100).toFixed(2)),
-        totalCount: allRecords.length
-      };
-    })
-  );
+    return {
+      department: dept,
+      avgScore: parseFloat(avgScore.toFixed(2)),
+      excellentRate: parseFloat((excellentRate * 100).toFixed(2)),
+      poorRate: parseFloat((poorRate * 100).toFixed(2)),
+      totalCount: allRecords.length
+    };
+  });
 
   res.json({ success: true, data: comparison.filter(c => c.totalCount > 0) });
 });
@@ -144,12 +163,15 @@ export const getPerformanceTrend = asyncHandler(async (req: Request, res: Respon
     const monthStr = d.toISOString().slice(0, 7);
 
     if (employeeId) {
+      if (!(await canAccessEmployeeTrend(req, employeeId as string))) {
+        return res.status(403).json({ success: false, message: '无权查看该员工绩效趋势' });
+      }
       const record = await PerformanceModel.findByEmployeeIdAndMonth(employeeId as string, monthStr);
       if (record && record.status === 'completed') {
         trend.push({ month: monthStr, score: record.totalScore, grade: record.level || '', rank: record.companyRank || 0 });
       }
     } else {
-      const records = await PerformanceModel.findByMonth(monthStr);
+      const records = await getScopedRecords(req, monthStr);
       const completed = records.filter(r => r.status === 'completed' && r.totalScore > 0);
       if (completed.length > 0) {
         const avg = completed.reduce((sum, r) => sum + r.totalScore, 0) / completed.length;
@@ -163,7 +185,11 @@ export const getPerformanceTrend = asyncHandler(async (req: Request, res: Respon
 
 // GET /api/analytics/anomaly-detection
 export const detectAnomalies = asyncHandler(async (req: Request, res: Response) => {
-  const employees = await EmployeeModel.findAll();
+  const scopedRecords = await getScopedRecords(req);
+  const scopedEmployeeIds = new Set(scopedRecords.map((record) => record.employeeId));
+  const employees = isPrivilegedRole(req.user?.role)
+    ? await EmployeeModel.findAll()
+    : (await EmployeeModel.findTeamForManager(req.user!.userId)).filter((employee) => scopedEmployeeIds.has(employee.id));
   const anomalies: any[] = [];
 
   for (const emp of employees) {
@@ -193,7 +219,7 @@ export const generateReport = asyncHandler(async (req: Request, res: Response) =
   const { month } = req.query;
   const targetMonth = (month as string) || new Date().toISOString().slice(0, 7);
 
-  const allRecords = await PerformanceModel.findByMonth(targetMonth);
+  const allRecords = await getScopedRecords(req, targetMonth);
   const realRecords = allRecords.filter(isRealRecord);
   const scored = realRecords.filter(isScoredRecord);
   const pending = realRecords.filter((record) => !isScoredRecord(record));

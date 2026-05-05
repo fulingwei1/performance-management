@@ -78,6 +78,34 @@ export const satisfactionSurveyController = {
     });
   }),
 
+  submitCurrentResponse: asyncHandler(async (req: Request, res: Response) => {
+    const employeeId = req.user?.userId;
+    if (!employeeId) {
+      return res.status(401).json({ success: false, message: '未认证' });
+    }
+
+    const survey = await SatisfactionSurveyService.findCurrentSurvey(new Date())
+      || await SatisfactionSurveyService.ensureSurveyForDate(new Date(), 'system');
+    const employee = await EmployeeModel.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, message: '员工信息不存在' });
+    }
+
+    const response = await SatisfactionSurveyService.submitResponse({
+      surveyId: survey.id,
+      employee,
+      scores: req.body?.scores || {},
+      comment: req.body?.comment,
+      anonymous: req.body?.anonymous !== false,
+    });
+
+    res.json({
+      success: true,
+      message: '满意度调查已提交',
+      data: response,
+    });
+  }),
+
   getStats: asyncHandler(async (req: Request, res: Response) => {
     const stats = await SatisfactionSurveyService.getSurveyStats(paramString(req.params.id));
     res.json({ success: true, data: stats });

@@ -14,6 +14,7 @@ export interface Task {
   dueDate: string;
   priority: 'high' | 'medium' | 'low';
   relatedId?: string; // 关联的记录ID
+  assigneeId: string; // 任务归属用户ID
   employeeName?: string; // 经理评分时显示员工姓名
   month: string;
 }
@@ -71,6 +72,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         dueDate: `${targetMonth}-05`,
         priority: 'high',
         relatedId: recordId,
+        assigneeId: employee.id,
         month: targetMonth
       };
       newTasks.push(summaryTask);
@@ -99,6 +101,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           dueDate: `${targetMonth}-15`,
           priority: 'high',
           relatedId: recordId,
+          assigneeId: manager.id,
           employeeName: employee.name,
           month: targetMonth
         };
@@ -115,7 +118,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const { tasks } = get();
 
     return tasks.filter(task =>
-      task.id.includes(`-${employeeId}-`) &&
+      task.assigneeId === employeeId &&
       task.month === targetMonth &&
       task.type === 'fill_summary'
     );
@@ -127,7 +130,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const { tasks } = get();
 
     return tasks.filter(task =>
-      task.id.includes(`-${managerId}-`) &&
+      task.assigneeId === managerId &&
       task.month === targetMonth &&
       task.type === 'manager_score'
     );
@@ -148,7 +151,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     const currentMonth = getCurrentMonth();
 
     return tasks.filter(task =>
-      task.id.includes(`-${userId}-`) &&
+      task.assigneeId === userId &&
       task.month === currentMonth &&
       task.status !== 'completed' &&
       (role === 'employee'

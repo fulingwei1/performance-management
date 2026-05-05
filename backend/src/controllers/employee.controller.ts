@@ -20,6 +20,41 @@ function normalizeManagerId(value: unknown): string | null | undefined {
   return normalized ? normalized : null;
 }
 
+function isPrivilegedAccount(role?: string): boolean {
+  return role === 'admin' || role === 'gm' || role === 'hr';
+}
+
+async function validateManagerAssignment(employeeId: string, managerId: string | null | undefined): Promise<string | null> {
+  if (managerId === undefined || managerId === null || managerId === '') return null;
+  if (managerId === employeeId) return '直属上级不能设置为本人';
+
+  const manager = await EmployeeModel.findById(managerId);
+  if (!manager || (manager as any).status === 'disabled') {
+    return '直属上级不存在或已禁用';
+  }
+
+  const allEmployees = (await EmployeeModel.findAll()) as any[];
+  const managerByEmployee = new Map<string, string>();
+  for (const employee of allEmployees) {
+    const id = String(employee.id || '').trim();
+    const parentId = String(employee.managerId || '').trim();
+    // 兼容历史数据里“负责人 manager_id 指向自己”的顶层写法：
+    // 这种自指不应让其下属的上级校验误判为循环，但新的自指设置仍在上面直接拦截。
+    if (id && parentId && parentId !== id) managerByEmployee.set(id, parentId);
+  }
+  managerByEmployee.set(employeeId, managerId);
+
+  const seen = new Set<string>();
+  let cursor = employeeId;
+  while (cursor) {
+    if (seen.has(cursor)) return '直属上级关系存在循环引用';
+    seen.add(cursor);
+    cursor = managerByEmployee.get(cursor) || '';
+  }
+
+  return null;
+}
+
 export const employeeController = {
   getAssessmentParticipation: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
@@ -115,9 +150,25 @@ export const employeeController = {
       };
       return isPrivileged ? privilegedRest : toDirectory(rest);
     });
+    const page = Number.parseInt(String(req.query.page || ''), 10);
+    const limit = Number.parseInt(String(req.query.limit || ''), 10);
+    const shouldPaginate = Number.isInteger(page) && page > 0 && Number.isInteger(limit) && limit > 0;
+    const safeLimit = shouldPaginate ? Math.min(limit, 200) : sanitized.length;
+    const pagedData = shouldPaginate
+      ? sanitized.slice((page - 1) * safeLimit, (page - 1) * safeLimit + safeLimit)
+      : sanitized;
+
     res.json({
       success: true,
-      data: sanitized
+      data: pagedData,
+      ...(shouldPaginate ? {
+        pagination: {
+          page,
+          limit: safeLimit,
+          total: sanitized.length,
+          totalPages: Math.ceil(sanitized.length / safeLimit),
+        }
+      } : {})
     });
   }),
 
@@ -299,7 +350,17 @@ export const employeeController = {
       }
 
       const { id, name, department, subDepartment, role, level, managerId, wecomUserId, password, idCardLast6 } = req.body;
+      if (req.user?.role !== 'admin' && isPrivilegedAccount(role)) {
+        return res.status(403).json({
+          success: false,
+          message: '只有系统管理员可以创建 HR/总经理/管理员账号'
+        });
+      }
       const normalizedManagerId = normalizeManagerId(managerId);
+      const managerError = await validateManagerAssignment(id, normalizedManagerId);
+      if (managerError) {
+        return res.status(400).json({ success: false, message: managerError });
+      }
 
       // 检查ID是否已存在
       const existing = await EmployeeModel.findById(id);
@@ -357,13 +418,22 @@ export const employeeController = {
       }
 
       const { idCardLast6, ...restUpdates } = (req.body || {}) as any;
+      if (Object.prototype.hasOwnProperty.call(restUpdates, 'role') && req.user?.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: '只有系统管理员可以调整账号角色'
+        });
+      }
       if (Object.prototype.hasOwnProperty.call(restUpdates, 'managerId')) {
         restUpdates.managerId = normalizeManagerId(restUpdates.managerId);
+        const managerError = await validateManagerAssignment(req.params.id as string, restUpdates.managerId);
+        if (managerError) {
+          return res.status(400).json({ success: false, message: managerError });
+        }
       }
       if (idCardLast6) {
         const normalizedIdCardLast6 = String(idCardLast6).trim().toUpperCase();
         await EmployeeModel.updateIdCardLast6(req.params.id as string, normalizedIdCardLast6);
-        await EmployeeModel.updatePassword(req.params.id as string, normalizedIdCardLast6, { mustChangePassword: false });
       }
 
       const employee = await EmployeeModel.update(req.params.id as string, restUpdates);
@@ -434,9 +504,16 @@ export const employeeController = {
         if (!success) {
           return res.status(500).json({ success: false, message: '设置密码失败' });
         }
+        await EmployeeModel.clearIdCardLast6(req.params.id as string);
 
         return res.json({
           success: true,
+          data: {
+            id: employee.id,
+            mustChangePassword: false,
+            hasIdCardLast6: false,
+            loginMethod: 'password'
+          },
           message: '登录密码已设置'
         });
       }
@@ -454,6 +531,13 @@ export const employeeController = {
 
         return res.json({
           success: true,
+          data: {
+            id: employee.id,
+            mustChangePassword: false,
+            hasIdCardLast6: true,
+            loginMethod: 'idCardLast6',
+            temporaryPassword: '身份证后六位'
+          },
           message: '登录口令已重置为身份证后六位'
         });
       }
@@ -468,6 +552,13 @@ export const employeeController = {
       await EmployeeModel.updateMustChangePassword(req.params.id as string, false);
       res.json({
         success: true,
+        data: {
+          id: employee.id,
+          mustChangePassword: false,
+          hasIdCardLast6: true,
+          loginMethod: 'idCardLast6',
+          temporaryPassword: '身份证后六位'
+        },
         message: '该员工已使用档案中的身份证后六位登录，无需生成随机密码'
       });
     })
@@ -486,6 +577,12 @@ export const employeeController = {
       const employee = await EmployeeModel.findById(req.params.id as string);
       if (!employee) {
         return res.status(404).json({ success: false, message: '员工不存在' });
+      }
+      if (req.user?.userId === employee.id) {
+        return res.status(403).json({ success: false, message: '不能启用或禁用自己的账号' });
+      }
+      if (req.user?.role !== 'admin' && isPrivilegedAccount(employee.role)) {
+        return res.status(403).json({ success: false, message: '只有系统管理员可以启用或禁用 HR/总经理/管理员账号' });
       }
 
       const currentStatus = (employee as any).status || 'active';
@@ -510,6 +607,26 @@ export const employeeController = {
         return res.status(400).json({
           success: false,
           error: errors.array()[0].msg
+        });
+      }
+
+      const employee = await EmployeeModel.findById(req.params.id as string);
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          error: '员工不存在'
+        });
+      }
+      if (req.user?.userId === employee.id) {
+        return res.status(403).json({
+          success: false,
+          message: '不能删除自己的账号'
+        });
+      }
+      if (req.user?.role !== 'admin' && isPrivilegedAccount(employee.role)) {
+        return res.status(403).json({
+          success: false,
+          message: '只有系统管理员可以删除 HR/总经理/管理员账号'
         });
       }
 

@@ -6,21 +6,9 @@ import {
   Users, RefreshCw, Calendar, TrendingUp, Zap, ShieldCheck,
   Database, Trash2
 } from 'lucide-react';
-import { salaryIntegrationApi } from '@/services/api';
+import { request, salaryIntegrationApi } from '@/services/api';
 
-const API_BASE = '/api/automation';
-
-function apiCall(path: string, options?: RequestInit) {
-  const token = localStorage.getItem('token');
-  return fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-      ...options?.headers,
-    },
-  }).then(r => r.json());
-}
+const apiCall = (path: string, options?: RequestInit) => request(`/automation${path}`, options);
 
 interface ProgressData {
   month: string;

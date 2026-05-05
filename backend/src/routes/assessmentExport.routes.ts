@@ -8,6 +8,7 @@ router.use(authenticate, requireRole('hr', 'admin'));
 
 // 导出月度评分记录
 router.get('/monthly-assessments', exportController.exportMonthlyAssessments);
+router.get('/monthly', exportController.exportMonthlyAssessments);
 
 // 导出部门类型统计
 router.get('/department-stats', exportController.exportDepartmentStats);

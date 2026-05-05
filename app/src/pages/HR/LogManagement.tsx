@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { logApi } from '@/services/api';
 
 type LoginLog = {
@@ -90,13 +91,15 @@ export default function LogManagement() {
   const [auditResult, setAuditResult] = useState<'all' | 'SUCCESS' | 'FAILED' | 'UNAUTHORIZED'>('all');
   const [auditModule, setAuditModule] = useState('');
   const pageSize = 50;
+  const debouncedKeyword = useDebouncedValue(keyword, 400);
+  const debouncedAuditModule = useDebouncedValue(auditModule, 400);
 
-  const loadLoginLogs = async (page = loginPage) => {
+  const loadLoginLogs = async (page = loginPage, searchKeyword = debouncedKeyword, resultFilter = loginResult) => {
     setLoading(true);
     try {
       const response = await logApi.getLoginLogs({
-        keyword,
-        success: loginResult === 'all' ? undefined : loginResult === 'success',
+        keyword: searchKeyword,
+        success: resultFilter === 'all' ? undefined : resultFilter === 'success',
         page,
         limit: pageSize,
       });
@@ -113,12 +116,12 @@ export default function LogManagement() {
     }
   };
 
-  const loadAuditLogs = async (page = auditPage) => {
+  const loadAuditLogs = async (page = auditPage, moduleKeyword = debouncedAuditModule, resultFilter = auditResult) => {
     setLoading(true);
     try {
       const response = await logApi.getAuditLogs({
-        module: auditModule || undefined,
-        result: auditResult === 'all' ? undefined : auditResult,
+        module: moduleKeyword || undefined,
+        result: resultFilter === 'all' ? undefined : resultFilter,
         page,
         limit: pageSize,
       });
@@ -136,9 +139,14 @@ export default function LogManagement() {
   };
 
   useEffect(() => {
-    loadLoginLogs(1);
-    loadAuditLogs(1);
-  }, []);
+    setLoginPage(1);
+    loadLoginLogs(1, debouncedKeyword, loginResult);
+  }, [debouncedKeyword, loginResult]);
+
+  useEffect(() => {
+    setAuditPage(1);
+    loadAuditLogs(1, debouncedAuditModule, auditResult);
+  }, [debouncedAuditModule, auditResult]);
 
   const loginStats = useMemo(() => {
     const successCount = loginLogs.filter((log) => log.success).length;
@@ -156,12 +164,12 @@ export default function LogManagement() {
 
   const applyLoginFilters = () => {
     setLoginPage(1);
-    loadLoginLogs(1);
+    loadLoginLogs(1, keyword, loginResult);
   };
 
   const applyAuditFilters = () => {
     setAuditPage(1);
-    loadAuditLogs(1);
+    loadAuditLogs(1, auditModule, auditResult);
   };
 
   return (

@@ -16,7 +16,7 @@ interface PerformanceState {
   fetchTeamRecords: (managerId: string, month?: string) => Promise<void>;
   fetchGroupRecords: (groupType: 'high' | 'low', subDepartments?: string[]) => PerformanceRecord[];
   saveSummary: (data: Partial<PerformanceRecord>) => Promise<boolean>;
-  submitScore: (data: Partial<PerformanceRecord>) => Promise<boolean>;
+  submitScore: (data: Partial<PerformanceRecord> & { expectedUpdatedAt?: string | Date }) => Promise<boolean>;
   setFilters: (filters: Filters) => void;
   clearError: () => void;
 }
@@ -38,7 +38,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       if (response.success) {
         set({ records: response.data, loading: false });
       } else {
-        set({ error: response.error || '获取数据失败', loading: false });
+        set({ error: response.error || response.message || '获取数据失败', loading: false });
       }
     } catch (error: any) {
       set({ error: error.message || '网络错误', loading: false });
@@ -53,7 +53,18 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       if (record) {
         set({ currentRecord: record, loading: false });
       } else {
-        set({ error: '记录不存在', loading: false });
+        const response = await performanceApi.getRecordById(id);
+        if (response.success && response.data) {
+          set((state) => ({
+            records: state.records.some((item) => item.id === response.data.id)
+              ? state.records.map((item) => item.id === response.data.id ? response.data : item)
+              : [...state.records, response.data],
+            currentRecord: response.data,
+            loading: false
+          }));
+        } else {
+          set({ error: response.error || response.message || '记录不存在', loading: false });
+        }
       }
     } catch (error: any) {
       set({ error: error.message || '获取记录失败', loading: false });
@@ -69,7 +80,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       if (response.success) {
         set({ records: response.data, loading: false });
       } else {
-        set({ error: response.error || '获取数据失败', loading: false });
+        set({ error: response.error || response.message || '获取数据失败', loading: false });
       }
     } catch (error: any) {
       set({ error: error.message || '网络错误', loading: false });
@@ -85,7 +96,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
       if (response.success) {
         set({ records: response.data, loading: false });
       } else {
-        set({ error: response.error || '获取数据失败', loading: false });
+        set({ error: response.error || response.message || '获取数据失败', loading: false });
       }
     } catch (error: any) {
       set({ error: error.message || '网络错误', loading: false });
@@ -134,7 +145,7 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
         }
         return true;
       } else {
-        set({ error: response.error || '提交失败', loading: false });
+        set({ error: response.error || response.message || '提交失败', loading: false });
         return false;
       }
     } catch (error: any) {
@@ -170,6 +181,9 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
         monthlyStarCategory: data.monthlyStarCategory || '',
         monthlyStarReason: data.monthlyStarReason || '',
         monthlyStarPublic: data.monthlyStarPublic !== false,
+        expectedUpdatedAt: (data as any).expectedUpdatedAt || (
+          data.updatedAt ? new Date(data.updatedAt as any).toISOString() : undefined
+        ),
         // 动态模板评分
         templateId: (data as any).templateId,
         templateName: (data as any).templateName,
@@ -185,10 +199,16 @@ export const usePerformanceStore = create<PerformanceState>((set, get) => ({
           const newRecords = [...records];
           newRecords[existingIndex] = response.data;
           set({ records: newRecords, currentRecord: response.data, loading: false });
+        } else {
+          set({
+            records: [...records, response.data],
+            currentRecord: response.data,
+            loading: false
+          });
         }
         return true;
       } else {
-        set({ error: response.error || '评分失败', loading: false });
+        set({ error: response.error || response.message || '评分失败', loading: false });
         return false;
       }
     } catch (error: any) {

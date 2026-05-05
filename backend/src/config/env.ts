@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required').optional(),
-  JWT_SECRET: z.string().min(8, 'JWT_SECRET must be at least 8 characters'),
+  JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   PORT: z.string().regex(/^\d+$/).optional().default('3000'),
   NODE_ENV: z.enum(['development', 'production', 'test']).optional().default('development'),
   FRONTEND_URL: z.string().url().optional(),
@@ -30,6 +30,11 @@ export function validateEnv(): Env {
       .map(([key, val]: [string, any]) => `  ${key}: ${val._errors?.join(', ')}`)
       .join('\n');
     console.error(`❌ Environment validation failed:\n${messages}`);
+    process.exit(1);
+  }
+  const nodeEnv = result.data.NODE_ENV || 'development';
+  if (nodeEnv !== 'test' && result.data.JWT_SECRET.length < 32) {
+    console.error('❌ Environment validation failed:\n  JWT_SECRET: must be at least 32 characters outside test environment');
     process.exit(1);
   }
   return result.data;

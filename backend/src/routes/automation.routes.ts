@@ -11,6 +11,13 @@ router.post('/auto-publish', authenticate, automationController.autoPublish);
 router.post('/check-reminders', authenticate, automationController.checkDeadlineReminders);
 router.post('/push-quarter-results', authenticate, requireRole('hr', 'admin'), automationController.pushQuarterResults);
 
+// 前端 MonthlyAutomation 统一触发入口别名
+router.post('/trigger/generate-monthly-tasks', authenticate, requireRole('hr', 'admin'), automationController.generateMonthlyTasks);
+router.post('/trigger/generate-monthly-stats', authenticate, requireRole('hr', 'admin'), automationController.generateMonthlyStats);
+router.post('/trigger/auto-publish', authenticate, requireRole('hr', 'admin'), automationController.autoPublish);
+router.post('/trigger/check-reminders', authenticate, requireRole('hr', 'admin'), automationController.checkDeadlineReminders);
+router.post('/trigger/archive', authenticate, requireRole('hr', 'admin'), automationController.archiveMonth);
+
 // 测试通知渠道连通性
 router.post('/test-wecom', authenticate, requireRole('hr', 'admin'), automationController.testWecom);
 router.post('/test-email', authenticate, requireRole('hr', 'admin'), automationController.testEmail);
