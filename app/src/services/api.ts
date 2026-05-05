@@ -380,7 +380,7 @@ export const assessmentTemplateApi = {
   }),
   delete: (id: string) => request(`/assessment-templates/${id}`, { method: 'DELETE' }),
   // 匹配模板
-  match: (params?: { role?: string; level?: string; position?: string; department?: string }) =>
+  match: (params?: { role?: string; level?: string; position?: string; department?: string; subDepartment?: string }) =>
     request(`/assessment-templates/match${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
   // 预览分配
   previewAssignments: (data?: { employeeIds?: string[] }) =>

@@ -9,7 +9,6 @@ import {
   Database,
   Zap,
   ClipboardList,
-  KeyRound,
   MessageSquare,
   type LucideIcon
 } from 'lucide-react';
@@ -62,7 +61,6 @@ const hrAdminBaseNavItems: SidebarNavItem[] = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/hr/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/hr/data-io', label: '数据管理', icon: Database },
-  { path: '/hr/user-management', label: '账号管理', icon: KeyRound },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
   { path: '/hr/satisfaction-survey', label: '满意度调查', icon: MessageSquare },

@@ -180,17 +180,6 @@ export async function savePerformanceRankingConfig(
   }
 
   const normalized = normalizeConfig(parsed.data);
-  if (normalized.participation.mode === 'include') {
-    const missingTemplateUnitKeys = normalized.participation.includedUnitKeys.filter((unitKey) => (
-      !getConfiguredTemplateId(unitKey, normalized)
-    ));
-    if (missingTemplateUnitKeys.length > 0) {
-      const preview = missingTemplateUnitKeys.slice(0, 3).join('、');
-      const suffix = missingTemplateUnitKeys.length > 3 ? ` 等 ${missingTemplateUnitKeys.length} 个部门` : '';
-      throw new Error(`以下参与考核部门还没有选择模板：${preview}${suffix}`);
-    }
-  }
-
   const existing = await SystemSettingsModel.getByKey(SETTING_KEY);
 
   if (existing) {

@@ -25,6 +25,14 @@ const parseJsonArray = (value: unknown): string[] => {
   return [];
 };
 
+function getQuarterFromMonth(month: string): { year: number; quarter: number } | null {
+  const [yearText, monthText] = String(month || '').split('-');
+  const year = Number(yearText);
+  const monthNumber = Number(monthText);
+  if (!year || !monthNumber || monthNumber < 1 || monthNumber > 12) return null;
+  return { year, quarter: Math.ceil(monthNumber / 3) };
+}
+
 export class PerformanceModel {
   // 根据ID查找记录
   static async findById(id: string): Promise<PerformanceRecord | null> {
@@ -556,27 +564,53 @@ export class PerformanceModel {
   // 删除记录
   static async delete(id: string): Promise<boolean> {
     if (USE_MEMORY_DB) {
-      return memoryDB.performanceRecords.delete(id);
+      const record = memoryDB.performanceRecords.findById(id);
+      const deleted = memoryDB.performanceRecords.delete(id);
+      if (deleted && record) {
+        await this.deleteDerivedQuarterlySummaries([record.employeeId], [record.month]);
+      }
+      return deleted;
     }
-    
+
+    const existing = await query('SELECT employee_id, month FROM performance_records WHERE id = ?', [id]);
     const sql = 'DELETE FROM performance_records WHERE id = ?';
     const result = await query(sql, [id]) as unknown as { affectedRows: number };
-    return result.affectedRows > 0;
+    const deleted = result.affectedRows > 0;
+    if (deleted && existing.length > 0) {
+      await this.deleteDerivedQuarterlySummaries(
+        [existing[0].employee_id],
+        [existing[0].month],
+      );
+    }
+    return deleted;
   }
 
   // 按月份删除记录（返回删除数量）
   static async deleteByMonth(month: string): Promise<number> {
     if (USE_MEMORY_DB) {
       const idsToDelete: string[] = [];
+      const employeeIds = new Set<string>();
       for (const [id, record] of memoryStore.performanceRecords.entries()) {
-        if (record.month === month) idsToDelete.push(id);
+        if (record.month === month) {
+          idsToDelete.push(id);
+          employeeIds.add(record.employeeId);
+        }
       }
       idsToDelete.forEach((id) => memoryStore.performanceRecords.delete(id));
+      await this.deleteDerivedQuarterlySummaries(Array.from(employeeIds), [month]);
       return idsToDelete.length;
     }
 
+    const affectedEmployees = await query(
+      'SELECT DISTINCT employee_id FROM performance_records WHERE month = ?',
+      [month],
+    );
     const sql = 'DELETE FROM performance_records WHERE month = ?';
     const result = await query(sql, [month]) as unknown as { affectedRows: number };
+    await this.deleteDerivedQuarterlySummaries(
+      affectedEmployees.map((row: any) => row.employee_id),
+      [month],
+    );
     return result.affectedRows || 0;
   }
 
@@ -585,12 +619,68 @@ export class PerformanceModel {
     if (USE_MEMORY_DB) {
       const count = memoryStore.performanceRecords.size;
       memoryStore.performanceRecords.clear();
+      memoryStore.quarterlySummaries.clear();
       return count;
     }
 
     const sql = 'DELETE FROM performance_records';
     const result = await query(sql, []) as unknown as { affectedRows: number };
+    await this.deleteAllDerivedQuarterlySummaries();
     return result.affectedRows || 0;
+  }
+
+  private static async deleteAllDerivedQuarterlySummaries(): Promise<number> {
+    if (USE_MEMORY_DB) {
+      const count = memoryStore.quarterlySummaries.size;
+      memoryStore.quarterlySummaries.clear();
+      return count;
+    }
+
+    const result = await query('DELETE FROM employee_quarterly_summaries', []) as unknown as { affectedRows: number };
+    return result.affectedRows || 0;
+  }
+
+  private static async deleteDerivedQuarterlySummaries(employeeIds: string[], months: string[]): Promise<number> {
+    const uniqueEmployeeIds = Array.from(new Set(employeeIds.filter(Boolean)));
+    const quarters = Array.from(
+      new Map(
+        months
+          .map(getQuarterFromMonth)
+          .filter((value): value is { year: number; quarter: number } => Boolean(value))
+          .map((value) => [`${value.year}-Q${value.quarter}`, value])
+      ).values()
+    );
+
+    if (uniqueEmployeeIds.length === 0 || quarters.length === 0) return 0;
+
+    if (USE_MEMORY_DB) {
+      let count = 0;
+      for (const [id, summary] of memoryStore.quarterlySummaries.entries()) {
+        const summaryEmployeeId = (summary as any).employeeId || (summary as any).employee_id;
+        const summaryYear = Number((summary as any).year);
+        const summaryQuarter = Number((summary as any).quarter);
+        const matchesEmployee = uniqueEmployeeIds.includes(summaryEmployeeId);
+        const matchesQuarter = quarters.some((item) => item.year === summaryYear && item.quarter === summaryQuarter);
+        if (matchesEmployee && matchesQuarter) {
+          memoryStore.quarterlySummaries.delete(id);
+          count++;
+        }
+      }
+      return count;
+    }
+
+    let deleted = 0;
+    for (const { year, quarter } of quarters) {
+      const result = await query(
+        `DELETE FROM employee_quarterly_summaries
+         WHERE employee_id = ANY(?)
+           AND year = ?
+           AND quarter = ?`,
+        [uniqueEmployeeIds, year, quarter],
+      ) as unknown as { affectedRows: number };
+      deleted += result.affectedRows || 0;
+    }
+    return deleted;
   }
 
   // 丰富记录（添加员工信息）

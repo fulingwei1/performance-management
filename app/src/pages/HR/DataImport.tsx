@@ -35,6 +35,15 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
     nonAssessmentRoleCount?: number;
     disabledCount?: number;
     managerLinks?: number;
+    unresolvedManagerCount?: number;
+    unresolvedManagers?: Array<{
+      employeeId?: string;
+      employeeName?: string;
+      department?: string;
+      subDepartment?: string;
+      managerName?: string;
+      reason?: string;
+    }>;
     departmentCounts?: Record<string, number>;
     message?: string;
     errors?: Array<{ name?: string; message?: string }>;
@@ -142,9 +151,30 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
               <div className="space-y-1 text-sm text-green-800">
                 <p>离职/非在职已停用：{result.disabledCount ?? 0} 人</p>
                 <p>上下级关联匹配：{result.managerLinks ?? 0} 条</p>
+                {(result.unresolvedManagerCount ?? 0) > 0 && (
+                  <p className="font-medium text-amber-700">
+                    直接上级未匹配：{result.unresolvedManagerCount} 人（通常是 Excel 里填写了上级姓名，但员工表里没有该上级的在职账号）
+                  </p>
+                )}
                 <p className="text-green-700">
                   说明：这里的在职人数口径，已经只保留真正参与绩效考核的人员，不再把虚拟权限账号算进来。
                 </p>
+              </div>
+            )}
+            {result.success && result.unresolvedManagers && result.unresolvedManagers.length > 0 && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-sm font-medium text-amber-800">直接上级未匹配明细：</p>
+                <ul className="mt-2 list-disc list-inside text-sm text-amber-700 max-h-40 overflow-y-auto">
+                  {result.unresolvedManagers.slice(0, 30).map((item, index) => (
+                    <li key={`${item.employeeId || index}-${item.managerName || ''}`}>
+                      {item.employeeName}：档案上级“{item.managerName || '空'}”未在员工表中找到在职账号
+                      {item.department ? `（${item.department}${item.subDepartment ? ` / ${item.subDepartment}` : ''}）` : ''}
+                    </li>
+                  ))}
+                  {result.unresolvedManagers.length > 30 && (
+                    <li>...还有 {result.unresolvedManagers.length - 30} 条</li>
+                  )}
+                </ul>
               </div>
             )}
             {result.errors && result.errors.length > 0 && (

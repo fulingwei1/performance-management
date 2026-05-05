@@ -1,6 +1,7 @@
 import { query } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import logger from '../config/logger';
+import { AssessmentTemplateModel } from './assessmentTemplate.model';
 import { getConfiguredTemplateId, getOrgUnitKey, getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
 
 export interface LevelTemplateRule {
@@ -41,6 +42,21 @@ function getTemplateLevelCandidates(employee: { role?: string; level?: string })
   if (normalizedLevel === 'intermediate') candidates.push('junior');
 
   return Array.from(new Set(candidates.filter(Boolean)));
+}
+
+function getExactConfiguredTemplateId(unitKey: string, templateAssignments: Record<string, string>): string | null {
+  const normalizedUnitKey = String(unitKey || '').trim();
+  if (!normalizedUnitKey) return null;
+
+  for (const [configuredKey, templateId] of Object.entries(templateAssignments || {})) {
+    const normalizedConfiguredKey = String(configuredKey || '').trim();
+    const normalizedTemplateId = String(templateId || '').trim();
+    if (normalizedConfiguredKey === normalizedUnitKey && normalizedTemplateId) {
+      return normalizedTemplateId;
+    }
+  }
+
+  return null;
 }
 
 export class LevelTemplateRuleModel {
@@ -120,7 +136,10 @@ export class LevelTemplateRuleModel {
 
   /**
    * ★ 核心：解析员工的最终模板
-   * 优先级：个人绑定 > 参与部门指定模板 > 部门×层级规则 > 自动匹配 > 兜底默认
+   * 优先级：个人绑定 > 精确组织单元覆盖 > 部门×层级规则 > 自动匹配 > 上级组织单元覆盖兜底 > 默认兜底
+   *
+   * 注意：考核范围里勾选“工程技术中心/制造中心”只是确定谁参与考核，不应把整个中心都锁死到一个模板。
+   * 只有精确选到员工所在组织单元的模板才算强覆盖；父级覆盖只在没有岗位/层级模板可匹配时兜底。
    */
   static async resolveTemplate(employeeId: string): Promise<{
     templateId: string;
@@ -165,18 +184,18 @@ export class LevelTemplateRuleModel {
       }
     }
 
-    // 3. 查参与部门指定模板（支持父级前缀继承）
+    // 3. 查精确组织单元指定模板（不继承父级，避免把整个中心锁成一个模板）
     const rankingConfig = await getPerformanceRankingConfig();
-    const configuredTemplateId = getConfiguredTemplateId(unitKey, rankingConfig);
-    if (configuredTemplateId) {
-      const configuredTemplateResult = await query(
+    const exactConfiguredTemplateId = getExactConfiguredTemplateId(unitKey, rankingConfig.templateAssignments || {});
+    if (exactConfiguredTemplateId) {
+      const exactConfiguredTemplateResult = await query(
         `SELECT id, name FROM assessment_templates WHERE id = $1 AND status = 'active'`,
-        [configuredTemplateId]
+        [exactConfiguredTemplateId]
       );
-      if (configuredTemplateResult.length > 0) {
+      if (exactConfiguredTemplateResult.length > 0) {
         return {
-          templateId: configuredTemplateResult[0].id,
-          templateName: configuredTemplateResult[0].name,
+          templateId: exactConfiguredTemplateResult[0].id,
+          templateName: exactConfiguredTemplateResult[0].name,
           source: 'unit_config',
           departmentType,
           level
@@ -206,7 +225,43 @@ export class LevelTemplateRuleModel {
       };
     }
 
-    // 5. 自动匹配（模板名含层级关键词）
+    // 5. 自动匹配（优先使用模板适用岗位/任职等级；岗位泛化为“工程师”时结合二/三级部门识别）
+    const matchedTemplate = await AssessmentTemplateModel.findMatchingTemplate({
+      role: employee.role || '',
+      level: employee.level || '',
+      position: employee.position || employee.sub_department || employee.subDepartment || employee.department || '',
+      department: employee.department || '',
+      subDepartment: employee.sub_department || employee.subDepartment || '',
+    });
+    if (matchedTemplate && matchedTemplate.status === 'active' && !matchedTemplate.isDefault) {
+      return {
+        templateId: matchedTemplate.id,
+        templateName: matchedTemplate.name,
+        source: 'auto_match',
+        departmentType: matchedTemplate.departmentType || departmentType,
+        level
+      };
+    }
+
+    // 6. 查继承的参与部门指定模板：只作为自动匹配失败后的兜底
+    const inheritedConfiguredTemplateId = getConfiguredTemplateId(unitKey, rankingConfig);
+    if (inheritedConfiguredTemplateId) {
+      const inheritedConfiguredTemplateResult = await query(
+        `SELECT id, name FROM assessment_templates WHERE id = $1 AND status = 'active'`,
+        [inheritedConfiguredTemplateId]
+      );
+      if (inheritedConfiguredTemplateResult.length > 0) {
+        return {
+          templateId: inheritedConfiguredTemplateResult[0].id,
+          templateName: inheritedConfiguredTemplateResult[0].name,
+          source: 'unit_config',
+          departmentType,
+          level
+        };
+      }
+    }
+
+    // 7. 兼容旧模板：模板名含层级关键词
     const autoResult = await query(
       `SELECT id, name FROM assessment_templates
        WHERE department_type = $1
@@ -238,7 +293,17 @@ export class LevelTemplateRuleModel {
       };
     }
 
-    // 6. 兜底：取部门类型的 default 模板
+    if (matchedTemplate && matchedTemplate.status === 'active') {
+      return {
+        templateId: matchedTemplate.id,
+        templateName: matchedTemplate.name,
+        source: 'default',
+        departmentType: matchedTemplate.departmentType || departmentType,
+        level
+      };
+    }
+
+    // 8. 兜底：取部门类型的 default 模板
     const defaultResult = await query(
       `SELECT id, name FROM assessment_templates
        WHERE department_type = $1

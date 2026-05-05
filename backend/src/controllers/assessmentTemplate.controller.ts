@@ -269,13 +269,14 @@ export const addScoringCriteria = asyncHandler(async (req: Request, res: Respons
  * 模板匹配：根据员工信息找到最佳模板
  */
 export const matchTemplate = asyncHandler(async (req: Request, res: Response) => {
-  const { role, level, position, department } = req.query;
+  const { role, level, position, department, subDepartment } = req.query;
   
   const template = await AssessmentTemplateModel.findMatchingTemplate({
     role: role as string,
     level: level as string,
     position: position as string,
-    department: department as string
+    department: department as string,
+    subDepartment: subDepartment as string,
   });
   
   if (!template) {
@@ -327,6 +328,7 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
             level: employee.level,
             position: employee.position,
             department: employee.department,
+            subDepartment: employee.subDepartment || employee.sub_department,
           },
           template: {
             id: resolved.templateId,
@@ -345,6 +347,7 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
             level: employee.level,
             position: employee.position,
             department: employee.department,
+            subDepartment: employee.subDepartment || employee.sub_department,
           },
           template: null,
           matchScore: 0,

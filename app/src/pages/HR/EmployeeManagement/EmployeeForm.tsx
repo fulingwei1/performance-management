@@ -32,24 +32,27 @@ function flattenDeptTree(nodes: DepartmentNode[], depth = 0): { id: string; name
 }
 
 export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOptions = { rootNames: [], subOptionsByRoot: {} } }: EmployeeFormProps) {
-  const [managers, setManagers] = useState<{ id: string; name: string }[]>([]);
-  const [allEmployees, setAllEmployees] = useState<{ id: string; name: string; role: string }[]>([]);
+  const [allEmployees, setAllEmployees] = useState<{ id: string; name: string; role: string; department?: string; subDepartment?: string; status?: string }[]>([]);
   const [deptTree, setDeptTree] = useState<DepartmentNode[]>([]);
   const [managerSearch, setManagerSearch] = useState('');
   const [useDeptTree, setUseDeptTree] = useState(false);
 
   useEffect(() => {
-    // Fetch managers
-    employeeApi.getManagers().then((res: any) => {
-      if (res.success && res.data) {
-        setManagers(res.data.map((m: any) => ({ id: m.id, name: m.name })));
-      }
-    }).catch(() => {});
-
     // Fetch all employees for manager selection
     employeeApi.getAll().then((res: any) => {
       if (res.success && res.data) {
-        setAllEmployees(res.data.filter((e: any) => e.role === 'manager' || e.role === 'gm' || e.role === 'admin').map((e: any) => ({ id: e.id, name: e.name, role: e.role })));
+        setAllEmployees(
+          res.data
+            .filter((e: any) => !e.status || e.status === 'active')
+            .map((e: any) => ({
+              id: e.id,
+              name: e.name,
+              role: e.role,
+              department: e.department,
+              subDepartment: e.subDepartment,
+              status: e.status,
+            }))
+        );
       }
     }).catch(() => {});
 
@@ -170,7 +173,9 @@ export function EmployeeForm({ form, setForm, onSave, onCancel, departmentOption
           <SelectContent>
             <SelectItem value="">（无）</SelectItem>
             {filteredManagers.map(m => (
-              <SelectItem key={m.id} value={m.id}>{m.name} ({m.role === 'gm' ? '总经理' : m.role === 'admin' ? '管理员' : '经理'})</SelectItem>
+              <SelectItem key={m.id} value={m.id}>
+                {m.name}（{m.department || '未分部门'}{m.subDepartment ? ` / ${m.subDepartment}` : ''}）
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>

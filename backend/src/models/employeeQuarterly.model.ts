@@ -82,7 +82,9 @@ export class EmployeeQuarterlyModel {
       [employeeId, year, quarter]
     );
     if (existing.length > 0) {
-      return this.findById(existing[0].id);
+      // 季度汇总是从月度绩效记录派生的缓存。月度记录被清理或重建后，
+      // 旧季度汇总可能会变成“孤儿数据”，所以即使已存在也要按当前月度记录刷新。
+      return this.generateForEmployee(employeeId, year, quarter);
     }
     return this.generateForEmployee(employeeId, year, quarter);
   }
@@ -124,12 +126,22 @@ export class EmployeeQuarterlyModel {
       `SELECT month, total_score, level, status, self_summary, next_month_plan, 
               department_rank, group_rank
        FROM performance_records 
-       WHERE employee_id = ? AND month = ANY(?)
+       WHERE employee_id = ?
+         AND month = ANY(?)
+         AND status IN ('completed', 'scored')
+         AND COALESCE(total_score, 0) > 0
        ORDER BY month ASC`,
       [employeeId, months]
     );
 
-    if (records.length === 0) return null;
+    if (records.length === 0) {
+      // 没有有效月度评分时，删除旧汇总，避免页面继续展示历史/演示残留分数。
+      await query(
+        'DELETE FROM employee_quarterly_summaries WHERE employee_id = ? AND year = ? AND quarter = ?',
+        [employeeId, year, quarter]
+      );
+      return null;
+    }
 
     // 聚合计算
     const scores = records.map((r: any) => parseFloat(r.total_score || 0));
@@ -213,7 +225,11 @@ export class EmployeeQuarterlyModel {
 
     // 获取所有在3个月中有绩效记录的员工
     const employees = await query(
-      `SELECT DISTINCT employee_id FROM performance_records WHERE month = ANY(?)`,
+      `SELECT DISTINCT employee_id
+       FROM performance_records
+       WHERE month = ANY(?)
+         AND status IN ('completed', 'scored')
+         AND COALESCE(total_score, 0) > 0`,
       [months]
     );
 
@@ -242,6 +258,17 @@ export class EmployeeQuarterlyModel {
     const params: any[] = [employeeId];
     if (year) { sql += ' AND year = ?'; params.push(year); }
     if (quarter) { sql += ' AND quarter = ?'; params.push(quarter); }
+    if (year && quarter) {
+      sql += ` AND EXISTS (
+        SELECT 1
+        FROM performance_records pr
+        WHERE pr.employee_id = employee_quarterly_summaries.employee_id
+          AND pr.month = ANY(?)
+          AND pr.status IN ('completed', 'scored')
+          AND COALESCE(pr.total_score, 0) > 0
+      )`;
+      params.push(this.getQuarterMonths(year, quarter));
+    }
     sql += ' ORDER BY year DESC, quarter DESC';
 
     const results = await query(sql, params);
@@ -252,6 +279,7 @@ export class EmployeeQuarterlyModel {
    * 查询某季度全公司汇总
    */
   static async findByQuarter(year: number, quarter: number): Promise<any[]> {
+    const months = this.getQuarterMonths(year, quarter);
     const results = await query(
       `SELECT
          qs.*,
@@ -262,8 +290,16 @@ export class EmployeeQuarterlyModel {
        FROM employee_quarterly_summaries qs
        LEFT JOIN employees e ON e.id = qs.employee_id
        WHERE qs.year = ? AND qs.quarter = ?
+         AND EXISTS (
+           SELECT 1
+           FROM performance_records pr
+           WHERE pr.employee_id = qs.employee_id
+             AND pr.month = ANY(?)
+             AND pr.status IN ('completed', 'scored')
+             AND COALESCE(pr.total_score, 0) > 0
+         )
        ORDER BY qs.avg_score DESC`,
-      [year, quarter]
+      [year, quarter, months]
     );
     return this.attachRanks(results);
   }
@@ -273,6 +309,7 @@ export class EmployeeQuarterlyModel {
    */
   static async findByTeamQuarter(employeeIds: string[], year: number, quarter: number): Promise<any[]> {
     if (employeeIds.length === 0) return [];
+    const months = this.getQuarterMonths(year, quarter);
     const results = await query(
       `SELECT
          qs.*,
@@ -283,8 +320,16 @@ export class EmployeeQuarterlyModel {
        FROM employee_quarterly_summaries qs
        LEFT JOIN employees e ON e.id = qs.employee_id
        WHERE qs.year = ? AND qs.quarter = ? AND qs.employee_id = ANY(?)
+         AND EXISTS (
+           SELECT 1
+           FROM performance_records pr
+           WHERE pr.employee_id = qs.employee_id
+             AND pr.month = ANY(?)
+             AND pr.status IN ('completed', 'scored')
+             AND COALESCE(pr.total_score, 0) > 0
+         )
        ORDER BY qs.avg_score DESC`,
-      [year, quarter, employeeIds]
+      [year, quarter, employeeIds, months]
     );
     return this.attachRanks(results);
   }
@@ -303,6 +348,7 @@ export class EmployeeQuarterlyModel {
    * 季度统计数据
    */
   static async getQuarterStats(year: number, quarter: number): Promise<any> {
+    const months = this.getQuarterMonths(year, quarter);
     const results = await query(
       `SELECT 
          COUNT(*) as total_employees,
@@ -317,8 +363,16 @@ export class EmployeeQuarterlyModel {
          COUNT(*) FILTER (WHERE trend = 'flat') as trend_flat,
          COUNT(*) FILTER (WHERE trend = 'down') as trend_down
        FROM employee_quarterly_summaries
-       WHERE year = ? AND quarter = ?`,
-      [year, quarter]
+       WHERE year = ? AND quarter = ?
+         AND EXISTS (
+           SELECT 1
+           FROM performance_records pr
+           WHERE pr.employee_id = employee_quarterly_summaries.employee_id
+             AND pr.month = ANY(?)
+             AND pr.status IN ('completed', 'scored')
+             AND COALESCE(pr.total_score, 0) > 0
+         )`,
+      [year, quarter, months]
     );
     return results[0] || {};
   }

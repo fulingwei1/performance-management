@@ -33,7 +33,17 @@ type ExistingEmployee = {
   id: string;
   name: string;
   role: ArchiveEmployee['role'];
+  status?: string | null;
   manager_id?: string | null;
+};
+
+type UnresolvedManagerLink = {
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  subDepartment: string;
+  managerName: string;
+  reason: string;
 };
 
 type OrgLevelValues = {
@@ -128,6 +138,8 @@ function normalizeOrgLevels(row: WorksheetRow): OrgLevelValues {
 
 function decodeXml(value: string): string {
   return value
+    .replace(/&#x([0-9a-fA-F]+);/g, (_match, code) => String.fromCodePoint(Number.parseInt(code, 16)))
+    .replace(/&#([0-9]+);/g, (_match, code) => String.fromCodePoint(Number.parseInt(code, 10)))
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
@@ -265,7 +277,7 @@ function resolveRole(row: WorksheetRow, existing?: ExistingEmployee): ArchiveEmp
   if (existing && ['admin', 'hr', 'gm'].includes(existing.role)) return existing.role;
   if (name === '郑汝才') return 'gm';
   if (department === '人力行政部' && /人事|行政/.test(position) && !/保洁/.test(position)) return 'hr';
-  if (/总经理|副总|常务副总|部门经理|经理|主管|主任|部长/.test(position)) return 'manager';
+  if (/总经理|副总|常务副总|部门经理|经理|主管|主任|部长|组长/.test(position)) return 'manager';
   return existing?.role === 'manager' ? 'manager' : 'employee';
 }
 
@@ -294,7 +306,7 @@ function buildNameIndex(existingEmployees: ExistingEmployee[]): Map<string, Exis
 
 async function loadExistingEmployees(): Promise<ExistingEmployee[]> {
   if (USE_MEMORY_DB) return [];
-  return await query('SELECT id, name, role, manager_id FROM employees');
+  return await query('SELECT id, name, role, status, manager_id FROM employees');
 }
 
 function parseArchiveEmployees(rows: WorksheetRow[], existingEmployees: ExistingEmployee[]): ArchiveEmployee[] {
@@ -336,18 +348,38 @@ function parseArchiveEmployees(rows: WorksheetRow[], existingEmployees: Existing
     .filter((employee): employee is ArchiveEmployee => Boolean(employee));
 }
 
-function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: ExistingEmployee[]): Map<string, string> {
+function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: ExistingEmployee[]): {
+  managerIds: Map<string, string>;
+  unresolvedManagers: UnresolvedManagerLink[];
+} {
   const activeByName = new Map<string, ArchiveEmployee>();
   for (const employee of employees) {
     if (employee.status === 'active') activeByName.set(employee.name, employee);
   }
 
-  const existingByName = buildNameIndex(existingEmployees);
+  const existingByName = buildNameIndex(
+    existingEmployees.filter((employee) => !employee.status || employee.status === 'active')
+  );
   const managerIds = new Map<string, string>();
+  const unresolvedManagers: UnresolvedManagerLink[] = [];
   for (const employee of employees) {
     if (!employee.managerName) continue;
     const manager = activeByName.get(employee.managerName) || existingByName.get(employee.managerName);
-    if (manager) managerIds.set(employee.id, manager.id);
+    if (manager) {
+      if (manager.id !== employee.id) managerIds.set(employee.id, manager.id);
+      continue;
+    }
+
+    if (employee.status === 'active') {
+      unresolvedManagers.push({
+        employeeId: employee.id,
+        employeeName: employee.name,
+        department: employee.department,
+        subDepartment: employee.subDepartment,
+        managerName: employee.managerName,
+        reason: '档案中填写了直接上级姓名，但员工表/系统账号中没有找到同名在职人员',
+      });
+    }
   }
 
   const hrManager = activeByName.get('符凌维') || existingByName.get('符凌维');
@@ -373,6 +405,7 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
       if (
         employee.status === 'active' &&
         employee.name !== rule.managerName &&
+        !managerIds.has(employee.id) &&
         orgPath.includes(rule.keyword)
       ) {
         managerIds.set(employee.id, manager.id);
@@ -380,7 +413,7 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
     }
   }
 
-  return managerIds;
+  return { managerIds, unresolvedManagers };
 }
 
 async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: Map<string, string>) {
@@ -480,7 +513,7 @@ export async function importHrArchive(filePath: string) {
   const rows = await readWorksheetRows(filePath, '员工信息表');
   const existingEmployees = await loadExistingEmployees();
   const employees = parseArchiveEmployees(rows, existingEmployees);
-  const managerIds = resolveManagerIds(employees, existingEmployees);
+  const { managerIds, unresolvedManagers } = resolveManagerIds(employees, existingEmployees);
   const upsertOrder = [...employees].sort((left, right) => {
     if (left.status === right.status) return 0;
     return left.status === 'active' ? 1 : -1;
@@ -520,6 +553,8 @@ export async function importHrArchive(filePath: string) {
     nonAssessmentRoleCount: 0,
     disabledCount: employees.length - activeEmployees.length,
     managerLinks: managerIds.size,
+    unresolvedManagerCount: unresolvedManagers.length,
+    unresolvedManagers,
     assessorSyncUpdatedRecords: assessorSyncResult.updatedRecords,
     assessorSyncMovedTodos: assessorSyncResult.movedTodos,
     wecomMappedCount: wecomSyncResult.updated,

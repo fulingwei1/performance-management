@@ -70,22 +70,24 @@ export function RelationshipManagementPanel({
   }, [refreshSignal]);
 
   const activeEmployees = useMemo(() => employees.filter(isActiveEmployee), [employees]);
+
+  const activeEmployeeMap = useMemo(
+    () => new Map(activeEmployees.map((employee) => [employee.id, employee])),
+    [activeEmployees],
+  );
+
   const managerCandidates = useMemo(
     () => activeEmployees
-      .filter((employee) => ['manager', 'gm', 'hr', 'admin'].includes(employee.role))
       .sort((a, b) => `${a.department}-${a.name}`.localeCompare(`${b.department}-${b.name}`, 'zh-CN')),
     [activeEmployees],
   );
 
-  const managerMap = useMemo(
-    () => new Map(managerCandidates.map((employee) => [employee.id, employee])),
-    [managerCandidates],
-  );
+  const managerMap = activeEmployeeMap;
 
   const relationshipEmployees = useMemo(() => {
     const keyword = relationshipSearch.trim().toLowerCase();
     return activeEmployees.filter((employee) => {
-      const hasMissingManager = !employee.managerId || !employees.some((item) => item.id === employee.managerId);
+      const hasMissingManager = !employee.managerId || !activeEmployeeMap.has(employee.managerId);
       if (showMissingManagersOnly && !hasMissingManager) return false;
       if (!keyword) return true;
       const managerName = employee.managerId ? managerMap.get(employee.managerId)?.name || '' : '';
@@ -94,7 +96,7 @@ export function RelationshipManagementPanel({
         .toLowerCase()
         .includes(keyword);
     });
-  }, [activeEmployees, employees, relationshipSearch, managerMap, showMissingManagersOnly]);
+  }, [activeEmployees, activeEmployeeMap, relationshipSearch, managerMap, showMissingManagersOnly]);
 
   useEffect(() => {
     setRelationshipPage(1);
@@ -112,8 +114,8 @@ export function RelationshipManagementPanel({
   }, [relationshipEmployees, relationshipPage]);
 
   const missingManagerCount = useMemo(
-    () => activeEmployees.filter((employee) => !employee.managerId || !employees.some((item) => item.id === employee.managerId)).length,
-    [activeEmployees, employees],
+    () => activeEmployees.filter((employee) => !employee.managerId || !activeEmployeeMap.has(employee.managerId)).length,
+    [activeEmployees, activeEmployeeMap],
   );
 
   const handleSaveDirectManager = async (employee: Employee) => {

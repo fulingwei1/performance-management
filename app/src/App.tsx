@@ -18,7 +18,6 @@ const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => 
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
-const UserManagement = lazy(() => import('@/pages/Admin/UserManagement').then((module) => ({ default: module.UserManagement })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
 const LogManagement = lazy(() => import('@/pages/HR/LogManagement'));
@@ -272,7 +271,7 @@ function App() {
           <Route path="/hr/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/data-io" element={<DataImportExport />} />
-          <Route path="/hr/user-management" element={<UserManagement />} />
+          <Route path="/hr/user-management" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/data-import" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/assessment-export" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/assessment-config" element={<AssessmentConfig />} />
@@ -292,7 +291,7 @@ function App() {
         {/* HR/Admin merged routes */}
         <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
           <Route path="/admin/dashboard" element={<Navigate to="/hr/dashboard" replace />} />
-          <Route path="/admin/user-management" element={<Navigate to="/hr/user-management" replace />} />
+          <Route path="/admin/user-management" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/admin/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/admin/analytics" element={<Navigate to="/hr/analytics" replace />} />
           <Route path="/admin/data-export" element={<Navigate to="/hr/data-io" replace />} />

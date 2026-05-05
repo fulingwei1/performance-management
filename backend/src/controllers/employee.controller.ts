@@ -231,8 +231,18 @@ export const employeeController = {
 
   // 获取所有经理
   getAllManagers: asyncHandler(async (req: Request, res: Response) => {
-    const managers = (await EmployeeModel.findByRole('manager'))
+    const employees = (await EmployeeModel.findAll() as any[])
       .filter((e: any) => !e.status || e.status === 'active');
+    const subordinateManagerIds = new Set(
+      employees
+        .map((employee: any) => String(employee.managerId || '').trim())
+        .filter(Boolean)
+    );
+    const managers = employees.filter((e: any) => (
+      ['manager', 'gm', 'hr', 'admin'].includes(e.role)
+      || subordinateManagerIds.has(e.id)
+      || /总经理|副总|常务副总|部门经理|经理|主管|主任|部长|组长/.test(String(e.position || ''))
+    ));
     const role = req.user?.role;
     const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
     const toDirectory = (e: any) => ({
