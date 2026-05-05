@@ -22,6 +22,21 @@ CREATE TABLE IF NOT EXISTS automation_logs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE automation_logs
+  ADD COLUMN IF NOT EXISTS job_type VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS task_type VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS task_name VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS month VARCHAR(7),
+  ADD COLUMN IF NOT EXISTS details JSONB,
+  ADD COLUMN IF NOT EXISTS input_params JSONB,
+  ADD COLUMN IF NOT EXISTS result_summary JSONB,
+  ADD COLUMN IF NOT EXISTS error_message TEXT,
+  ADD COLUMN IF NOT EXISTS duration_ms INTEGER,
+  ADD COLUMN IF NOT EXISTS executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
 CREATE INDEX IF NOT EXISTS idx_automation_logs_job_type ON automation_logs(job_type);
 CREATE INDEX IF NOT EXISTS idx_automation_logs_task_type ON automation_logs(task_type);
 CREATE INDEX IF NOT EXISTS idx_automation_logs_month ON automation_logs(month);
