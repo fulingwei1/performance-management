@@ -667,6 +667,25 @@ export class AssessmentTemplateModel {
     return Array.from(new Set(candidates.filter(Boolean)));
   }
 
+  private static normalizeMatchValue(value: string): string {
+    return String(value || '').trim().replace(/\s+/g, '').toLowerCase();
+  }
+
+  private static getPositionCandidates(employee: {
+    position?: string;
+    department?: string;
+    subDepartment?: string;
+  }): string[] {
+    const candidates = [
+      employee.position,
+      employee.subDepartment,
+      employee.department,
+      ...(employee.subDepartment || '').split('/'),
+    ];
+
+    return Array.from(new Set(candidates.map((value) => String(value || '').trim()).filter(Boolean)));
+  }
+
   /**
    * 根据员工信息匹配最佳模板
    * 匹配优先级：岗位+层级(100) > 岗位(80) > 层级(60) > 角色(40) > 部门类型(20)
@@ -676,6 +695,7 @@ export class AssessmentTemplateModel {
     level?: string;
     position?: string;
     department?: string;
+    subDepartment?: string;
   }): Promise<AssessmentTemplate | null> {
     try {
       const templates = await this.findAll({ status: 'active', includeMetrics: false });
@@ -688,10 +708,14 @@ export class AssessmentTemplateModel {
           const levels = template.applicableLevels || [];
           const positions = template.applicablePositions || [];
           const levelCandidates = this.getLevelCandidates(employee);
+          const hasSpecificPositionOrLevelRule = positions.length > 0 || levels.length > 0;
+          const positionCandidates = this.getPositionCandidates(employee).map(this.normalizeMatchValue);
+          const normalizedTemplatePositions = positions.map(this.normalizeMatchValue);
 
-          // 岗位精确匹配
-          if (employee.position && positions.length > 0) {
-            if (positions.includes(employee.position)) {
+          // 岗位/部门线索精确匹配：HR 档案里很多技术员工 position 只有“工程师”，
+          // 需要结合 subDepartment（如 PLC 部/PLC四组、测试部、结构组）识别实际任职资格模板。
+          if (positionCandidates.length > 0 && positions.length > 0) {
+            if (positionCandidates.some(candidate => normalizedTemplatePositions.includes(candidate))) {
               score += 80;
               // 岗位 + 层级同时匹配
               if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
@@ -707,19 +731,23 @@ export class AssessmentTemplateModel {
 
           // 角色匹配
           if (employee.role && roles.length > 0 && roles.includes(employee.role)) {
-            score += 40;
+            const isBroadRoleTemplate = !hasSpecificPositionOrLevelRule;
+            const isManagerRoleTemplate = employee.role !== 'employee';
+            if (score > 0 || isBroadRoleTemplate || isManagerRoleTemplate) {
+              score += 40;
+            }
           }
 
-          // 部门类型兜底
-          if (score === 0 && this.getDepartmentType(employee.department) === template.departmentType) {
+          // 部门类型只作为默认模板兜底，避免“机械初级”等专用模板仅靠同部门类型误匹配到所有工程员工。
+          if (score === 0 && template.isDefault && this.getDepartmentType(employee.department) === template.departmentType) {
             score = 20;
           }
 
           // 默认模板额外加分
           if (template.isDefault && score > 0) score += 5;
 
-          // 自定义优先级
-          if (template.priority) score += template.priority;
+          // 自定义优先级只在已经命中岗位/层级/角色/默认部门类型时加分，不能单独制造命中。
+          if (template.priority && score > 0) score += template.priority;
 
           return { template, score };
         })

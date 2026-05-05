@@ -274,11 +274,23 @@ function registerMissingQualificationTemplates() {
   registerSupplementalTemplate({
     id: 'template-debug-junior-001',
     name: '调试初级工程师考核模板',
-    description: '调试初级工程师：测试执行30%+记录反馈20%+安全规范20%+学习成长20%+态度10%',
+    description: '调试/测试初级工程师：测试执行25%+漏测误判控制25%+记录复现20%+学习成长20%+态度10%',
     departmentType: 'engineering',
     levels: ['junior'],
-    positions: ['助理调试工程师', '初级调试工程师', '调试助理', '测试助理'],
-    metrics: engineeringCoreMetrics.junior,
+    positions: [
+      '助理调试工程师', '初级调试工程师', '调试助理', '测试助理',
+      '助理测试工程师', '初级测试工程师', '测试工程师',
+      '测试部', '测试部/新能源组', '新能源组', '测试部/现场支持', '现场支持',
+      '测试部/白色家电组', '白色家电组', '测试部/海尔治具', '海尔治具',
+      '测试部/半导体组', '半导体组',
+    ],
+    metrics: [
+      { name: '测试执行准确性', code: 'TEST_EXECUTION_ACCURACY', weight: 25, description: '按测试方案执行，覆盖规定项目，测试步骤、判定标准执行准确', type: 'quantitative' },
+      { name: '漏测误判控制', code: 'MISS_FALSE_JUDGMENT_CONTROL', weight: 25, description: '控制漏测、误判、错判次数，避免问题流入后续环节或客户现场', type: 'quantitative' },
+      { name: '测试记录与问题复现', code: 'TEST_RECORD_REPRODUCTION', weight: 20, description: '测试记录完整，异常现象、复现步骤、证据截图/日志清楚可追溯' },
+      { name: '学习成长与规范掌握', code: 'LEARNING_STANDARD_MASTERY', weight: 20, description: '学习测试规范、设备原理和常见问题库，能复盘本月漏测/误判原因' },
+      { name: '执行反馈与工作态度', code: 'EXECUTION_FEEDBACK_ATTITUDE', weight: 10, description: '异常及时反馈，主动请教，责任心和配合度' },
+    ],
   });
 
   registerSupplementalTemplate({
@@ -327,11 +339,17 @@ function registerMissingQualificationTemplates() {
   registerSupplementalTemplate({
     id: 'template-purch-junior-001',
     name: '采购初级模板',
-    description: '采购初级：询价比价25%+交期跟催25%+单据准确20%+供应商沟通15%+学习执行15%',
+    description: '采购初级：订单准确30%+错采漏采控制25%+确认跟催20%+流程学习15%+沟通纪律10%',
     departmentType: 'support',
     levels: ['junior'],
-    positions: ['采购助理', '初级采购', '采购专员'],
-    metrics: supportCoreMetrics.junior,
+    positions: ['采购部', '采购组', '采购助理', '初级采购', '采购专员', '采购工程师'],
+    metrics: [
+      { name: '采购订单准确性', code: 'PURCHASE_ORDER_ACCURACY', weight: 30, description: '规格型号、品牌、数量、单位、交期、项目号等采购订单信息准确', type: 'quantitative' },
+      { name: '错采漏采控制', code: 'WRONG_MISSING_PURCHASE_CONTROL', weight: 25, description: '控制买错、漏买、重复采购、规格型号不符等错采漏采问题', type: 'quantitative' },
+      { name: '供应商确认与交期跟催', code: 'SUPPLIER_CONFIRM_DELIVERY_FOLLOWUP', weight: 20, description: '下单前做好型号参数确认，交期异常及时跟催和反馈' },
+      { name: '流程学习与物料知识', code: 'PROCESS_MATERIAL_LEARNING', weight: 15, description: '流程学习、物料基础知识、图纸/BOM/规格书识别能力提升' },
+      { name: '沟通响应与执行纪律', code: 'COMMUNICATION_DISCIPLINE', weight: 10, description: '与工程、仓库、供应商沟通及时，执行采购制度和审批纪律' },
+    ],
   });
   registerSupplementalTemplate({
     id: 'template-purch-inter-001',
@@ -586,17 +604,24 @@ export async function initializeDefaultTemplates() {
   // 1.4 机械设计 - 初级工程师
   registerTemplate({
     id: 'template-mech-junior-001', name: '机械设计初级工程师考核模板',
-    description: '初级机械工程师：学习成长30%+辅助设计40%+基础出图20%+态度10%',
+    description: '初级机械/结构工程师：辅助设计20%+设计错误控制25%+图纸BOM准确20%+学习成长25%+态度反馈10%',
     department_type: 'engineering', is_default: false, status: 'active',
     applicableRoles: ['employee'], applicableLevels: ['junior'],
-    applicablePositions: ['助理机械工程师', '见习机械工程师', '初级机械工程师'], priority: 50
+    applicablePositions: [
+      '助理机械工程师', '见习机械工程师', '初级机械工程师', '机械工程师',
+      '助理结构工程师', '初级结构工程师', '结构工程师',
+      '机械部', '机械设计部',
+      '新能源技术部/结构一组', '结构一组',
+      '新能源技术部/结构二组', '结构二组',
+      '新能源技术部/结构三组', '结构三组',
+    ], priority: 50
   });
   registerMetrics([
-    { id: 'metric-mech-jnr-01', template_id: 'template-mech-junior-001', metric_name: '辅助设计贡献', metric_code: 'ASSIST_DESIGN', category: 'performance', weight: 25.00, description: '辅助完成设计任务的完成情况', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-mech-jnr-02', template_id: 'template-mech-junior-001', metric_name: '3D建模学习', metric_code: '3D_LEARNING', category: 'performance', weight: 15.00, description: 'SolidWorks等工具掌握程度', evaluation_type: 'qualitative', sort_order: 2 },
-    { id: 'metric-mech-jnr-03', template_id: 'template-mech-junior-001', metric_name: '出图规范性', metric_code: 'DRAWING_STANDARD', category: 'performance', weight: 15.00, description: '出图符合规范、标注准确', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-mech-jnr-04', template_id: 'template-mech-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 30.00, description: '技术学习进度、培训参与度', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-mech-jnr-05', template_id: 'template-mech-junior-001', metric_name: '工作态度', metric_code: 'WORK_ATTITUDE', category: 'behavior', weight: 15.00, description: '主动性、责任心、执行力', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-mech-jnr-01', template_id: 'template-mech-junior-001', metric_name: '辅助设计与任务完成', metric_code: 'ASSIST_DESIGN_DELIVERY', category: 'performance', weight: 20.00, description: '在指导下按时完成3D建模、零件整理、设计修改等基础任务', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-mech-jnr-02', template_id: 'template-mech-junior-001', metric_name: '设计错误与返工控制', metric_code: 'DESIGN_ERROR_REWORK_CONTROL', category: 'performance', weight: 25.00, description: '控制设计错误、干涉、尺寸错误、选型错误和因个人原因造成的返工次数', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-mech-jnr-03', template_id: 'template-mech-junior-001', metric_name: '图纸与BOM准确性', metric_code: 'DRAWING_BOM_ACCURACY', category: 'performance', weight: 20.00, description: '工程图标注、公差、BOM规格数量准确，评审问题能及时关闭', evaluation_type: 'quantitative', sort_order: 3 },
+    { id: 'metric-mech-jnr-04', template_id: 'template-mech-junior-001', metric_name: '学习成长与标准掌握', metric_code: 'LEARNING_STANDARD_MASTERY', category: 'behavior', weight: 25.00, description: '学习SolidWorks、机械设计规范、标准件/BOM规则，并能复盘本月设计错误原因', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-mech-jnr-05', template_id: 'template-mech-junior-001', metric_name: '工作态度与问题反馈', metric_code: 'ATTITUDE_ISSUE_FEEDBACK', category: 'behavior', weight: 10.00, description: '主动性、责任心、执行力，发现设计疑问及时反馈不拖延', evaluation_type: 'qualitative', sort_order: 5 },
   ]);
 
   // ============================================
@@ -655,17 +680,24 @@ export async function initializeDefaultTemplates() {
   // 2.4 电气 - 初级工程师
   registerTemplate({
     id: 'template-elec-junior-001', name: '电气初级工程师考核模板',
-    description: '初级电气工程师：学习30%+辅助编程35%+接线图15%+态度20%',
+    description: '初级PLC/电气工程师：基础交付20%+程序接线图错误控制25%+调试闭环20%+学习成长25%+安全态度10%',
     department_type: 'engineering', is_default: false, status: 'active',
     applicableRoles: ['employee'], applicableLevels: ['junior'],
-    applicablePositions: ['助理电气工程师', '见习电气工程师', '初级电气工程师'], priority: 50
+    applicablePositions: [
+      '助理电气工程师', '见习电气工程师', '初级电气工程师', '电气工程师',
+      '助理PLC工程师', '初级PLC工程师', 'PLC工程师',
+      'PLC 部', 'PLC 部/PLC一组', 'PLC一组',
+      'PLC 部/PLC二组', 'PLC二组',
+      'PLC 部/PLC三组', 'PLC三组',
+      'PLC 部/PLC四组', 'PLC四组',
+    ], priority: 50
   });
   registerMetrics([
-    { id: 'metric-elec-jnr-01', template_id: 'template-elec-junior-001', metric_name: '辅助编程', metric_code: 'ASSIST_PROGRAM', category: 'performance', weight: 25.00, description: '辅助完成PLC程序编写和测试', evaluation_type: 'quantitative', sort_order: 1 },
-    { id: 'metric-elec-jnr-02', template_id: 'template-elec-junior-001', metric_name: '接线图绘制', metric_code: 'WIRING_DRAWING', category: 'performance', weight: 15.00, description: '电气接线图绘制质量', evaluation_type: 'qualitative', sort_order: 2 },
-    { id: 'metric-elec-jnr-03', template_id: 'template-elec-junior-001', metric_name: '调试辅助', metric_code: 'ASSIST_DEBUG', category: 'performance', weight: 10.00, description: '辅助现场调试', evaluation_type: 'qualitative', sort_order: 3 },
-    { id: 'metric-elec-jnr-04', template_id: 'template-elec-junior-001', metric_name: '学习成长', metric_code: 'LEARNING', category: 'behavior', weight: 30.00, description: 'PLC/电气知识学习进度', evaluation_type: 'qualitative', sort_order: 4 },
-    { id: 'metric-elec-jnr-05', template_id: 'template-elec-junior-001', metric_name: '工作态度', metric_code: 'ATTITUDE', category: 'behavior', weight: 20.00, description: '主动性、责任心', evaluation_type: 'qualitative', sort_order: 5 },
+    { id: 'metric-elec-jnr-01', template_id: 'template-elec-junior-001', metric_name: 'PLC/电气基础交付', metric_code: 'PLC_ELEC_BASIC_DELIVERY', category: 'performance', weight: 20.00, description: '在指导下完成PLC程序片段、电气图纸整理、基础测试等任务', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-elec-jnr-02', template_id: 'template-elec-junior-001', metric_name: '程序错误与接线图错误控制', metric_code: 'PLC_WIRING_ERROR_CONTROL', category: 'performance', weight: 25.00, description: '控制PLC程序错误、变量/点位错误、接线图错误、选型遗漏和由此造成的返工', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-elec-jnr-03', template_id: 'template-elec-junior-001', metric_name: '调试辅助与问题闭环', metric_code: 'DEBUG_SUPPORT_ISSUE_CLOSURE', category: 'performance', weight: 20.00, description: '辅助现场调试，问题记录清楚，能跟进程序/接线图问题闭环', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-elec-jnr-04', template_id: 'template-elec-junior-001', metric_name: '学习成长与规范掌握', metric_code: 'LEARNING_STANDARD_MASTERY', category: 'behavior', weight: 25.00, description: '学习PLC、电气安全、接线规范和常见错误案例，并能复盘本月程序错误原因', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-elec-jnr-05', template_id: 'template-elec-junior-001', metric_name: '安全规范与工作态度', metric_code: 'SAFETY_ATTITUDE', category: 'behavior', weight: 10.00, description: '遵守电气安全规范，责任心、主动性和执行纪律', evaluation_type: 'qualitative', sort_order: 5 },
   ]);
 
   // ============================================
