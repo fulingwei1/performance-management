@@ -736,8 +736,7 @@ export class AssessmentTemplateModel {
           // 角色匹配
           if (employee.role && roles.length > 0 && roles.includes(employee.role)) {
             const isBroadRoleTemplate = !hasSpecificPositionOrLevelRule;
-            const isManagerRoleTemplate = employee.role !== 'employee';
-            if (score > 0 || isBroadRoleTemplate || isManagerRoleTemplate) {
+            if (score > 0 || isBroadRoleTemplate) {
               score += 40;
             }
           }

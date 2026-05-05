@@ -25,6 +25,7 @@ function putTemplate(input: {
   name: string;
   departmentType?: string;
   isDefault?: boolean;
+  roles?: string[];
   levels?: string[];
   positions?: string[];
   priority?: number;
@@ -36,7 +37,7 @@ function putTemplate(input: {
     department_type: input.departmentType || 'engineering',
     is_default: input.isDefault || false,
     status: 'active',
-    applicable_roles: ['employee'],
+    applicable_roles: input.roles || ['employee'],
     applicable_levels: input.levels || [],
     applicable_positions: input.positions || [],
     priority: input.priority || 0,
@@ -74,6 +75,23 @@ describe('resolveTaskTemplateForEmployee', () => {
       name: '电气初级工程师考核模板',
       levels: ['junior'],
       positions: ['PLC 部', 'PLC一组', 'PLC二组', 'PLC三组', 'PLC四组'],
+      priority: 50,
+    });
+    putTemplate({
+      id: 'template-sales-mgr-001',
+      name: '销售部门销售经理考核模板',
+      departmentType: 'sales',
+      roles: ['manager'],
+      levels: ['senior', 'manager'],
+      positions: ['销售经理', '大客户经理', '营销中心总监'],
+      priority: 60,
+    });
+    putTemplate({
+      id: 'template-pm-senior-001',
+      name: '高级项目经理考核模板',
+      roles: ['manager'],
+      levels: ['senior'],
+      positions: ['高级项目经理', '项目总监', '项目主管'],
       priority: 50,
     });
   });
@@ -207,6 +225,24 @@ describe('resolveTaskTemplateForEmployee', () => {
       department: '工程技术中心',
       subDepartment: '测试部/白色家电组',
     }, config)).resolves.toMatchObject({
+      id: 'template-elec-default',
+      source: 'unit_config',
+    });
+  });
+
+  it('does not assign role-only manager templates when the manager position does not match', async () => {
+    await expect(resolveTaskTemplateForEmployee({
+      role: 'manager',
+      level: 'senior',
+      position: '副经理',
+      department: '工程技术中心',
+      subDepartment: 'PLC 部/PLC四组',
+    }, {
+      ...baseConfig,
+      templateAssignments: {
+        工程技术中心: 'template-elec-default',
+      },
+    })).resolves.toMatchObject({
       id: 'template-elec-default',
       source: 'unit_config',
     });
