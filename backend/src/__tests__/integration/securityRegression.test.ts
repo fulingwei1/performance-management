@@ -550,41 +550,74 @@ describe('Security regression API checks', () => {
   });
 
   it('keeps stats alias and satisfaction survey response alias available', async () => {
-    const hrToken = await TestHelper.getAuthToken('hr');
-    const employeeToken = await TestHelper.getAuthToken('employee');
+    jest.useFakeTimers().setSystemTime(new Date(2099, 6, 2, 10));
+    try {
+      const hrToken = await TestHelper.getAuthToken('hr');
+      const employeeToken = await TestHelper.getAuthToken('employee');
 
-    const stats = await request(app)
-      .get('/api/stats/2099-01')
-      .set('Authorization', `Bearer ${hrToken}`);
-    expect(stats.status).toBe(200);
-    expect(stats.body.success).toBe(true);
+      const stats = await request(app)
+        .get('/api/stats/2099-01')
+        .set('Authorization', `Bearer ${hrToken}`);
+      expect(stats.status).toBe(200);
+      expect(stats.body.success).toBe(true);
 
-    const ensuredSurvey = await request(app)
-      .post('/api/satisfaction-surveys/current/ensure')
-      .set('Authorization', `Bearer ${hrToken}`)
-      .send({ year: 2099, half: 1 });
-    expect(ensuredSurvey.status).toBe(200);
-    expect(ensuredSurvey.body.success).toBe(true);
+      const ensuredSurvey = await request(app)
+        .post('/api/satisfaction-surveys/current/ensure')
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({ year: 2099, half: 1 });
+      expect(ensuredSurvey.status).toBe(200);
+      expect(ensuredSurvey.body.success).toBe(true);
 
-    const survey = await request(app)
-      .post('/api/satisfaction-surveys/respond')
-      .set('Authorization', `Bearer ${employeeToken}`)
-      .send({
-        scores: {
-          fairness: 5,
-          feedbackTimeliness: 4,
-          collaboration: 5,
-          support: 4,
-          overall: 5,
-        },
-        comment: '整体满意',
+      const survey = await request(app)
+        .post('/api/satisfaction-surveys/respond')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({
+          scores: {
+            fairness: 5,
+            feedbackTimeliness: 4,
+            collaboration: 5,
+            support: 4,
+            overall: 5,
+          },
+          comment: '整体满意',
+        });
+
+      expect(survey.status).toBe(200);
+      expect(survey.body).toMatchObject({
+        success: true,
+        message: '满意度调查已提交',
       });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 
-    expect(survey.status).toBe(200);
-    expect(survey.body).toMatchObject({
-      success: true,
-      message: '满意度调查已提交',
-    });
+  it('auto-creates the semiannual satisfaction survey when an employee checks current in the assessment month', async () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 6, 2, 10));
+    try {
+      (memoryStore as any).satisfactionSurveys = new Map();
+      (memoryStore as any).satisfactionSurveyResponses = new Map();
+
+      const employeeToken = await TestHelper.getAuthToken('employee');
+      const response = await request(app)
+        .get('/api/satisfaction-surveys/current')
+        .set('Authorization', `Bearer ${employeeToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        data: {
+          survey: {
+            period: '2026-H1',
+            status: 'open',
+          },
+          myResponse: null,
+        },
+      });
+      expect(Array.from((memoryStore as any).satisfactionSurveys.values())).toHaveLength(1);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('prevents HR from elevating an account to admin', async () => {

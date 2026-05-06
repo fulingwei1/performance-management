@@ -88,6 +88,13 @@ describe('SatisfactionSurveyService', () => {
     await expect(SatisfactionSurveyService.findCurrentSurvey(new Date('2026-07-02T08:00:00+08:00'))).resolves.toBeNull();
   });
 
+  it('does not keep stale half-year surveys visible outside the assessment window', async () => {
+    await SatisfactionSurveyService.ensureSurveyForPeriod({ year: 2026, half: 1, createdBy: 'hr001' });
+
+    await expect(SatisfactionSurveyService.findCurrentSurvey(new Date(2026, 4, 6, 10))).resolves.toBeNull();
+    await expect(SatisfactionSurveyService.findCurrentSurvey(new Date(2026, 7, 1, 10))).resolves.toBeNull();
+  });
+
   it('stores one response per employee and aggregates averages', async () => {
     const survey = await SatisfactionSurveyService.ensureSurveyForPeriod({ year: 2026, half: 1, createdBy: 'hr001' });
 

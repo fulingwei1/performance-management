@@ -334,10 +334,17 @@ export class SatisfactionSurveyService {
     return rows.length > 0 ? mapSurvey(rows[0]) : null;
   }
 
-  static async findCurrentSurvey(_date: Date = new Date()): Promise<SatisfactionSurvey | null> {
+  static async findCurrentSurvey(date: Date = new Date()): Promise<SatisfactionSurvey | null> {
+    const period = this.resolveAssessmentSurveyPeriod(date);
+    if (!period) return null;
+
     if (USE_MEMORY_DB) {
       return Array.from(getSurveyStore().values())
-        .filter((survey) => survey.status === 'open')
+        .filter((survey) => (
+          survey.status === 'open'
+          && survey.year === period.year
+          && survey.half === period.half
+        ))
         .sort((a, b) => b.year - a.year || b.half - a.half)[0] || null;
     }
 
@@ -345,9 +352,11 @@ export class SatisfactionSurveyService {
       SELECT *
       FROM satisfaction_surveys
       WHERE status = 'open'
+        AND year = $1
+        AND half = $2
       ORDER BY year DESC, half DESC
       LIMIT 1
-    `);
+    `, [period.year, period.half]);
     return rows.length > 0 ? mapSurvey(rows[0]) : null;
   }
 

@@ -24,7 +24,9 @@ export const satisfactionSurveyController = {
   }),
 
   getCurrent: asyncHandler(async (req: Request, res: Response) => {
-    const survey = await SatisfactionSurveyService.findCurrentSurvey(new Date());
+    const now = new Date();
+    await SatisfactionSurveyService.ensureSurveyForAssessmentDate(now, 'system');
+    const survey = await SatisfactionSurveyService.findCurrentSurvey(now);
     const myResponse = survey && req.user?.userId
       ? await SatisfactionSurveyService.getMyResponse(survey.id, req.user.userId)
       : null;
@@ -91,7 +93,9 @@ export const satisfactionSurveyController = {
       return res.status(401).json({ success: false, message: '未认证' });
     }
 
-    const survey = await SatisfactionSurveyService.findCurrentSurvey(new Date());
+    const now = new Date();
+    await SatisfactionSurveyService.ensureSurveyForAssessmentDate(now, 'system');
+    const survey = await SatisfactionSurveyService.findCurrentSurvey(now);
     if (!survey) {
       return res.status(404).json({
         success: false,
