@@ -30,6 +30,15 @@ const formatNullableScore = (value: unknown): string => {
   return Number.isFinite(score) && score > 0 ? score.toFixed(2) : '—';
 };
 
+const getScoreValue = (value: unknown): number => {
+  const score = Number(value);
+  return Number.isFinite(score) && score > 0 ? score : 0;
+};
+
+const getDimensionProgress = (value: unknown): number => {
+  return Math.min(100, Math.max(0, (getScoreValue(value) / 1.5) * 100));
+};
+
 export function MyScores({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuthStore();
   const { records, fetchMyRecords } = usePerformanceStore();
@@ -102,11 +111,11 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
   // 计算统计数据
   const stats = useMemo(() => {
     const averageScore = scoredRecords.length > 0
-      ? scoredRecords.reduce((sum, r) => sum + r.totalScore, 0) / scoredRecords.length
+      ? scoredRecords.reduce((sum, r) => sum + getScoreValue(r.totalScore), 0) / scoredRecords.length
       : 0;
     
     const bestScore = scoredRecords.length > 0
-      ? Math.max(...scoredRecords.map(r => r.totalScore))
+      ? Math.max(...scoredRecords.map(r => getScoreValue(r.totalScore)))
       : 0;
     
     const deptRanks = scoredRecords.map(r => r.departmentRank).filter((r): r is number => typeof r === 'number' && r > 0);
@@ -503,20 +512,20 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                     {/* Dimension Scores */}
                     <div className="grid grid-cols-4 gap-2">
                       <div className="text-center">
-                        <Progress value={(record.taskCompletion / 1.5) * 100} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">任务 {record.taskCompletion.toFixed(2)}</p>
+                        <Progress value={getDimensionProgress(record.taskCompletion)} className="h-1.5 mb-1" />
+                        <p className="text-xs text-gray-500">任务 {formatNullableScore(record.taskCompletion)}</p>
                       </div>
                       <div className="text-center">
-                        <Progress value={(record.initiative / 1.5) * 100} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">主动 {record.initiative.toFixed(2)}</p>
+                        <Progress value={getDimensionProgress(record.initiative)} className="h-1.5 mb-1" />
+                        <p className="text-xs text-gray-500">主动 {formatNullableScore(record.initiative)}</p>
                       </div>
                       <div className="text-center">
-                        <Progress value={(record.projectFeedback / 1.5) * 100} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">反馈 {record.projectFeedback.toFixed(2)}</p>
+                        <Progress value={getDimensionProgress(record.projectFeedback)} className="h-1.5 mb-1" />
+                        <p className="text-xs text-gray-500">反馈 {formatNullableScore(record.projectFeedback)}</p>
                       </div>
                       <div className="text-center">
-                        <Progress value={(record.qualityImprovement / 1.5) * 100} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">质量 {record.qualityImprovement.toFixed(2)}</p>
+                        <Progress value={getDimensionProgress(record.qualityImprovement)} className="h-1.5 mb-1" />
+                        <p className="text-xs text-gray-500">质量 {formatNullableScore(record.qualityImprovement)}</p>
                       </div>
                     </div>
 
