@@ -8,7 +8,6 @@ import {
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
   HomeIcon,
-  KeyIcon,
   StarIcon,
   Squares2X2Icon,
   UserGroupIcon,
@@ -178,18 +177,6 @@ export const MobileNav: React.FC = () => {
                 </li>
               );
             })}
-            <li className="border-t border-gray-100 pt-2">
-              <Link
-                to="/change-password"
-                onClick={toggleMenu}
-                className={`flex items-center px-4 py-3 rounded-md transition-colors ${
-                  isActive('/change-password') ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <KeyIcon className="h-5 w-5 mr-3" />
-                <span className="font-medium">修改密码</span>
-              </Link>
-            </li>
           </ul>
         </nav>
       </div>

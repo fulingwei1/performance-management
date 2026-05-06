@@ -290,7 +290,7 @@ export default function LogManagement() {
                         </TableCell>
                         <TableCell>{roleLabels[log.role] || log.role || '-'}</TableCell>
                         <TableCell>{[log.department, log.subDepartment].filter(Boolean).join(' / ') || '-'}</TableCell>
-                        <TableCell>{log.loginMethod === 'idCard' ? '姓名+身份证后六位' : '密码'}</TableCell>
+                        <TableCell>姓名/工号 + 身份证后六位</TableCell>
                         <TableCell>{log.loginIp || '-'}</TableCell>
                         <TableCell>{browserSummary(log.userAgent)}</TableCell>
                         <TableCell>

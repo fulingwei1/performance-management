@@ -51,17 +51,6 @@ export const verifyToken = (token: string): JWTPayload => {
   return jwt.verify(token, SECRET as jwt.Secret) as JWTPayload;
 };
 
-function isPasswordChangeAllowedPath(req: Request): boolean {
-  const path = req.path || '';
-  const originalUrl = req.originalUrl || '';
-  return (
-    path === '/me' ||
-    path === '/change-password' ||
-    originalUrl.endsWith('/auth/me') ||
-    originalUrl.includes('/auth/change-password')
-  );
-}
-
 // 认证中间件
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -91,17 +80,6 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
       id: decoded.userId
     };
     req.userId = decoded.userId;
-
-    if (!isPasswordChangeAllowedPath(req)) {
-      if ((employee as any)?.mustChangePassword) {
-        res.status(403).json({
-          success: false,
-          code: 'PASSWORD_CHANGE_REQUIRED',
-          message: '当前账号使用临时密码，必须先修改密码'
-        });
-        return;
-      }
-    }
 
     next();
   } catch (error) {

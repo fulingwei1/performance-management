@@ -6,7 +6,6 @@ import { Layout } from '@/components/layout/Layout';
 import { Toaster } from '@/components/ui/sonner';
 
 const Login = lazy(() => import('@/pages/Login').then((module) => ({ default: module.Login })));
-const ChangePassword = lazy(() => import('@/pages/ChangePassword').then((module) => ({ default: module.ChangePassword })));
 const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((module) => ({ default: module.EmployeeDashboard })));
 const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
 const EmployeeSatisfactionSurvey = lazy(() => import('@/pages/Employee/SatisfactionSurvey').then((module) => ({ default: module.SatisfactionSurvey })));
@@ -98,9 +97,6 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
     const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
     return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
-  if (user?.mustChangePassword && location.pathname !== '/change-password') {
-    return <Navigate to="/change-password" replace />;
-  }
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0
     ? [...user.roles]
@@ -127,7 +123,6 @@ function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'm
 // Public route: redirect authenticated users to their dashboard
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
-  if (isAuthenticated && user?.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (isAuthenticated) return <Navigate to={getHomeForUser(user)} replace />;
   return <>{children}</>;
 }
@@ -139,9 +134,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
     return <Navigate to={`/login?redirect=${redirect}`} replace />;
-  }
-  if (user?.mustChangePassword && location.pathname !== '/change-password') {
-    return <Navigate to="/change-password" replace />;
   }
   return <>{children}</>;
 }
@@ -235,11 +227,6 @@ function App() {
       <Routes>
         {/* Login */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/change-password" element={
-          <ProtectedRoute>
-            <ChangePassword />
-          </ProtectedRoute>
-        } />
         
         {/* Mobile Demo - accessible to all authenticated users */}
         <Route path="/mobile-demo" element={

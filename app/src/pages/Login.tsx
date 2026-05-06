@@ -31,12 +31,6 @@ export function Login() {
     
     if (success) {
       const user = useAuthStore.getState().user;
-      if (user?.mustChangePassword) {
-        const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
-        window.location.replace(`${base}/change-password`);
-        return;
-      }
-
       const base = import.meta.env.BASE_URL.replace(/\/+$/, '');
       const params = new URLSearchParams(location.search);
       const redirect = params.get('redirect') || '';
@@ -119,7 +113,7 @@ export function Login() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="secret">身份证后六位（管理员可填密码）</Label>
+                <Label htmlFor="secret">身份证后六位</Label>
                 <div className="relative">
                   <Input
                     id="secret"

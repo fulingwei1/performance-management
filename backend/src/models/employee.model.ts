@@ -339,7 +339,7 @@ export class EmployeeModel {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
-  // 修改密码
+  // 更新遗留 password 列（当前登录不再校验该字段，仅保留给旧表结构/测试工具）
   static async updatePassword(id: string, newPassword: string, options: PasswordUpdateOptions = {}): Promise<boolean> {
     if (USE_MEMORY_DB) {
       const emp = memoryDB.employees.findById(id);
@@ -414,29 +414,39 @@ export class EmployeeModel {
   }
 
   // 批量插入员工（初始化用）
-  static async batchInsert(employees: Array<Omit<Employee, 'createdAt' | 'updatedAt'> & { password: string }>): Promise<void> {
+  static async batchInsert(employees: Array<Omit<Employee, 'createdAt' | 'updatedAt'> & { password: string; idCardLast6?: string }>): Promise<void> {
     if (USE_MEMORY_DB) {
       for (const emp of employees) {
-        memoryDB.employees.create(emp);
+        const { idCardLast6, ...rest } = emp as any;
+        const idCardLast6Hash = idCardLast6 ? await bcrypt.hash(String(idCardLast6).trim().toUpperCase(), 10) : undefined;
+        memoryDB.employees.create({
+          ...rest,
+          ...(idCardLast6Hash ? { idCardLast6Hash } : {}),
+        } as any);
       }
       return;
     }
     
     for (const employee of employees) {
       const hashedPassword = await bcrypt.hash(employee.password, 10);
+      const idCardLast6Hash = employee.idCardLast6
+        ? await bcrypt.hash(String(employee.idCardLast6).trim().toUpperCase(), 10)
+        : null;
       await query(
         `INSERT INTO employees (
           id, name, department, sub_department, role, level, manager_id, avatar,
-          password, must_change_password
+          password, id_card_last6_hash, must_change_password
         )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (id) DO UPDATE SET 
          name = EXCLUDED.name, 
          department = EXCLUDED.department, 
          sub_department = EXCLUDED.sub_department,
-         role = EXCLUDED.role,
-         level = EXCLUDED.level,
-         manager_id = EXCLUDED.manager_id`,
+          role = EXCLUDED.role,
+          level = EXCLUDED.level,
+          manager_id = EXCLUDED.manager_id,
+          id_card_last6_hash = COALESCE(EXCLUDED.id_card_last6_hash, employees.id_card_last6_hash),
+          must_change_password = FALSE`,
         [
           employee.id,
           employee.name,
@@ -447,6 +457,7 @@ export class EmployeeModel {
           employee.managerId || null,
           employee.avatar || null,
           hashedPassword,
+          idCardLast6Hash,
           employee.mustChangePassword === true
         ]
       );

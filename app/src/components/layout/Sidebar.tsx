@@ -9,7 +9,6 @@ import {
   Database,
   Zap,
   ClipboardList,
-  KeyRound,
   MessageSquare,
   type LucideIcon
 } from 'lucide-react';
@@ -179,18 +178,6 @@ export function Sidebar({ role }: SidebarProps) {
 
       {/* Logout */}
       <div className="p-4 border-t border-gray-800">
-        <NavLink
-          to="/change-password"
-          className={cn(
-            "mb-2 flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200",
-            location.pathname === '/change-password'
-              ? "bg-blue-600 text-white"
-              : "text-gray-400 hover:bg-gray-800 hover:text-white"
-          )}
-        >
-          <KeyRound className="w-5 h-5" />
-          <span>修改密码</span>
-        </NavLink>
         <button
           onClick={logout}
           className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-all duration-200 w-full"

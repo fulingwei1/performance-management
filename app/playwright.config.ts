@@ -20,7 +20,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: `cd ../backend && env PORT=${backendPort} USE_MEMORY_DB=true INITIAL_EMPLOYEE_TEMP_PASSWORD=123456 JWT_SECRET=e2e-test-secret-please-change CORS_ORIGINS=${frontendUrl} npm run dev`,
+      command: `cd ../backend && env PORT=${backendPort} USE_MEMORY_DB=true INITIAL_EMPLOYEE_ID_CARD_LAST6=123456 JWT_SECRET=e2e-test-secret-please-change CORS_ORIGINS=${frontendUrl} npm run dev`,
       url: `${backendUrl}/api/health`,
       timeout: 120_000,
       reuseExistingServer: false,

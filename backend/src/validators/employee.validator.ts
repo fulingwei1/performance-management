@@ -32,24 +32,13 @@ export const createEmployeeValidation = [
     .optional()
     .isIn(['active', 'disabled']).withMessage('状态值无效'),
   
-  // 可选：密码（兼容旧登录）；优先使用身份证后六位作为登录口令
-  body('password')
-    .optional()
-    .isLength({ min: 8 }).withMessage('密码至少8个字符'),
-
-  // 可选：身份证后六位（用于新登录方式）
+  // 统一登录口令：身份证后六位
   body('idCardLast6')
-    .optional()
+    .exists({ checkFalsy: true })
+    .withMessage('请提供身份证后六位')
     .isString()
     .matches(/^[0-9Xx]{6}$/)
     .withMessage('身份证后六位格式错误'),
-
-  body().custom((_, { req }) => {
-    if (!req.body.idCardLast6 && !req.body.password) {
-      throw new Error('请提供身份证后六位；系统不再生成随机登录密码');
-    }
-    return true;
-  }),
   
   body('managerId')
     .optional({ values: 'falsy' })
@@ -97,22 +86,4 @@ export const updateEmployeeValidation = [
     .isString()
     .matches(/^[0-9Xx]{6}$/)
     .withMessage('身份证后六位格式错误'),
-];
-
-/**
- * 密码修改验证规则
- */
-export const changePasswordValidation = [
-  body('oldPassword')
-    .notEmpty().withMessage('原密码不能为空'),
-  
-  body('newPassword')
-    .notEmpty().withMessage('新密码不能为空')
-    .isLength({ min: 8 }).withMessage('新密码至少8个字符')
-    .custom((value, { req }) => {
-      if (value === req.body.oldPassword) {
-        throw new Error('新密码不能与原密码相同');
-      }
-      return true;
-    }),
 ];

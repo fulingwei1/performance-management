@@ -1,8 +1,7 @@
 import request from 'supertest';
 import app from '../../index';
-import { validLoginData, invalidLoginData } from '../fixtures/mockData';
+import { validLoginData } from '../fixtures/mockData';
 import { TestHelper } from '../helpers/testHelper';
-import { EmployeeModel } from '../../models/employee.model';
 
 describe('Auth API', () => {
   describe('POST /api/auth/login', () => {
@@ -24,13 +23,13 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           username: 'wronguser',
-          password: '123456',
+          idCardLast6: '123456',
           role: 'manager'
         });
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
+      expect(response.body).toHaveProperty('message', '用户名或身份证后六位错误');
     });
 
     it('should fail with invalid password', async () => {
@@ -38,20 +37,20 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           username: '于振华',
-          password: 'wrongpassword',
+          idCardLast6: '000000',
           role: 'manager'
         });
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
+      expect(response.body).toHaveProperty('message', '用户名或身份证后六位错误');
     });
 
     it('should fail with missing username', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          password: '123456',
+          idCardLast6: '123456',
           role: 'manager'
         });
 
@@ -76,7 +75,7 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           username: '于振华',
-          password: '123456'
+          idCardLast6: '123456'
         });
 
       expect(response.status).toBe(200);
@@ -99,13 +98,13 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           username: 'wronguser',
-          password: 'password123',
+          idCardLast6: '123456',
           role: 'manager'
         });
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
+      expect(response.body).toHaveProperty('message', '用户名或身份证后六位错误');
     });
 
     it('should fail with invalid password', async () => {
@@ -113,20 +112,20 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           username: '于振华',
-          password: 'wrongpassword',
+          idCardLast6: '000000',
           role: 'manager'
         });
 
       expect(response.status).toBe(401);
       expect(response.body).toHaveProperty('success', false);
-      expect(response.body).toHaveProperty('message', '用户名或登录口令错误');
+      expect(response.body).toHaveProperty('message', '用户名或身份证后六位错误');
     });
 
     it('should fail with missing username', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          password: 'password123'
+          idCardLast6: '123456'
         });
 
       expect(response.status).toBe(400);
@@ -189,37 +188,23 @@ describe('Auth API', () => {
   });
 
   describe('POST /api/auth/change-password', () => {
-    it('should successfully change password with valid data', async () => {
+    it('should reject password changes because login uses idCardLast6 only', async () => {
       const token = await TestHelper.getAuthToken('employee');
-      const newPassword = TestHelper.generateRandomString();
 
       const response = await request(app)
         .post('/api/auth/change-password')
         .set('Authorization', `Bearer ${token}`)
         .send({
           oldPassword: '123456',
-          newPassword: newPassword
+          newPassword: 'newpassword123'
         });
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('success', true);
-      expect(response.body).toHaveProperty('message', '密码修改成功');
-
-      const loginWithNewPassword = await request(app)
-        .post('/api/auth/login')
-        .send({
-          username: '周欢欢',
-          password: newPassword
-        });
-      expect(loginWithNewPassword.status).toBe(200);
-      expect(loginWithNewPassword.body).toHaveProperty('success', true);
-
-      // Reset password directly so subsequent tests can still use the legacy test fixture.
-      const [employee] = await EmployeeModel.findAllByName('周欢欢');
-      await EmployeeModel.updatePassword(employee.id, '123456', { mustChangePassword: false });
+      expect(response.status).toBe(410);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('message', '修改密码功能已停用；系统统一使用身份证后六位登录');
     });
 
-    it('should fail with wrong current password', async () => {
+    it('should reject password changes regardless of old password', async () => {
       const token = await TestHelper.getAuthToken('employee');
 
       const response = await request(app)
@@ -230,11 +215,11 @@ describe('Auth API', () => {
           newPassword: 'newpassword123'
         });
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(410);
       expect(response.body).toHaveProperty('success', false);
     });
 
-    it('should fail with missing old password', async () => {
+    it('should reject password changes even if request body is incomplete', async () => {
       const token = await TestHelper.getAuthToken('employee');
 
       const response = await request(app)
@@ -244,21 +229,7 @@ describe('Auth API', () => {
           newPassword: 'newpassword123'
         });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('success', false);
-    });
-
-    it('should fail with missing new password', async () => {
-      const token = await TestHelper.getAuthToken('employee');
-
-      const response = await request(app)
-        .post('/api/auth/change-password')
-        .set('Authorization', `Bearer ${token}`)
-        .send({
-          oldPassword: '123456'
-        });
-
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(410);
       expect(response.body).toHaveProperty('success', false);
     });
 

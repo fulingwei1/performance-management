@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
+import { randomUUID } from 'crypto';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeRole, EmployeeLevel } from '../types';
@@ -22,6 +23,10 @@ function normalizeManagerId(value: unknown): string | null | undefined {
 
 function isPrivilegedAccount(role?: string): boolean {
   return role === 'admin' || role === 'gm' || role === 'hr';
+}
+
+function buildDisabledLegacyPassword(): string {
+  return `disabled-legacy-password-${randomUUID()}`;
 }
 
 async function validateManagerAssignment(employeeId: string, managerId: string | null | undefined): Promise<string | null> {
@@ -326,19 +331,13 @@ export const employeeController = {
     body('subDepartment').optional({ values: 'falsy' }).isLength({ max: 100 }).withMessage('子部门不能超过100个字符'),
     body('role').isIn(['employee', 'manager', 'gm', 'hr', 'admin']).withMessage('角色类型错误'),
     body('level').isIn(['senior', 'intermediate', 'junior', 'assistant']).withMessage('级别错误'),
-    body('password').optional().isLength({ min: 8 }).withMessage('密码至少8位'),
     body('wecomUserId').optional().isLength({ max: 128 }).withMessage('企业微信用户ID不能超过128个字符'),
     body('idCardLast6')
-      .optional()
+      .exists({ checkFalsy: true })
+      .withMessage('请提供身份证后六位')
       .isString()
       .matches(/^[0-9Xx]{6}$/)
       .withMessage('身份证后六位格式错误'),
-    body().custom((_, { req }) => {
-      if (!req.body.idCardLast6 && !req.body.password) {
-        throw new Error('请提供身份证后六位；系统不再生成随机登录密码');
-      }
-      return true;
-    }),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -349,7 +348,7 @@ export const employeeController = {
         });
       }
 
-      const { id, name, department, subDepartment, role, level, managerId, wecomUserId, password, idCardLast6 } = req.body;
+      const { id, name, department, subDepartment, role, level, managerId, wecomUserId, idCardLast6 } = req.body;
       if (req.user?.role !== 'admin' && isPrivilegedAccount(role)) {
         return res.status(403).json({
           success: false,
@@ -374,8 +373,6 @@ export const employeeController = {
       const normalizedIdCardLast6 = typeof idCardLast6 === 'string'
         ? idCardLast6.trim().toUpperCase()
         : '';
-      const providedPassword = typeof password === 'string' && password.trim() ? password.trim() : '';
-      const loginPassword = normalizedIdCardLast6 || providedPassword;
 
       const employee = await EmployeeModel.create({
         id,
@@ -386,8 +383,9 @@ export const employeeController = {
         level,
         managerId: normalizedManagerId ?? undefined,
         wecomUserId,
-        password: loginPassword,
-        idCardLast6: normalizedIdCardLast6 || undefined,
+        // password 列仅为兼容旧表结构保留；登录时不会再校验该字段。
+        password: buildDisabledLegacyPassword(),
+        idCardLast6: normalizedIdCardLast6,
         mustChangePassword: false
       });
 
@@ -397,9 +395,7 @@ export const employeeController = {
           const { password: _, idCardLast6Hash: __, ...rest } = employee as any;
           return rest;
         })(),
-        message: normalizedIdCardLast6
-          ? '员工创建成功，登录口令为身份证后六位'
-          : '员工创建成功'
+        message: '员工创建成功，登录口令为身份证后六位'
       });
     })
   ],
@@ -464,15 +460,11 @@ export const employeeController = {
       .isString()
       .matches(/^[0-9Xx]{6}$/)
       .withMessage('身份证后六位格式错误'),
-    body('newPassword')
-      .optional()
-      .isLength({ min: 8 })
-      .withMessage('新密码至少8位'),
     body().custom((_, { req }) => {
       const hasIdCardLast6 = typeof req.body?.idCardLast6 === 'string' && req.body.idCardLast6.trim();
-      const hasNewPassword = typeof req.body?.newPassword === 'string' && req.body.newPassword.length > 0;
-      if (hasIdCardLast6 && hasNewPassword) {
-        throw new Error('设置新密码和重置为身份证后六位不能同时提交');
+      const hasNewPassword = typeof req.body?.newPassword === 'string' && req.body.newPassword.trim().length > 0;
+      if (hasNewPassword) {
+        throw new Error('系统统一使用身份证后六位登录，不支持设置自定义密码');
       }
       return true;
     }),
@@ -491,43 +483,10 @@ export const employeeController = {
       const idCardLast6 = typeof req.body?.idCardLast6 === 'string'
         ? req.body.idCardLast6.trim().toUpperCase()
         : '';
-      const newPassword = typeof req.body?.newPassword === 'string'
-        ? req.body.newPassword
-        : '';
-
-      if (newPassword) {
-        const success = await EmployeeModel.updatePassword(
-          req.params.id as string,
-          newPassword,
-          { mustChangePassword: false }
-        );
-        if (!success) {
-          return res.status(500).json({ success: false, message: '设置密码失败' });
-        }
-        await EmployeeModel.clearIdCardLast6(req.params.id as string);
-
-        return res.json({
-          success: true,
-          data: {
-            id: employee.id,
-            mustChangePassword: false,
-            hasIdCardLast6: false,
-            loginMethod: 'password'
-          },
-          message: '登录密码已设置'
-        });
-      }
 
       if (idCardLast6) {
         await EmployeeModel.updateIdCardLast6(req.params.id as string, idCardLast6);
-        const success = await EmployeeModel.updatePassword(
-          req.params.id as string,
-          idCardLast6,
-          { mustChangePassword: false }
-        );
-        if (!success) {
-          return res.status(500).json({ success: false, message: '重置密码失败' });
-        }
+        await EmployeeModel.updateMustChangePassword(req.params.id as string, false);
 
         return res.json({
           success: true,

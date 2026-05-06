@@ -56,23 +56,13 @@ export const authController = {
       .customSanitizer((value) => String(value || '').trim().replace(/\s+/g, ''))
       .notEmpty()
       .withMessage('用户名不能为空'),
-    // 兼容两种字段：idCardLast6（推荐）或 password（旧版）
     body('idCardLast6')
-      .optional()
+      .exists({ checkFalsy: true })
+      .withMessage('身份证后六位不能为空')
       .isString()
       .customSanitizer((value) => String(value || '').trim().replace(/\s+/g, ''))
       .matches(/^[0-9Xx]{6}$/)
       .withMessage('身份证后六位格式错误'),
-    body('password')
-      .optional()
-      .isString()
-      .customSanitizer((value) => String(value || '').trim()),
-    body().custom((_, { req }) => {
-      if (!req.body.idCardLast6 && !req.body.password) {
-        throw new Error('身份证后六位不能为空');
-      }
-      return true;
-    }),
     
     asyncHandler(async (req: Request, res: Response) => {
       const errors = validationResult(req);
@@ -85,8 +75,7 @@ export const authController = {
 
       const { username: rawUsername } = req.body as { username: string };
       const username = rawUsername.trim().replace(/\s+/g, '');
-      const idCardLast6 = (req.body.idCardLast6 ?? '').toString();
-      const password = (req.body.password ?? '').toString();
+      const idCardLast6 = (req.body.idCardLast6 ?? '').toString().trim().toUpperCase();
 
       // 获取请求信息用于日志
       const loginIp = req.ip || req.socket.remoteAddress || 'unknown';
@@ -104,7 +93,7 @@ export const authController = {
             role: 'employee',
             department: '',
             subDepartment: '',
-            loginMethod: idCardLast6 ? 'idCard' : 'password',
+            loginMethod: 'idCard',
             loginIp,
             userAgent,
             success: false,
@@ -126,7 +115,7 @@ export const authController = {
           role: 'employee',
           department: '',
           subDepartment: '',
-          loginMethod: idCardLast6 ? 'idCard' : 'password',
+          loginMethod: 'idCard',
           loginIp,
           userAgent,
           success: false,
@@ -134,23 +123,14 @@ export const authController = {
         });
         return res.status(401).json({
           success: false,
-          message: '用户名或登录口令错误'
+          message: '用户名或身份证后六位错误'
         });
       }
 
-      const idCardLoginSecret = idCardLast6.trim();
-      const passwordLoginSecret = password.trim();
-      const loginSecret = idCardLoginSecret || passwordLoginSecret;
-
-      // 验证登录口令：身份证后六位和用户自设密码都可登录。
-      // 如果员工修改了密码，不能因为存在 idCardLast6Hash 就跳过 password 校验。
-      let isValidPassword = false;
-      if (idCardLoginSecret && employee.idCardLast6Hash) {
-        isValidPassword = await EmployeeModel.verifyPassword(idCardLoginSecret.toUpperCase(), employee.idCardLast6Hash);
-      }
-      if (!isValidPassword && employee.password) {
-        isValidPassword = await EmployeeModel.verifyPassword(loginSecret, employee.password);
-      }
+      // 统一登录口径：所有角色只使用“姓名/工号 + 身份证后六位”登录。
+      // 不再兼容管理员自定义密码、员工自设密码或历史初始密码。
+      const isValidPassword = Boolean(employee.idCardLast6Hash)
+        && await EmployeeModel.verifyPassword(idCardLast6, employee.idCardLast6Hash as string);
 
       if (!isValidPassword) {
         // 记录登录失败日志（密码错误）
@@ -160,15 +140,15 @@ export const authController = {
           role: employee.role,
           department: employee.department,
           subDepartment: employee.subDepartment,
-          loginMethod: idCardLast6 ? 'idCard' : 'password',
+          loginMethod: 'idCard',
           loginIp,
           userAgent,
           success: false,
-          failureReason: '密码错误',
+          failureReason: employee.idCardLast6Hash ? '身份证后六位错误' : '未录入身份证后六位',
         });
         return res.status(401).json({
           success: false,
-          message: '用户名或登录口令错误'
+          message: '用户名或身份证后六位错误'
         });
       }
 
@@ -181,7 +161,7 @@ export const authController = {
           role: employee.role,
           department: employee.department,
           subDepartment: employee.subDepartment,
-          loginMethod: idCardLast6 ? 'idCard' : 'password',
+          loginMethod: 'idCard',
           loginIp,
           userAgent,
           success: false,
@@ -200,11 +180,16 @@ export const authController = {
         role: employee.role,
         department: employee.department,
         subDepartment: employee.subDepartment,
-        loginMethod: idCardLast6 ? 'idCard' : 'password',
+        loginMethod: 'idCard',
         loginIp,
         userAgent,
         success: true,
       });
+
+      if ((employee as any).mustChangePassword) {
+        await EmployeeModel.updateMustChangePassword(employee.id, false);
+        (employee as any).mustChangePassword = false;
+      }
 
       // 生成JWT Token
       const token = generateToken({
@@ -222,7 +207,6 @@ export const authController = {
         level,
         managerId,
         avatar,
-        mustChangePassword,
         createdAt,
         updatedAt
       } = employee;
@@ -237,7 +221,7 @@ export const authController = {
         level,
         managerId,
         avatar,
-        mustChangePassword,
+        mustChangePassword: false,
         createdAt,
         updatedAt,
         ...roleInfo
@@ -283,18 +267,7 @@ export const authController = {
 
   // 修改密码
   changePassword: [
-    body('oldPassword').notEmpty().withMessage('原密码不能为空'),
-    body('newPassword').isLength({ min: 8 }).withMessage('新密码至少8位'),
-
     asyncHandler(async (req: Request, res: Response) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({
-          success: false,
-          message: errors.array()[0].msg
-        });
-      }
-
       if (!req.user) {
         return res.status(401).json({
           success: false,
@@ -302,48 +275,9 @@ export const authController = {
         });
       }
 
-      const { oldPassword, newPassword } = req.body;
-
-      // 获取员工信息（包含密码）
-      const employee = await EmployeeModel.findById(req.user.userId);
-
-      if (!employee) {
-        return res.status(404).json({
-          success: false,
-          message: '用户不存在'
-        });
-      }
-
-      // 验证原密码
-      if (!employee.password && !employee.idCardLast6Hash) {
-        return res.status(400).json({
-          success: false,
-          message: '当前账号未设置密码，请联系HR重置临时密码'
-        });
-      }
-
-      let isValidPassword = false;
-      if (employee.password) {
-        isValidPassword = await EmployeeModel.verifyPassword(oldPassword, employee.password);
-      }
-      if (!isValidPassword && employee.idCardLast6Hash) {
-        isValidPassword = await EmployeeModel.verifyPassword(String(oldPassword).trim().toUpperCase(), employee.idCardLast6Hash);
-      }
-
-      if (!isValidPassword) {
-        return res.status(400).json({
-          success: false,
-          message: '原密码错误'
-        });
-      }
-
-      // 更新密码
-      await EmployeeModel.updatePassword(req.user.userId, newPassword, { mustChangePassword: false });
-      await EmployeeModel.clearIdCardLast6(req.user.userId);
-
-      res.json({
-        success: true,
-        message: '密码修改成功'
+      return res.status(410).json({
+        success: false,
+        message: '修改密码功能已停用；系统统一使用身份证后六位登录'
       });
     })
   ],

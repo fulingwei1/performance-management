@@ -45,7 +45,7 @@ describe('Security regression API checks', () => {
     });
   });
 
-  it('does not overwrite the existing login password when HR updates idCardLast6', async () => {
+  it('uses the updated idCardLast6 as the only login secret', async () => {
     const hrToken = await TestHelper.getAuthToken('hr');
 
     const updateResponse = await request(app)
@@ -55,12 +55,19 @@ describe('Security regression API checks', () => {
 
     expect(updateResponse.status).toBe(200);
 
-    const loginWithOldPassword = await request(app)
+    const loginWithOldIdCard = await request(app)
       .post('/api/auth/login')
-      .send({ username: '姚洪', password: '123456' });
+      .send({ username: '姚洪', idCardLast6: '123456' });
 
-    expect(loginWithOldPassword.status).toBe(200);
-    expect(loginWithOldPassword.body.success).toBe(true);
+    expect(loginWithOldIdCard.status).toBe(401);
+    expect(loginWithOldIdCard.body.success).toBe(false);
+
+    const loginWithNewIdCard = await request(app)
+      .post('/api/auth/login')
+      .send({ username: '姚洪', idCardLast6: '999999' });
+
+    expect(loginWithNewIdCard.status).toBe(200);
+    expect(loginWithNewIdCard.body.success).toBe(true);
   });
 
   it('returns explicit reset-password metadata without exposing the password', async () => {

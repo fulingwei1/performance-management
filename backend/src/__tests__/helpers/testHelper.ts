@@ -5,10 +5,10 @@ import bcrypt from 'bcryptjs';
 export const TestHelper = {
   app,
   
-  async loginAs(username: string, password: string, role: string) {
+  async loginAs(username: string, idCardLast6: string, role: string) {
     const response = await request(app)
       .post('/api/auth/login')
-      .send({ username, password, role });
+      .send({ username, idCardLast6, role });
     
     if (response.status === 200) {
       return response.body.data.token;
@@ -18,11 +18,11 @@ export const TestHelper = {
 
   async getAuthToken(role: 'manager' | 'employee' | 'hr' = 'manager') {
     const credentials = {
-      manager: { username: '于振华', password: '123456', role: 'manager' },
-      employee: { username: '周欢欢', password: '123456', role: 'employee' },
-      hr: { username: '林作倩', password: '123456', role: 'hr' }
+      manager: { username: '于振华', idCardLast6: '123456', role: 'manager' },
+      employee: { username: '周欢欢', idCardLast6: '123456', role: 'employee' },
+      hr: { username: '林作倩', idCardLast6: '123456', role: 'hr' }
     };
-    return this.loginAs(credentials[role].username, credentials[role].password, credentials[role].role);
+    return this.loginAs(credentials[role].username, credentials[role].idCardLast6, credentials[role].role);
   },
 
   async createTestEmployee(data: any) {

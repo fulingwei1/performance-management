@@ -20,16 +20,6 @@ const redirectToLogin = () => {
   }
 };
 
-const redirectToChangePassword = () => {
-  if (typeof window === 'undefined') return;
-
-  const base = (import.meta as any).env.BASE_URL.replace(/\/+$/, '') || '';
-  const changePasswordPath = `${base}/change-password`;
-  if (window.location.pathname !== changePasswordPath) {
-    window.location.replace(changePasswordPath);
-  }
-};
-
 const readErrorPayload = async (response: Response) => {
   const contentType = response.headers.get('content-type') || '';
 
@@ -105,9 +95,6 @@ export const request = async (url: string, options: RequestInit = {}) => {
 
       if (!response.ok) {
         const message = data.message ?? data.error ?? '请求失败';
-        if (response.status === 403 && data.code === 'PASSWORD_CHANGE_REQUIRED') {
-          redirectToChangePassword();
-        }
         if (response.status === 401 && url !== '/auth/login') {
           handleUnauthorized(message);
         }
@@ -138,22 +125,11 @@ export const authApi = {
   login: (username: string, idCardLast6: string) =>
     request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify(
-        /^[0-9Xx]{6}$/.test((idCardLast6 || '').trim())
-          ? { username, idCardLast6: (idCardLast6 || '').trim() }
-          : { username, password: idCardLast6 }
-      )
+      body: JSON.stringify({ username, idCardLast6: (idCardLast6 || '').trim() })
     }),
 
   // 获取当前用户
-  getCurrentUser: () => request('/auth/me'),
-
-  // 修改密码
-  changePassword: (oldPassword: string, newPassword: string) =>
-    request('/auth/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ oldPassword, newPassword })
-    })
+  getCurrentUser: () => request('/auth/me')
 };
 
 // 员工相关API
@@ -194,7 +170,7 @@ export const employeeApi = {
   }),
 
   // 重置密码
-  resetPassword: (id: string, payload?: { idCardLast6?: string; newPassword?: string }) => request(`/employees/${id}/reset-password`, {
+  resetPassword: (id: string, payload?: { idCardLast6?: string }) => request(`/employees/${id}/reset-password`, {
     method: 'PUT',
     body: JSON.stringify(payload || {})
   }),

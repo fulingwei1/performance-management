@@ -22,7 +22,7 @@ export const getEmployeeTemplate = asyncHandler(async (req: Request, res: Respon
   sheet.columns = [
     { header: '姓名*', key: 'name', width: 15 },
     { header: '拼音*', key: 'pinyin', width: 15 },
-    { header: '身份证后4位', key: 'idLast4', width: 14 },
+    { header: '身份证后六位', key: 'idCardLast6', width: 14 },
     { header: '部门*', key: 'department', width: 20 },
     { header: '岗位*', key: 'position', width: 20 },
     { header: '职级', key: 'level', width: 12 },
@@ -32,7 +32,7 @@ export const getEmployeeTemplate = asyncHandler(async (req: Request, res: Respon
   ];
 
   sheet.addRow({
-    name: '张三', pinyin: 'zhangsan', idLast4: '1234',
+    name: '张三', pinyin: 'zhangsan', idCardLast6: '123456',
     department: '技术部', position: '高级工程师', level: 'senior',
     role: 'employee', phone: '13800138000', email: 'zhangsan@example.com',
   });
@@ -67,7 +67,7 @@ export const getEmployeeTemplate = asyncHandler(async (req: Request, res: Respon
   helpSheet.addRows([
     { field: '姓名', required: '是', desc: '员工真实姓名' },
     { field: '拼音', required: '是', desc: '姓名拼音，用作登录ID（如 zhangsan）' },
-    { field: '身份证后4位', required: '否', desc: '用于初始密码生成' },
+    { field: '身份证后六位', required: '是', desc: '用于统一登录口令：姓名/工号 + 身份证后六位' },
     { field: '部门', required: '是', desc: '所属部门名称' },
     { field: '岗位', required: '是', desc: '岗位名称' },
     { field: '职级', required: '否', desc: 'senior/intermediate/junior/assistant，默认 intermediate' },
@@ -118,7 +118,7 @@ export const importEmployees = [
         const data = {
           name: getCellValue(row.getCell(1)),
           pinyin: getCellValue(row.getCell(2)),
-          idLast4: getCellValue(row.getCell(3)),
+          idCardLast6: getCellValue(row.getCell(3)).toUpperCase(),
           department: getCellValue(row.getCell(4)),
           position: getCellValue(row.getCell(5)),
           level: getCellValue(row.getCell(6)) || 'intermediate',
@@ -135,6 +135,7 @@ export const importEmployees = [
         if (!data.department) rowErrors.push('部门为空');
         if (!data.position) rowErrors.push('岗位为空');
         if (!data.role) rowErrors.push('角色为空');
+        if (!/^[0-9Xx]{6}$/.test(data.idCardLast6)) rowErrors.push('身份证后六位格式错误');
         if (data.role && !validRoles.includes(data.role)) rowErrors.push(`角色无效: ${data.role}`);
         if (data.level && !validLevels.includes(data.level)) rowErrors.push(`职级无效: ${data.level}`);
         if (data.phone && !/^1\d{10}$/.test(data.phone)) rowErrors.push('手机号格式错误');
@@ -164,7 +165,6 @@ export const importEmployees = [
       const createErrors: any[] = [];
       for (const emp of employees) {
         try {
-          const password = emp.idLast4 ? `pm${emp.idLast4}` : `pm${emp.pinyin}123`;
           const id = emp.pinyin || uuidv4();
           const created = await EmployeeModel.create({
             id,
@@ -173,7 +173,8 @@ export const importEmployees = [
             subDepartment: emp.position,
             role: emp.role,
             level: emp.level,
-            password,
+            password: `disabled-legacy-password-${uuidv4()}`,
+            idCardLast6: emp.idCardLast6,
           });
           results.push(created);
         } catch (err: any) {

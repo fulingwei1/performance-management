@@ -122,19 +122,19 @@ export const mockPerformanceRecords: PerformanceRecord[] = [
 
 export const validLoginData = {
   username: '于振华',
-  password: '123456',
+  idCardLast6: '123456',
   role: 'manager'
 };
 
 export const invalidLoginData = {
   username: 'wronguser',
-  password: 'wrongpassword',
+  idCardLast6: '000000',
   role: 'manager'
 };
 
 export const validEmployeeData = {
   id: 'newemp001',
-  password: 'password123',
+  idCardLast6: '123456',
   name: '新员工',
   department: '研发部',
   subDepartment: '测试组',

@@ -96,7 +96,6 @@ setup_backend_env() {
     require_env SUPABASE_ANON_KEY
     require_env SUPABASE_SERVICE_ROLE_KEY
     require_env JWT_SECRET
-    require_env INITIAL_EMPLOYEE_TEMP_PASSWORD
 
     # 数据库配置
     set_env_var "$backend_dir" "DATABASE_URL" "$DATABASE_URL"
@@ -111,7 +110,7 @@ setup_backend_env() {
     # 服务器配置
     set_env_var "$backend_dir" "NODE_ENV" "production"
     set_env_var "$backend_dir" "USE_MEMORY_DB" "false"
-    set_env_var "$backend_dir" "INITIAL_EMPLOYEE_TEMP_PASSWORD" "$INITIAL_EMPLOYEE_TEMP_PASSWORD"
+    set_env_var "$backend_dir" "INITIAL_EMPLOYEE_ID_CARD_LAST6" "${INITIAL_EMPLOYEE_ID_CARD_LAST6:-}"
 
     success "后端环境变量配置完成!"
 }

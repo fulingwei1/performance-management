@@ -101,8 +101,7 @@ echo -e "  后端:  ${GREEN}http://localhost:3001/api${NC}"
 echo -e "  PostgreSQL: ${GREEN}localhost:5432${NC}"
 
 echo -e "\n🔑 测试账号:"
-echo -e "  账号使用姓名或工号登录；初始临时密码请通过 INITIAL_EMPLOYEE_TEMP_PASSWORD 设置。"
-echo -e "  首次登录后系统会要求修改密码；未设置自定义密码时可用身份证后六位。"
+echo -e "  账号使用姓名或工号登录；密码统一为身份证后六位。"
 
 echo -e "\n📝 常用命令:"
 echo -e "  查看日志: ${YELLOW}docker compose logs -f${NC}"

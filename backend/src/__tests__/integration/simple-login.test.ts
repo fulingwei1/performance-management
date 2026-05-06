@@ -7,7 +7,7 @@ describe('Simple Login Test', () => {
       .post('/api/auth/login')
       .send({
         username: '于振华',
-        password: '123456',
+        idCardLast6: '123456',
         role: 'manager'
       });
 

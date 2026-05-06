@@ -418,9 +418,8 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
 
 async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: Map<string, string>) {
   for (const employee of employees) {
-    const passwordHash = employee.idCardLast6
-      ? await bcrypt.hash(employee.idCardLast6, 10)
-      : null;
+    // password 列仅为兼容旧表结构保留；登录统一校验 id_card_last6_hash。
+    const passwordHash = await bcrypt.hash(`disabled-legacy-password-${crypto.randomUUID()}`, 10);
     const idCardLast6Hash = employee.idCardLast6
       ? await bcrypt.hash(employee.idCardLast6, 10)
       : null;
@@ -439,16 +438,10 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
         role = EXCLUDED.role,
         level = EXCLUDED.level,
         manager_id = COALESCE(EXCLUDED.manager_id, employees.manager_id),
-        password = CASE
-          WHEN EXCLUDED.id_card_last6_hash IS NOT NULL THEN EXCLUDED.password
-          ELSE employees.password
-        END,
+        password = EXCLUDED.password,
         id_card_last6_hash = COALESCE(EXCLUDED.id_card_last6_hash, employees.id_card_last6_hash),
         status = EXCLUDED.status,
-        must_change_password = CASE
-          WHEN EXCLUDED.id_card_last6_hash IS NOT NULL THEN FALSE
-          ELSE employees.must_change_password
-        END,
+        must_change_password = FALSE,
         updated_at = CURRENT_TIMESTAMP`,
       [
         employee.id,
@@ -462,7 +455,7 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
         passwordHash,
         idCardLast6Hash,
         employee.status,
-        !employee.idCardLast6,
+        false,
       ]
     );
   }

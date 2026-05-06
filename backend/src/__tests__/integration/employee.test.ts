@@ -275,7 +275,7 @@ describe('Employee API', () => {
       // First create a test employee
       const createResponse = await TestHelper.createTestEmployee({
         id: `delete${TestHelper.generateRandomString(6)}`,
-        password: 'password123',
+        idCardLast6: '123456',
         name: '待删除员工',
         role: 'employee',
         department: '工程技术中心',
