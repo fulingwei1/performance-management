@@ -549,10 +549,24 @@ export class PerformanceModel {
       return String(a.employeeId || a.id).localeCompare(String(b.employeeId || b.id));
     };
 
+    const assignDenseRanks = (sortedRecords: PerformanceRecord[]): Map<string, number> => {
+      const rankMap = new Map<string, number>();
+      let currentRank = 0;
+      let previousScore: number | null = null;
+      for (const record of sortedRecords) {
+        const score = Number(record.totalScore || 0);
+        if (previousScore === null || score !== previousScore) {
+          currentRank += 1;
+          previousScore = score;
+        }
+        rankMap.set(record.id, currentRank);
+      }
+      return rankMap;
+    };
+
     // 公司排名
     const companySorted = [...participating].sort(sortByScore);
-    const companyRankMap = new Map<string, number>();
-    companySorted.forEach((r, idx) => companyRankMap.set(r.id, idx + 1));
+    const companyRankMap = assignDenseRanks(companySorted);
 
     // 部门排名（按“组织单元”统计：优先 department/subDepartment）
     const unitGroups = new Map<string, PerformanceRecord[]>();
@@ -563,7 +577,7 @@ export class PerformanceModel {
     }
     const departmentRankMap = new Map<string, number>();
     for (const groupRecords of unitGroups.values()) {
-      groupRecords.sort(sortByScore).forEach((r, idx) => departmentRankMap.set(r.id, idx + 1));
+      assignDenseRanks(groupRecords.sort(sortByScore)).forEach((rank, id) => departmentRankMap.set(id, rank));
     }
 
     // 组内排名（单位 + 可配置等级分组）
@@ -575,7 +589,7 @@ export class PerformanceModel {
     }
     const groupRankMap = new Map<string, number>();
     for (const groupRecords of rankGroups.values()) {
-      groupRecords.sort(sortByScore).forEach((r, idx) => groupRankMap.set(r.id, idx + 1));
+      assignDenseRanks(groupRecords.sort(sortByScore)).forEach((rank, id) => groupRankMap.set(id, rank));
     }
 
     // 合并排名（跨部门/等级可选）
@@ -588,7 +602,7 @@ export class PerformanceModel {
     }
     const crossDeptRankMap = new Map<string, number>();
     for (const groupRecords of mergeGroups.values()) {
-      groupRecords.sort(sortByScore).forEach((r, idx) => crossDeptRankMap.set(r.id, idx + 1));
+      assignDenseRanks(groupRecords.sort(sortByScore)).forEach((rank, id) => crossDeptRankMap.set(id, rank));
     }
 
     // 将排名结果写回（未参与部门/未命中合并分组 => rank=0）

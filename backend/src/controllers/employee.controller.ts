@@ -420,7 +420,29 @@ export const employeeController = {
           message: '只有系统管理员可以调整账号角色'
         });
       }
+      const targetEmployee = await EmployeeModel.findById(req.params.id as string);
+      if (!targetEmployee) {
+        return res.status(404).json({
+          success: false,
+          error: '员工不存在'
+        });
+      }
+      const protectedOrgFields = ['department', 'subDepartment'];
+      const requestedProtectedOrgFields = protectedOrgFields.filter((field) => Object.prototype.hasOwnProperty.call(restUpdates, field));
+      if (requestedProtectedOrgFields.length > 0 && req.user?.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: '部门/小组信息请通过人事档案导入维护'
+        });
+      }
       if (Object.prototype.hasOwnProperty.call(restUpdates, 'managerId')) {
+        const targetRole = (targetEmployee as any).role;
+        if (req.user?.role !== 'admin' && (req.user?.userId === targetEmployee.id || isPrivilegedAccount(targetRole))) {
+          return res.status(403).json({
+            success: false,
+            message: '不能通过员工接口调整本人或特权账号的直属上级'
+          });
+        }
         restUpdates.managerId = normalizeManagerId(restUpdates.managerId);
         const managerError = await validateManagerAssignment(req.params.id as string, restUpdates.managerId);
         if (managerError) {

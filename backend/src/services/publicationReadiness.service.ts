@@ -29,9 +29,9 @@ export interface PublicationReadinessResult {
 const isCompletedRecord = (record?: PerformanceRecord): boolean =>
   Boolean(record && (record.status === 'completed' || record.status === 'scored'));
 
-const isTopScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) >= 1.4;
+const isTopScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) >= 1.35;
 
-const isBottomScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) < 0.9;
+const isBottomScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) <= 0.9;
 
 const getDistributionQuota = (total: number) => ({
   topQuota: Math.ceil(total * 0.2),

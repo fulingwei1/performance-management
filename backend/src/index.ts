@@ -159,6 +159,7 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/performance', performanceRoutes);
 app.use('/api/organization', organizationRoutes);
 app.use('/api/cycles', assessmentCycleRoutes);
+app.use('/api/assessment-cycles', assessmentCycleRoutes);
 app.use('/api/metrics', metricLibraryRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/export', exportRoutes);

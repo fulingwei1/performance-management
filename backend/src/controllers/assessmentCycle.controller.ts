@@ -50,7 +50,7 @@ export const assessmentCycleController = {
       const cycle = await AssessmentCycleModel.findActive();
       
       if (!cycle) {
-        return res.status(404).json({ success: false, message: '当前没有激活的考核周期' });
+        return res.json({ success: true, data: null, message: '当前没有激活的考核周期' });
       }
       
       res.json({ success: true, data: cycle });

@@ -6,6 +6,19 @@ import {
 } from '../config/assessment-scope-store';
 
 export const settingsController = {
+  listSettings: (_req: Request, res: Response) => {
+    try {
+      res.json({
+        success: true,
+        data: {
+          assessmentScope: getAssessmentScope(),
+        },
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
   getAssessmentScope: (_req: Request, res: Response) => {
     try {
       const scope = getAssessmentScope();

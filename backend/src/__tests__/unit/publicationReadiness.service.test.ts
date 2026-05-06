@@ -75,4 +75,17 @@ describe('validatePublicationReadiness', () => {
       }),
     ]));
   });
+
+  it('treats L5 threshold as top performer and 0.90 as bottom boundary', async () => {
+    const scores = [1.35, 1.28, 1.2, 1.16, 1.1, 1.06, 1.03, 1.0, 0.96, 0.93, 0.9];
+    scores.forEach((score, index) => {
+      const employeeId = addEmployee(index + 1);
+      addRecord(employeeId, score);
+    });
+
+    const result = await validatePublicationReadiness('2026-04');
+
+    expect(result.ok).toBe(true);
+    expect(result.violations).toHaveLength(0);
+  });
 });

@@ -17,6 +17,7 @@ import { syncPendingPerformanceAssessorsForEmployees } from '../services/perform
 import { resolveTaskTemplateForEmployee, type ResolvedTaskTemplate } from '../services/taskTemplateResolver.service';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { validateTaskCreationMonth } from '../utils/assessmentMonthGuard';
+import { sanitizeUserText } from '../utils/sanitizeText';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -26,7 +27,7 @@ const normalizeStringArray = (input: unknown): string[] => {
 
 const normalizeOptionalText = (input: unknown): string => {
   if (typeof input !== 'string') return '';
-  return input.trim();
+  return sanitizeUserText(input);
 };
 
 const NO_IMPROVEMENT_SUGGESTION_TEXTS = new Set([
@@ -511,9 +512,9 @@ export const performanceController = {
     if (summary || achievements || issues) {
       // 格式1: 组合 summary, achievements, issues
       const parts = [];
-      if (summary) parts.push(`工作总结：${summary}`);
-      if (achievements) parts.push(`主要成就：${achievements}`);
-      if (issues) parts.push(`遇到的问题：${issues}`);
+      if (summary) parts.push(`工作总结：${sanitizeUserText(summary)}`);
+      if (achievements) parts.push(`主要成就：${sanitizeUserText(achievements)}`);
+      if (issues) parts.push(`遇到的问题：${sanitizeUserText(issues)}`);
       
       if (parts.length === 0) {
         return res.status(400).json({
@@ -523,11 +524,11 @@ export const performanceController = {
       }
       
       finalSelfSummary = parts.join('\n\n');
-      finalNextMonthPlan = nextMonthPlan || '待补充';
+      finalNextMonthPlan = sanitizeUserText(nextMonthPlan || '待补充');
     } else if (selfSummary) {
       // 格式2: 直接使用 selfSummary 和 nextMonthPlan
-      finalSelfSummary = selfSummary;
-      finalNextMonthPlan = nextMonthPlan || '待补充';
+      finalSelfSummary = sanitizeUserText(selfSummary);
+      finalNextMonthPlan = sanitizeUserText(nextMonthPlan || '待补充');
     } else {
       return res.status(400).json({
         success: false,
@@ -852,10 +853,10 @@ export const performanceController = {
     // 上级可以复核/调整下级经理负责的评分；未完成记录的直接考核人由同步服务按当前 manager_id 维护，
     // 不在这里改成“当前登录人”，避免上级复核时覆盖直属考核人。
     const roundedTotalScore = parseFloat(totalScore.toFixed(2));
-    const evidenceText = typeof scoreEvidence === 'string' ? scoreEvidence.trim() : '';
+    const evidenceText = sanitizeUserText(scoreEvidence);
     const starRecommended = monthlyStarRecommended === true;
-    const starCategory = typeof monthlyStarCategory === 'string' ? monthlyStarCategory.trim() : '';
-    const starReason = typeof monthlyStarReason === 'string' ? monthlyStarReason.trim() : '';
+    const starCategory = sanitizeUserText(monthlyStarCategory);
+    const starReason = sanitizeUserText(monthlyStarReason);
     const starPublic = monthlyStarPublic !== false;
 
     if ((roundedTotalScore >= 1.4 || roundedTotalScore < 0.9) && evidenceText.length < 10) {
@@ -880,8 +881,8 @@ export const performanceController = {
       qualityImprovement: qi,
       totalScore: roundedTotalScore,
       level: scoreToLevel(totalScore),
-      managerComment,
-      nextMonthWorkArrangement,
+      managerComment: sanitizeUserText(managerComment),
+      nextMonthWorkArrangement: sanitizeUserText(nextMonthWorkArrangement),
       evaluationKeywords: normalizeStringArray(evaluationKeywords),
       issueTypeTags: normalizeStringArray(issueTypeTags),
       highlightTags: normalizeStringArray(highlightTags),

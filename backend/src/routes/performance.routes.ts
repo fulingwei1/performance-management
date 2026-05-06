@@ -9,6 +9,7 @@ import {
   generateTasksValidation
 } from '../validators/performance.validator';
 import { insertDemoData, clearDemoData, hasDemoData } from '../scripts/generateDemoData';
+import { exportController } from '../controllers/export.controller';
 
 const router = Router();
 
@@ -17,6 +18,9 @@ router.get('/my-records', authenticate, performanceController.getMyRecords);
 
 // 获取当前用户某月的绩效记录（需要认证）
 router.get('/my-record/:month', authenticate, performanceController.getMyRecordByMonth);
+
+// 兼容前端/旧测试调用的导出别名：/api/performance/export?month=YYYY-MM
+router.get('/export', authenticate, requireRole('hr', 'admin'), exportController.exportMonthlyPerformance);
 
 // 获取经理/兼任经理的评分记录（下属）
 router.get('/team-records', authenticate, requireManagerCapability, performanceController.getTeamRecords);

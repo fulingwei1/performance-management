@@ -76,6 +76,29 @@ describe('DemoDataService', () => {
     ]));
   });
 
+
+
+  it('keeps totalScore equal to the weighted four-dimensional score', async () => {
+    const result = await DemoDataService.generatePerformanceDemoData({
+      endMonth: '2026-05',
+      monthCount: 1,
+    });
+
+    expect(result.createdCount).toBeGreaterThan(0);
+    const records = Array.from(memoryStore.performanceRecords.values()) as any[];
+    for (const record of records) {
+      const weighted = Number((
+        Number(record.taskCompletion) * 0.4
+        + Number(record.initiative) * 0.3
+        + Number(record.projectFeedback) * 0.2
+        + Number(record.qualityImprovement) * 0.1
+      ).toFixed(2));
+
+      expect(record.totalScore).toBe(weighted);
+      expect(record.normalizedScore).toBe(weighted);
+    }
+  });
+
   it('clears only demo data and keeps real performance records', async () => {
     await DemoDataService.generatePerformanceDemoData({ endMonth: '2026-05', monthCount: 1 });
     memoryStore.performanceRecords.set('real-e001-2026-05', {

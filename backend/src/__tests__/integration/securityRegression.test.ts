@@ -696,6 +696,83 @@ describe('Security regression API checks', () => {
     expect(response.body.success).toBe(false);
   });
 
+
+
+  it('keeps new API aliases and settings list available', async () => {
+    const employeeToken = await TestHelper.getAuthToken('employee');
+    const hrToken = await TestHelper.getAuthToken('hr');
+
+    const activeCycle = await request(app)
+      .get('/api/assessment-cycles/active')
+      .set('Authorization', `Bearer ${employeeToken}`);
+    expect(activeCycle.status).toBe(200);
+    expect(activeCycle.body).toMatchObject({ success: true });
+
+    const settings = await request(app)
+      .get('/api/settings')
+      .set('Authorization', `Bearer ${hrToken}`);
+    expect(settings.status).toBe(200);
+    expect(settings.body).toMatchObject({ success: true });
+    expect(settings.body.data).toHaveProperty('assessmentScope');
+
+    const exportAlias = await request(app)
+      .get('/api/performance/export?month=2099-05')
+      .set('Authorization', `Bearer ${hrToken}`);
+    expect(exportAlias.status).not.toBe(404);
+    expect(exportAlias.body?.message).not.toBe('接口不存在');
+  });
+
+  it('sanitizes unsafe HTML submitted in employee summaries and suggestions', async () => {
+    const month = '2099-07';
+    const recordId = `rec-e034-${month}`;
+    await PerformanceModel.saveSummary({
+      id: recordId,
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month,
+      selfSummary: '',
+      nextMonthPlan: '',
+      groupType: 'low',
+    });
+
+    const employeeToken = await TestHelper.getAuthToken('employee');
+    const response = await request(app)
+      .post('/api/performance/summary')
+      .set('Authorization', `Bearer ${employeeToken}`)
+      .send({
+        month,
+        selfSummary: "本月完成<script>alert('xss')</script>测试任务",
+        nextMonthPlan: '<img src=x onerror=alert(1)>继续测试',
+        improvementSuggestion: '<script>alert(2)</script>优化流程',
+      });
+
+    expect(response.status).toBe(201);
+    const saved = await PerformanceModel.findById(recordId);
+    expect(saved?.selfSummary).not.toContain('<script');
+    expect(saved?.nextMonthPlan).not.toContain('<img');
+    expect(saved?.improvementSuggestion).not.toContain('<script');
+    expect(JSON.stringify(response.body)).not.toContain('<script');
+    expect(JSON.stringify(response.body)).not.toContain('<img');
+  });
+
+  it('prevents HR from directly changing protected organization fields or own manager', async () => {
+    const hrToken = await TestHelper.getAuthToken('hr');
+
+    const ownManager = await request(app)
+      .put('/api/employees/hr001')
+      .set('Authorization', `Bearer ${hrToken}`)
+      .send({ managerId: '' });
+    expect(ownManager.status).toBe(403);
+    expect(ownManager.body.success).toBe(false);
+
+    const departmentChange = await request(app)
+      .put('/api/employees/e035')
+      .set('Authorization', `Bearer ${hrToken}`)
+      .send({ department: '人力行政部' });
+    expect(departmentChange.status).toBe(403);
+    expect(departmentChange.body.success).toBe(false);
+  });
+
   it('does not expose runtime environment details in health responses', async () => {
     const response = await request(app).get('/api/health');
 

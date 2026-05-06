@@ -92,6 +92,15 @@ function roundScore(score: number): number {
   return Math.round(Math.max(0.7, Math.min(1.45, score)) * 100) / 100;
 }
 
+function calculateWeightedTotal(taskCompletion: number, initiative: number, projectFeedback: number, qualityImprovement: number): number {
+  return Math.round((
+    taskCompletion * 0.4
+    + initiative * 0.3
+    + projectFeedback * 0.2
+    + qualityImprovement * 0.1
+  ) * 100) / 100;
+}
+
 function demoOrgUnitKey(employee: Employee): string {
   const dept = String(employee.department || '').trim();
   const sub = String(employee.subDepartment || '').trim();
@@ -123,10 +132,14 @@ function distributionScoreForIndex(index: number, total: number, employeeId: str
 function buildDemoRecord(employee: Employee, assessorId: string, month: string, forcedTotalScore?: number): PerformanceRecord {
   const base = 0.82 + seededNumber(`${employee.id}-${month}`) * 0.58;
   const trend = (seededNumber(`${employee.id}-trend`) - 0.5) * 0.08;
-  const totalScore = roundScore(forcedTotalScore ?? base + trend);
-  const dimension = (suffix: string) => (
-    Math.round(Math.max(0.7, Math.min(1.5, totalScore + (seededNumber(`${employee.id}-${month}-${suffix}`) - 0.5) * 0.12)) * 100) / 100
-  );
+  const targetScore = roundScore(forcedTotalScore ?? base + trend);
+  // 演示数据不能“先定总分再随机四维”，否则排名、等级和 2-7-1 分布会基于不一致的数据。
+  // 四维统一围绕同一目标分，确保 totalScore 始终等于系统真实加权公式结果。
+  const taskCompletion = targetScore;
+  const initiative = targetScore;
+  const projectFeedback = targetScore;
+  const qualityImprovement = targetScore;
+  const totalScore = calculateWeightedTotal(taskCompletion, initiative, projectFeedback, qualityImprovement);
 
   return {
     id: `${DEMO_PREFIX}${employee.id}-${month}`,
@@ -143,10 +156,10 @@ function buildDemoRecord(employee: Employee, assessorId: string, month: string, 
     resourceNeedTags: ['跨部门支持'],
     improvementSuggestion: `${DEMO_MARKER} 建议持续优化绩效填报和评分节奏。`,
     suggestionAnonymous: false,
-    taskCompletion: dimension('task'),
-    initiative: dimension('initiative'),
-    projectFeedback: dimension('feedback'),
-    qualityImprovement: dimension('quality'),
+    taskCompletion,
+    initiative,
+    projectFeedback,
+    qualityImprovement,
     totalScore,
     normalizedScore: totalScore,
     level: scoreToLevel(totalScore),

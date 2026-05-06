@@ -4,6 +4,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/', authenticate, settingsController.listSettings);
 router.get('/assessment-scope', authenticate, settingsController.getAssessmentScope);
 router.put('/assessment-scope', authenticate, requireRole('hr'), settingsController.updateAssessmentScope);
 
