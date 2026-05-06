@@ -482,7 +482,7 @@ export class PerformanceModel {
       WHERE id = ?
         ${
           hasExpectedUpdatedAt
-            ? "AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ?::timestamp)"
+            ? "AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', (?::timestamptz AT TIME ZONE current_setting('TimeZone')))"
             : "AND (status IS NULL OR status NOT IN ('completed', 'scored'))"
         }
     `;
