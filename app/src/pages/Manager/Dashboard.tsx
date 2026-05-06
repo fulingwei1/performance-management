@@ -111,27 +111,34 @@ export function ManagerDashboard() {
   }, [user, summaryMonth]);
 
   // 获取当前月份的绩效记录
-  const currentMonthRecords = records.filter(r => r.month === currentMonth);
+  const currentMonthRecords = useMemo(
+    () => records.filter(r => r.month === currentMonth),
+    [records, currentMonth]
+  );
   
-  // 统计数据
-  const teamSize = subordinates.length;
-  // 待评分：已提交未评分 + 未提交的员工
-  const submittedPending = currentMonthRecords.filter(r => r.status === 'submitted' || r.status === 'draft').length;
-  const notSubmitted = teamSize - currentMonthRecords.length;
-  const pendingReview = submittedPending + notSubmitted;
-  const completedReview = currentMonthRecords.filter(r => r.status === 'completed' || r.status === 'scored').length;
-  
-  // 计算平均分（使用已完成的记录）
-  const completedRecords = currentMonthRecords.filter(r => r.status === 'completed' || r.status === 'scored');
-  const averageScore = completedRecords.length > 0
-    ? completedRecords.reduce((sum, r) => sum + r.totalScore, 0) / completedRecords.length
-    : 0;
-  const monthlyBestScore = completedRecords.length > 0
-    ? Math.max(...completedRecords.map((r) => r.totalScore || 0))
-    : 0;
-  const participationCount = participationSummary?.team?.participatingCount ?? 0;
-  const excludedCount = participationSummary?.team?.excludedCount ?? 0;
-  const completionRate = teamSize > 0 ? Math.round((completedReview / teamSize) * 100) : 0;
+  const {
+    teamSize, pendingReview,
+    completedReview, averageScore, monthlyBestScore, participationCount,
+    excludedCount, completionRate
+  } = useMemo(() => {
+    const teamSize = subordinates.length;
+    const submittedPending = currentMonthRecords.filter(r => r.status === 'submitted').length;
+    const draftCount = currentMonthRecords.filter(r => r.status === 'draft').length;
+    const notSubmitted = teamSize - currentMonthRecords.length;
+    const pendingReview = submittedPending + notSubmitted;
+    const completedReview = currentMonthRecords.filter(r => r.status === 'completed' || r.status === 'scored').length;
+    const completedRecords = currentMonthRecords.filter(r => r.status === 'completed' || r.status === 'scored');
+    const averageScore = completedRecords.length > 0
+      ? completedRecords.reduce((sum, r) => sum + r.totalScore, 0) / completedRecords.length
+      : 0;
+    const monthlyBestScore = completedRecords.length > 0
+      ? Math.max(...completedRecords.map((r) => r.totalScore || 0))
+      : 0;
+    const participationCount = participationSummary?.team?.participatingCount ?? 0;
+    const excludedCount = participationSummary?.team?.excludedCount ?? 0;
+    const completionRate = teamSize > 0 ? Math.round((completedReview / teamSize) * 100) : 0;
+    return { teamSize, pendingReview, completedReview, averageScore, monthlyBestScore, participationCount, excludedCount, completionRate };
+  }, [subordinates, currentMonthRecords, participationSummary]);
   const actionHint = pendingReview > 0
     ? `还有 ${pendingReview} 人需要处理，点击“待评分”可直接查看名单。`
     : completedReview > 0

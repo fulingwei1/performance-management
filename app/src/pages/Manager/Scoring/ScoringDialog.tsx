@@ -289,7 +289,11 @@ export function ScoringDialog({
                 <p className="text-xs text-gray-500 mb-1">综合得分</p>
                 <ScoreDisplay score={totalScore} showLabel={false} size="lg" />
               </div>
-              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => onOpenChange(false)}>
+              <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => {
+                const hasContent = totalScore > 0 || managerComment.trim() || evaluationKeywords.length > 0;
+                if (hasContent && !window.confirm('确定关闭？未提交的评分内容将丢失')) return;
+                onOpenChange(false);
+              }}>
                 <X className="w-5 h-5" />
               </Button>
             </div>

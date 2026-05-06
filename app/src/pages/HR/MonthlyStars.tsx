@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
 import { Award, Calendar, RefreshCcw, Star } from 'lucide-react';
 import { performanceApi } from '@/services/api';
 import { PerformanceRecord } from '@/types';
+import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { toast } from 'sonner';
 
 export default function MonthlyStars() {
-  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [month, setMonth] = useState(getDefaultAssessmentMonth());
   const [records, setRecords] = useState<PerformanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
 

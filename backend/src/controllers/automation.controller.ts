@@ -285,6 +285,8 @@ export const automationController = {
    */
   publishMonth: asyncHandler(async (req: Request, res: Response) => {
     const month = req.body.month as string | undefined;
+    const forceDistribution = req.body.forceDistribution === true;
+    const forceReason = typeof req.body.forceReason === 'string' ? req.body.forceReason.trim() : '';
     if (!month) {
       return res.status(400).json({ success: false, error: '缺少 month 参数' });
     }
@@ -299,20 +301,38 @@ export const automationController = {
 
     const readiness = await validatePublicationReadiness(month);
     if (!readiness.ok) {
-      return res.status(400).json({
-        success: false,
-        message: formatPublicationReadinessMessage(readiness),
-        data: readiness
-      });
+      const incompleteViolations = readiness.violations.filter((violation) => violation.type === 'incomplete');
+      const forcedDistributionViolations = readiness.violations.filter((violation) => violation.type === 'forced_distribution');
+
+      if (incompleteViolations.length > 0 || forcedDistributionViolations.length === 0 || !forceDistribution) {
+        return res.status(400).json({
+          success: false,
+          message: formatPublicationReadinessMessage(readiness),
+          data: readiness
+        });
+      }
+
+      if (forceReason.length < 10) {
+        return res.status(400).json({
+          success: false,
+          message: '启用 2-7-1 豁免发布时，请填写不少于10个字的豁免原因',
+          data: readiness
+        });
+      }
     }
 
     const publishedBy = (req as any).user?.userId || 'system';
-    await AssessmentPublicationModel.publish(month, publishedBy);
-    logger.info(`[Automation] ${month} 手动发布完成`);
+    await AssessmentPublicationModel.publish(month, publishedBy, readiness.ok ? {} : {
+      forceDistribution: true,
+      forceReason,
+      readinessSnapshot: readiness,
+    });
+    logger.info(`[Automation] ${month} 手动发布完成${!readiness.ok ? `（2-7-1豁免：${forceReason}）` : ''}`);
 
     res.json({
       success: true,
-      message: `${month} 发布成功`
+      message: readiness.ok ? `${month} 发布成功` : `${month} 发布成功（已记录2-7-1豁免原因）`,
+      data: readiness.ok ? undefined : { forceDistribution: true, forceReason, readiness }
     });
   }),
 

@@ -4,36 +4,49 @@ import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 interface ScoreDisplayProps {
-  score: number;
+  score: number | null | undefined;
   showLabel?: boolean;
   showProgress?: boolean;
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export function ScoreDisplay({ 
-  score, 
-  showLabel = true, 
+export function ScoreDisplay({
+  score,
+  showLabel = true,
   showProgress = false,
   size = 'md',
-  className 
+  className
 }: ScoreDisplayProps) {
-  const level = scoreToLevel(score);
+  const numericScore = Number(score);
+  if (!Number.isFinite(numericScore) || numericScore <= 0) {
+    const sizeClasses = {
+      sm: 'text-lg',
+      md: 'text-2xl',
+      lg: 'text-4xl'
+    };
+    return (
+      <div className={cn("flex flex-col gap-1", className)}>
+        <span className={cn("font-bold tabular-nums text-gray-400", sizeClasses[size])}>—</span>
+      </div>
+    );
+  }
+  const level = scoreToLevel(numericScore);
   const label = getLevelLabel(level);
   const color = getLevelColor(level);
-  
+
   const sizeClasses = {
     sm: 'text-lg',
     md: 'text-2xl',
     lg: 'text-4xl'
   };
-  
+
   const badgeSizeClasses = {
     sm: 'text-xs px-2 py-0.5',
     md: 'text-sm px-2.5 py-0.5',
     lg: 'text-base px-3 py-1'
   };
-  
+
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center gap-2">
@@ -45,9 +58,9 @@ export function ScoreDisplay({
           className={cn("font-bold tabular-nums", sizeClasses[size])}
           style={{ color }}
         >
-          {score.toFixed(2)}
+          {numericScore.toFixed(2)}
         </motion.span>
-        
+
         {showLabel && (
           <span
             className={cn(
@@ -60,15 +73,15 @@ export function ScoreDisplay({
           </span>
         )}
       </div>
-      
+
       {showProgress && (
         <div className="w-full mt-1">
-          <Progress 
-            value={(score / 1.5) * 100} 
+          <Progress
+            value={(numericScore / 1.5) * 100}
             className="h-2"
-            style={{ 
+            style={{
               '--progress-background': `${color}30`,
-              '--progress-fill': color 
+              '--progress-fill': color
             } as React.CSSProperties}
           />
         </div>

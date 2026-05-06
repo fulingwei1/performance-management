@@ -25,9 +25,9 @@ import {
   Target,
   Tags
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { topTagEntries } from '@/lib/performanceTagAnalytics';
+import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 
 // 时间范围选项
 const TIME_RANGE_OPTIONS = [
@@ -45,7 +45,7 @@ export function GMAnalytics() {
   const [hasDemoData, setHasDemoData] = useState(false);
   const [peopleFilter, setPeopleFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  const currentMonth = getDefaultAssessmentMonth();
   const realRecords = useMemo(
     () => records.filter((record) => !record.isDemo && !String(record.id || '').startsWith('demo-')),
     [records]
@@ -149,26 +149,18 @@ export function GMAnalytics() {
     const months = Array.from(monthsSet).sort();
     
     let currentMonthWithScore = currentMonth;
-    let previousMonthWithScore = '';
-    
+
     // 找最近有评分的月份
     for (let i = months.length - 1; i >= 0; i--) {
       const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
       if (monthRecords.length > 0) {
-        if (!currentMonthWithScore || currentMonthWithScore === currentMonth) {
-          currentMonthWithScore = months[i];
-        } else if (!previousMonthWithScore && months[i] < currentMonthWithScore) {
-          previousMonthWithScore = months[i];
-          break;
-        }
+        currentMonthWithScore = months[i];
+        break;
       }
     }
     
     // 只获取有评分的记录
     const currentMonthRecords = realRecords.filter(r => r.month === currentMonthWithScore && r.totalScore > 0);
-    const previousMonthRecords = previousMonthWithScore 
-      ? realRecords.filter(r => r.month === previousMonthWithScore && r.totalScore > 0)
-      : [];
     
     const currentAvg = currentMonthRecords.length > 0
       ? currentMonthRecords.reduce((sum, r) => sum + r.totalScore, 0) / currentMonthRecords.length
@@ -303,16 +295,16 @@ export function GMAnalytics() {
     });
     
     // 找到最近有评分的月份（解决月初未评分问题）
-    let currentMonth = months[months.length - 1];
+    let latestDataMonth = months[months.length - 1];
     
     // 检查最新月份是否有评分数据
-    const latestMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
+    const latestMonthRecords = realRecords.filter(r => r.month === latestDataMonth && r.totalScore > 0);
     if (latestMonthRecords.length === 0 && months.length >= 2) {
       // 如果最新月份没有评分，使用上一个有评分的月份
       for (let i = months.length - 1; i >= 0; i--) {
         const monthRecords = realRecords.filter(r => r.month === months[i] && r.totalScore > 0);
         if (monthRecords.length > 0) {
-          currentMonth = months[i];
+          latestDataMonth = months[i];
           break;
         }
       }
@@ -419,7 +411,6 @@ export function GMAnalytics() {
   // 异常检测
   const anomalies = useMemo(() => {
     // 只获取有评分的记录（解决月初未评分问题）
-    const currentMonthRecords = realRecords.filter(r => r.month === currentMonth && r.totalScore > 0);
     const result: { type: string; message: string; severity: 'warning' | 'error' }[] = [];
     
     // 部门差异过大

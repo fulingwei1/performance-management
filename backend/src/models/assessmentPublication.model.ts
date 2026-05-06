@@ -7,7 +7,26 @@ export interface AssessmentPublication {
   publishedBy: string;
   publishedAt: Date;
   createdAt: Date;
+  forceDistribution?: boolean;
+  forceReason?: string;
+  readinessSnapshot?: unknown;
 }
+
+export interface AssessmentPublicationOptions {
+  forceDistribution?: boolean;
+  forceReason?: string;
+  readinessSnapshot?: unknown;
+}
+
+const parseReadinessSnapshot = (value: unknown): unknown => {
+  if (typeof value !== 'string') return value;
+  if (!value.trim()) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+};
 
 export class AssessmentPublicationModel {
   private static getMemoryStore(): Map<string, any> {
@@ -32,7 +51,11 @@ export class AssessmentPublicationModel {
   /**
    * 发布某月的考核结果
    */
-  static async publish(month: string, publishedBy: string): Promise<AssessmentPublication> {
+  static async publish(
+    month: string,
+    publishedBy: string,
+    options: AssessmentPublicationOptions = {}
+  ): Promise<AssessmentPublication> {
     const id = uuidv4();
     if (USE_MEMORY_DB) {
       const publication = {
@@ -41,6 +64,9 @@ export class AssessmentPublicationModel {
         published_by: publishedBy,
         published_at: new Date(),
         created_at: new Date(),
+        force_distribution: options.forceDistribution === true,
+        force_reason: options.forceReason || '',
+        readiness_snapshot: options.readinessSnapshot || null,
       };
       this.getMemoryStore().set(month, publication);
       return this.formatRecord(publication);
@@ -48,12 +74,19 @@ export class AssessmentPublicationModel {
 
     const sql = `
       INSERT INTO monthly_assessment_publications 
-      (id, month, published_by, published_at, created_at)
-      VALUES ($1, $2, $3, NOW(), NOW())
+      (id, month, published_by, published_at, created_at, force_distribution, force_reason, readiness_snapshot)
+      VALUES ($1, $2, $3, NOW(), NOW(), $4, $5, $6)
       RETURNING *
     `;
     
-    const results = await query(sql, [id, month, publishedBy]);
+    const results = await query(sql, [
+      id,
+      month,
+      publishedBy,
+      options.forceDistribution === true,
+      options.forceReason || '',
+      options.readinessSnapshot ? JSON.stringify(options.readinessSnapshot) : null,
+    ]);
     return this.formatRecord(results[0]);
   }
 
@@ -125,6 +158,9 @@ export class AssessmentPublicationModel {
       publishedBy: row.published_by,
       publishedAt: row.published_at,
       createdAt: row.created_at,
+      forceDistribution: row.force_distribution === true,
+      forceReason: row.force_reason || '',
+      readinessSnapshot: parseReadinessSnapshot(row.readiness_snapshot),
       publisherName: row.publisher_name
     } as any;
   }

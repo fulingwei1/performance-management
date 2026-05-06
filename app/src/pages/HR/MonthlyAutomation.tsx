@@ -7,6 +7,7 @@ import {
   Database, Trash2
 } from 'lucide-react';
 import { request, salaryIntegrationApi } from '@/services/api';
+import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 
 const apiCall = (path: string, options?: RequestInit) => request(`/automation${path}`, options);
 
@@ -31,12 +32,7 @@ interface DemoDataStatus {
 }
 
 export default function MonthlyAutomation() {
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}`;
-  });
+  const [selectedMonth, setSelectedMonth] = useState(() => getDefaultAssessmentMonth());
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -170,6 +166,26 @@ export default function MonthlyAutomation() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const publishWithOptionalDistributionExemption = () => {
+    const useExemption = window.confirm('如果只是普通发布点“取消”；如果需要因为 2-7-1 分布不满足但仍要发布，点“确定”并填写豁免原因。');
+    if (!useExemption) {
+      runAction('publish', { month: selectedMonth });
+      return;
+    }
+
+    const reason = window.prompt('请填写2-7-1豁免原因（不少于10个字，会进入日志留痕）：');
+    if (!reason || reason.trim().length < 10) {
+      toast.error('豁免原因不能少于10个字');
+      return;
+    }
+
+    runAction('publish', {
+      month: selectedMonth,
+      forceDistribution: true,
+      forceReason: reason.trim(),
+    });
   };
 
   return (
@@ -404,9 +420,9 @@ export default function MonthlyAutomation() {
             icon={<Archive className="w-4 h-4" />}
             onClick={() => runAction('auto-publish', { month: selectedMonth })}
             secondaryButton={{
-              label: '仅发布结果',
+              label: '仅发布结果/豁免',
               icon: <Send className="w-4 h-4" />,
-              onClick: () => runAction('publish', { month: selectedMonth }),
+              onClick: publishWithOptionalDistributionExemption,
             }}
           />
         </div>

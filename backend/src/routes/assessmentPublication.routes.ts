@@ -10,7 +10,14 @@ const router = Router();
 const publishValidation = [
   body('month')
     .notEmpty().withMessage('月份不能为空')
-    .matches(/^\d{4}-\d{2}$/).withMessage('月份格式必须为YYYY-MM')
+    .matches(/^\d{4}-\d{2}$/).withMessage('月份格式必须为YYYY-MM'),
+  body('forceDistribution')
+    .optional()
+    .isBoolean().withMessage('2-7-1豁免标记必须为布尔值'),
+  body('forceReason')
+    .optional()
+    .isString().withMessage('豁免原因必须为文本')
+    .trim()
 ];
 
 // 发布某月的考核结果（HR/Admin）

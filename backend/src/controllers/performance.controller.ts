@@ -58,7 +58,46 @@ function hideUnpublishedScore(record: any): any {
     crossDeptRank: 0,
     departmentRank: 0,
     companyRank: 0,
+    companyAverageScore: null,
+    companyScoredCount: 0,
+    departmentAverageScore: null,
+    departmentScoredCount: 0,
     isPublished: false,
+  };
+}
+
+function getBenchmarkUnitKey(record: any): string {
+  const department = String(record?.department || '').trim();
+  const subDepartment = String(record?.subDepartment || '').trim();
+  return subDepartment ? `${department}/${subDepartment}` : department;
+}
+
+function averageScore(records: any[]): number | null {
+  const scores = records
+    .map((record) => Number(record.totalScore || 0))
+    .filter((score) => Number.isFinite(score) && score > 0);
+  if (scores.length === 0) return null;
+  const avg = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+  return Number(avg.toFixed(2));
+}
+
+async function addPublishedBenchmarks(record: any): Promise<any> {
+  if (!record) return record;
+
+  const monthRecords = await PerformanceModel.findByMonth(record.month);
+  const scoredRecords = monthRecords.filter((item: any) => (
+    (item.status === 'completed' || item.status === 'scored') &&
+    Number(item.totalScore || 0) > 0
+  ));
+  const recordUnitKey = getBenchmarkUnitKey(record);
+  const departmentRecords = scoredRecords.filter((item: any) => getBenchmarkUnitKey(item) === recordUnitKey);
+
+  return {
+    ...record,
+    companyAverageScore: averageScore(scoredRecords),
+    companyScoredCount: scoredRecords.length,
+    departmentAverageScore: averageScore(departmentRecords),
+    departmentScoredCount: departmentRecords.length,
   };
 }
 
@@ -68,11 +107,11 @@ async function filterRecordsByPublication(records: any[]): Promise<any[]> {
     months.map(async (month) => [month, await AssessmentPublicationModel.isPublished(month)] as const)
   );
   const publishedByMonth = new Map(publishedEntries);
-  return records.map((record) => (
+  return Promise.all(records.map(async (record) => (
     publishedByMonth.get(record.month)
-      ? { ...record, isPublished: true }
+      ? addPublishedBenchmarks({ ...record, isPublished: true })
       : hideUnpublishedScore(record)
-  ));
+  )));
 }
 
 async function ensurePerformanceReviewTodo(record: any, employeeName?: string) {
@@ -136,9 +175,13 @@ export const performanceController = {
     }
 
     const isPublished = await AssessmentPublicationModel.isPublished(monthStr);
+    const visibleRecord = isPublished
+      ? await addPublishedBenchmarks({ ...record, isPublished: true })
+      : hideUnpublishedScore(record);
+
     res.json({
       success: true,
-      data: isPublished ? { ...record, isPublished: true } : hideUnpublishedScore(record)
+      data: visibleRecord
     });
   }),
 

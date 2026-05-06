@@ -80,7 +80,7 @@ export const request = async (url: string, options: RequestInit = {}) => {
   if (!isFormDataBody) {
     headers['Content-Type'] = headers['Content-Type'] || 'application/json';
   }
-  
+
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -144,10 +144,10 @@ export const authApi = {
           : { username, password: idCardLast6 }
       )
     }),
-  
+
   // 获取当前用户
   getCurrentUser: () => request('/auth/me'),
-  
+
   // 修改密码
   changePassword: (oldPassword: string, newPassword: string) =>
     request('/auth/change-password', {
@@ -163,31 +163,31 @@ export const employeeApi = {
     const query = options?.includeDisabled ? '?includeDisabled=true' : '';
     return request(`/employees${query}`);
   },
-  
+
   // 获取所有经理
   getManagers: () => request('/employees/managers'),
-  
+
   // 获取下属
   getSubordinates: () => request('/employees/subordinates'),
 
   // 获取当前用户/经理的绩效参与状态
   getAssessmentParticipation: () => request('/employees/assessment-participation'),
-  
+
   // 根据ID获取员工
   getById: (id: string) => request(`/employees/${id}`),
-  
+
   // 创建员工
   create: (data: Record<string, unknown>) => request('/employees', {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 更新员工
   updateEmployee: (id: string, data: Record<string, unknown>) => request(`/employees/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除员工
   deleteEmployee: (id: string) => request(`/employees/${id}`, {
     method: 'DELETE'
@@ -209,10 +209,10 @@ export const employeeApi = {
 export const performanceApi = {
   // 获取我的绩效记录
   getMyRecords: () => request('/performance/my-records'),
-  
+
   // 获取我的某月绩效记录
   getMyRecordByMonth: (month: string) => request(`/performance/my-record/${month}`),
-  
+
   // 获取团队绩效记录（经理）
   // month: 指定月份; months: 最近N个月; 都不传返回全部
   getTeamRecords: (month?: string, months?: number) => {
@@ -225,7 +225,7 @@ export const performanceApi = {
 
   // 获取某月份全部绩效记录（总经理/HR）
   getRecordsByMonth: (month: string) => request(`/performance/month/${month}`),
-  
+
   // 获取全公司所有记录（总经理/HR）
   getAllRecords: (months?: number) => {
     const query = months ? `?months=${months}` : '';
@@ -238,18 +238,18 @@ export const performanceApi = {
   // 获取合理化建议汇总
   getImprovementSuggestions: (params?: { month?: string; scope?: 'team' | 'all' }) =>
     request(`/performance/improvement-suggestions${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
-  
+
   // 模拟数据管理
   generateDemoData: () => request('/performance/demo-data/generate', { method: 'POST' }),
   clearDemoData: () => request('/performance/demo-data', { method: 'DELETE' }),
   getDemoDataStatus: () => request('/performance/demo-data/status'),
-  
+
   // HR批量生成绩效任务
   generateTasks: (month: string) => request('/performance/generate-tasks', {
     method: 'POST',
     body: JSON.stringify({ month })
   }),
-  
+
   // 获取月度统计数据（用于导出）
   getStatsByMonth: (month: string) => request(`/performance/stats/${month}`),
 
@@ -281,20 +281,20 @@ export const performanceApi = {
       method: 'POST',
       body: JSON.stringify(data)
     }),
-  
+
   // 创建空记录（经理给未提交的员工评分时使用）
   createEmptyRecord: (data: { employeeId: string; month: string }) =>
     request('/performance/create-empty-record', {
       method: 'POST',
       body: JSON.stringify(data)
     }),
-  
+
   // 获取绩效记录对应的评分模板（用于动态渲染评分表单）
   getRecordTemplate: (id: string) => request(`/performance/${id}/template`),
 
   // 根据ID获取绩效记录
   getRecordById: (id: string) => request(`/performance/${id}`),
-  
+
   // 经理评分
   submitScore: (data: {
     id: string;
@@ -533,7 +533,7 @@ export const aiApi = {
 export const hrApi = {
   // 获取所有员工
   getAllEmployees: () => request('/employees'),
-  
+
   // 新增员工
   addEmployee: (data: {
     name: string;
@@ -546,7 +546,7 @@ export const hrApi = {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 更新员工
   updateEmployee: (id: string, data: {
     name?: string;
@@ -559,12 +559,12 @@ export const hrApi = {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除员工
   deleteEmployee: (id: string) => request(`/employees/${id}`, {
     method: 'DELETE'
   }),
-  
+
   // 批量导入员工（逐个调用 createEmployee）
   importEmployees: async (employees: Record<string, unknown>[]) => {
     let successCount = 0;
@@ -582,7 +582,7 @@ export const hrApi = {
     }
     return { success: true, data: { successCount, failedCount } };
   },
-  
+
   // 导出员工
   exportEmployees: () => secureDownload(`${API_BASE_URL}/export/employees`, 'employees.xlsx')
 };
@@ -680,16 +680,16 @@ export const salaryIntegrationApi = {
 export const organizationApi = {
   // 获取组织架构树
   getOrgTree: () => request('/organization/tree'),
-  
+
   // 获取所有部门
   getAllDepartments: () => request('/organization/departments'),
-  
+
   // 获取部门树
   getDepartmentTree: () => request('/organization/departments/tree'),
-  
+
   // 获取部门详情
   getDepartmentById: (id: string) => request(`/organization/departments/${id}`),
-  
+
   // 创建部门
   createDepartment: (data: {
     name: string;
@@ -701,24 +701,24 @@ export const organizationApi = {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 更新部门
   updateDepartment: (id: string, data: Record<string, unknown>) => request(`/organization/departments/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除部门
   deleteDepartment: (id: string) => request(`/organization/departments/${id}`, {
     method: 'DELETE'
   }),
-  
+
   // 获取所有岗位
   getAllPositions: () => request('/organization/positions'),
-  
+
   // 获取部门岗位
   getPositionsByDepartment: (departmentId: string) => request(`/organization/departments/${departmentId}/positions`),
-  
+
   // 创建岗位
   createPosition: (data: {
     name: string;
@@ -732,13 +732,13 @@ export const organizationApi = {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 更新岗位
   updatePosition: (id: string, data: Record<string, unknown>) => request(`/organization/positions/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除岗位
   deletePosition: (id: string) => request(`/organization/positions/${id}`, {
     method: 'DELETE'
@@ -770,16 +770,16 @@ export const settingsApi = {
 export const assessmentCycleApi = {
   // 获取所有考核周期
   getAllCycles: () => request('/cycles'),
-  
+
   // 获取当前激活的考核周期
   getActiveCycle: () => request('/cycles/active'),
-  
+
   // 获取考核日历
   getCalendar: (year?: number) => request(`/cycles/calendar${year ? `?year=${year}` : ''}`),
-  
+
   // 获取考核周期详情
   getCycleById: (id: string) => request(`/cycles/${id}`),
-  
+
   // 创建考核周期
   createCycle: (data: {
     name: string;
@@ -799,43 +799,43 @@ export const assessmentCycleApi = {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 更新考核周期
   updateCycle: (id: string, data: Record<string, unknown>) => request(`/cycles/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除考核周期
   deleteCycle: (id: string) => request(`/cycles/${id}`, {
     method: 'DELETE'
   }),
-  
+
   // 激活考核周期
   activateCycle: (id: string) => request(`/cycles/${id}/activate`, {
     method: 'POST'
   }),
-  
+
   // 批量生成年度的月度考核周期
   generateMonthlyCycles: (year: number) => request('/cycles/generate-monthly', {
     method: 'POST',
     body: JSON.stringify({ year })
   }),
-  
+
   // 获取节假日
   getHolidays: (year?: number) => request(`/cycles/holidays${year ? `?year=${year}` : ''}`),
-  
+
   // 创建节假日
   createHoliday: (data: { name: string; date: string; type: string }) => request('/cycles/holidays', {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除节假日
   deleteHoliday: (id: string) => request(`/cycles/holidays/${id}`, {
     method: 'DELETE'
   }),
-  
+
   // 批量导入节假日
   importHolidays: (holidays: Record<string, unknown>[]) => request('/cycles/holidays/import', {
     method: 'POST',
@@ -847,10 +847,10 @@ export const assessmentCycleApi = {
 export const metricLibraryApi = {
   // 获取所有指标
   getAllMetrics: (category?: string) => request(`/metrics${category ? `?category=${category}` : ''}`),
-  
+
   // 获取指标详情
   getMetricById: (id: string) => request(`/metrics/${id}`),
-  
+
   // 创建指标
   createMetric: (data: {
     name: string;
@@ -869,38 +869,38 @@ export const metricLibraryApi = {
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  
+
   // 更新指标
   updateMetric: (id: string, data: Record<string, unknown>) => request(`/metrics/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
-  
+
   // 删除指标
   deleteMetric: (id: string) => request(`/metrics/${id}`, {
     method: 'DELETE'
   }),
-  
+
   // 批量导入指标
   importMetrics: (metrics: Record<string, unknown>[]) => request('/metrics/import', {
     method: 'POST',
     body: JSON.stringify({ metrics })
   }),
-  
+
   // 导出指标
   exportMetrics: () => secureDownload(`${API_BASE_URL}/metrics/export`, 'metrics.xlsx'),
-  
+
   // 初始化默认指标
   initializeDefaultMetrics: () => request('/metrics/initialize', {
     method: 'POST'
   }),
-  
+
   // 获取所有模板
   getAllTemplates: () => request('/metrics/templates'),
-  
+
   // 获取岗位模板
   getTemplateByPosition: (positionId: string) => request(`/metrics/templates/position/${positionId}`),
-  
+
   // 创建模板
   createTemplate: (data: {
     name: string;
@@ -956,31 +956,31 @@ export const logApi = {
 // 考核结果发布相关API
 export const assessmentPublicationApi = {
   // 发布某月考核结果（HR/Admin）
-  publish: (month: string) => 
+  publish: (month: string, options?: { forceDistribution?: boolean; forceReason?: string }) =>
     request('/assessment-publications/publish', {
       method: 'POST',
-      body: JSON.stringify({ month })
+      body: JSON.stringify({ month, ...(options || {}) })
     }),
-  
+
   // 取消发布（仅测试环境）
-  unpublish: (month: string) => 
+  unpublish: (month: string) =>
     request(`/assessment-publications/${month}/unpublish`, {
       method: 'DELETE'
     }),
-  
+
   // 检查某月是否已发布
-  checkPublished: (month: string) => 
+  checkPublished: (month: string) =>
     request(`/assessment-publications/${month}/status`),
-  
+
   // 获取所有已发布月份列表
-  getAllPublished: () => 
+  getAllPublished: () =>
     request('/assessment-publications/published')
 };
 
 // 自动化任务相关API
 export const automationApi = {
   // 检查截止日期提醒
-  checkReminders: () => 
+  checkReminders: () =>
     request('/automation/check-reminders', {
       method: 'POST'
     }),

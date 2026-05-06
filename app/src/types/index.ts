@@ -225,6 +225,13 @@ export interface PerformanceRecord {
   // 排名
   departmentRank: number;
   companyRank: number;
+
+  // 发布后对比口径
+  companyAverageScore?: number | null;
+  companyScoredCount?: number;
+  departmentAverageScore?: number | null;
+  departmentScoredCount?: number;
+  isPublished?: boolean;
   
   status: 'draft' | 'submitted' | 'scored' | 'completed';
   createdAt: string;

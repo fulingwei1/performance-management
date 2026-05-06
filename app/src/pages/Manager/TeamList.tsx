@@ -85,56 +85,62 @@ export function TeamList() {
   }, [user, currentQuarter]);
   
   // 获取当前月份的记录
-  const currentMonthRecords = records.filter(r => r.month === currentMonth);
+  const currentMonthRecords = useMemo(
+    () => records.filter(r => r.month === currentMonth),
+    [records, currentMonth]
+  );
   const quarterlySummaryMap = useMemo(() => (
     new Map(quarterlySummaries.map((record) => [record.employeeId || record.employee_id, record]))
   ), [quarterlySummaries]);
   
   // 创建包含所有下属员工的列表（即使没有绩效记录）
-  const allEmployees = subordinates.map(sub => {
-    const record = currentMonthRecords.find(r => r.employeeId === sub.id);
-    return {
-      ...sub,
-      record: record || null,
-      status: record ? record.status : 'not_submitted',
-      totalScore: record ? record.totalScore : 0,
-      departmentRank: record ? record.departmentRank : 0,
-      selfSummary: record ? record.selfSummary : '',
-      month: currentMonth,
-      quarterlySummary: quarterlySummaryMap.get(sub.id) || null
-    };
-  });
+  const allEmployees = useMemo(() => (
+    subordinates.map(sub => {
+      const record = currentMonthRecords.find(r => r.employeeId === sub.id);
+      return {
+        ...sub,
+        record: record || null,
+        status: record ? record.status : 'not_submitted',
+        totalScore: record ? record.totalScore : 0,
+        departmentRank: record ? record.departmentRank : 0,
+        selfSummary: record ? record.selfSummary : '',
+        month: currentMonth,
+        quarterlySummary: quarterlySummaryMap.get(sub.id) || null
+      };
+    })
+  ), [subordinates, currentMonthRecords, currentMonth, quarterlySummaryMap]);
   
-  // 根据筛选类型过滤
-  let filteredEmployees = allEmployees;
-  
-  switch (filterType) {
-    case 'pending':
-      // 待评分：包括已提交未评分的 + 未提交总结的
-      filteredEmployees = allEmployees.filter(e => 
-        e.status === 'submitted' || 
-        e.status === 'draft' || 
-        e.status === 'not_submitted'
-      );
-      break;
-    case 'completed':
-      filteredEmployees = allEmployees.filter(e => 
-        e.status === 'completed' || e.status === 'scored'
-      );
-      break;
-    case 'all':
-    default:
-      filteredEmployees = allEmployees;
-      break;
-  }
-  
-  // 搜索过滤
-  const searchFilteredEmployees = searchQuery
-    ? filteredEmployees.filter(e =>
-        e.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.department?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : filteredEmployees;
+  const searchFilteredEmployees = useMemo(() => {
+    let filteredEmployees = allEmployees;
+
+    switch (filterType) {
+      case 'pending':
+        filteredEmployees = allEmployees.filter(e =>
+          e.status === 'submitted' ||
+          e.status === 'draft' ||
+          e.status === 'not_submitted'
+        );
+        break;
+      case 'completed':
+        filteredEmployees = allEmployees.filter(e =>
+          e.status === 'completed' || e.status === 'scored'
+        );
+        break;
+      case 'all':
+      default:
+        filteredEmployees = allEmployees;
+        break;
+    }
+
+    const searchFilteredEmployees = searchQuery
+      ? filteredEmployees.filter(e =>
+          e.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          e.department?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : filteredEmployees;
+
+    return searchFilteredEmployees;
+  }, [allEmployees, filterType, searchQuery]);
   
   // 获取筛选标题
   const getFilterTitle = () => {

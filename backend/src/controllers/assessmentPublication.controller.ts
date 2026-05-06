@@ -15,7 +15,8 @@ export const assessmentPublicationController = {
       });
     }
 
-    const { month } = req.body;
+    const { month, forceDistribution } = req.body;
+    const forceReason = typeof req.body.forceReason === 'string' ? req.body.forceReason.trim() : '';
 
     // 检查是否已发布
     const isPublished = await AssessmentPublicationModel.isPublished(month);
@@ -28,15 +29,45 @@ export const assessmentPublicationController = {
 
     const readiness = await validatePublicationReadiness(month);
     if (!readiness.ok) {
-      return res.status(400).json({
-        success: false,
-        message: formatPublicationReadinessMessage(readiness),
-        data: readiness
-      });
+      const incompleteViolations = readiness.violations.filter((violation) => violation.type === 'incomplete');
+      const forcedDistributionViolations = readiness.violations.filter((violation) => violation.type === 'forced_distribution');
+
+      if (incompleteViolations.length > 0 || forcedDistributionViolations.length === 0 || forceDistribution !== true) {
+        return res.status(400).json({
+          success: false,
+          message: formatPublicationReadinessMessage(readiness),
+          data: readiness
+        });
+      }
+
+      if (forceReason.length < 10) {
+        return res.status(400).json({
+          success: false,
+          message: '启用 2-7-1 豁免发布时，请填写不少于10个字的豁免原因',
+          data: readiness
+        });
+      }
     }
 
     // 发布
-    const publication = await AssessmentPublicationModel.publish(month, req.user.userId);
+    const publication = await AssessmentPublicationModel.publish(month, req.user.userId, readiness.ok ? {} : {
+      forceDistribution: true,
+      forceReason,
+      readinessSnapshot: readiness,
+    });
+
+    if (!readiness.ok) {
+      return res.json({
+        success: true,
+        data: {
+          ...publication,
+          forceDistribution: true,
+          forceReason,
+          readiness,
+        },
+        message: `${month} 的考核结果已发布（已记录2-7-1豁免原因）`
+      });
+    }
 
     res.json({
       success: true,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
@@ -7,7 +7,6 @@ import {
   ChevronRight,
   ArrowUp,
   ArrowDown,
-  Users,
   Lightbulb
 } from 'lucide-react';
 import { useHRStore } from '@/stores/hrStore';
@@ -18,10 +17,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
 import { performanceApi } from '@/services/api';
 import { cn } from '@/lib/utils';
-import { resolveGroupType } from '@/lib/config';
+import { toast } from 'sonner';
+import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 
 // Sub-components
@@ -67,13 +66,14 @@ export function HRDashboard() {
     allPerformanceRecords
   } = useHRStore();
   
-  const [currentMonth, setCurrentMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [currentMonth, setCurrentMonth] = useState(getDefaultAssessmentMonth());
   const [sortBy, setSortBy] = useState<'name' | 'score' | 'status'>('score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [suggestionSummary, setSuggestionSummary] = useState<ImprovementSuggestionSummary | null>(null);
   const todoRole = user?.role === 'admin' ? 'admin' : 'hr';
   const showSuggestionSummary = user?.role === 'admin';
@@ -92,78 +92,104 @@ export function HRDashboard() {
       .catch(() => {});
   }, [currentMonth, showSuggestionSummary]);
   
-  const activeEmployeeIds = new Set(
-    employeesList
-      .filter((employee: any) => !employee.status || employee.status === 'active')
-      .map((employee: any) => employee.id)
-  );
-  const assessableInScopeEmployees = employeesList.filter((employee: any) => {
-    if (employee.status && employee.status !== 'active') return false;
-    return hasValidManagerRelationship(employee, activeEmployeeIds);
-  });
-  const activeCompanyEmployees = employeesList.filter((employee: any) => {
-    if (employee.status && employee.status !== 'active') return false;
-    return true;
-  });
-  const inScopeEmployeeIds = new Set(assessableInScopeEmployees.map((employee: any) => employee.id));
-  const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));
-  const rootDepartments = [...new Set(assessableInScopeEmployees.map(e => e.department))].filter(Boolean);
-  
-  // Build department records hierarchy
-  const deptRecords: DeptRecord[] = rootDepartments.map(rootDept => {
-    const rootDeptEmployees = assessableInScopeEmployees.filter(e => e.department === rootDept);
-    const subDepts = [...new Set(rootDeptEmployees.map(e => displaySubDepartment(e.subDepartment)))];
-    
-    const subDeptRecords = subDepts.map(subDept => {
-      const subDeptEmployees = rootDeptEmployees.filter(e => displaySubDepartment(e.subDepartment) === subDept);
-      const records = subDeptEmployees.map(emp => {
-        const record = monthRecords.find(r => r.employeeId === emp.id);
-        return { ...emp, record: record || null, totalScore: record?.totalScore || 0, status: record?.status || 'not_submitted' };
+  const { deptRecords, stats } = useMemo(() => {
+    const activeEmployeeIds = new Set(
+      employeesList
+        .filter((employee: any) => !employee.status || employee.status === 'active')
+        .map((employee: any) => employee.id)
+    );
+    const assessableInScopeEmployees = employeesList.filter((employee: any) => {
+      if (employee.status && employee.status !== 'active') return false;
+      return hasValidManagerRelationship(employee, activeEmployeeIds);
+    });
+    const activeCompanyEmployees = employeesList.filter((employee: any) => {
+      if (employee.status && employee.status !== 'active') return false;
+      return true;
+    });
+    const inScopeEmployeeIds = new Set(assessableInScopeEmployees.map((employee: any) => employee.id));
+    const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));
+    const scoredRecords = monthRecords.filter(r => isScoredStatus(r.status));
+    const rootDepartments = [...new Set(assessableInScopeEmployees.map(e => e.department))].filter(Boolean);
+
+    const deptRecords: DeptRecord[] = rootDepartments.map(rootDept => {
+      const rootDeptEmployees = assessableInScopeEmployees.filter(e => e.department === rootDept);
+      const subDepts = [...new Set(rootDeptEmployees.map(e => displaySubDepartment(e.subDepartment)))];
+
+      const subDeptRecords = subDepts.map(subDept => {
+        const subDeptEmployees = rootDeptEmployees.filter(e => displaySubDepartment(e.subDepartment) === subDept);
+        const records = subDeptEmployees.map(emp => {
+          const record = monthRecords.find(r => r.employeeId === emp.id);
+          return { ...emp, record: record || null, totalScore: record?.totalScore || 0, status: record?.status || 'not_submitted' };
+        });
+
+        const filteredRecords = records.filter(r => {
+          if (statusFilter === 'all') return true;
+          if (statusFilter === 'pending') return !isScoredStatus(r.status);
+          if (statusFilter === 'completed') return isScoredStatus(r.status);
+          return true;
+        });
+
+        const sortedRecords = [...filteredRecords].sort((a, b) => {
+          let result = 0;
+          if (sortBy === 'name') result = a.name.localeCompare(b.name);
+          else if (sortBy === 'score') result = b.totalScore - a.totalScore;
+          else if (sortBy === 'status') {
+            const statusOrder: Record<string, number> = { 'completed': 1, 'pending': 2 };
+            result = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
+          }
+          return sortOrder === 'asc' ? -result : result;
+        });
+
+        return {
+          subDepartment: subDept,
+          records: sortedRecords,
+          completedCount: sortedRecords.filter(r => isScoredStatus(r.status)).length,
+          totalCount: sortedRecords.length
+        };
       });
-      
-      const filteredRecords = records.filter(r => {
-        if (statusFilter === 'all') return true;
-        if (statusFilter === 'pending') return !isScoredStatus(r.status);
-        if (statusFilter === 'completed') return isScoredStatus(r.status);
-        return true;
-      });
-      
-      const sortedRecords = [...filteredRecords].sort((a, b) => {
-        let result = 0;
-        if (sortBy === 'name') result = a.name.localeCompare(b.name);
-        else if (sortBy === 'score') result = b.totalScore - a.totalScore;
-        else if (sortBy === 'status') {
-          const statusOrder: Record<string, number> = { 'completed': 1, 'pending': 2 };
-          result = (statusOrder[a.status] || 0) - (statusOrder[b.status] || 0);
-        }
-        return sortOrder === 'asc' ? -result : result;
-      });
-      
+
       return {
-        subDepartment: subDept,
-        records: sortedRecords,
-        completedCount: sortedRecords.filter(r => isScoredStatus(r.status)).length,
-        totalCount: sortedRecords.length
+        rootDepartment: rootDept,
+        subDepartments: subDeptRecords,
+        completedCount: subDeptRecords.reduce((sum, s) => sum + s.completedCount, 0),
+        totalCount: subDeptRecords.reduce((sum, s) => sum + s.totalCount, 0)
       };
     });
-    
-    return {
-      rootDepartment: rootDept,
-      subDepartments: subDeptRecords,
-      completedCount: subDeptRecords.reduce((sum, s) => sum + s.completedCount, 0),
-      totalCount: subDeptRecords.reduce((sum, s) => sum + s.totalCount, 0)
+
+    const stats = {
+      companyTotalEmployees: activeCompanyEmployees.length,
+      participatingEmployees: assessableInScopeEmployees.length,
+      completedScores: scoredRecords.length,
+      pendingScores: assessableInScopeEmployees.length - scoredRecords.length,
+      averageScore: scoredRecords.length > 0
+        ? scoredRecords.reduce((sum, r) => sum + r.totalScore, 0) / scoredRecords.length
+        : 0
     };
-  });
-  
-  const stats = {
-    companyTotalEmployees: activeCompanyEmployees.length,
-    participatingEmployees: assessableInScopeEmployees.length,
-    completedScores: monthRecords.filter(r => isScoredStatus(r.status)).length,
-    pendingScores: assessableInScopeEmployees.length - monthRecords.filter(r => isScoredStatus(r.status)).length,
-    averageScore: monthRecords.filter(r => isScoredStatus(r.status)).length > 0
-      ? monthRecords.filter(r => isScoredStatus(r.status)).reduce((sum, r) => sum + r.totalScore, 0) / monthRecords.filter(r => isScoredStatus(r.status)).length
-      : 0
-  };
+
+    return { deptRecords, stats };
+  }, [employeesList, allPerformanceRecords, currentMonth, statusFilter, sortBy, sortOrder]);
+
+  const filteredDeptRecords = useMemo(() => {
+    if (!searchQuery.trim()) return deptRecords;
+    const q = searchQuery.trim().toLowerCase();
+    return deptRecords.map(dept => {
+      const subDepartments = dept.subDepartments.map(sub => {
+        const records = sub.records.filter(r => r.name.toLowerCase().includes(q));
+        return {
+          ...sub,
+          records,
+          completedCount: records.filter(r => isScoredStatus(r.status)).length,
+          totalCount: records.length,
+        };
+      }).filter(sub => sub.records.length > 0);
+      return {
+        ...dept,
+        subDepartments,
+        completedCount: subDepartments.reduce((sum, s) => sum + s.completedCount, 0),
+        totalCount: subDepartments.reduce((sum, s) => sum + s.totalCount, 0),
+      };
+    }).filter(dept => dept.subDepartments.length > 0);
+  }, [deptRecords, searchQuery]);
   
   const handleExport = async () => {
     setExporting(true);
@@ -184,7 +210,7 @@ export function HRDashboard() {
       link.download = `绩效数据_${currentMonth}.csv`;
       link.click();
     } catch (error: any) {
-      alert('导出失败: ' + (error.message || '未知错误'));
+      toast.error('导出失败: ' + (error.message || '未知错误'));
     } finally {
       setExporting(false);
     }
@@ -208,6 +234,7 @@ export function HRDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <Input type="month" value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="w-auto" />
+          <Input placeholder="搜索员工姓名..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-[200px]" />
           <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
             <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -277,7 +304,7 @@ export function HRDashboard() {
       <motion.div variants={itemVariants}>
         <DeptPerformanceTable
           currentMonth={currentMonth}
-          deptRecords={deptRecords}
+          deptRecords={filteredDeptRecords}
           sortBy={sortBy}
           sortOrder={sortOrder}
           setSortBy={setSortBy}

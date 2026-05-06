@@ -109,6 +109,46 @@ describe('Security regression API checks', () => {
       managerComment: '整体表现稳定',
       nextMonthWorkArrangement: '继续跟进测试任务',
     });
+    await PerformanceModel.saveSummary({
+      id: `rec-e002-${month}`,
+      employeeId: 'e002',
+      assessorId: 'm011',
+      month,
+      selfSummary: '同部门基准样本',
+      nextMonthPlan: '继续测试',
+      groupType: 'low',
+    });
+    await PerformanceModel.submitScore({
+      id: `rec-e002-${month}`,
+      taskCompletion: 1.3,
+      initiative: 1.3,
+      projectFeedback: 1.3,
+      qualityImprovement: 1.3,
+      totalScore: 1.3,
+      level: 'L2',
+      managerComment: '同部门表现较好',
+      nextMonthWorkArrangement: '继续跟进测试任务',
+    });
+    await PerformanceModel.saveSummary({
+      id: `rec-e007-${month}`,
+      employeeId: 'e007',
+      assessorId: 'gm001',
+      month,
+      selfSummary: '其他部门基准样本',
+      nextMonthPlan: '继续生产支持',
+      groupType: 'low',
+    });
+    await PerformanceModel.submitScore({
+      id: `rec-e007-${month}`,
+      taskCompletion: 0.9,
+      initiative: 0.9,
+      projectFeedback: 0.9,
+      qualityImprovement: 0.9,
+      totalScore: 0.9,
+      level: 'L4',
+      managerComment: '其他部门样本',
+      nextMonthWorkArrangement: '继续生产支持',
+    });
 
     const employeeToken = await TestHelper.getAuthToken('employee');
     const hiddenResponse = await request(app)
@@ -121,6 +161,8 @@ describe('Security regression API checks', () => {
       month,
       totalScore: null,
       normalizedScore: null,
+      companyAverageScore: null,
+      departmentAverageScore: null,
       managerComment: '',
       isPublished: false,
     });
@@ -136,6 +178,10 @@ describe('Security regression API checks', () => {
       employeeId: 'e034',
       month,
       totalScore: 1.1,
+      companyAverageScore: 1.1,
+      companyScoredCount: 3,
+      departmentAverageScore: 1.2,
+      departmentScoredCount: 2,
       managerComment: '整体表现稳定',
       isPublished: true,
     });
@@ -151,9 +197,107 @@ describe('Security regression API checks', () => {
       employeeId: 'e034',
       month,
       totalScore: null,
+      companyAverageScore: null,
+      departmentAverageScore: null,
       managerComment: '',
       isPublished: false,
     });
+  });
+
+  it('allows HR to publish with a documented 2-7-1 exemption but still blocks unsafe publishes', async () => {
+    const month = '2099-06';
+    const employeeIds = ['e002', 'e006', 'e010', 'e012', 'e013', 'e016', 'e017', 'e027', 'e031', 'e034', 'e046'];
+    const systemSettings = memoryStore.systemSettings!;
+    const originalRankingConfig = systemSettings.get('performance_ranking_config');
+    systemSettings.set('performance_ranking_config', {
+      id: 999,
+      settingKey: 'performance_ranking_config',
+      settingValue: JSON.stringify({
+        version: 1,
+        participation: {
+          mode: 'include',
+          enabledUnitKeys: [],
+          includedUnitKeys: [],
+          excludedUnitKeys: [],
+          includedEmployeeIds: employeeIds,
+          excludedEmployeeIds: [],
+        },
+        groupRank: { defaultStrategy: { type: 'by_high_low' }, perUnit: {} },
+        templateAssignments: {},
+        mergeRankGroups: [],
+      }),
+      settingType: 'json',
+      category: 'performance',
+      isPublic: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    try {
+      for (const employeeId of employeeIds) {
+        const id = `rec-${employeeId}-${month}`;
+        await PerformanceModel.saveSummary({
+          id,
+          employeeId,
+          assessorId: 'm011',
+          month,
+          selfSummary: '分布豁免测试总结',
+          nextMonthPlan: '继续测试',
+          groupType: 'low',
+        });
+        await PerformanceModel.submitScore({
+          id,
+          taskCompletion: 1.0,
+          initiative: 1.0,
+          projectFeedback: 1.0,
+          qualityImprovement: 1.0,
+          totalScore: 1.0,
+          level: 'L3',
+          managerComment: '分布豁免测试',
+          nextMonthWorkArrangement: '继续测试',
+        });
+      }
+
+      const hrToken = await TestHelper.getAuthToken('hr');
+      const blocked = await request(app)
+        .post('/api/assessment-publications')
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({ month });
+      expect(blocked.status).toBe(400);
+      expect(blocked.body.data.violations).toEqual(expect.arrayContaining([
+        expect.objectContaining({ type: 'forced_distribution' }),
+      ]));
+
+      const missingReason = await request(app)
+        .post('/api/assessment-publications')
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({ month, forceDistribution: true, forceReason: '太短' });
+      expect(missingReason.status).toBe(400);
+      expect(missingReason.body.message).toContain('豁免原因');
+
+      const published = await request(app)
+        .post('/api/assessment-publications')
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({
+          month,
+          forceDistribution: true,
+          forceReason: '测试部本月样本集中在中间区间，HR确认允许发布并保留审计说明',
+        });
+      expect(published.status).toBe(200);
+      expect(published.body.success).toBe(true);
+      expect(published.body.data).toMatchObject({
+        forceDistribution: true,
+        forceReason: '测试部本月样本集中在中间区间，HR确认允许发布并保留审计说明',
+      });
+      expect(published.body.message).toContain('已发布');
+    } finally {
+      await AssessmentPublicationModel.unpublish(month);
+      if (originalRankingConfig) {
+        systemSettings.set('performance_ranking_config', originalRankingConfig);
+      } else {
+        systemSettings.delete('performance_ranking_config');
+      }
+    }
   });
 
   it('exposes the publication endpoint alias instead of returning 404', async () => {

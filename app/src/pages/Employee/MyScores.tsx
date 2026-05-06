@@ -25,6 +25,11 @@ interface QuarterlyRecord {
   record_count?: number;
 }
 
+const formatNullableScore = (value: unknown): string => {
+  const score = Number(value);
+  return Number.isFinite(score) && score > 0 ? score.toFixed(2) : '—';
+};
+
 export function MyScores({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuthStore();
   const { records, fetchMyRecords } = usePerformanceStore();
@@ -56,20 +61,19 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
   useEffect(() => {
     const checkPublicationStatus = async () => {
       const uniqueMonths = [...new Set(records.map(r => r.month))];
-      const statusMap: Record<string, boolean> = {};
       
-      for (const month of uniqueMonths) {
-        try {
-          const response = await assessmentPublicationApi.checkPublished(month);
-          if (response.success) {
-            statusMap[month] = response.data.isPublished;
+      const results = await Promise.all(
+        uniqueMonths.map(async (month) => {
+          try {
+            const response = await assessmentPublicationApi.checkPublished(month);
+            return [month, response.success ? response.data.isPublished : false] as const;
+          } catch {
+            return [month, false] as const;
           }
-        } catch (error) {
-          console.error(`检查 ${month} 发布状态失败:`, error);
-          statusMap[month] = false;
-        }
-      }
+        })
+      );
       
+      const statusMap: Record<string, boolean> = Object.fromEntries(results);
       setPublicationStatus(statusMap);
     };
 
@@ -79,7 +83,10 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
   }, [records]);
   
   // 按月份排序
-  const sortedRecords = [...records].sort((a, b) => b.month.localeCompare(a.month));
+  const sortedRecords = useMemo(
+    () => [...records].sort((a, b) => b.month.localeCompare(a.month)),
+    [records]
+  );
   const scoredRecords = useMemo(
     () => records.filter((record) => Number(record.totalScore || 0) > 0 && ['completed', 'scored'].includes(record.status)),
     [records]
@@ -102,13 +109,10 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
       ? Math.max(...scoredRecords.map(r => r.totalScore))
       : 0;
     
-    const bestDeptRank = scoredRecords.length > 0
-      ? Math.min(...scoredRecords.map(r => r.departmentRank))
-      : 0;
-    
-    const bestGroupRank = scoredRecords.length > 0
-      ? Math.min(...scoredRecords.map(r => r.groupRank))
-      : 0;
+    const deptRanks = scoredRecords.map(r => r.departmentRank).filter((r): r is number => typeof r === 'number' && r > 0);
+    const groupRanks = scoredRecords.map(r => r.groupRank).filter((r): r is number => typeof r === 'number' && r > 0);
+    const bestDeptRank = deptRanks.length > 0 ? Math.min(...deptRanks) : 0;
+    const bestGroupRank = groupRanks.length > 0 ? Math.min(...groupRanks) : 0;
     
     return { averageScore, bestScore, bestDeptRank, bestGroupRank };
   }, [scoredRecords]);
@@ -173,31 +177,59 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                 口径说明：1.00 为基准绩效系数；正式发布前显示为草稿，仅供本人参考。
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Total Score */}
+              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-blue-100 bg-white/70 p-3">
+                  <p className="text-xs text-gray-500">部门/小组平均分</p>
+                  <div className="mt-1 flex items-end justify-between">
+                    <p className="text-2xl font-bold text-blue-600">
+                      {latestRecord.departmentAverageScore == null ? '—' : Number(latestRecord.departmentAverageScore).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400">样本 {latestRecord.departmentScoredCount || 0} 人</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-green-100 bg-white/70 p-3">
+                  <p className="text-xs text-gray-500">公司平均分</p>
+                  <div className="mt-1 flex items-end justify-between">
+                    <p className="text-2xl font-bold text-green-600">
+                      {latestRecord.companyAverageScore == null ? '—' : Number(latestRecord.companyAverageScore).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400">样本 {latestRecord.companyScoredCount || 0} 人</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="text-center">
                   <p className="text-sm text-gray-500 mb-2">综合得分</p>
                   <ScoreDisplay score={latestRecord.totalScore} showLabel size="lg" />
                 </div>
                 
-                {/* Department Rank */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-500 mb-2">公司排名</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-green-500" />
+                    <span className="text-3xl font-bold text-green-600">
+                      {latestRecord.companyRank || '-'}
+                    </span>
+                  </div>
+                </div>
+
                 <div className="text-center">
                   <p className="text-sm text-gray-500 mb-2">部门排名</p>
                   <div className="flex items-center justify-center gap-2">
                     <Users className="w-5 h-5 text-blue-500" />
                     <span className="text-3xl font-bold text-blue-600">
-                      {latestRecord.departmentRank}
+                      {latestRecord.departmentRank || '-'}
                     </span>
                   </div>
                 </div>
 
-                {/* Group Rank */}
                 <div className="text-center">
                   <p className="text-sm text-gray-500 mb-2">组内排名</p>
                   <div className="flex items-center justify-center gap-2">
                     <Target className="w-5 h-5 text-purple-500" />
                     <span className="text-3xl font-bold text-purple-600">
-                      {latestRecord.groupRank}
+                      {latestRecord.groupRank || '-'}
                     </span>
                   </div>
                   {latestGroupType ? (
@@ -222,19 +254,30 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
               <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-white/70 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">任务完成 (40%)</p>
-                  <p className="text-xl font-bold text-blue-600">{latestRecord.taskCompletion.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-blue-600">{formatNullableScore(latestRecord.taskCompletion)}</p>
                 </div>
                 <div className="bg-white/70 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">主动性 (30%)</p>
-                  <p className="text-xl font-bold text-green-600">{latestRecord.initiative.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-green-600">{formatNullableScore(latestRecord.initiative)}</p>
                 </div>
                 <div className="bg-white/70 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">项目反馈 (20%)</p>
-                  <p className="text-xl font-bold text-purple-600">{latestRecord.projectFeedback.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-purple-600">{formatNullableScore(latestRecord.projectFeedback)}</p>
                 </div>
                 <div className="bg-white/70 rounded-lg p-3 text-center">
                   <p className="text-xs text-gray-500">质量改进 (10%)</p>
-                  <p className="text-xl font-bold text-orange-600">{latestRecord.qualityImprovement.toFixed(2)}</p>
+                  <p className="text-xl font-bold text-orange-600">{formatNullableScore(latestRecord.qualityImprovement)}</p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-lg bg-white/70 px-3 py-2 border border-gray-100">
+                <p className="text-xs text-gray-400 mb-1">等级说明</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-0.5 rounded bg-red-50 text-red-700">L1 ({'<'}0.85 杰出)</span>
+                  <span className="px-2 py-0.5 rounded bg-orange-50 text-orange-700">L2 (0.85~0.99 优秀)</span>
+                  <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700">L3 (1.00~1.17 良好)</span>
+                  <span className="px-2 py-0.5 rounded bg-green-50 text-green-700">L4 (1.18~1.34 合格)</span>
+                  <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-700">L5 ({'>'}1.35 待改进)</span>
                 </div>
               </div>
 

@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS monthly_assessment_publications (
   month VARCHAR(7) NOT NULL UNIQUE,
   published_by VARCHAR(50) REFERENCES employees(id),
   published_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  force_distribution BOOLEAN DEFAULT FALSE,
+  force_reason TEXT DEFAULT '',
+  readiness_snapshot JSONB,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

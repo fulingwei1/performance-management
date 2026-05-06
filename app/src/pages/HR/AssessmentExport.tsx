@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { exportApi } from '@/services/api';
 import { toast } from 'sonner';
+import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 
 const DEPARTMENT_TYPES = [
   { value: 'all', label: '全部类型' },
@@ -20,7 +21,7 @@ const DEPARTMENT_TYPES = [
 
 export function AssessmentExport() {
   const [loading, setLoading] = useState(false);
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(getDefaultAssessmentMonth());
   const [departmentType, setDepartmentType] = useState('all');
   const [employeeId, setEmployeeId] = useState('');
 

@@ -9,6 +9,7 @@ import { useHRStore } from '@/stores/hrStore';
 import { TaskList } from '@/components/tasks/TaskList';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { employeeApi, todoApi } from '@/services/api';
@@ -55,7 +56,7 @@ export function EmployeeDashboard() {
   }, [user, records, employeesList, generateMonthlyTasks]);
 
   // 获取当前月份的任务
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  const currentMonth = getDefaultAssessmentMonth();
   const myTasks = user ? fetchEmployeeTasks(user.id, currentMonth) : [];
   const currentRecord = records.find((record) => record.month === currentMonth);
   const hasSubmittedSummary = Boolean(currentRecord && currentRecord.status !== 'draft');

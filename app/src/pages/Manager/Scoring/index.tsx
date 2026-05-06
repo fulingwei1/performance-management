@@ -6,6 +6,7 @@ import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { calculateTotalScore } from '@/lib/calculateScore';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -53,8 +54,8 @@ export function ScoringManagement({
   const monthParam = searchParams.get('month');
   const noSummaryParam = searchParams.get('noSummary');
   
-  const [searchQuery] = useState('');
-  const statusFilter = 'all';
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'scored'>('all');
   const initialMonth = isValidAssessmentMonth(monthParam)
     ? monthParam
     : month || getDefaultAssessmentMonth();
@@ -520,6 +521,30 @@ export function ScoringManagement({
               {filteredAllRecords.length}{viewMode === 'month' ? '人' : '条'}
             </Badge>
           </CardTitle>
+          <div className="flex items-center gap-3">
+            <Input
+              placeholder="搜索员工姓名..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-48"
+            />
+            <div className="flex items-center gap-1">
+              {([
+                { value: 'all' as const, label: '全部' },
+                { value: 'pending' as const, label: '待评分' },
+                { value: 'scored' as const, label: '已评分' },
+              ]).map((tab) => (
+                <Button
+                  key={tab.value}
+                  variant={statusFilter === tab.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter(tab.value)}
+                >
+                  {tab.label}
+                </Button>
+              ))}
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
