@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar, BarChart3, Users, Trophy, Target, FileText, CheckCircle } from 'lucide-react';
+import { BarChart3, Calendar, CheckCircle, FileText } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
-import { PerformanceChart } from '@/components/charts/PerformanceChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { assessmentPublicationApi, employeeQuarterlyApi } from '@/services/api';
-
-import { cn } from '@/lib/utils';
-import { resolveGroupType } from '@/lib/config';
+import type { PerformanceRecord } from '@/types';
 
 interface QuarterlyRecord {
   id: string;
@@ -25,30 +21,54 @@ interface QuarterlyRecord {
   record_count?: number;
 }
 
-const formatNullableScore = (value: unknown): string => {
-  const score = Number(value);
-  return Number.isFinite(score) && score > 0 ? score.toFixed(2) : '—';
-};
-
 const getScoreValue = (value: unknown): number => {
   const score = Number(value);
   return Number.isFinite(score) && score > 0 ? score : 0;
 };
 
-const getDimensionProgress = (value: unknown): number => {
-  return Math.min(100, Math.max(0, (getScoreValue(value) / 1.5) * 100));
+const formatScore = (value: unknown): string => {
+  const score = getScoreValue(value);
+  return score > 0 ? score.toFixed(2) : '—';
 };
+
+const isScoredRecord = (record: PerformanceRecord): boolean => (
+  getScoreValue(record.totalScore) > 0 && ['completed', 'scored'].includes(record.status)
+);
+
+function parseMonth(month: string): { year: number; monthNumber: number; quarter: number } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const monthNumber = Number(match[2]);
+  if (!Number.isInteger(year) || monthNumber < 1 || monthNumber > 12) return null;
+  return { year, monthNumber, quarter: Math.ceil(monthNumber / 3) };
+}
+
+function getQuarterMonths(year: number, quarter: number): string[] {
+  const startMonth = (quarter - 1) * 3 + 1;
+  return [0, 1, 2].map((offset) => `${year}-${String(startMonth + offset).padStart(2, '0')}`);
+}
+
+function getRecordStatusText(record: PerformanceRecord, isPublished: boolean): string {
+  if (!isScoredRecord(record)) {
+    return record.status === 'submitted' ? '待经理评分' : '未评分';
+  }
+  return isPublished ? '正式' : '草稿';
+}
+
+function getRecordStatusClass(record: PerformanceRecord, isPublished: boolean): string {
+  if (!isScoredRecord(record)) return 'bg-amber-100 text-amber-700';
+  return isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+}
 
 export function MyScores({ embedded = false }: { embedded?: boolean }) {
   const { user } = useAuthStore();
   const { records, fetchMyRecords } = usePerformanceStore();
   const [publicationStatus, setPublicationStatus] = useState<Record<string, boolean>>({});
   const [quarterlyRecords, setQuarterlyRecords] = useState<QuarterlyRecord[]>([]);
-  
+
   useEffect(() => {
-    if (user) {
-      fetchMyRecords(user.id);
-    }
+    if (user) fetchMyRecords(user.id);
   }, [user, fetchMyRecords]);
 
   useEffect(() => {
@@ -56,9 +76,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
       if (!user) return;
       try {
         const response = await employeeQuarterlyApi.getMy();
-        if (response.success) {
-          setQuarterlyRecords(response.data || []);
-        }
+        if (response.success) setQuarterlyRecords(response.data || []);
       } catch (error) {
         console.error('获取季度汇总失败:', error);
       }
@@ -66,11 +84,9 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
     fetchQuarterly();
   }, [user]);
 
-  // 检查所有月份的发布状态
   useEffect(() => {
     const checkPublicationStatus = async () => {
-      const uniqueMonths = [...new Set(records.map(r => r.month))];
-      
+      const uniqueMonths = [...new Set(records.map((record) => record.month))];
       const results = await Promise.all(
         uniqueMonths.map(async (month) => {
           try {
@@ -81,64 +97,71 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
           }
         })
       );
-      
-      const statusMap: Record<string, boolean> = Object.fromEntries(results);
-      setPublicationStatus(statusMap);
+      setPublicationStatus(Object.fromEntries(results));
     };
 
-    if (records.length > 0) {
-      checkPublicationStatus();
-    }
+    if (records.length > 0) checkPublicationStatus();
+    else setPublicationStatus({});
   }, [records]);
-  
-  // 按月份排序
+
   const sortedRecords = useMemo(
     () => [...records].sort((a, b) => b.month.localeCompare(a.month)),
     [records]
   );
-  const scoredRecords = useMemo(
-    () => records.filter((record) => Number(record.totalScore || 0) > 0 && ['completed', 'scored'].includes(record.status)),
-    [records]
-  );
-  
-  // 获取最新记录
+
   const latestRecord = sortedRecords[0];
-  const latestGroupType = latestRecord
-    ? resolveGroupType(latestRecord.groupType, latestRecord.employeeLevel)
-    : null;
   const latestQuarterlyRecord = quarterlyRecords[0];
-  
-  // 计算统计数据
-  const stats = useMemo(() => {
-    const averageScore = scoredRecords.length > 0
-      ? scoredRecords.reduce((sum, r) => sum + getScoreValue(r.totalScore), 0) / scoredRecords.length
+
+  const quarterContext = useMemo(() => {
+    if (latestQuarterlyRecord) {
+      return {
+        year: Number(latestQuarterlyRecord.year),
+        quarter: Number(latestQuarterlyRecord.quarter),
+        official: true,
+      };
+    }
+    const latestMonth = latestRecord ? parseMonth(latestRecord.month) : null;
+    return latestMonth ? { year: latestMonth.year, quarter: latestMonth.quarter, official: false } : null;
+  }, [latestQuarterlyRecord, latestRecord]);
+
+  const quarterSummary = useMemo(() => {
+    if (!quarterContext) return null;
+
+    const months = getQuarterMonths(quarterContext.year, quarterContext.quarter);
+    const recordsByMonth = new Map(sortedRecords.map((record) => [record.month, record]));
+    const monthRows = months.map((month) => ({ month, record: recordsByMonth.get(month) }));
+    const scoredMonths = monthRows
+      .map((item) => item.record)
+      .filter((record): record is PerformanceRecord => Boolean(record && isScoredRecord(record)));
+
+    const calculatedAverage = scoredMonths.length > 0
+      ? scoredMonths.reduce((sum, record) => sum + getScoreValue(record.totalScore), 0) / scoredMonths.length
       : 0;
-    
-    const bestScore = scoredRecords.length > 0
-      ? Math.max(...scoredRecords.map(r => getScoreValue(r.totalScore)))
+    const officialAverage = latestQuarterlyRecord
+      && Number(latestQuarterlyRecord.year) === quarterContext.year
+      && Number(latestQuarterlyRecord.quarter) === quarterContext.quarter
+      ? getScoreValue(latestQuarterlyRecord.avg_score)
       : 0;
-    
-    const deptRanks = scoredRecords.map(r => r.departmentRank).filter((r): r is number => typeof r === 'number' && r > 0);
-    const groupRanks = scoredRecords.map(r => r.groupRank).filter((r): r is number => typeof r === 'number' && r > 0);
-    const bestDeptRank = deptRanks.length > 0 ? Math.min(...deptRanks) : 0;
-    const bestGroupRank = groupRanks.length > 0 ? Math.min(...groupRanks) : 0;
-    
-    return { averageScore, bestScore, bestDeptRank, bestGroupRank };
-  }, [scoredRecords]);
-  
+
+    return {
+      ...quarterContext,
+      months: monthRows,
+      monthCount: scoredMonths.length,
+      averageScore: officialAverage || calculatedAverage,
+      officialAverage: officialAverage > 0,
+    };
+  }, [latestQuarterlyRecord, quarterContext, sortedRecords]);
+
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
   };
-  
+
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
+    visible: { opacity: 1, y: 0 },
   };
-  
+
   return (
     <motion.div
       variants={containerVariants}
@@ -149,411 +172,110 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
       {!embedded && (
         <motion.div variants={itemVariants}>
           <h1 className="text-2xl font-bold text-gray-900">我的绩效</h1>
-          <p className="text-gray-500 mt-1">查看历史绩效考核记录及排名</p>
-        </motion.div>
-      )}
-      
-      {/* Latest Performance Card */}
-      {latestRecord && (
-        <motion.div variants={itemVariants}>
-          <Card className="bg-gradient-to-br from-blue-50 via-purple-50 to-indigo-50 border-blue-200">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-yellow-500" />
-                  最新绩效 ({latestRecord.month})
-                </div>
-                {publicationStatus[latestRecord.month] ? (
-                  <Badge className="bg-green-100 text-green-700 border-green-300">
-                    <CheckCircle className="w-3 h-3 mr-1" />
-                    正式
-                  </Badge>
-                ) : (
-                  <Badge className="bg-gray-100 text-gray-600 border-gray-300">
-                    <FileText className="w-3 h-3 mr-1" />
-                    草稿
-                  </Badge>
-                )}
-              </CardTitle>
-              {!publicationStatus[latestRecord.month] && (
-                <p className="text-sm text-orange-600 mt-2">
-                  ⚠️ 考核结果尚未正式发布，仅供参考
-                </p>
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="mb-4 rounded-lg bg-white/60 px-3 py-2 text-sm text-gray-600">
-                口径说明：1.00 为基准绩效系数；正式发布前显示为草稿，仅供本人参考。
-              </div>
-
-              <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="rounded-lg border border-blue-100 bg-white/70 p-3">
-                  <p className="text-xs text-gray-500">部门/小组平均分</p>
-                  <div className="mt-1 flex items-end justify-between">
-                    <p className="text-2xl font-bold text-blue-600">
-                      {latestRecord.departmentAverageScore == null ? '—' : Number(latestRecord.departmentAverageScore).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-400">样本 {latestRecord.departmentScoredCount || 0} 人</p>
-                  </div>
-                </div>
-                <div className="rounded-lg border border-green-100 bg-white/70 p-3">
-                  <p className="text-xs text-gray-500">公司平均分</p>
-                  <div className="mt-1 flex items-end justify-between">
-                    <p className="text-2xl font-bold text-green-600">
-                      {latestRecord.companyAverageScore == null ? '—' : Number(latestRecord.companyAverageScore).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-400">样本 {latestRecord.companyScoredCount || 0} 人</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-2">综合得分</p>
-                  <ScoreDisplay score={latestRecord.totalScore} showLabel size="lg" />
-                </div>
-                
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-2">公司排名</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-green-500" />
-                    <span className="text-3xl font-bold text-green-600">
-                      {latestRecord.companyRank || '-'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-2">部门排名</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Users className="w-5 h-5 text-blue-500" />
-                    <span className="text-3xl font-bold text-blue-600">
-                      {latestRecord.departmentRank || '-'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-center">
-                  <p className="text-sm text-gray-500 mb-2">组内排名</p>
-                  <div className="flex items-center justify-center gap-2">
-                    <Target className="w-5 h-5 text-purple-500" />
-                    <span className="text-3xl font-bold text-purple-600">
-                      {latestRecord.groupRank || '-'}
-                    </span>
-                  </div>
-                  {latestGroupType ? (
-                    <Badge 
-                      className={cn(
-                        "mt-1",
-                        latestGroupType === 'high' 
-                          ? "bg-purple-100 text-purple-700" 
-                          : "bg-green-100 text-green-700"
-                      )}
-                    >
-                      {latestGroupType === 'high' ? '高分组' : '低分组'}
-                    </Badge>
-                  ) : (
-                    <Badge className="mt-1 bg-gray-100 text-gray-500">未分组</Badge>
-                  )}
-                </div>
-
-              </div>
-              
-              {/* Dimension Scores */}
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-white/70 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">任务完成 (40%)</p>
-                  <p className="text-xl font-bold text-blue-600">{formatNullableScore(latestRecord.taskCompletion)}</p>
-                </div>
-                <div className="bg-white/70 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">主动性 (30%)</p>
-                  <p className="text-xl font-bold text-green-600">{formatNullableScore(latestRecord.initiative)}</p>
-                </div>
-                <div className="bg-white/70 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">项目反馈 (20%)</p>
-                  <p className="text-xl font-bold text-purple-600">{formatNullableScore(latestRecord.projectFeedback)}</p>
-                </div>
-                <div className="bg-white/70 rounded-lg p-3 text-center">
-                  <p className="text-xs text-gray-500">质量改进 (10%)</p>
-                  <p className="text-xl font-bold text-orange-600">{formatNullableScore(latestRecord.qualityImprovement)}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-lg bg-white/70 px-3 py-2 border border-gray-100">
-                <p className="text-xs text-gray-400 mb-1">等级说明</p>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="px-2 py-0.5 rounded bg-red-50 text-red-700">L1 ({'<'}0.85 杰出)</span>
-                  <span className="px-2 py-0.5 rounded bg-orange-50 text-orange-700">L2 (0.85~0.99 优秀)</span>
-                  <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700">L3 (1.00~1.17 良好)</span>
-                  <span className="px-2 py-0.5 rounded bg-green-50 text-green-700">L4 (1.18~1.34 合格)</span>
-                  <span className="px-2 py-0.5 rounded bg-yellow-50 text-yellow-700">L5 ({'>'}1.35 待改进)</span>
-                </div>
-              </div>
-
-              {/* Manager Feedback */}
-              <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-white/70 rounded-lg p-4 border border-blue-100">
-                  <p className="text-xs text-gray-500 mb-2">经理评价</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {latestRecord.managerComment || '经理尚未评价'}
-                  </p>
-                </div>
-                <div className="bg-white/70 rounded-lg p-4 border border-green-100">
-                  <p className="text-xs text-gray-500 mb-2">下月工作安排</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {latestRecord.nextMonthWorkArrangement || '经理尚未填写'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-      
-      {/* Stats */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">已评分平均分</p>
-                <p className="text-2xl font-bold">{stats.averageScore.toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">最高分</p>
-                <p className="text-2xl font-bold">{stats.bestScore.toFixed(2)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">最佳部门排名</p>
-                <p className="text-2xl font-bold">{stats.bestDeptRank || '-'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">已评分次数</p>
-                <p className="text-2xl font-bold">{scoredRecords.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
-      {/* Chart */}
-      {records.length > 0 && (
-        <motion.div variants={itemVariants}>
-          <PerformanceChart 
-            records={records} 
-            title="绩效得分趋势" 
-          />
+          <p className="text-gray-500 mt-1">按月查看绩效得分和季度汇总</p>
         </motion.div>
       )}
 
-      {/* Quarterly History */}
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">季度汇总得分</CardTitle>
-            <p className="text-sm text-gray-500">季度分由已完成的月度绩效汇总生成，后续与绩效工资对接。</p>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <BarChart3 className="h-5 w-5 text-blue-600" />
+              绩效得分（按月）
+            </CardTitle>
+            <p className="text-sm text-gray-500">每个月只展示一个最终绩效得分；未评分月份显示为 —。</p>
           </CardHeader>
           <CardContent>
-            {quarterlyRecords.length > 0 ? (
-              <div className="space-y-4">
-                {latestQuarterlyRecord && (
-                  <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-500">最新季度</p>
-                        <p className="text-xl font-semibold">{latestQuarterlyRecord.year}年 Q{latestQuarterlyRecord.quarter}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500">季度平均得分</p>
-                        <p className="text-3xl font-bold text-purple-600">{Number(latestQuarterlyRecord.avg_score || 0).toFixed(2)}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {quarterlyRecords.map((record) => (
-                    <div key={record.id} className="rounded-lg border p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="font-semibold">{record.year}年 Q{record.quarter}</span>
-                        <Badge className="bg-purple-100 text-purple-700">
-                          季度均分 {Number(record.avg_score || 0).toFixed(2)}
+            {sortedRecords.length > 0 ? (
+              <div className="divide-y rounded-xl border bg-white">
+                {sortedRecords.map((record) => {
+                  const isPublished = Boolean(publicationStatus[record.month]);
+                  return (
+                    <div key={record.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-semibold text-gray-900">{record.month}</span>
+                        {latestRecord?.id === record.id && (
+                          <Badge className="bg-blue-100 text-blue-700">最新</Badge>
+                        )}
+                        <Badge className={getRecordStatusClass(record, isPublished)}>
+                          {isPublished && <CheckCircle className="mr-1 h-3 w-3" />}
+                          {!isPublished && isScoredRecord(record) && <FileText className="mr-1 h-3 w-3" />}
+                          {getRecordStatusText(record, isPublished)}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded bg-gray-50 p-2">
-                          <p className="text-xs text-gray-500">最高</p>
-                          <p className="font-semibold text-green-600">{Number(record.max_score || 0).toFixed(2)}</p>
+                      <div className="flex items-center justify-between gap-6 sm:justify-end">
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">绩效得分</p>
+                          {isScoredRecord(record) ? (
+                            <ScoreDisplay score={record.totalScore} size="sm" showLabel={false} />
+                          ) : (
+                            <p className="text-2xl font-bold text-gray-400">—</p>
+                          )}
                         </div>
-                        <div className="rounded bg-gray-50 p-2">
-                          <p className="text-xs text-gray-500">最低</p>
-                          <p className="font-semibold text-orange-600">{Number(record.min_score || 0).toFixed(2)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="py-12 text-center">
+                <BarChart3 className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+                <p className="text-gray-500">暂无绩效记录</p>
+                <p className="mt-2 text-sm text-gray-400">员工提交月度总结、经理完成评分后，这里会按月显示一个绩效得分。</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Calendar className="h-5 w-5 text-purple-600" />
+              季度汇总
+            </CardTitle>
+            <p className="text-sm text-gray-500">显示该季度前面几个月的月度得分汇总；正式季度分归档后优先显示正式汇总。</p>
+          </CardHeader>
+          <CardContent>
+            {quarterSummary ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-indigo-50 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500">{quarterSummary.year}年 Q{quarterSummary.quarter}</p>
+                      <p className="mt-1 text-xl font-semibold text-gray-900">
+                        已汇总 {quarterSummary.monthCount} 个月
+                        {quarterSummary.officialAverage ? ' · 正式季度汇总' : ' · 月度临时汇总'}
+                      </p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-sm text-gray-500">季度绩效得分</p>
+                      <p className="mt-1 text-3xl font-bold text-purple-600">{formatScore(quarterSummary.averageScore)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  {quarterSummary.months.map(({ month, record }) => (
+                    <div key={month} className="rounded-lg border bg-white p-3">
+                      <p className="text-sm font-medium text-gray-900">{month}</p>
+                      <div className="mt-2 flex items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs text-gray-500">月度得分</p>
+                          <p className="text-2xl font-bold text-gray-900">{record ? formatScore(record.totalScore) : '—'}</p>
                         </div>
-                        <div className="rounded bg-gray-50 p-2">
-                          <p className="text-xs text-gray-500">月数</p>
-                          <p className="font-semibold text-blue-600">{record.record_count || 0}</p>
-                        </div>
+                        <Badge className={record && isScoredRecord(record) ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}>
+                          {record && isScoredRecord(record) ? '已评分' : '未评分'}
+                        </Badge>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="text-center py-10 text-gray-500">
-                暂无季度汇总得分；月度评分完成并归档后，这里会自动显示。
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </motion.div>
-      
-      {/* History Table */}
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">月度历史记录</CardTitle>
-            <p className="text-sm text-gray-500">只展示部门排名和组内排名；当前系统暂不展示跨部门个人排名。</p>
-          </CardHeader>
-          <CardContent>
-            {sortedRecords.length > 0 ? (
-              <div className="space-y-4">
-                {sortedRecords.map((record) => {
-                  const groupType = resolveGroupType(record.groupType, record.employeeLevel);
-                  return (
-                  <div 
-                    key={record.id}
-                    className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="font-semibold text-lg">{record.month}</span>
-                        <div className="flex items-center gap-2">
-                          {latestRecord?.id === record.id && (
-                            <Badge className="bg-yellow-100 text-yellow-800">
-                              最新
-                            </Badge>
-                          )}
-                          {publicationStatus[record.month] ? (
-                            <Badge className="bg-green-100 text-green-700">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              正式
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-100 text-gray-600">
-                              <FileText className="w-3 h-3 mr-1" />
-                              草稿
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <ScoreDisplay score={record.totalScore} size="sm" />
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-gray-500">部门排名</p>
-                        <p className="font-semibold text-blue-600">{record.departmentRank}</p>
-                      </div>
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-gray-500">组内排名</p>
-                        <p className="font-semibold text-purple-600">{record.groupRank}</p>
-                      </div>
-                      <div className="text-center p-2 bg-gray-50 rounded">
-                        <p className="text-xs text-gray-500">分组</p>
-                        {groupType ? (
-                          <Badge 
-                            className={cn(
-                              groupType === 'high' 
-                                ? "bg-purple-100 text-purple-700" 
-                                : "bg-green-100 text-green-700"
-                            )}
-                          >
-                            {groupType === 'high' ? '高分组' : '低分组'}
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-gray-100 text-gray-500">未分组</Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Dimension Scores */}
-                    <div className="grid grid-cols-4 gap-2">
-                      <div className="text-center">
-                        <Progress value={getDimensionProgress(record.taskCompletion)} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">任务 {formatNullableScore(record.taskCompletion)}</p>
-                      </div>
-                      <div className="text-center">
-                        <Progress value={getDimensionProgress(record.initiative)} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">主动 {formatNullableScore(record.initiative)}</p>
-                      </div>
-                      <div className="text-center">
-                        <Progress value={getDimensionProgress(record.projectFeedback)} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">反馈 {formatNullableScore(record.projectFeedback)}</p>
-                      </div>
-                      <div className="text-center">
-                        <Progress value={getDimensionProgress(record.qualityImprovement)} className="h-1.5 mb-1" />
-                        <p className="text-xs text-gray-500">质量 {formatNullableScore(record.qualityImprovement)}</p>
-                      </div>
-                    </div>
-
-                    {(record.managerComment || record.nextMonthWorkArrangement) && (
-                      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="bg-blue-50/60 rounded-lg p-3 border border-blue-100">
-                          <p className="text-xs text-gray-500 mb-1">经理评价</p>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                            {record.managerComment || '—'}
-                          </p>
-                        </div>
-                        <div className="bg-green-50/60 rounded-lg p-3 border border-green-100">
-                          <p className="text-xs text-gray-500 mb-1">下月工作安排</p>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                            {record.nextMonthWorkArrangement || '—'}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">暂无绩效记录</p>
-                <p className="mt-2 text-sm text-gray-400">员工提交月度总结、经理完成评分后，这里会显示月度得分和季度汇总。</p>
+              <div className="py-10 text-center text-gray-500">
+                暂无季度汇总；月度评分完成后，这里会显示本季度前面几个月的汇总。
               </div>
             )}
           </CardContent>

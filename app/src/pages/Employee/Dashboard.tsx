@@ -185,7 +185,7 @@ export function EmployeeDashboard() {
           <BarChart3 className="w-5 h-5 text-blue-600" />
           <div>
             <h2 className="text-xl font-semibold text-gray-900">我的绩效</h2>
-            <p className="text-sm text-gray-500 mt-1">在工作台里直接查看最新绩效、历史趋势和排名。</p>
+            <p className="text-sm text-gray-500 mt-1">在工作台里按月查看绩效得分和季度汇总。</p>
           </div>
         </div>
         <MyScores embedded />
