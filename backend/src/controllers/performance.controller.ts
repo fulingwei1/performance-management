@@ -522,8 +522,15 @@ export const performanceController = {
       });
     }
 
-    // 检查是否已经提交过该月份；若是系统预生成的空草稿，允许员工补充总结
+    // 必须先由月度任务生成流程创建空草稿，员工才能提交总结。
+    // 否则会出现“没有生成考核任务，但员工仍可自己创建绩效记录”的幽灵任务。
     const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
+    if (!existing) {
+      return res.status(400).json({
+        success: false,
+        error: '该月份绩效考核任务尚未生成，暂不能提交工作总结'
+      });
+    }
     if (existing && existing.status !== 'draft') {
       return res.status(400).json({
         success: false,

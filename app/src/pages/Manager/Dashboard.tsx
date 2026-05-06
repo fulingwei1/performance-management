@@ -53,6 +53,7 @@ export function ManagerDashboard() {
     : getDefaultAssessmentMonth();
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
   const [mySummaryRecord, setMySummaryRecord] = useState<any>(null);
+  const [mySummaryLoaded, setMySummaryLoaded] = useState(false);
   const summaryMonth = useMemo(() => getPreviousMonthValue(), []);
   const monthOptions = useMemo(() => Array.from({ length: 12 }, (_, i) => {
     const date = new Date();
@@ -100,6 +101,7 @@ export function ManagerDashboard() {
 
   useEffect(() => {
     if (!user) return;
+    setMySummaryLoaded(false);
     performanceApi.getMyRecordByMonth(summaryMonth)
       .then((response) => {
         setMySummaryRecord(response.success ? response.data || null : null);
@@ -107,6 +109,9 @@ export function ManagerDashboard() {
       .catch((error) => {
         console.error('Failed to fetch my summary record:', error);
         setMySummaryRecord(null);
+      })
+      .finally(() => {
+        setMySummaryLoaded(true);
       });
   }, [user, summaryMonth]);
 
@@ -144,14 +149,20 @@ export function ManagerDashboard() {
     : completedReview > 0
       ? '本月评分已完成，可查看团队分析和历史趋势。'
       : '本月暂无待处理评分任务。';
-  const mySummaryDone = Boolean(mySummaryRecord && mySummaryRecord.status !== 'draft');
-  const mySummaryScored = Boolean(mySummaryRecord && ['completed', 'scored'].includes(mySummaryRecord.status));
-  const mySummaryTitle = mySummaryScored
+  const canSubmitSelfSummary = Boolean(user?.capabilities?.canSubmitSelfSummary);
+  const hasGeneratedMySummaryTask = Boolean(mySummaryRecord);
+  const mySummaryDone = Boolean(hasGeneratedMySummaryTask && mySummaryRecord.status !== 'draft');
+  const mySummaryScored = Boolean(hasGeneratedMySummaryTask && ['completed', 'scored'].includes(mySummaryRecord.status));
+  const mySummaryTitle = !hasGeneratedMySummaryTask
+    ? '我的绩效任务未生成'
+    : mySummaryScored
     ? '我的绩效已完成'
     : mySummaryDone
       ? '我的总结已提交'
       : '待提交我的月度总结';
-  const mySummaryDescription = mySummaryScored
+  const mySummaryDescription = !hasGeneratedMySummaryTask
+    ? `HR 生成 ${summaryMonth} 绩效任务后，才需要填写自己的总结和计划。`
+    : mySummaryScored
     ? `你 ${summaryMonth} 的绩效已评分，可进入总结页查看内容。`
     : mySummaryDone
       ? `你已提交 ${summaryMonth} 工作总结和下月计划，等待上级评分。`
@@ -216,32 +227,59 @@ export function ManagerDashboard() {
         <TodoSection role="manager" fetchSummary={todoApi.getSummary} />
       </motion.div>
 
-      <motion.div variants={itemVariants}>
-        <Link
-          to={`/employee/summary?month=${summaryMonth}`}
-          className={`block rounded-xl border p-4 transition hover:shadow-sm ${
-            mySummaryDone ? 'border-green-100 bg-green-50' : 'border-amber-100 bg-amber-50'
-          }`}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className={`rounded-lg p-2 ${mySummaryDone ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                <FileText className="h-5 w-5" />
+      {canSubmitSelfSummary && (
+        <motion.div variants={itemVariants}>
+          {hasGeneratedMySummaryTask ? (
+            <Link
+              to={`/employee/summary?month=${summaryMonth}`}
+              className={`block rounded-xl border p-4 transition hover:shadow-sm ${
+                mySummaryDone ? 'border-green-100 bg-green-50' : 'border-amber-100 bg-amber-50'
+              }`}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className={`rounded-lg p-2 ${mySummaryDone ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">我的绩效任务 · {summaryMonth}</p>
+                    <p className="mt-1 font-semibold text-gray-900">{mySummaryTitle}</p>
+                    <p className="mt-1 text-sm text-gray-600">{mySummaryDescription}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <MySummaryIcon className={`h-4 w-4 ${mySummaryDone ? 'text-green-600' : 'text-amber-600'}`} />
+                  去处理
+                  <ArrowRight className="h-4 w-4" />
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-gray-500">我的绩效任务 · {summaryMonth}</p>
-                <p className="mt-1 font-semibold text-gray-900">{mySummaryTitle}</p>
-                <p className="mt-1 text-sm text-gray-600">{mySummaryDescription}</p>
+            </Link>
+          ) : (
+            <div className="block rounded-xl border border-gray-100 bg-gray-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-gray-100 p-2 text-gray-500">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">我的绩效任务 · {summaryMonth}</p>
+                    <p className="mt-1 font-semibold text-gray-900">
+                      {mySummaryLoaded ? mySummaryTitle : '正在检查我的绩效任务'}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {mySummaryLoaded ? mySummaryDescription : '正在读取系统是否已生成该月份任务。'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                  <Clock className="h-4 w-4 text-gray-400" />
+                  暂不可填写
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <MySummaryIcon className={`h-4 w-4 ${mySummaryDone ? 'text-green-600' : 'text-amber-600'}`} />
-              去处理
-              <ArrowRight className="h-4 w-4" />
-            </div>
-          </div>
-        </Link>
-      </motion.div>
+          )}
+        </motion.div>
+      )}
       
       <motion.div variants={itemVariants}>
         <Card className="border border-gray-200">

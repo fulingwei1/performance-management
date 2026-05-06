@@ -59,10 +59,15 @@ export function EmployeeDashboard() {
   const currentMonth = getDefaultAssessmentMonth();
   const myTasks = user ? fetchEmployeeTasks(user.id, currentMonth) : [];
   const currentRecord = records.find((record) => record.month === currentMonth);
+  const hasGeneratedTask = Boolean(currentRecord);
   const hasSubmittedSummary = Boolean(currentRecord && currentRecord.status !== 'draft');
   const hasScore = Boolean(currentRecord && Number(currentRecord.totalScore || 0) > 0 && ['completed', 'scored'].includes(currentRecord.status));
   const participationLabel = participation?.participating ? '参与本期绩效考核' : '当前不参与本期绩效考核';
-  const summaryLabel = hasSubmittedSummary ? '已提交总结/计划' : '待填写总结/计划';
+  const summaryLabel = !hasGeneratedTask
+    ? '绩效任务未生成'
+    : hasSubmittedSummary
+      ? '已提交总结/计划'
+      : '待填写总结/计划';
   const scoreLabel = hasScore ? `已评分 ${Number(currentRecord?.totalScore || 0).toFixed(2)}` : '等待经理评分';
 
   const containerVariants = {
@@ -124,19 +129,31 @@ export function EmployeeDashboard() {
                 </p>
               </div>
 
-              <Link
-                to="/employee/summary"
-                className={`rounded-lg border p-3 transition hover:shadow-sm ${hasSubmittedSummary ? 'bg-blue-50 border-blue-100' : 'bg-amber-50 border-amber-100'}`}
-              >
+              {hasGeneratedTask ? (
+                <Link
+                  to={`/employee/summary?month=${currentMonth}`}
+                  className={`rounded-lg border p-3 transition hover:shadow-sm ${hasSubmittedSummary ? 'bg-blue-50 border-blue-100' : 'bg-amber-50 border-amber-100'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className={`h-5 w-5 ${hasSubmittedSummary ? 'text-blue-600' : 'text-amber-600'}`} />
+                      <p className="font-semibold text-gray-900">{summaryLabel}</p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">可填写问题标签和合理化建议，非强制。</p>
+                </Link>
+              ) : (
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <FileText className={`h-5 w-5 ${hasSubmittedSummary ? 'text-blue-600' : 'text-amber-600'}`} />
+                    <FileText className="h-5 w-5 text-gray-400" />
                     <p className="font-semibold text-gray-900">{summaryLabel}</p>
                   </div>
-                  <ArrowRight className="h-4 w-4 text-gray-400" />
                 </div>
-                <p className="mt-2 text-xs text-gray-500">可填写问题标签和合理化建议，非强制。</p>
-              </Link>
+                  <p className="mt-2 text-xs text-gray-500">HR 生成本期绩效任务后，才需要填写总结和计划。</p>
+                </div>
+              )}
 
               <div className={`rounded-lg border p-3 ${hasScore ? 'bg-purple-50 border-purple-100' : 'bg-gray-50 border-gray-100'}`}>
                 <div className="flex items-center gap-2">

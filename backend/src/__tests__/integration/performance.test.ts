@@ -94,6 +94,16 @@ describe('Performance API', () => {
       const managerToken = await TestHelper.getAuthToken('manager');
       const month = '2024-11';
 
+      const draftResponse = await request(app)
+        .post('/api/performance/create-empty-record')
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          employeeId: 'e034',
+          month
+        });
+      expect(draftResponse.status).toBe(200);
+      expect(draftResponse.body.data).toHaveProperty('status', 'draft');
+
       const summaryResponse = await request(app)
         .post('/api/performance/summary')
         .set('Authorization', `Bearer ${employeeToken}`)
@@ -110,7 +120,7 @@ describe('Performance API', () => {
         .post('/api/performance/create-empty-record')
         .set('Authorization', `Bearer ${managerToken}`)
         .send({
-          employeeId: summaryResponse.body.data.employeeId,
+          employeeId: 'e034',
           month
         });
 
@@ -224,11 +234,36 @@ describe('Performance API', () => {
       });
     });
 
+    it('should reject summary when the monthly task has not been generated', async () => {
+      const token = await TestHelper.getAuthToken('employee');
+
+      const response = await request(app)
+        .post('/api/performance/summary')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          ...validSummaryData,
+          month: '2024-10'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('success', false);
+    });
+
     it('should submit work summary', async () => {
+      const managerToken = await TestHelper.getAuthToken('manager');
       const token = await TestHelper.getAuthToken('employee');
       const summary = {
         ...validSummaryData
       };
+
+      const draftResponse = await request(app)
+        .post('/api/performance/create-empty-record')
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          employeeId: 'e034',
+          month: summary.month
+        });
+      expect(draftResponse.status).toBe(200);
 
       const response = await request(app)
         .post('/api/performance/summary')

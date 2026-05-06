@@ -48,6 +48,8 @@ export function WorkSummary() {
   const [frozen, setFrozen] = useState(false);
   const [deadline, setDeadline] = useState<string | undefined>(undefined);
   const [recordStatus, setRecordStatus] = useState<string | null>(null);
+  const [recordLoaded, setRecordLoaded] = useState(false);
+  const [hasGeneratedTask, setHasGeneratedTask] = useState(false);
   const isSubmittedRecord = ['submitted', 'completed', 'scored'].includes(recordStatus || '');
   const isReadOnly = frozen || isSubmittedRecord;
   
@@ -57,10 +59,12 @@ export function WorkSummary() {
       if (!user) return;
       
       const monthStr = format(month, 'yyyy-MM');
+      setRecordLoaded(false);
       try {
         const response = await performanceApi.getMyRecordByMonth(monthStr);
         if (response.success && response.data) {
           const record = response.data;
+          setHasGeneratedTask(true);
           setFrozen(record.frozen || false);
           setDeadline(record.deadline);
           setRecordStatus(record.status || null);
@@ -74,6 +78,7 @@ export function WorkSummary() {
           setSuggestionAnonymous(record.suggestionAnonymous === true);
         } else {
           // 该月份无记录，清空状态
+          setHasGeneratedTask(false);
           setFrozen(false);
           setDeadline(undefined);
           setRecordStatus(null);
@@ -87,6 +92,9 @@ export function WorkSummary() {
       } catch (error) {
         console.error('加载记录失败:', error);
         toast.error('加载记录失败');
+        setHasGeneratedTask(false);
+      } finally {
+        setRecordLoaded(true);
       }
     };
     
@@ -95,6 +103,10 @@ export function WorkSummary() {
   
   const handleSave = async (isDraft: boolean) => {
     if (!user) return;
+    if (!hasGeneratedTask) {
+      toast.error('该月份绩效考核任务尚未生成，暂不能填写总结');
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -193,6 +205,58 @@ export function WorkSummary() {
           <CardContent className="space-y-2 text-sm text-amber-900">
             <p>如果该人员业务上需要被上级考核，请先在人事档案中维护角色、上级关系，并确认没有被考核范围排除。</p>
             <p>维护完成后重新登录或刷新页面，系统会自动显示“我的月度总结”。</p>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (!recordLoaded) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-4xl mx-auto"
+      >
+        <motion.div variants={itemVariants} className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">月度工作总结</h1>
+          <p className="text-gray-500 mt-1">正在检查该月份绩效任务...</p>
+        </motion.div>
+        <Card>
+          <CardContent className="pt-6 text-sm text-gray-500">
+            正在读取系统是否已生成该月份绩效考核任务。
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (!hasGeneratedTask) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-4xl mx-auto"
+      >
+        <motion.div variants={itemVariants} className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">月度工作总结</h1>
+          <p className="text-gray-500 mt-1">当前月份暂不能填写</p>
+        </motion.div>
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2 text-amber-900">
+              <FileText className="w-5 h-5" />
+              绩效考核任务尚未生成
+            </CardTitle>
+            <CardDescription className="text-amber-800">
+              只有系统生成该月份绩效考核任务后，员工才需要填写工作总结和下月计划。
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-amber-900">
+            <p>如果 HR 尚未生成任务，这里不会创建新的绩效记录，也不会产生待办。</p>
+            <p>请等待 HR 生成该月份考核任务，或联系 HR 确认是否需要参与本期考核。</p>
           </CardContent>
         </Card>
       </motion.div>
