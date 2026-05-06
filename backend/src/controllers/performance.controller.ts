@@ -29,6 +29,36 @@ const normalizeOptionalText = (input: unknown): string => {
   return input.trim();
 };
 
+const NO_IMPROVEMENT_SUGGESTION_TEXTS = new Set([
+  '无',
+  '没有',
+  '暂无',
+  '暂时没有',
+  '无建议',
+  '无意见',
+  '无合理化建议',
+  '没有建议',
+  '没有意见',
+  '暂无建议',
+  '暂无意见',
+  'none',
+  'no',
+  'na',
+  'n/a',
+  'nil',
+]);
+
+const normalizeImprovementSuggestionText = (input: unknown): string => {
+  const text = normalizeOptionalText(input);
+  if (!text) return '';
+
+  const compact = text
+    .toLowerCase()
+    .replace(/[\s。.!！,，、；;：:]/g, '');
+
+  return NO_IMPROVEMENT_SUGGESTION_TEXTS.has(compact) ? '' : text;
+};
+
 const managerScoringLink = (month: string): string => `/manager/scoring?month=${encodeURIComponent(month)}`;
 
 function hideUnpublishedScore(record: any): any {
@@ -306,7 +336,7 @@ export const performanceController = {
       .map((record) => ({
         id: record.id,
         month: record.month,
-        suggestion: normalizeOptionalText(record.improvementSuggestion),
+        suggestion: normalizeImprovementSuggestionText(record.improvementSuggestion),
         anonymous: record.suggestionAnonymous === true,
         employeeId: record.suggestionAnonymous ? '' : record.employeeId,
         employeeName: record.suggestionAnonymous ? '匿名提交' : (record.employeeName || ''),
@@ -559,7 +589,7 @@ export const performanceController = {
       nextMonthPlan: finalNextMonthPlan,
       employeeIssueTags: normalizeStringArray(employeeIssueTags),
       resourceNeedTags: normalizeStringArray(resourceNeedTags),
-      improvementSuggestion: normalizeOptionalText(improvementSuggestion),
+      improvementSuggestion: normalizeImprovementSuggestionText(improvementSuggestion),
       suggestionAnonymous: suggestionAnonymous === true,
       groupType
     });

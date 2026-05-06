@@ -178,6 +178,52 @@ describe('Performance API', () => {
     });
   });
 
+  describe('GET /api/performance/improvement-suggestions', () => {
+    it('should ignore placeholder no-op suggestions such as 无', async () => {
+      const token = await TestHelper.getAuthToken('hr');
+      const month = '2099-08';
+
+      await PerformanceModel.saveSummary({
+        id: `rec-e034-${month}`,
+        employeeId: 'e034',
+        assessorId: 'm011',
+        month,
+        selfSummary: '完成本月测试任务',
+        nextMonthPlan: '继续完成下月测试计划',
+        improvementSuggestion: '无',
+        suggestionAnonymous: false,
+        groupType: 'low',
+      });
+      await PerformanceModel.saveSummary({
+        id: `rec-e002-${month}`,
+        employeeId: 'e002',
+        assessorId: 'm011',
+        month,
+        selfSummary: '完成本月测试任务',
+        nextMonthPlan: '继续完成下月测试计划',
+        improvementSuggestion: '建议统一设备点检表，减少重复填写。',
+        suggestionAnonymous: false,
+        groupType: 'low',
+      });
+
+      const response = await request(app)
+        .get(`/api/performance/improvement-suggestions?month=${month}&scope=all`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        data: {
+          totalCount: 1,
+          namedCount: 1,
+          anonymousCount: 0,
+        },
+      });
+      expect(response.body.data.suggestions).toHaveLength(1);
+      expect(response.body.data.suggestions[0].suggestion).toBe('建议统一设备点检表，减少重复填写。');
+    });
+  });
+
   describe('POST /api/performance/summary', () => {
     it('should submit summary into an existing generated draft task', async () => {
       const managerToken = await TestHelper.getAuthToken('manager');
@@ -274,6 +320,35 @@ describe('Performance API', () => {
       expect(response.body).toHaveProperty('success', true);
       expect(response.body.data).toHaveProperty('id');
       expect(response.body.data).toHaveProperty('status', 'submitted');
+    });
+
+    it('should store placeholder no-op suggestion as empty text', async () => {
+      const token = await TestHelper.getAuthToken('employee');
+      const month = '2099-09';
+
+      await PerformanceModel.saveSummary({
+        id: `rec-e034-${month}`,
+        employeeId: 'e034',
+        assessorId: 'm011',
+        month,
+        selfSummary: '',
+        nextMonthPlan: '',
+        groupType: 'low',
+      });
+
+      const response = await request(app)
+        .post('/api/performance/summary')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          month,
+          selfSummary: '补充上月工作总结',
+          nextMonthPlan: '继续完成重点任务',
+          improvementSuggestion: '无。',
+          suggestionAnonymous: false,
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data.improvementSuggestion).toBe('');
     });
 
     it('should fail with duplicate month submission', async () => {
