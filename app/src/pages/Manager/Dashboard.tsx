@@ -124,7 +124,7 @@ export function ManagerDashboard() {
   const {
     teamSize, pendingReview,
     completedReview, averageScore, monthlyBestScore, participationCount,
-    excludedCount, completionRate
+    excludedCount, completionRate, completedRecords
   } = useMemo(() => {
     const teamSize = subordinates.length;
     const submittedPending = currentMonthRecords.filter(r => r.status === 'submitted').length;
@@ -142,7 +142,17 @@ export function ManagerDashboard() {
     const participationCount = participationSummary?.team?.participatingCount ?? 0;
     const excludedCount = participationSummary?.team?.excludedCount ?? 0;
     const completionRate = teamSize > 0 ? Math.round((completedReview / teamSize) * 100) : 0;
-    return { teamSize, pendingReview, completedReview, averageScore, monthlyBestScore, participationCount, excludedCount, completionRate };
+    return {
+      teamSize,
+      pendingReview,
+      completedReview,
+      completedRecords,
+      averageScore,
+      monthlyBestScore,
+      participationCount,
+      excludedCount,
+      completionRate,
+    };
   }, [subordinates, currentMonthRecords, participationSummary]);
   const actionHint = pendingReview > 0
     ? `还有 ${pendingReview} 人需要处理，点击“待评分”可直接查看名单。`
