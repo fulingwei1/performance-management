@@ -188,6 +188,26 @@ export default function MonthlyAutomation() {
     });
   };
 
+  const autoPublishWithOptionalDistributionExemption = () => {
+    const useExemption = window.confirm('如果只是普通补跑发布+归档点“取消”；如果需要因为 2-7-1 分布不满足但仍要发布并归档，点“确定”并填写豁免原因。');
+    if (!useExemption) {
+      runAction('auto-publish', { month: selectedMonth });
+      return;
+    }
+
+    const reason = window.prompt('请填写2-7-1豁免原因（不少于10个字，会进入日志留痕）：');
+    if (!reason || reason.trim().length < 10) {
+      toast.error('豁免原因不能少于10个字');
+      return;
+    }
+
+    runAction('auto-publish', {
+      month: selectedMonth,
+      forceDistribution: true,
+      forceReason: reason.trim(),
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#0f1117] p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -418,7 +438,7 @@ export default function MonthlyAutomation() {
             buttonClassName="bg-green-600 hover:bg-green-700"
             disabled={loading}
             icon={<Archive className="w-4 h-4" />}
-            onClick={() => runAction('auto-publish', { month: selectedMonth })}
+            onClick={autoPublishWithOptionalDistributionExemption}
             secondaryButton={{
               label: '仅发布结果/豁免',
               icon: <Send className="w-4 h-4" />,

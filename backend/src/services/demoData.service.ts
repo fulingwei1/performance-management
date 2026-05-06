@@ -88,10 +88,42 @@ function groupTypeForLevel(level: Employee['level']): 'high' | 'low' {
   return level === 'senior' || level === 'intermediate' ? 'high' : 'low';
 }
 
-function buildDemoRecord(employee: Employee, assessorId: string, month: string): PerformanceRecord {
+function roundScore(score: number): number {
+  return Math.round(Math.max(0.7, Math.min(1.45, score)) * 100) / 100;
+}
+
+function demoOrgUnitKey(employee: Employee): string {
+  const dept = String(employee.department || '').trim();
+  const sub = String(employee.subDepartment || '').trim();
+  return sub ? `${dept}/${sub}` : dept;
+}
+
+function distributionScoreForIndex(index: number, total: number, employeeId: string, month: string): number | undefined {
+  if (total <= 10) return undefined;
+
+  const bottomRequired = Math.max(1, Math.floor(total * 0.1));
+  const topQuota = Math.ceil(total * 0.2);
+  const topTarget = Math.min(topQuota, Math.max(1, Math.floor(total * 0.15)));
+  const jitter = seededNumber(`${employeeId}-${month}-distribution`);
+
+  if (index < bottomRequired) {
+    return roundScore(0.76 + jitter * 0.12); // < 0.9，满足末位人数要求
+  }
+
+  if (index >= total - topTarget) {
+    return roundScore(1.36 + jitter * 0.08); // L5/高分，但不超过 2 成优秀上限
+  }
+
+  const middleSpan = Math.max(1, total - bottomRequired - topTarget);
+  const middleIndex = index - bottomRequired;
+  const bandPosition = middleIndex / middleSpan;
+  return roundScore(0.94 + bandPosition * 0.34 + (jitter - 0.5) * 0.04);
+}
+
+function buildDemoRecord(employee: Employee, assessorId: string, month: string, forcedTotalScore?: number): PerformanceRecord {
   const base = 0.82 + seededNumber(`${employee.id}-${month}`) * 0.58;
   const trend = (seededNumber(`${employee.id}-trend`) - 0.5) * 0.08;
-  const totalScore = Math.round(Math.max(0.7, Math.min(1.45, base + trend)) * 100) / 100;
+  const totalScore = roundScore(forcedTotalScore ?? base + trend);
   const dimension = (suffix: string) => (
     Math.round(Math.max(0.7, Math.min(1.5, totalScore + (seededNumber(`${employee.id}-${month}-${suffix}`) - 0.5) * 0.12)) * 100) / 100
   );
@@ -145,6 +177,37 @@ function buildDemoRecord(employee: Employee, assessorId: string, month: string):
   };
 }
 
+function buildDemoRecords(targets: Array<{ employee: Employee; assessorId: string }>, months: string[]): PerformanceRecord[] {
+  const records: PerformanceRecord[] = [];
+
+  for (const month of months) {
+    const grouped = new Map<string, Array<{ employee: Employee; assessorId: string }>>();
+    for (const target of targets) {
+      const unitKey = demoOrgUnitKey(target.employee);
+      if (!grouped.has(unitKey)) grouped.set(unitKey, []);
+      grouped.get(unitKey)!.push(target);
+    }
+
+    for (const group of grouped.values()) {
+      const ordered = [...group].sort((a, b) => (
+        seededNumber(`${a.employee.id}-${month}-rank`) - seededNumber(`${b.employee.id}-${month}-rank`)
+        || a.employee.id.localeCompare(b.employee.id)
+      ));
+
+      ordered.forEach(({ employee, assessorId }, index) => {
+        records.push(buildDemoRecord(
+          employee,
+          assessorId,
+          month,
+          distributionScoreForIndex(index, ordered.length, employee.id, month)
+        ));
+      });
+    }
+  }
+
+  return records;
+}
+
 function isDemoRecord(record: PerformanceRecord): boolean {
   return Boolean(
     record.isDemo ||
@@ -183,7 +246,7 @@ export class DemoDataService {
       ? Array.from(memoryStore.employees.values()) as Employee[]
       : await EmployeeModel.findAll();
     const targets = eligibleEmployees(employees);
-    const records = targets.flatMap(({ employee, assessorId }) => months.map((month) => buildDemoRecord(employee, assessorId, month)));
+    const records = buildDemoRecords(targets, months);
 
     if (USE_MEMORY_DB) {
       let createdCount = 0;

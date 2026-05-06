@@ -8,6 +8,8 @@ describe('SchedulerService monthly performance task generation', () => {
     memoryStore.notifications = new Map();
     memoryStore.todos = new Map();
     memoryStore.systemSettings = new Map();
+    (memoryStore as any).monthlyAssessmentPublications = new Map();
+    (memoryStore as any).performanceArchives = new Map();
     (memoryStore as any).satisfactionSurveys = new Map();
     (memoryStore as any).satisfactionSurveyResponses = new Map();
     memoryStore.assessmentTemplates = new Map([
@@ -199,5 +201,83 @@ describe('SchedulerService monthly performance task generation', () => {
         status: 'open',
       })
     ]);
+  });
+
+  it('allows documented 2-7-1 exemption when manually auto-publishing and archiving', async () => {
+    memoryStore.employees.set('gm001', {
+      id: 'gm001',
+      name: '总经理',
+      role: 'gm',
+      department: '总经办',
+      subDepartment: '',
+      level: 'senior',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('m001', {
+      id: 'm001',
+      name: '经理A',
+      role: 'manager',
+      department: '制造中心',
+      subDepartment: '生产部/机电装配组',
+      level: 'senior',
+      managerId: 'gm001',
+      status: 'active'
+    } as any);
+
+    const month = '2026-04';
+    const employeeIds = Array.from({ length: 11 }, (_, index) => `e${String(index + 1).padStart(3, '0')}`);
+    for (const employeeId of employeeIds) {
+      memoryStore.employees.set(employeeId, {
+        id: employeeId,
+        name: `员工${employeeId}`,
+        role: 'employee',
+        department: '制造中心',
+        subDepartment: '生产部/机电装配组',
+        level: 'junior',
+        managerId: 'm001',
+        status: 'active'
+      } as any);
+    }
+
+    for (const employeeId of ['m001', ...employeeIds]) {
+      memoryStore.performanceRecords.set(`rec-${employeeId}-${month}`, {
+        id: `rec-${employeeId}-${month}`,
+        employeeId,
+        assessorId: employeeId === 'm001' ? 'gm001' : 'm001',
+        month,
+        selfSummary: '本月总结',
+        nextMonthPlan: '下月计划',
+        taskCompletion: 1,
+        initiative: 1,
+        projectFeedback: 1,
+        qualityImprovement: 1,
+        totalScore: 1,
+        managerComment: '稳定完成任务',
+        nextMonthWorkArrangement: '继续跟进任务',
+        groupType: 'low',
+        status: 'completed',
+      } as any);
+    }
+
+    const blocked = await SchedulerService.autoPublishPreviousMonth(new Date('2026-05-08T08:00:00+08:00'));
+    expect(blocked).toMatchObject({
+      month,
+      published: false,
+    });
+    expect(blocked.reason).toContain('末位人数');
+
+    const published = await SchedulerService.autoPublishPreviousMonth(new Date('2026-05-08T08:00:00+08:00'), {
+      forceDistribution: true,
+      forceReason: '演示数据分布特殊，HR确认允许豁免并保留记录',
+      publishedBy: 'hr001',
+    });
+
+    expect(published).toMatchObject({
+      month,
+      published: true,
+      forceDistribution: true,
+    });
+    expect((memoryStore as any).monthlyAssessmentPublications.has(month)).toBe(true);
+    expect(Array.from(((memoryStore as any).performanceArchives as Map<string, any>).values())).toHaveLength(1);
   });
 });

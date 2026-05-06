@@ -512,6 +512,18 @@ describe('Security regression API checks', () => {
     expect(trigger.body.message).not.toBe('接口不存在');
   });
 
+  it('keeps the employee quarterly mine alias available for the frontend', async () => {
+    const employeeToken = await TestHelper.getAuthToken('employee');
+
+    const response = await request(app)
+      .get('/api/employee-quarterly/mine')
+      .set('Authorization', `Bearer ${employeeToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(Array.isArray(response.body.data)).toBe(true);
+  });
+
   it('rejects invalid manager assignments and supports employee pagination', async () => {
     const hrToken = await TestHelper.getAuthToken('hr');
 

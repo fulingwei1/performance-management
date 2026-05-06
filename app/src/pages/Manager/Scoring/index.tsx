@@ -335,6 +335,20 @@ export function ScoringManagement({
       return;
     }
     
+    let expectedUpdatedAt = selectedRecord?.updatedAt;
+    const isAdjustingCompletedScore = selectedRecord?.status === 'completed' || selectedRecord?.status === 'scored';
+    if (isAdjustingCompletedScore) {
+      try {
+        const freshRecord = await performanceApi.getRecordById(recordId);
+        if (freshRecord.success && freshRecord.data?.updatedAt) {
+          expectedUpdatedAt = freshRecord.data.updatedAt;
+        }
+      } catch {
+        toast.error('刷新评分版本失败，请刷新页面后再调整');
+        return;
+      }
+    }
+
     const success = await submitScore({
       id: recordId,
       ...scores,
@@ -353,7 +367,7 @@ export function ScoringManagement({
       monthlyStarCategory,
       monthlyStarReason,
       monthlyStarPublic,
-      expectedUpdatedAt: selectedRecord?.updatedAt
+      expectedUpdatedAt
     });
     if (success) {
       setIsDrawerOpen(false); setSelectedRecord(null); setIsNoSummary(false);

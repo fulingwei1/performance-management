@@ -907,10 +907,16 @@ export class SchedulerService {
    * 每月 8 日自动发布上月绩效（兜底）
    * 条件：上月所有 eligible 员工的记录都是 completed/scored 状态，且未发布
    */
-  static async autoPublishPreviousMonth(referenceDate: Date = new Date()): Promise<{
+  static async autoPublishPreviousMonth(referenceDate: Date = new Date(), options: {
+    forceDistribution?: boolean;
+    forceReason?: string;
+    publishedBy?: string;
+  } = {}): Promise<{
     month: string;
     published: boolean;
     reason: string;
+    forceDistribution?: boolean;
+    readiness?: Awaited<ReturnType<typeof validatePublicationReadiness>>;
   }> {
     const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
     const targetMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
@@ -963,19 +969,44 @@ export class SchedulerService {
 
     const readiness = await validatePublicationReadiness(targetMonth);
     if (!readiness.ok) {
-      return {
-        month: targetMonth,
-        published: false,
-        reason: formatPublicationReadinessMessage(readiness)
-      };
+      const incompleteViolations = readiness.violations.filter((violation) => violation.type === 'incomplete');
+      const forcedDistributionViolations = readiness.violations.filter((violation) => violation.type === 'forced_distribution');
+      const forceReason = String(options.forceReason || '').trim();
+
+      if (
+        incompleteViolations.length > 0
+        || forcedDistributionViolations.length === 0
+        || options.forceDistribution !== true
+      ) {
+        return {
+          month: targetMonth,
+          published: false,
+          reason: formatPublicationReadinessMessage(readiness),
+          readiness
+        };
+      }
+
+      if (forceReason.length < 10) {
+        return {
+          month: targetMonth,
+          published: false,
+          reason: '启用 2-7-1 豁免发布时，请填写不少于10个字的豁免原因',
+          readiness
+        };
+      }
     }
 
     // 自动发布
     const adminUser = allEmployees.find((e: any) => e.role === 'admin');
-    const publishedBy = adminUser?.id || 'system';
+    const publishedBy = options.publishedBy || adminUser?.id || 'system';
+    const forceReason = String(options.forceReason || '').trim();
 
-    await AssessmentPublicationModel.publish(targetMonth, publishedBy);
-    logger.info(`[Scheduler] ${targetMonth} 绩效结果已自动发布`);
+    await AssessmentPublicationModel.publish(targetMonth, publishedBy, readiness.ok ? {} : {
+      forceDistribution: true,
+      forceReason,
+      readinessSnapshot: readiness,
+    });
+    logger.info(`[Scheduler] ${targetMonth} 绩效结果已自动发布${!readiness.ok ? `（2-7-1豁免：${forceReason}）` : ''}`);
 
     // 企业微信通知：结果已发布
     const avgScore = completedRecords.reduce((sum, r) => sum + (parseFloat((r as any).totalScore || (r as any).total_score) || 0), 0) / completedRecords.length;
@@ -993,7 +1024,15 @@ export class SchedulerService {
       logger.error(`[Scheduler] ${targetMonth} 归档失败: ${err}`);
     }
 
-    return { month: targetMonth, published: true, reason: `自动发布完成 (${completedRecords.length} 条记录)` };
+    return {
+      month: targetMonth,
+      published: true,
+      reason: readiness.ok
+        ? `自动发布完成 (${completedRecords.length} 条记录)`
+        : `自动发布完成（已记录2-7-1豁免原因，${completedRecords.length} 条记录）`,
+      forceDistribution: !readiness.ok,
+      readiness: readiness.ok ? undefined : readiness,
+    };
   }
 
   /**

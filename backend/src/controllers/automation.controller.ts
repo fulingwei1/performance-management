@@ -150,8 +150,14 @@ export const automationController = {
   autoPublish: asyncHandler(async (req: Request, res: Response) => {
     const month = requestedMonth(req);
     const refDate = referenceDateForTargetMonth(month);
+    const forceDistribution = req.body?.forceDistribution === true;
+    const forceReason = typeof req.body?.forceReason === 'string' ? req.body.forceReason.trim() : '';
     const startedAt = Date.now();
-    const result = await SchedulerService.autoPublishPreviousMonth(refDate);
+    const result = await SchedulerService.autoPublishPreviousMonth(refDate, {
+      forceDistribution,
+      forceReason,
+      publishedBy: req.user?.userId,
+    });
     await writeAutomationLog(
       'publish_results',
       result.month,
