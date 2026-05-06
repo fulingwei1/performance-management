@@ -482,7 +482,7 @@ export class PerformanceModel {
         ${
           hasExpectedUpdatedAt
             ? "AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', ?::timestamp)"
-            : "AND COALESCE(status, '') NOT IN ('completed', 'scored')"
+            : "AND (status IS NULL OR status NOT IN ('completed', 'scored'))"
         }
     `;
 
