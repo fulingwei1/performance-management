@@ -444,7 +444,8 @@ export class PerformanceModel {
         await this.updateRanks(updated.month);
       }
       
-      return updated ? this.enrichRecord(updated) : null;
+      const refreshed = updated ? memoryDB.performanceRecords.findById(data.id) : null;
+      return refreshed ? this.enrichRecord(refreshed) : null;
     }
     
     const hasExpectedUpdatedAt = Boolean(data.expectedUpdatedAt);
@@ -527,6 +528,7 @@ export class PerformanceModel {
     const record = await this.findById(data.id);
     if (record) {
       await this.updateRanks(record.month);
+      return this.findById(data.id);
     }
     
     return record;
