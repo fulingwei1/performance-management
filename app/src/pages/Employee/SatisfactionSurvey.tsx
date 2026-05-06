@@ -109,10 +109,10 @@ export function SatisfactionSurvey() {
               <MessageSquare className="h-5 w-5 text-blue-600" />
               半年度满意度调查
             </CardTitle>
-            <CardDescription>当前半年度还没有开放的满意度调查。</CardDescription>
+            <CardDescription>当前没有开放的满意度调查。</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-gray-600">HR 开启后，你可以在这里填写；系统会每半年自动准备一次调查。</p>
+            <p className="text-sm text-gray-600">系统只会在 7 月考核 6 月绩效、1 月考核上年 12 月绩效时生成；没有开放调查时，侧边栏不会展示入口。</p>
           </CardContent>
         </Card>
       </div>

@@ -42,7 +42,14 @@ export const satisfactionSurveyController = {
 
     const survey = requestedYear && requestedHalf
       ? await SatisfactionSurveyService.ensureSurveyForPeriod({ year: requestedYear, half: requestedHalf, createdBy })
-      : await SatisfactionSurveyService.ensureSurveyForDate(new Date(), createdBy);
+      : await SatisfactionSurveyService.ensureSurveyForAssessmentDate(new Date(), createdBy);
+
+    if (!survey) {
+      return res.status(400).json({
+        success: false,
+        message: '当前月份不是满意度调查生成月份；系统只会在 1 月考核上年 12 月、7 月考核 6 月时生成',
+      });
+    }
 
     res.json({
       success: true,
@@ -84,8 +91,13 @@ export const satisfactionSurveyController = {
       return res.status(401).json({ success: false, message: '未认证' });
     }
 
-    const survey = await SatisfactionSurveyService.findCurrentSurvey(new Date())
-      || await SatisfactionSurveyService.ensureSurveyForDate(new Date(), 'system');
+    const survey = await SatisfactionSurveyService.findCurrentSurvey(new Date());
+    if (!survey) {
+      return res.status(404).json({
+        success: false,
+        message: '当前没有开放的满意度调查',
+      });
+    }
     const employee = await EmployeeModel.findById(employeeId);
     if (!employee) {
       return res.status(404).json({ success: false, message: '员工信息不存在' });

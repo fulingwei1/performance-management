@@ -116,29 +116,14 @@ export class SchedulerService {
       }
     });
 
-    // 每半年首日自动准备一次员工满意度调查；服务重启时也会兜底确保当前半年度调查存在。
-    cron.schedule('30 8 1 1,7 *', async () => {
-      logger.info('[Scheduler] 准备半年度满意度调查...');
-      try {
-        const result = await this.ensureCurrentHalfYearSatisfactionSurvey();
-        logger.info(`[Scheduler] 半年度满意度调查已就绪: ${result.period}`);
-      } catch (err) {
-        logger.error(`[Scheduler] 半年度满意度调查生成出错: ${err}`);
-      }
-    });
-
-    this.ensureCurrentHalfYearSatisfactionSurvey()
-      .then((result) => logger.info(`[Scheduler] 当前半年度满意度调查已就绪: ${result.period}`))
-      .catch((err) => logger.error(`[Scheduler] 当前半年度满意度调查兜底生成出错: ${err}`));
-
     logger.info('✅ 定时任务已启动');
   }
 
   /**
-   * 确保当前半年度满意度调查存在；用于服务启动兜底和每年 1/7 月自动创建。
+   * 仅在 1 月考核上年 12 月、7 月考核 6 月时准备半年度满意度调查。
    */
   static async ensureCurrentHalfYearSatisfactionSurvey(referenceDate: Date = new Date()) {
-    return SatisfactionSurveyService.ensureSurveyForDate(referenceDate, 'system');
+    return SatisfactionSurveyService.ensureSurveyForAssessmentDate(referenceDate, 'system');
   }
 
   /**
@@ -152,6 +137,7 @@ export class SchedulerService {
     todoCount: number;
     emailCount: number;
     taskGeneratedWecomCount?: number;
+    satisfactionSurveyPeriod?: string;
     total: number;
   }> {
     const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
@@ -266,6 +252,8 @@ export class SchedulerService {
       taskGeneratedWecomCount = sent ? taskGeneratedRecipients.length : 0;
     }
 
+    const satisfactionSurvey = await SatisfactionSurveyService.ensureSurveyForPerformanceMonth(targetMonth, 'system');
+
     return {
       month: targetMonth,
       createdCount,
@@ -274,6 +262,7 @@ export class SchedulerService {
       todoCount,
       emailCount,
       taskGeneratedWecomCount,
+      ...(satisfactionSurvey ? { satisfactionSurveyPeriod: satisfactionSurvey.period } : {}),
       total: assessableEmployees.length
     };
   }

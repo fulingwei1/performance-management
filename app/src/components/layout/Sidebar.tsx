@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+import { useSatisfactionSurveyAvailability } from '@/hooks/useSatisfactionSurveyAvailability';
 
 interface SidebarProps {
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
@@ -26,23 +27,13 @@ interface SidebarNavItem {
   icon: LucideIcon;
 }
 
-const selfSummaryNavItem: SidebarNavItem = { path: '/employee/summary', label: '我的月度总结', icon: FileText };
-
-function withSelfSummaryNavItem(items: SidebarNavItem[]): SidebarNavItem[] {
-  if (items.some((item) => item.path === selfSummaryNavItem.path)) return items;
-  const [first, ...rest] = items;
-  return first ? [first, selfSummaryNavItem, ...rest] : [selfSummaryNavItem];
-}
-
 const employeeNavItems: SidebarNavItem[] = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/employee/summary', label: '月度总结', icon: FileText },
   { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
 const managerNavItems: SidebarNavItem[] = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/employee/summary', label: '我的月度总结', icon: FileText },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
   { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
@@ -99,6 +90,7 @@ function getDisplayRoleLabels(user: any, role: SidebarProps['role']): string[] {
 export function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
+  const hasOpenSatisfactionSurvey = useSatisfactionSurveyAvailability();
 
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const baseNavItems = role === 'employee'
@@ -116,9 +108,9 @@ export function Sidebar({ role }: SidebarProps) {
           ...hrAdminBaseNavItems.slice(2),
         ]
       : hrAdminBaseNavItems;
-  const navItems = user?.capabilities?.canSubmitSelfSummary
-    ? withSelfSummaryNavItem(baseNavItems)
-    : baseNavItems;
+  const navItems = baseNavItems.filter((item) => (
+    item.path !== '/employee/satisfaction-survey' || hasOpenSatisfactionSurvey
+  ));
   const roleLabels = getDisplayRoleLabels(user, role).filter(Boolean);
 
   return (

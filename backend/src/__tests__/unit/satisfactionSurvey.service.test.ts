@@ -42,6 +42,26 @@ describe('SatisfactionSurveyService', () => {
     });
   });
 
+  it('resolves satisfaction survey only from June and December performance months', async () => {
+    expect(SatisfactionSurveyService.resolveSurveyPeriodForPerformanceMonth('2026-06')).toEqual({
+      year: 2026,
+      half: 1,
+      period: '2026-H1',
+    });
+    expect(SatisfactionSurveyService.resolveSurveyPeriodForPerformanceMonth('2026-12')).toEqual({
+      year: 2026,
+      half: 2,
+      period: '2026-H2',
+    });
+    expect(SatisfactionSurveyService.resolveSurveyPeriodForPerformanceMonth('2026-05')).toBeNull();
+
+    await expect(SatisfactionSurveyService.ensureSurveyForAssessmentDate(new Date('2026-05-06T08:00:00+08:00'))).resolves.toBeNull();
+    await expect(SatisfactionSurveyService.ensureSurveyForAssessmentDate(new Date('2026-07-01T08:00:00+08:00'))).resolves.toMatchObject({
+      period: '2026-H1',
+      status: 'open',
+    });
+  });
+
   it('ensures one open survey for the same half-year period', async () => {
     const first = await SatisfactionSurveyService.ensureSurveyForPeriod({ year: 2026, half: 1, createdBy: 'hr001' });
     const second = await SatisfactionSurveyService.ensureSurveyForPeriod({ year: 2026, half: 1, createdBy: 'hr001' });
@@ -57,6 +77,15 @@ describe('SatisfactionSurveyService', () => {
     expect(second.id).toBe(first.id);
     expect(DEFAULT_SATISFACTION_SURVEY_QUESTIONS).toHaveLength(5);
     expect(Array.from((memoryStore as any).satisfactionSurveys.values())).toHaveLength(1);
+  });
+
+  it('only exposes an open survey as current', async () => {
+    await SatisfactionSurveyService.ensureSurveyForPeriod({ year: 2026, half: 1, createdBy: 'hr001' });
+    const current = await SatisfactionSurveyService.findCurrentSurvey(new Date('2026-07-02T08:00:00+08:00'));
+    expect(current).toMatchObject({ period: '2026-H1', status: 'open' });
+
+    await SatisfactionSurveyService.setSurveyStatus('satisfaction-2026-H1', 'closed');
+    await expect(SatisfactionSurveyService.findCurrentSurvey(new Date('2026-07-02T08:00:00+08:00'))).resolves.toBeNull();
   });
 
   it('stores one response per employee and aggregates averages', async () => {

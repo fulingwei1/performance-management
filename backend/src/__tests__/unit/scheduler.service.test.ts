@@ -8,6 +8,8 @@ describe('SchedulerService monthly performance task generation', () => {
     memoryStore.notifications = new Map();
     memoryStore.todos = new Map();
     memoryStore.systemSettings = new Map();
+    (memoryStore as any).satisfactionSurveys = new Map();
+    (memoryStore as any).satisfactionSurveyResponses = new Map();
     memoryStore.assessmentTemplates = new Map([
       ['template-eng-default', {
         id: 'template-eng-default',
@@ -151,5 +153,51 @@ describe('SchedulerService monthly performance task generation', () => {
     expect(Array.from(memoryStore.performanceRecords.values()).filter((r: any) => r.month === '2026-03')).toHaveLength(2);
     expect(Array.from(memoryStore.todos!.values())).toHaveLength(2);
     expect(Array.from(memoryStore.notifications!.values())).toHaveLength(2);
+  });
+
+  it('should generate the first-half satisfaction survey when generating June performance tasks', async () => {
+    memoryStore.employees.set('m001', {
+      id: 'm001',
+      name: '经理A',
+      role: 'manager',
+      department: '工程技术中心',
+      subDepartment: '测试部',
+      level: 'senior',
+      managerId: 'gm001',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('gm001', {
+      id: 'gm001',
+      name: '总经理',
+      role: 'gm',
+      department: '总经办',
+      subDepartment: '',
+      level: 'senior',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('e001', {
+      id: 'e001',
+      name: '员工A',
+      role: 'employee',
+      department: '工程技术中心',
+      subDepartment: '测试部',
+      level: 'junior',
+      managerId: 'm001',
+      status: 'active'
+    } as any);
+
+    const result = await SchedulerService.generatePreviousMonthPerformanceTasks(new Date('2026-07-01T08:00:00+08:00'));
+
+    expect(result).toMatchObject({
+      month: '2026-06',
+      satisfactionSurveyPeriod: '2026-H1',
+    });
+    expect(Array.from((memoryStore as any).satisfactionSurveys.values())).toEqual([
+      expect.objectContaining({
+        id: 'satisfaction-2026-H1',
+        period: '2026-H1',
+        status: 'open',
+      })
+    ]);
   });
 });

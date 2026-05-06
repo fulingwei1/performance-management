@@ -112,7 +112,7 @@ export default function HRSatisfactionSurvey() {
             <MessageSquare className="h-6 w-6 text-blue-600" />
             <h1 className="text-2xl font-bold text-gray-900">半年度满意度调查</h1>
           </div>
-          <p className="mt-1 text-sm text-gray-500">系统每半年自动准备一次；这里可以手动创建、开放/关闭，并查看匿名汇总统计。</p>
+          <p className="mt-1 text-sm text-gray-500">系统在 7 月考核 6 月绩效、1 月考核上年 12 月绩效时自动准备；这里可以查看、开放/关闭，并查看匿名汇总统计。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => loadSurveys(selectedId)} disabled={loading || working}>
@@ -121,7 +121,7 @@ export default function HRSatisfactionSurvey() {
           </Button>
           <Button onClick={ensureCurrent} disabled={working}>
             {working ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-            确保本期调查
+            生成本期调查
           </Button>
         </div>
       </div>
@@ -141,7 +141,7 @@ export default function HRSatisfactionSurvey() {
             <CardContent className="space-y-3">
               {surveys.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                  还没有调查。点击“确保本期调查”即可创建当前半年度。
+                  还没有调查。系统只会在 1 月/7 月生成本期调查；如需提前创建，请联系管理员指定期次。
                 </div>
               ) : surveys.map((survey) => (
                 <button

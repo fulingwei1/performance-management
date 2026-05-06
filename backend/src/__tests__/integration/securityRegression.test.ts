@@ -552,6 +552,13 @@ describe('Security regression API checks', () => {
     expect(stats.status).toBe(200);
     expect(stats.body.success).toBe(true);
 
+    const ensuredSurvey = await request(app)
+      .post('/api/satisfaction-surveys/current/ensure')
+      .set('Authorization', `Bearer ${hrToken}`)
+      .send({ year: 2099, half: 1 });
+    expect(ensuredSurvey.status).toBe(200);
+    expect(ensuredSurvey.body.success).toBe(true);
+
     const survey = await request(app)
       .post('/api/satisfaction-surveys/respond')
       .set('Authorization', `Bearer ${employeeToken}`)

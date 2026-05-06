@@ -90,6 +90,17 @@ const surveyDescriptionFor = (year: number, half: SatisfactionSurveyHalf): strin
 const startDateFor = (year: number, half: SatisfactionSurveyHalf): string => `${year}-${half === 1 ? '01' : '07'}-01`;
 const endDateFor = (year: number, half: SatisfactionSurveyHalf): string => `${year}-${half === 1 ? '06' : '12'}-${half === 1 ? '30' : '31'}`;
 
+function surveyPeriodForPerformanceMonth(month: string): { year: number; half: SatisfactionSurveyHalf; period: string } | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const monthNumber = Number(match[2]);
+  if (monthNumber === 6) return { year, half: 1, period: periodFor(year, 1) };
+  if (monthNumber === 12) return { year, half: 2, period: periodFor(year, 2) };
+  return null;
+}
+
 function assertHalf(half: number): asserts half is SatisfactionSurveyHalf {
   if (half !== 1 && half !== 2) {
     throw new Error('half 必须是 1 或 2');
@@ -236,9 +247,31 @@ export class SatisfactionSurveyService {
     return { year, half, period: periodFor(year, half) };
   }
 
+  static resolveSurveyPeriodForPerformanceMonth(month: string): { year: number; half: SatisfactionSurveyHalf; period: string } | null {
+    return surveyPeriodForPerformanceMonth(month);
+  }
+
+  static resolveAssessmentSurveyPeriod(date: Date = new Date()): { year: number; half: SatisfactionSurveyHalf; period: string } | null {
+    const previousMonthDate = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+    const previousMonth = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    return surveyPeriodForPerformanceMonth(previousMonth);
+  }
+
   static async ensureSurveyForDate(date: Date = new Date(), createdBy = 'system'): Promise<SatisfactionSurvey> {
     const { year, half } = this.resolveHalfYearPeriod(date);
     return this.ensureSurveyForPeriod({ year, half, createdBy });
+  }
+
+  static async ensureSurveyForPerformanceMonth(month: string, createdBy = 'system'): Promise<SatisfactionSurvey | null> {
+    const period = surveyPeriodForPerformanceMonth(month);
+    if (!period) return null;
+    return this.ensureSurveyForPeriod({ year: period.year, half: period.half, createdBy });
+  }
+
+  static async ensureSurveyForAssessmentDate(date: Date = new Date(), createdBy = 'system'): Promise<SatisfactionSurvey | null> {
+    const period = this.resolveAssessmentSurveyPeriod(date);
+    if (!period) return null;
+    return this.ensureSurveyForPeriod({ year: period.year, half: period.half, createdBy });
   }
 
   static async ensureSurveyForPeriod(input: EnsureSurveyInput): Promise<SatisfactionSurvey> {
@@ -301,14 +334,20 @@ export class SatisfactionSurveyService {
     return rows.length > 0 ? mapSurvey(rows[0]) : null;
   }
 
-  static async findCurrentSurvey(date: Date = new Date()): Promise<SatisfactionSurvey | null> {
-    const { period } = this.resolveHalfYearPeriod(date);
-
+  static async findCurrentSurvey(_date: Date = new Date()): Promise<SatisfactionSurvey | null> {
     if (USE_MEMORY_DB) {
-      return Array.from(getSurveyStore().values()).find((survey) => survey.period === period) || null;
+      return Array.from(getSurveyStore().values())
+        .filter((survey) => survey.status === 'open')
+        .sort((a, b) => b.year - a.year || b.half - a.half)[0] || null;
     }
 
-    const rows = await query('SELECT * FROM satisfaction_surveys WHERE period = $1', [period]);
+    const rows = await query(`
+      SELECT *
+      FROM satisfaction_surveys
+      WHERE status = 'open'
+      ORDER BY year DESC, half DESC
+      LIMIT 1
+    `);
     return rows.length > 0 ? mapSurvey(rows[0]) : null;
   }
 

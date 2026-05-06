@@ -7,7 +7,6 @@ import {
   ChatBubbleLeftRightIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
-  DocumentTextIcon,
   HomeIcon,
   KeyIcon,
   StarIcon,
@@ -16,6 +15,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
+import { useSatisfactionSurveyAvailability } from '@/hooks/useSatisfactionSurveyAvailability';
 
 type UserRole = 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 
@@ -25,27 +25,13 @@ interface NavItem {
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
 }
 
-const selfSummaryNavItem: NavItem = {
-  name: '我的月度总结',
-  path: '/employee/summary',
-  icon: DocumentTextIcon,
-};
-
-function withSelfSummaryNavItem(items: NavItem[]): NavItem[] {
-  if (items.some((item) => item.path === selfSummaryNavItem.path)) return items;
-  const [first, ...rest] = items;
-  return first ? [first, selfSummaryNavItem, ...rest] : [selfSummaryNavItem];
-}
-
 const roleNavItems: Record<UserRole, NavItem[]> = {
   employee: [
     { name: '工作台', path: '/employee/dashboard', icon: HomeIcon },
-    { name: '月度总结', path: '/employee/summary', icon: DocumentTextIcon },
     { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
-    { name: '我的月度总结', path: '/employee/summary', icon: DocumentTextIcon },
     { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
     { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
@@ -87,7 +73,7 @@ export const MobileNav: React.FC = () => {
   const role = (user?.role || 'employee') as UserRole;
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
-  const canSubmitSelfSummary = Boolean(user?.capabilities?.canSubmitSelfSummary);
+  const hasOpenSatisfactionSurvey = useSatisfactionSurveyAvailability();
   const filteredItems = useMemo(() => {
     const baseItems = (role === 'employee' || role === 'manager') && canManageTeam
       ? roleNavItems.manager
@@ -103,8 +89,10 @@ export const MobileNav: React.FC = () => {
     const roleItems = (role === 'hr' || role === 'admin') && !canManageTeam
       ? baseItems.filter((item) => !item.path.startsWith('/manager/'))
       : baseItems;
-    return canSubmitSelfSummary ? withSelfSummaryNavItem(roleItems) : roleItems;
-  }, [canManageTeam, canSubmitSelfSummary, role]);
+    return roleItems.filter((item) => (
+      item.path !== '/employee/satisfaction-survey' || hasOpenSatisfactionSurvey
+    ));
+  }, [canManageTeam, hasOpenSatisfactionSurvey, role]);
   const roleLabels = (() => {
     if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
     if (effectiveRoles.length > 0) {
