@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { assessmentPublicationApi, employeeQuarterlyApi } from '@/services/api';
 import type { PerformanceRecord } from '@/types';
+import { scoreLevelThresholds } from '@/lib/calculateScore';
 
 interface QuarterlyRecord {
   id: string;
@@ -50,6 +51,9 @@ function getQuarterMonths(year: number, quarter: number): string[] {
 }
 
 function getRecordStatusText(record: PerformanceRecord, isPublished: boolean): string {
+  if (['completed', 'scored'].includes(record.status) && !isPublished) {
+    return '已评分待发布';
+  }
   if (!isScoredRecord(record)) {
     return record.status === 'submitted' ? '待经理评分' : '未评分';
   }
@@ -59,6 +63,21 @@ function getRecordStatusText(record: PerformanceRecord, isPublished: boolean): s
 function getRecordStatusClass(record: PerformanceRecord, isPublished: boolean): string {
   if (!isScoredRecord(record)) return 'bg-amber-100 text-amber-700';
   return isPublished ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600';
+}
+
+function getScoreExplanation(score: unknown): string {
+  const value = getScoreValue(score);
+  if (value <= 0) return '未形成正式绩效得分';
+  if (value >= scoreLevelThresholds.L5) return '优秀档，明显高于基准绩效';
+  if (value >= scoreLevelThresholds.L4) return '良好档，高于基准绩效';
+  if (value >= scoreLevelThresholds.L3) return '合格档，接近或略高于基准绩效';
+  if (value >= scoreLevelThresholds.L2) return '待改进档，需要关注改进';
+  return '不合格档，需要重点辅导';
+}
+
+function formatRank(value: unknown): string {
+  const rank = Number(value);
+  return Number.isFinite(rank) && rank > 0 ? `#${rank}` : '—';
 }
 
 export function MyScores({ embedded = false }: { embedded?: boolean }) {
@@ -204,10 +223,26 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between gap-6 sm:justify-end">
+                        {isScoredRecord(record) && (
+                          <div className="hidden text-right md:block">
+                            <p className="text-xs text-gray-500">对比</p>
+                            <p className="text-sm text-gray-700">
+                              部门均分 {formatScore(record.departmentAverageScore)}
+                              <span className="mx-1 text-gray-300">/</span>
+                              公司均分 {formatScore(record.companyAverageScore)}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400">
+                              部门排名 {formatRank(record.departmentRank)} · 公司排名 {formatRank(record.companyRank)}
+                            </p>
+                          </div>
+                        )}
                         <div className="text-right">
                           <p className="text-xs text-gray-500">绩效得分</p>
                           {isScoredRecord(record) ? (
-                            <ScoreDisplay score={record.totalScore} size="sm" showLabel={false} />
+                            <div>
+                              <ScoreDisplay score={record.totalScore} size="sm" showLabel={false} />
+                              <p className="mt-1 text-xs text-gray-500">{getScoreExplanation(record.totalScore)}</p>
+                            </div>
                           ) : (
                             <p className="text-2xl font-bold text-gray-400">—</p>
                           )}

@@ -30,6 +30,67 @@ describe('Security regression API checks', () => {
     expect(response.body.success).toBe(false);
   });
 
+  it('returns a role-scoped report summary with completion, distribution and risks', async () => {
+    const month = '2099-09';
+    const scoredRecordId = `rec-e034-${month}-report-summary`;
+    const pendingRecordId = `rec-e002-${month}-report-summary`;
+    await PerformanceModel.saveSummary({
+      id: scoredRecordId,
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month,
+      selfSummary: '报表摘要测试',
+      nextMonthPlan: '继续测试',
+      groupType: 'low',
+    });
+    await PerformanceModel.submitScore({
+      id: scoredRecordId,
+      taskCompletion: 1.2,
+      initiative: 1.1,
+      projectFeedback: 1.0,
+      qualityImprovement: 1.0,
+      totalScore: 1.09,
+      level: 'L3',
+      managerComment: '报表摘要评分',
+      nextMonthWorkArrangement: '继续测试',
+    });
+    await PerformanceModel.saveSummary({
+      id: pendingRecordId,
+      employeeId: 'e002',
+      assessorId: 'm011',
+      month,
+      selfSummary: '报表摘要待评测试',
+      nextMonthPlan: '继续测试',
+      groupType: 'low',
+    });
+
+    try {
+      const hrToken = await TestHelper.getAuthToken('hr');
+      const response = await request(app)
+        .get(`/api/analytics/report-summary?month=${month}`)
+        .set('Authorization', `Bearer ${hrToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toMatchObject({
+        month,
+        scope: 'company',
+        overview: {
+          totalRecords: 2,
+          scoredCount: 1,
+          pendingCount: 1,
+          completionRate: 50,
+          avgScore: 1.09,
+        },
+      });
+      expect(response.body.data.distribution.reduce((sum: number, item: any) => sum + item.count, 0)).toBe(1);
+      expect(response.body.data.risks.some((risk: any) => risk.type === 'pending_scores')).toBe(true);
+    } finally {
+      await PerformanceModel.delete(scoredRecordId);
+      await PerformanceModel.delete(pendingRecordId);
+    }
+  });
+
   it('does not crash when deleting monthly performance records without a body', async () => {
     const token = await TestHelper.getAuthToken('hr');
 

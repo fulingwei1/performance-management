@@ -319,6 +319,11 @@ export const performanceApi = {
   getEmployeeHistory: (employeeId: string) => request(`/monthly-assessment/employee/${employeeId}`)
 };
 
+export const analyticsApi = {
+  getReportSummary: (month: string) =>
+    request(`/analytics/report-summary?month=${encodeURIComponent(month)}`),
+};
+
 // 月度差异化评分API
 export const monthlyAssessmentApi = {
   // 获取当月考核列表

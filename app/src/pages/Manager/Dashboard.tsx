@@ -5,7 +5,7 @@ import { ArrowRight, BarChart3, Users, Calendar, FileText, CheckCircle2, Clock }
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { format } from 'date-fns';
-import { employeeApi, performanceApi, todoApi } from '@/services/api';
+import { analyticsApi, employeeApi, performanceApi, todoApi } from '@/services/api';
 import { getDefaultAssessmentMonth, getPreviousMonthValue, isValidAssessmentMonth } from '@/lib/assessmentMonth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { toast } from 'sonner';
 import { ScoringManagement } from './Scoring';
+import { ReportSummaryCard, type ReportSummaryData } from '@/components/reports/ReportSummaryCard';
 
 interface ParticipationMember {
   employeeId: string;
@@ -54,6 +55,7 @@ export function ManagerDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(initialSelectedMonth);
   const [mySummaryRecord, setMySummaryRecord] = useState<any>(null);
   const [mySummaryLoaded, setMySummaryLoaded] = useState(false);
+  const [reportSummary, setReportSummary] = useState<ReportSummaryData | null>(null);
   const summaryMonth = useMemo(() => getPreviousMonthValue(), []);
   const monthOptions = useMemo(() => Array.from({ length: 12 }, (_, i) => {
     const date = new Date();
@@ -98,6 +100,15 @@ export function ManagerDashboard() {
       fetchTeamRecords(user.id, currentMonth);
     }
   }, [user, currentMonth, fetchTeamRecords]);
+
+  useEffect(() => {
+    if (!user) return;
+    analyticsApi.getReportSummary(currentMonth)
+      .then((response) => {
+        if (response.success) setReportSummary(response.data || null);
+      })
+      .catch(() => setReportSummary(null));
+  }, [user, currentMonth]);
 
   useEffect(() => {
     if (!user) return;
@@ -374,6 +385,15 @@ export function ManagerDashboard() {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <ReportSummaryCard
+          summary={reportSummary}
+          title="团队月度报表摘要"
+          description={`${currentMonth} 团队完成率、分布和待评分风险`}
+          showDepartments={false}
+        />
       </motion.div>
 
       <motion.div variants={itemVariants}>

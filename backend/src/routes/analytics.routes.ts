@@ -5,7 +5,8 @@ import {
   getDepartmentComparison,
   getPerformanceTrend,
   detectAnomalies,
-  generateReport
+  generateReport,
+  getReportSummary
 } from '../controllers/analytics.controller';
 
 const router = Router();
@@ -24,6 +25,7 @@ router.use(authenticate);
 router.use(requireAnalyticsAccess);
 
 router.get('/performance-distribution', getPerformanceDistribution);
+router.get('/report-summary', getReportSummary);
 router.get('/department-comparison', getDepartmentComparison);
 router.get('/performance-trend', getPerformanceTrend);
 router.get('/anomaly-detection', detectAnomalies);

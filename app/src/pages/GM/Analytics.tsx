@@ -5,8 +5,9 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import { performanceApi, employeeApi } from '@/services/api';
+import { analyticsApi, performanceApi, employeeApi } from '@/services/api';
 import { scoreLevelThresholds } from '@/lib/calculateScore';
+import { ReportSummaryCard, type ReportSummaryData } from '@/components/reports/ReportSummaryCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -45,6 +46,7 @@ export function GMAnalytics() {
   const [timeRange, setTimeRange] = useState('6');
   const [hasDemoData, setHasDemoData] = useState(false);
   const [peopleFilter, setPeopleFilter] = useState<'all' | 'completed' | 'pending'>('all');
+  const [reportSummary, setReportSummary] = useState<ReportSummaryData | null>(null);
 
   const currentMonth = getDefaultAssessmentMonth();
   const realRecords = useMemo(
@@ -80,6 +82,15 @@ export function GMAnalytics() {
     };
     fetchData();
   }, [user, timeRange]);
+
+  useEffect(() => {
+    if (!user) return;
+    analyticsApi.getReportSummary(currentMonth)
+      .then((res) => {
+        if (res.success) setReportSummary(res.data || null);
+      })
+      .catch(() => setReportSummary(null));
+  }, [user, currentMonth]);
 
   // 清除模拟数据
   const handleClearDemo = async () => {
@@ -493,6 +504,12 @@ export function GMAnalytics() {
       {hasScoredData && (
         <>
           {/* Stats Cards */}
+          <ReportSummaryCard
+            summary={reportSummary}
+            title="总经理执行摘要"
+            description={`${currentMonth} 公司绩效完成、分布、部门风险与发布检查`}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className={statCardClass('all')} onClick={() => setPeopleFilter('all')}>
               <CardContent className="pt-6">

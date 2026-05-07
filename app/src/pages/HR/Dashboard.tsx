@@ -17,11 +17,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { performanceApi } from '@/services/api';
+import { analyticsApi, performanceApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
+import { ReportSummaryCard, type ReportSummaryData } from '@/components/reports/ReportSummaryCard';
 
 // Sub-components
 import { StatCards } from './Dashboard/StatCards';
@@ -75,8 +76,9 @@ export function HRDashboard() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestionSummary, setSuggestionSummary] = useState<ImprovementSuggestionSummary | null>(null);
+  const [reportSummary, setReportSummary] = useState<ReportSummaryData | null>(null);
   const todoRole = user?.role === 'admin' ? 'admin' : 'hr';
-  const showSuggestionSummary = user?.role === 'admin';
+  const showSuggestionSummary = user?.role === 'admin' || user?.role === 'hr';
   
   useEffect(() => {
     fetchEmployees();
@@ -91,6 +93,14 @@ export function HRDashboard() {
       })
       .catch(() => {});
   }, [currentMonth, showSuggestionSummary]);
+
+  useEffect(() => {
+    analyticsApi.getReportSummary(currentMonth)
+      .then((res) => {
+        if (res.success) setReportSummary(res.data || null);
+      })
+      .catch(() => setReportSummary(null));
+  }, [currentMonth]);
   
   const { deptRecords, stats } = useMemo(() => {
     const activeEmployeeIds = new Set(
@@ -203,7 +213,45 @@ export function HRDashboard() {
       const detailHeaders = ['姓名', '部门', '二级部门', '级别', '得分', '等级', '状态'];
       const detailRows = records.map((r: any) => [r.employeeName || '', r.department || '', r.subDepartment || '', r.employeeLevel || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分'].join(','));
       
-      const csvContent = [`${currentMonth} 绩效数据报表`, '', '【部门汇总】', summaryHeaders.join(','), ...summaryRows, '', '【员工明细】', detailHeaders.join(','), ...detailRows].join('\n');
+      const executiveRows = reportSummary ? [
+        ['统计月份', reportSummary.month],
+        ['参与记录', reportSummary.overview.totalRecords],
+        ['已评分', reportSummary.overview.scoredCount],
+        ['待评分', reportSummary.overview.pendingCount],
+        ['完成率', `${reportSummary.overview.completionRate}%`],
+        ['平均分', reportSummary.overview.avgScore],
+        ['较上月平均分变化', reportSummary.overview.avgScoreDelta],
+        ['较上月完成率变化', `${reportSummary.overview.completionRateDelta}%`],
+        ['发布检查', reportSummary.publicationReadiness?.ok ? '通过' : '需关注'],
+        ['主要风险', reportSummary.risks?.[0]?.message || '暂无'],
+      ].map((row) => row.join(',')) : [];
+
+      const riskRows = reportSummary?.risks?.map((risk) => [
+        risk.severity,
+        risk.title,
+        risk.message,
+        risk.department || '',
+      ].join(',')) || [];
+
+      const csvContent = [
+        `${currentMonth} 绩效数据报表`,
+        '',
+        '【执行摘要】',
+        '项目,值',
+        ...executiveRows,
+        '',
+        '【风险提醒】',
+        '级别,标题,说明,部门',
+        ...riskRows,
+        '',
+        '【部门汇总】',
+        summaryHeaders.join(','),
+        ...summaryRows,
+        '',
+        '【员工明细】',
+        detailHeaders.join(','),
+        ...detailRows
+      ].join('\n');
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -252,6 +300,14 @@ export function HRDashboard() {
       {/* Stat Cards */}
       <motion.div variants={itemVariants}>
         <StatCards stats={stats} activeFilter={statusFilter} onFilterChange={setStatusFilter} />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <ReportSummaryCard
+          summary={reportSummary}
+          title="HR 月度执行摘要"
+          description={`${currentMonth} 公司绩效完成情况、分布和发布风险`}
+        />
       </motion.div>
 
       {showSuggestionSummary && (
