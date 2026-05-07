@@ -233,6 +233,15 @@ export function HRDashboard() {
         risk.department || '',
       ].join(',')) || [];
 
+      const focusRows = reportSummary
+        ? [
+          ...(reportSummary.focus?.pending || []).map((person) => ['待完成评分', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
+          ...(reportSummary.focus?.lowScores || []).map((person) => ['低分关注', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
+          ...(reportSummary.focus?.declined || []).map((person) => ['环比下降', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
+          ...(reportSummary.focus?.topScores || []).map((person) => ['高分标杆', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
+        ]
+        : [];
+
       const csvContent = [
         `${currentMonth} 绩效数据报表`,
         '',
@@ -243,6 +252,10 @@ export function HRDashboard() {
         '【风险提醒】',
         '级别,标题,说明,部门',
         ...riskRows,
+        '',
+        '【重点人员】',
+        '类型,姓名,部门,二级部门,得分,较上月变化,状态',
+        ...focusRows,
         '',
         '【部门汇总】',
         summaryHeaders.join(','),

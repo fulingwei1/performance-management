@@ -45,12 +45,12 @@ describe('Security regression API checks', () => {
     });
     await PerformanceModel.submitScore({
       id: scoredRecordId,
-      taskCompletion: 1.2,
-      initiative: 1.1,
-      projectFeedback: 1.0,
-      qualityImprovement: 1.0,
-      totalScore: 1.09,
-      level: 'L3',
+      taskCompletion: 0.8,
+      initiative: 0.8,
+      projectFeedback: 0.85,
+      qualityImprovement: 0.8,
+      totalScore: 0.82,
+      level: 'L2',
       managerComment: '报表摘要评分',
       nextMonthWorkArrangement: '继续测试',
     });
@@ -80,10 +80,13 @@ describe('Security regression API checks', () => {
           scoredCount: 1,
           pendingCount: 1,
           completionRate: 50,
-          avgScore: 1.09,
+          avgScore: 0.82,
         },
       });
+      expect(response.body.data.executiveText).toContain('2099-09 参与 2 人');
       expect(response.body.data.distribution.reduce((sum: number, item: any) => sum + item.count, 0)).toBe(1);
+      expect(response.body.data.focus.pending).toHaveLength(1);
+      expect(response.body.data.focus.lowScores).toHaveLength(1);
       expect(response.body.data.risks.some((risk: any) => risk.type === 'pending_scores')).toBe(true);
     } finally {
       await PerformanceModel.delete(scoredRecordId);

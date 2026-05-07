@@ -150,6 +150,97 @@ const buildMonthlySummary = (records: any[]) => {
   };
 };
 
+const toFocusPerson = (record: any, previousRecord?: any) => {
+  const currentScore = Number(record.totalScore || 0);
+  const previousScore = previousRecord && isScoredRecord(previousRecord)
+    ? Number(previousRecord.totalScore || 0)
+    : null;
+  const delta = previousScore && currentScore > 0 ? round2(currentScore - previousScore) : null;
+
+  return {
+    recordId: record.id,
+    employeeId: record.employeeId,
+    employeeName: record.employeeName || record.employeeId,
+    department: record.department || '未分配部门',
+    subDepartment: record.subDepartment || '',
+    assessorName: record.assessorName || '',
+    score: currentScore > 0 ? round2(currentScore) : null,
+    previousScore: previousScore ? round2(previousScore) : null,
+    delta,
+    status: record.status || 'unknown',
+  };
+};
+
+const buildFocusLists = (currentRecords: any[], previousRecords: any[]) => {
+  const realCurrent = currentRecords.filter(isRealRecord);
+  const previousByEmployee = new Map<string, any>();
+  previousRecords
+    .filter(isRealRecord)
+    .forEach((record) => previousByEmployee.set(record.employeeId, record));
+
+  const scored = realCurrent.filter(isScoredRecord);
+  const pending = realCurrent.filter((record) => !isScoredRecord(record));
+
+  const lowScores = scored
+    .filter((record) => Number(record.totalScore || 0) < scoreLevelThresholds.L3)
+    .sort((a, b) => Number(a.totalScore || 0) - Number(b.totalScore || 0))
+    .slice(0, 10)
+    .map((record) => toFocusPerson(record, previousByEmployee.get(record.employeeId)));
+
+  const topScores = scored
+    .sort((a, b) => Number(b.totalScore || 0) - Number(a.totalScore || 0))
+    .slice(0, 10)
+    .map((record) => toFocusPerson(record, previousByEmployee.get(record.employeeId)));
+
+  const declined = scored
+    .map((record) => toFocusPerson(record, previousByEmployee.get(record.employeeId)))
+    .filter((person) => typeof person.delta === 'number' && person.delta <= -0.1)
+    .sort((a, b) => Number(a.delta || 0) - Number(b.delta || 0))
+    .slice(0, 10);
+
+  const pendingPeople = pending
+    .sort((a, b) => String(a.department || '').localeCompare(String(b.department || ''), 'zh-CN') || String(a.employeeName || '').localeCompare(String(b.employeeName || ''), 'zh-CN'))
+    .slice(0, 20)
+    .map((record) => toFocusPerson(record, previousByEmployee.get(record.employeeId)));
+
+  return {
+    pending: pendingPeople,
+    lowScores,
+    topScores,
+    declined,
+  };
+};
+
+const buildExecutiveText = (
+  month: string,
+  summary: ReturnType<typeof buildMonthlySummary>,
+  previousSummary: ReturnType<typeof buildMonthlySummary>,
+  focus: ReturnType<typeof buildFocusLists>,
+) => {
+  if (summary.totalRecords === 0) {
+    return `${month} 尚未生成绩效考核任务，报表暂不能形成有效分析。`;
+  }
+
+  const avgText = summary.avgScore > 0 ? `平均分 ${summary.avgScore.toFixed(2)}` : '暂未形成平均分';
+  const avgDelta = summary.avgScore - previousSummary.avgScore;
+  const avgTrend = previousSummary.avgScore > 0
+    ? avgDelta > 0
+      ? `较上月上升 ${round2(avgDelta).toFixed(2)}`
+      : avgDelta < 0
+        ? `较上月下降 ${Math.abs(round2(avgDelta)).toFixed(2)}`
+        : '与上月持平'
+    : '暂无上月对比';
+  const pendingText = summary.pendingCount > 0
+    ? `仍有 ${summary.pendingCount} 人待完成评分`
+    : '评分已全部完成';
+  const focusText = [
+    focus.lowScores.length > 0 ? `${focus.lowScores.length} 名低分关注人员` : '',
+    focus.declined.length > 0 ? `${focus.declined.length} 名环比下降明显人员` : '',
+  ].filter(Boolean).join('，');
+
+  return `${month} 参与 ${summary.totalRecords} 人，已评分 ${summary.scoredCount} 人，完成率 ${summary.completionRate.toFixed(1)}%，${avgText}，${avgTrend}；${pendingText}${focusText ? `；需关注 ${focusText}` : '。'}`;
+};
+
 const buildRisks = (summary: ReturnType<typeof buildMonthlySummary>, readiness?: Awaited<ReturnType<typeof validatePublicationReadiness>>) => {
   const risks: Array<{ type: string; severity: 'info' | 'warning' | 'danger'; title: string; message: string; count?: number; department?: string }> = [];
 
@@ -258,6 +349,8 @@ export const getReportSummary = asyncHandler(async (req: Request, res: Response)
   ]);
   const summary = buildMonthlySummary(currentRecords);
   const previousSummary = buildMonthlySummary(previousRecords);
+  const focus = buildFocusLists(currentRecords, previousRecords);
+  const executiveText = buildExecutiveText(targetMonth, summary, previousSummary, focus);
   const readiness = isPrivilegedRole(req.user?.role)
     ? await validatePublicationReadiness(targetMonth)
     : undefined;
@@ -270,6 +363,7 @@ export const getReportSummary = asyncHandler(async (req: Request, res: Response)
       previousMonth,
       scope: isPrivilegedRole(req.user?.role) ? 'company' : 'team',
       generatedAt: new Date().toISOString(),
+      executiveText,
       overview: {
         totalRecords: summary.totalRecords,
         scoredCount: summary.scoredCount,
@@ -285,6 +379,7 @@ export const getReportSummary = asyncHandler(async (req: Request, res: Response)
       },
       distribution: summary.distribution,
       departments: summary.departments,
+      focus,
       risks,
       publicationReadiness: readiness
         ? {

@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
+  CircleDot,
   TrendingDown,
   TrendingUp,
   Users,
@@ -32,10 +33,24 @@ export interface ReportDepartmentSummary {
   lowCount: number;
 }
 
+export interface ReportFocusPerson {
+  recordId: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  subDepartment?: string;
+  assessorName?: string;
+  score: number | null;
+  previousScore: number | null;
+  delta: number | null;
+  status: string;
+}
+
 export interface ReportSummaryData {
   month: string;
   previousMonth: string;
   scope: 'company' | 'team';
+  executiveText?: string;
   overview: {
     totalRecords: number;
     scoredCount: number;
@@ -55,6 +70,12 @@ export interface ReportSummaryData {
     ratio: number;
   }>;
   departments: ReportDepartmentSummary[];
+  focus?: {
+    pending: ReportFocusPerson[];
+    lowScores: ReportFocusPerson[];
+    topScores: ReportFocusPerson[];
+    declined: ReportFocusPerson[];
+  };
   risks: ReportRisk[];
   publicationReadiness?: {
     ok: boolean;
@@ -77,6 +98,61 @@ const riskClass = (severity: ReportRisk['severity']) => {
   if (severity === 'warning') return 'border-amber-200 bg-amber-50 text-amber-700';
   return 'border-blue-100 bg-blue-50 text-blue-700';
 };
+
+function FocusList({
+  title,
+  people,
+  emptyText,
+  accent,
+}: {
+  title: string;
+  people: ReportFocusPerson[];
+  emptyText: string;
+  accent: 'amber' | 'red' | 'green' | 'blue';
+}) {
+  const accentClass = {
+    amber: 'bg-amber-50 text-amber-700 border-amber-100',
+    red: 'bg-red-50 text-red-700 border-red-100',
+    green: 'bg-green-50 text-green-700 border-green-100',
+    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+  }[accent];
+
+  return (
+    <div className="rounded-xl border bg-white p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+          <CircleDot className="h-4 w-4" />
+          {title}
+        </p>
+        <Badge variant="outline" className={accentClass}>{people.length} 人</Badge>
+      </div>
+      {people.length > 0 ? (
+        <div className="space-y-2">
+          {people.slice(0, 5).map((person) => (
+            <div key={`${title}-${person.recordId || person.employeeId}`} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-900">{person.employeeName}</p>
+                <p className="truncate text-xs text-gray-500">
+                  {person.department}{person.subDepartment ? ` / ${person.subDepartment}` : ''}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-semibold text-gray-900">{formatScore(person.score)}</p>
+                {person.delta !== null && (
+                  <p className={cn('text-xs', person.delta < 0 ? 'text-red-600' : person.delta > 0 ? 'text-green-600' : 'text-gray-400')}>
+                    {person.delta > 0 ? '+' : ''}{person.delta.toFixed(2)}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-400">{emptyText}</p>
+      )}
+    </div>
+  );
+}
 
 function DeltaBadge({ value, suffix = '' }: { value: number; suffix?: string }) {
   const isUp = value > 0;
@@ -146,6 +222,12 @@ export function ReportSummaryCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {summary.executiveText && (
+          <div className="rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm leading-6 text-gray-700">
+            {summary.executiveText}
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-xl border bg-white p-4">
             <div className="flex items-center justify-between">
@@ -180,6 +262,15 @@ export function ReportSummaryCard({
             <p className="mt-2 text-xs text-gray-500">最低 {formatScore(overview.minScore)}</p>
           </div>
         </div>
+
+        {summary.focus && (
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+            <FocusList title="待完成评分" people={summary.focus.pending || []} emptyText="暂无待评分人员。" accent="amber" />
+            <FocusList title="低分关注" people={summary.focus.lowScores || []} emptyText="暂无低分关注人员。" accent="red" />
+            <FocusList title="环比下降" people={summary.focus.declined || []} emptyText="暂无明显下降人员。" accent="blue" />
+            <FocusList title="高分标杆" people={summary.focus.topScores || []} emptyText="暂无高分标杆人员。" accent="green" />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div className="rounded-xl border bg-white p-4">

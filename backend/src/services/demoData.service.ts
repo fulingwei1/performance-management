@@ -2,7 +2,7 @@ import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { Employee, PerformanceRecord } from '../types';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
-import { scoreLevelThresholds } from '../utils/helpers';
+import { scoreToLevel, scoreLevelThresholds } from '../utils/helpers';
 
 const DEMO_PREFIX = 'demo-perf-';
 const DEMO_MARKER = '[演示数据]';
@@ -77,13 +77,7 @@ function seededNumber(seed: string): number {
   return hash / 0xffffffff;
 }
 
-function scoreToLevel(score: number): 'L1' | 'L2' | 'L3' | 'L4' | 'L5' {
-  if (score >= scoreLevelThresholds.L5) return 'L5';
-  if (score >= scoreLevelThresholds.L4) return 'L4';
-  if (score >= scoreLevelThresholds.L3) return 'L3';
-  if (score >= scoreLevelThresholds.L2) return 'L2';
-  return 'L1';
-}
+
 
 function groupTypeForLevel(level: Employee['level']): 'high' | 'low' {
   return level === 'senior' || level === 'intermediate' ? 'high' : 'low';

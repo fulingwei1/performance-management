@@ -7,6 +7,7 @@ const summary: ReportSummaryData = {
   month: '2026-04',
   previousMonth: '2026-03',
   scope: 'company',
+  executiveText: '2026-04 参与 100 人，已评分 80 人，完成率 80.0%。',
   overview: {
     totalRecords: 100,
     scoredCount: 80,
@@ -41,6 +42,34 @@ const summary: ReportSummaryData = {
       lowCount: 3,
     },
   ],
+  focus: {
+    pending: [
+      {
+        recordId: 'rec-pending',
+        employeeId: 'e001',
+        employeeName: '待评员工',
+        department: '测试部',
+        score: null,
+        previousScore: null,
+        delta: null,
+        status: 'submitted',
+      },
+    ],
+    lowScores: [
+      {
+        recordId: 'rec-low',
+        employeeId: 'e002',
+        employeeName: '低分员工',
+        department: '测试部',
+        score: 0.82,
+        previousScore: 1.02,
+        delta: -0.2,
+        status: 'completed',
+      },
+    ],
+    topScores: [],
+    declined: [],
+  },
   risks: [
     {
       type: 'pending_scores',
@@ -66,6 +95,8 @@ describe('ReportSummaryCard', () => {
     expect(screen.getByText('1.12')).toBeInTheDocument();
     expect(screen.getByText('80/100')).toBeInTheDocument();
     expect(screen.getByText('仍有未完成评分')).toBeInTheDocument();
+    expect(screen.getByText('待评员工')).toBeInTheDocument();
+    expect(screen.getByText('低分员工')).toBeInTheDocument();
     expect(screen.getByText('工程技术中心')).toBeInTheDocument();
   });
 });
