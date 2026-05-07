@@ -363,7 +363,7 @@ export const exportController = {
           const wb = new ExcelJS.Workbook();
           wb.creator = '绩效管理系统';
           
-          const ws = wb.addWorksheet(`员工信息_${new Date().toLocaleDateString('zh-CN')}`);
+          const ws = wb.addWorksheet(`员工信息_${new Date().toISOString().slice(0,10)}`);
           
           // 添加表头和数据
           if (exportData.length > 0) {
