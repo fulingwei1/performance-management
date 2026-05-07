@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { scoreDimensions, scoreLevels, getLevelLabel, getLevelColor, resolveGroupType } from '@/lib/config';
-import { levelToScore, scoreToLevel } from '@/lib/calculateScore';
+import { levelToScore, scoreLevelThresholds, scoreToLevel } from '@/lib/calculateScore';
 import { KeywordSelector } from '@/components/KeywordSelector';
 import { StructuredTagSelector } from '@/components/StructuredTagSelector';
 import { salaryIntegrationApi } from '@/services/api';
@@ -130,8 +130,8 @@ export function ScoringDialog({
   const [salaryForecastLoading, setSalaryForecastLoading] = useState(false);
   const [salaryForecastError, setSalaryForecastError] = useState('');
   
-  const requiresScoreEvidence = totalScore >= 1.4 || totalScore < 0.9;
-  const scoreEvidenceLabel = totalScore >= 1.4 ? '优秀/特别突出事例' : totalScore < 0.9 ? '低分/明显不足事例' : '评分事例说明';
+  const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
+  const scoreEvidenceLabel = totalScore >= scoreLevelThresholds.L5 ? '优秀/特别突出事例' : totalScore < scoreLevelThresholds.L3 ? '低分/明显不足事例' : '评分事例说明';
   const draftCoefficient = levelToScore(scoreToLevel(Number(totalScore || 0)));
   
   // 获取员工级别映射

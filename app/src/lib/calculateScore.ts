@@ -1,23 +1,34 @@
 import type { ScoreLevel } from '@/types';
 
+// 统一等级判定阈值。注意：这不是点击 L1-L5 时使用的代表系数；
+// L5 的代表系数仍是 1.5，但只要总分 >= 1.40 就判定为 L5。
+export const scoreLevelThresholds = {
+  L5: 1.4,
+  L4: 1.15,
+  L3: 0.9,
+  L2: 0.65,
+  L1: 0.5,
+} as const;
+
+export const scoreLevelValues = {
+  L5: 1.5,
+  L4: 1.2,
+  L3: 1.0,
+  L2: 0.8,
+  L1: 0.5,
+} as const;
+
 // 等级转分数
 export function levelToScore(level: ScoreLevel): number {
-  const map: Record<string, number> = {
-    'L5': 1.5,
-    'L4': 1.2,
-    'L3': 1.0,
-    'L2': 0.8,
-    'L1': 0.5
-  };
-  return map[level] || 1.0;
+  return scoreLevelValues[level] || scoreLevelValues.L3;
 }
 
 // 分数转等级
 export function scoreToLevel(score: number): ScoreLevel {
-  if (score >= 1.4) return 'L5';
-  if (score >= 1.15) return 'L4';
-  if (score >= 0.9) return 'L3';
-  if (score >= 0.65) return 'L2';
+  if (score >= scoreLevelThresholds.L5) return 'L5';
+  if (score >= scoreLevelThresholds.L4) return 'L4';
+  if (score >= scoreLevelThresholds.L3) return 'L3';
+  if (score >= scoreLevelThresholds.L2) return 'L2';
   return 'L1';
 }
 
@@ -74,9 +85,9 @@ export function formatScore(score: number): string {
 
 // 获取分数评价
 export function getScoreComment(score: number): string {
-  if (score >= 1.4) return '表现卓越，是团队的标杆';
-  if (score >= 1.15) return '表现优秀，超出预期';
-  if (score >= 0.9) return '表现合格，达到要求';
-  if (score >= 0.65) return '有待改进，需要努力';
+  if (score >= scoreLevelThresholds.L5) return '表现卓越，是团队的标杆';
+  if (score >= scoreLevelThresholds.L4) return '表现优秀，超出预期';
+  if (score >= scoreLevelThresholds.L3) return '表现合格，达到要求';
+  if (score >= scoreLevelThresholds.L2) return '有待改进，需要努力';
   return '表现不佳，急需改进';
 }

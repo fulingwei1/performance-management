@@ -274,6 +274,12 @@ async function handleAIPrompt(req: Request, res: Response, promptFn: (data: any)
   }
 }
 
+const parseScoreField = (value: unknown): number | null => {
+  const score = Number(value);
+  if (!Number.isFinite(score) || score < 0.5 || score > 1.5) return null;
+  return score;
+};
+
 /**
  * POST /ai/goal-decomposition
  */
@@ -334,7 +340,40 @@ export const generateNextMonthPlan = async (req: Request, res: Response) => {
  * POST /ai/manager-comment
  */
 export const generateManagerComment = async (req: Request, res: Response) => {
-  await handleAIPrompt(req, res, prompts.managerComment);
+  const body = req.body || {};
+  const scores = body.scores || {};
+  const requiredTextFields = [
+    ['employeeName', '员工姓名'],
+    ['employeeLevel', '员工岗位/级别'],
+    ['department', '部门'],
+    ['selfSummary', '员工自评'],
+  ] as const;
+
+  for (const [field, label] of requiredTextFields) {
+    if (typeof body[field] !== 'string' || !body[field].trim()) {
+      return res.status(400).json({ success: false, message: `缺少${label}` });
+    }
+  }
+
+  const normalizedScores = {
+    taskCompletion: parseScoreField(scores.taskCompletion),
+    initiative: parseScoreField(scores.initiative),
+    projectFeedback: parseScoreField(scores.projectFeedback),
+    qualityImprovement: parseScoreField(scores.qualityImprovement),
+  };
+  const missingScore = Object.entries(normalizedScores).find(([, value]) => value === null)?.[0];
+  if (missingScore) {
+    return res.status(400).json({
+      success: false,
+      message: `scores.${missingScore} 必须是0.5-1.5之间的数字`,
+    });
+  }
+
+  await handleAIPrompt(
+    { ...req, body: { ...body, scores: normalizedScores } } as Request,
+    res,
+    prompts.managerComment
+  );
 };
 
 /**

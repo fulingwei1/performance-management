@@ -76,8 +76,8 @@ describe('validatePublicationReadiness', () => {
     ]));
   });
 
-  it('treats L5 threshold as top performer and 0.90 as bottom boundary', async () => {
-    const scores = [1.35, 1.28, 1.2, 1.16, 1.1, 1.06, 1.03, 1.0, 0.96, 0.93, 0.9];
+  it('uses the same score thresholds as scoreToLevel for top and bottom performers', async () => {
+    const scores = [1.4, 1.28, 1.2, 1.16, 1.1, 1.06, 1.03, 1.0, 0.96, 0.93, 0.89];
     scores.forEach((score, index) => {
       const employeeId = addEmployee(index + 1);
       addRecord(employeeId, score);

@@ -6,6 +6,7 @@ import {
   getPerformanceRankingConfig,
   isParticipatingRecord,
 } from './performanceRankingConfig.service';
+import { scoreLevelThresholds } from '../utils/helpers';
 
 export interface PublicationReadinessViolation {
   type: 'incomplete' | 'forced_distribution';
@@ -29,9 +30,9 @@ export interface PublicationReadinessResult {
 const isCompletedRecord = (record?: PerformanceRecord): boolean =>
   Boolean(record && (record.status === 'completed' || record.status === 'scored'));
 
-const isTopScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) >= 1.35;
+const isTopScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) >= scoreLevelThresholds.L5;
 
-const isBottomScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) <= 0.9;
+const isBottomScore = (record: PerformanceRecord): boolean => Number(record.totalScore || 0) < scoreLevelThresholds.L3;
 
 const getDistributionQuota = (total: number) => ({
   topQuota: Math.ceil(total * 0.2),

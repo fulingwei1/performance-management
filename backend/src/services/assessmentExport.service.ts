@@ -3,6 +3,7 @@ import { PerformanceModel } from '../models/performance.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import logger from '../config/logger';
 import { PerformanceRecord } from '../types';
+import { scoreToLevel } from '../utils/helpers';
 
 interface ExportOptions {
   month?: string;
@@ -342,10 +343,7 @@ export async function exportScoreTrendAnalysis(employeeId: string): Promise<Exce
     // 填充数据
     let rowIndex = 5;
     assessments.forEach((assessment: any) => {
-      const level = assessment.totalScore >= 1.4 ? 'L5' :
-                   assessment.totalScore >= 1.1 ? 'L4' :
-                   assessment.totalScore >= 0.9 ? 'L3' :
-                   assessment.totalScore >= 0.7 ? 'L2' : 'L1';
+      const level = scoreToLevel(Number(assessment.totalScore || 0));
       
       const row = sheet.getRow(rowIndex++);
       row.values = [

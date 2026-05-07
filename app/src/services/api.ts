@@ -203,9 +203,12 @@ export const performanceApi = {
   getRecordsByMonth: (month: string) => request(`/performance/month/${month}`),
 
   // 获取全公司所有记录（总经理/HR）
-  getAllRecords: (months?: number) => {
-    const query = months ? `?months=${months}` : '';
-    return request(`/performance/all-records${query}`);
+  getAllRecords: (months?: number, month?: string) => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (months && !month) params.append('months', months.toString());
+    const query = params.toString();
+    return request(`/performance/all-records${query ? `?${query}` : ''}`);
   },
 
   // 获取某月每月之星推荐汇总

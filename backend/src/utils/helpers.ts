@@ -6,6 +6,25 @@ export const groupConfig = {
   lowLevels: ['junior', 'assistant'] as EmployeeLevel[]
 };
 
+// 绩效等级统一口径：
+// - threshold/minScore 用于“分数判定等级”
+// - representative score 用于评分选择器中点击 L1-L5 时的默认系数
+export const scoreLevelThresholds = {
+  L5: 1.4,
+  L4: 1.15,
+  L3: 0.9,
+  L2: 0.65,
+  L1: 0.5,
+} as const;
+
+export const scoreLevelValues = {
+  L5: 1.5,
+  L4: 1.2,
+  L3: 1.0,
+  L2: 0.8,
+  L1: 0.5,
+} as const;
+
 // 判断员工属于高分组还是低分组
 export const getGroupType = (level: EmployeeLevel): 'high' | 'low' => {
   return groupConfig.highLevels.includes(level) ? 'high' : 'low';
@@ -46,23 +65,16 @@ export const calculateTotalScore = (
 
 // 分数转等级
 export const scoreToLevel = (score: number): 'L1' | 'L2' | 'L3' | 'L4' | 'L5' => {
-  if (score >= 1.4) return 'L5';
-  if (score >= 1.15) return 'L4';
-  if (score >= 0.9) return 'L3';
-  if (score >= 0.65) return 'L2';
+  if (score >= scoreLevelThresholds.L5) return 'L5';
+  if (score >= scoreLevelThresholds.L4) return 'L4';
+  if (score >= scoreLevelThresholds.L3) return 'L3';
+  if (score >= scoreLevelThresholds.L2) return 'L2';
   return 'L1';
 };
 
 // 等级转分数
 export const levelToScore = (level: string): number => {
-  const map: Record<string, number> = {
-    'L5': 1.5,
-    'L4': 1.2,
-    'L3': 1.0,
-    'L2': 0.8,
-    'L1': 0.5
-  };
-  return map[level] || 1.0;
+  return scoreLevelValues[level as keyof typeof scoreLevelValues] || scoreLevelValues.L3;
 };
 
 // 等级标签

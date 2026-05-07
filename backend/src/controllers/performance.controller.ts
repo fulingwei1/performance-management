@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
-import { getGroupType, scoreToLevel } from '../utils/helpers';
+import { getGroupType, scoreLevelThresholds, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
 import { getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
@@ -270,11 +270,18 @@ export const performanceController = {
       });
     }
 
-    const { months } = req.query;
-    let records = await PerformanceModel.findAll();
+    const { month, months } = req.query;
+    const monthFilter = typeof month === 'string' ? month.trim() : '';
+    if (monthFilter && !/^\d{4}-\d{2}$/.test(monthFilter)) {
+      return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
+    }
+
+    let records = monthFilter
+      ? await PerformanceModel.findByMonth(monthFilter)
+      : await PerformanceModel.findAll();
     
     // 如果指定了months参数，过滤最近N个月的数据
-    if (months) {
+    if (months && !monthFilter) {
       const monthCount = parseInt(months as string, 10);
       if (!isNaN(monthCount) && monthCount > 0) {
         const now = new Date();
@@ -813,6 +820,14 @@ export const performanceController = {
         return res.status(400).json({ success: false, error: '质量改进分数范围0.5-1.5' });
       }
       totalScore = tc * 0.4 + ini * 0.3 + pf * 0.2 + qi * 0.1;
+      // 兼容旧评分界面：即使经理使用四维固定评分，也同步写入 metric_scores，
+      // 避免模板化报表/导出看到一批“已评分但动态指标为空”的记录。
+      processedMetricScores = [
+        { metricId: 'legacy-task-completion', metricName: '承担任务量及任务完成情况', metricCode: 'taskCompletion', weight: 40, score: tc, level: scoreToLevel(tc), comment: '' },
+        { metricId: 'legacy-initiative', metricName: '主动性态度与遵守纪律', metricCode: 'initiative', weight: 30, score: ini, level: scoreToLevel(ini), comment: '' },
+        { metricId: 'legacy-project-feedback', metricName: '参与项目经理的反馈情况', metricCode: 'projectFeedback', weight: 20, score: pf, level: scoreToLevel(pf), comment: '' },
+        { metricId: 'legacy-quality-improvement', metricName: '工作质量意识与工作改进', metricCode: 'qualityImprovement', weight: 10, score: qi, level: scoreToLevel(qi), comment: '' },
+      ];
     }
 
     // 验证评语和工作安排
@@ -859,7 +874,7 @@ export const performanceController = {
     const starReason = sanitizeUserText(monthlyStarReason);
     const starPublic = monthlyStarPublic !== false;
 
-    if ((roundedTotalScore >= 1.4 || roundedTotalScore < 0.9) && evidenceText.length < 10) {
+    if ((roundedTotalScore >= scoreLevelThresholds.L5 || roundedTotalScore < scoreLevelThresholds.L3) && evidenceText.length < 10) {
       return res.status(400).json({
         success: false,
         error: '评分特别优秀或明显偏低时，必须填写不少于10个字的具体事例说明'
@@ -939,6 +954,21 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '记录ID不能为空' });
     }
 
+    const existing = await PerformanceModel.findById(id);
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        error: '记录不存在'
+      });
+    }
+
+    if (await AssessmentPublicationModel.isPublished(existing.month)) {
+      return res.status(409).json({
+        success: false,
+        error: '该月份绩效结果已发布，如需删除请先取消发布'
+      });
+    }
+
     const success = await PerformanceModel.delete(id);
     
     if (!success) {
@@ -987,6 +1017,13 @@ export const performanceController = {
       });
     }
 
+    if (await AssessmentPublicationModel.isPublished(month)) {
+      return res.status(409).json({
+        success: false,
+        error: '该月份绩效结果已发布，如需删除请先取消发布'
+      });
+    }
+
     const deletedCount = await PerformanceModel.deleteByMonth(month);
     const deletedTodoCount = await TodoModel.deletePerformanceRelated(month);
     const deletedNotificationCount = await NotificationModel.deletePerformanceRelated(month);
@@ -1031,6 +1068,16 @@ export const performanceController = {
     // 验证月份格式
     if (!month || !/^\d{4}-\d{2}$/.test(month)) {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
+    }
+    const monthRangeError = validateTaskCreationMonth(String(month).trim(), { skipInTest: true });
+    if (monthRangeError) {
+      return res.status(400).json({ success: false, error: monthRangeError });
+    }
+    if (await AssessmentPublicationModel.isPublished(month)) {
+      return res.status(409).json({
+        success: false,
+        error: '该月份绩效结果已发布，不能重新生成考核任务'
+      });
     }
     
     // 获取所有需要考评的员工：只看人事档案上下级关系。

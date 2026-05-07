@@ -24,6 +24,7 @@ router.post('/metrics/:metricId/scoring-criteria', requireRole('hr', 'admin'), t
 
 // 模板匹配（新增）
 router.get('/match', requireRole('hr', 'gm', 'admin'), templateController.matchTemplate);
+router.post('/match', requireRole('hr', 'gm', 'admin'), templateController.matchTemplate);
 router.post('/preview-assignments', requireRole('hr', 'admin'), templateController.previewTemplateAssignments);
 
 router.get('/:id', requireRole('hr', 'gm', 'admin'), templateController.getTemplateById);

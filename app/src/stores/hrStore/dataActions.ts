@@ -1,5 +1,6 @@
 import type { PerformanceRecord, ReportData } from '@/types';
 import { generateNormalizationReport } from '@/lib/scoreNormalization';
+import { scoreLevelThresholds } from '@/lib/calculateScore';
 import { exportApi, metricLibraryApi, organizationApi, performanceApi } from '@/services/api';
 
 export const createDataActions = (set: any, get: any) => ({
@@ -38,10 +39,10 @@ export const createDataActions = (set: any, get: any) => ({
       return {
         month, department: dept, totalEmployees: deptRecords.length,
         averageScore: parseFloat(average.toFixed(2)),
-        excellentCount: scores.filter((s: number) => s >= 1.4).length,
-        goodCount: scores.filter((s: number) => s >= 1.15 && s < 1.4).length,
-        normalCount: scores.filter((s: number) => s >= 0.9 && s < 1.15).length,
-        needImprovementCount: scores.filter((s: number) => s < 0.9).length
+        excellentCount: scores.filter((s: number) => s >= scoreLevelThresholds.L5).length,
+        goodCount: scores.filter((s: number) => s >= scoreLevelThresholds.L4 && s < scoreLevelThresholds.L5).length,
+        normalCount: scores.filter((s: number) => s >= scoreLevelThresholds.L3 && s < scoreLevelThresholds.L4).length,
+        needImprovementCount: scores.filter((s: number) => s < scoreLevelThresholds.L3).length
       };
     });
   },

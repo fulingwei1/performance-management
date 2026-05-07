@@ -1,4 +1,5 @@
 import type { EmployeeLevel } from '@/types';
+import { scoreLevelThresholds, scoreLevelValues } from './calculateScore';
 
 // 员工级别定义
 export const employeeLevels: Record<EmployeeLevel, { label: string; color: string }> = {
@@ -66,11 +67,11 @@ export const scoreDimensions = [
 
 // 等级定义
 export const scoreLevels = [
-  { level: 'L5', score: 1.5, label: '优秀', color: '#10B981' },
-  { level: 'L4', score: 1.2, label: '良好', color: '#3B82F6' },
-  { level: 'L3', score: 1.0, label: '合格', color: '#F59E0B' },
-  { level: 'L2', score: 0.8, label: '待改进', color: '#F97316' },
-  { level: 'L1', score: 0.5, label: '不合格', color: '#EF4444' }
+  { level: 'L5', score: scoreLevelValues.L5, minScore: scoreLevelThresholds.L5, label: '优秀', color: '#10B981' },
+  { level: 'L4', score: scoreLevelValues.L4, minScore: scoreLevelThresholds.L4, label: '良好', color: '#3B82F6' },
+  { level: 'L3', score: scoreLevelValues.L3, minScore: scoreLevelThresholds.L3, label: '合格', color: '#F59E0B' },
+  { level: 'L2', score: scoreLevelValues.L2, minScore: scoreLevelThresholds.L2, label: '待改进', color: '#F97316' },
+  { level: 'L1', score: scoreLevelValues.L1, minScore: scoreLevelThresholds.L1, label: '不合格', color: '#EF4444' }
 ];
 
 // 各维度各等级的具体表现标准（包含员工评分和GM评分）

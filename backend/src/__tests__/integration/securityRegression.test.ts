@@ -392,6 +392,43 @@ describe('Security regression API checks', () => {
     expect(finalRecord?.managerComment).toBe(successResponses[0].body.data.managerComment);
   });
 
+  it('backfills metricScores when managers score through the legacy four-dimension form', async () => {
+    const month = '2099-08';
+    const recordId = `rec-e034-${month}-legacy-metrics`;
+    await PerformanceModel.saveSummary({
+      id: recordId,
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month,
+      selfSummary: '旧评分表单指标回填测试',
+      nextMonthPlan: '继续验证',
+      groupType: 'low',
+    });
+
+    const managerToken = await TestHelper.getAuthToken('manager');
+    const response = await request(app)
+      .post('/api/performance/score')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        id: recordId,
+        taskCompletion: 1.2,
+        initiative: 1.1,
+        projectFeedback: 1.0,
+        qualityImprovement: 0.9,
+        managerComment: '旧评分表单也要写入指标评分',
+        nextMonthWorkArrangement: '继续跟进指标沉淀',
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.metricScores).toHaveLength(4);
+    expect(response.body.data.metricScores.map((score: any) => score.metricCode)).toEqual([
+      'taskCompletion',
+      'initiative',
+      'projectFeedback',
+      'qualityImprovement',
+    ]);
+  });
+
   it('keeps assessment cycles and department list endpoints available', async () => {
     const token = await TestHelper.getAuthToken('employee');
     const hrToken = await TestHelper.getAuthToken('hr');
@@ -779,5 +816,194 @@ describe('Security regression API checks', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body).not.toHaveProperty('env');
+  });
+
+  it('filters all-records by a single month instead of returning all history', async () => {
+    const hrToken = await TestHelper.getAuthToken('hr');
+    await PerformanceModel.saveSummary({
+      id: 'rec-e034-2098-10-filter',
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month: '2098-10',
+      selfSummary: '月份过滤测试A',
+      nextMonthPlan: '继续测试',
+      groupType: 'low',
+    });
+    await PerformanceModel.saveSummary({
+      id: 'rec-e034-2098-11-filter',
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month: '2098-11',
+      selfSummary: '月份过滤测试B',
+      nextMonthPlan: '继续测试',
+      groupType: 'low',
+    });
+
+    const response = await request(app)
+      .get('/api/performance/all-records?month=2098-10')
+      .set('Authorization', `Bearer ${hrToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.length).toBeGreaterThan(0);
+    expect(response.body.data.every((record: any) => record.month === '2098-10')).toBe(true);
+  });
+
+  it('protects published months from delete and task regeneration', async () => {
+    const hrToken = await TestHelper.getAuthToken('hr');
+    const month = '2098-12';
+    const recordId = `rec-e034-${month}-published-guard`;
+    await PerformanceModel.saveSummary({
+      id: recordId,
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month,
+      selfSummary: '发布保护测试',
+      nextMonthPlan: '继续测试',
+      groupType: 'low',
+    });
+    await AssessmentPublicationModel.publish(month, 'hr001');
+
+    try {
+      const deleteOne = await request(app)
+        .delete(`/api/performance/${recordId}`)
+        .set('Authorization', `Bearer ${hrToken}`);
+      expect(deleteOne.status).toBe(409);
+      expect(deleteOne.body.message).toContain('已发布');
+
+      const deleteMonth = await request(app)
+        .delete(`/api/performance/month/${month}`)
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({ confirm: month, force: true });
+      expect(deleteMonth.status).toBe(409);
+      expect(deleteMonth.body.message).toContain('已发布');
+
+      const regenerate = await request(app)
+        .post('/api/performance/generate-tasks')
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({ month });
+      expect(regenerate.status).toBe(409);
+      expect(regenerate.body.message).toContain('已发布');
+    } finally {
+      await AssessmentPublicationModel.unpublish(month);
+      await PerformanceModel.delete(recordId);
+    }
+  });
+
+  it('returns 400 for incomplete manager-comment AI payloads instead of crashing', async () => {
+    const managerToken = await TestHelper.getAuthToken('manager');
+
+    const response = await request(app)
+      .post('/api/ai/manager-comment')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({
+        employeeName: '测试员工',
+        employeeLevel: '初级工程师',
+        department: '工程技术中心',
+        selfSummary: '完成本月工作',
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toContain('scores.');
+  });
+
+  it('keeps data-import employee upload route registered', async () => {
+    const hrToken = await TestHelper.getAuthToken('hr');
+
+    const response = await request(app)
+      .post('/api/data-import/employees')
+      .set('Authorization', `Bearer ${hrToken}`);
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe('请上传文件');
+  });
+
+  it('supports POST assessment-template matching alias', async () => {
+    const hrToken = await TestHelper.getAuthToken('hr');
+    const template = {
+      id: 'template-post-match-test',
+      name: 'POST匹配测试模板',
+      description: '用于验证 POST /match 路由',
+      department_type: 'engineering',
+      is_default: true,
+      status: 'active',
+      created_by: 'hr001',
+      applicable_roles: ['employee'],
+      applicable_levels: ['junior'],
+      applicable_positions: [],
+      priority: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    memoryStore.assessmentTemplates!.set(template.id, template as any);
+
+    try {
+      const response = await request(app)
+        .post('/api/assessment-templates/match')
+        .set('Authorization', `Bearer ${hrToken}`)
+        .send({
+          role: 'employee',
+          level: 'junior',
+          department: '工程技术中心',
+          subDepartment: '测试部',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.id).toBe(template.id);
+    } finally {
+      memoryStore.assessmentTemplates!.delete(template.id);
+    }
+  });
+
+  it('returns assessment-scope from the active performance ranking config', async () => {
+    const hrToken = await TestHelper.getAuthToken('hr');
+    const systemSettings = memoryStore.systemSettings!;
+    const originalRankingConfig = systemSettings.get('performance_ranking_config');
+    systemSettings.set('performance_ranking_config', {
+      id: 1001,
+      settingKey: 'performance_ranking_config',
+      settingValue: JSON.stringify({
+        version: 1,
+        participation: {
+          mode: 'include',
+          enabledUnitKeys: [],
+          includedUnitKeys: ['工程技术中心', '制造中心/装配部'],
+          excludedUnitKeys: [],
+          includedEmployeeIds: [],
+          excludedEmployeeIds: [],
+        },
+        groupRank: { defaultStrategy: { type: 'by_high_low' }, perUnit: {} },
+        templateAssignments: {},
+        mergeRankGroups: [],
+      }),
+      settingType: 'json',
+      category: 'performance',
+      isPublic: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as any);
+
+    try {
+      const response = await request(app)
+        .get('/api/settings/assessment-scope')
+        .set('Authorization', `Bearer ${hrToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toMatchObject({
+        source: 'performance_ranking_config',
+        mode: 'include',
+        rootDepts: ['工程技术中心'],
+        subDeptsByRoot: { 制造中心: ['装配部'] },
+        includedUnitKeys: ['工程技术中心', '制造中心/装配部'],
+      });
+    } finally {
+      if (originalRankingConfig) {
+        systemSettings.set('performance_ranking_config', originalRankingConfig);
+      } else {
+        systemSettings.delete('performance_ranking_config');
+      }
+    }
   });
 });

@@ -2,6 +2,7 @@ import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { Employee, PerformanceRecord } from '../types';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
+import { scoreLevelThresholds } from '../utils/helpers';
 
 const DEMO_PREFIX = 'demo-perf-';
 const DEMO_MARKER = '[演示数据]';
@@ -77,10 +78,10 @@ function seededNumber(seed: string): number {
 }
 
 function scoreToLevel(score: number): 'L1' | 'L2' | 'L3' | 'L4' | 'L5' {
-  if (score >= 1.35) return 'L5';
-  if (score >= 1.18) return 'L4';
-  if (score >= 1.0) return 'L3';
-  if (score >= 0.82) return 'L2';
+  if (score >= scoreLevelThresholds.L5) return 'L5';
+  if (score >= scoreLevelThresholds.L4) return 'L4';
+  if (score >= scoreLevelThresholds.L3) return 'L3';
+  if (score >= scoreLevelThresholds.L2) return 'L2';
   return 'L1';
 }
 
@@ -120,7 +121,7 @@ function distributionScoreForIndex(index: number, total: number, employeeId: str
   }
 
   if (index >= total - topTarget) {
-    return roundScore(1.36 + jitter * 0.08); // L5/高分，但不超过 2 成优秀上限
+    return roundScore(scoreLevelThresholds.L5 + 0.01 + jitter * 0.07); // L5/高分，但不超过 2 成优秀上限
   }
 
   const middleSpan = Math.max(1, total - bottomRequired - topTarget);

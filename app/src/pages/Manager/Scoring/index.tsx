@@ -4,7 +4,7 @@ import { FileText, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
-import { calculateTotalScore } from '@/lib/calculateScore';
+import { calculateTotalScore, scoreLevelThresholds } from '@/lib/calculateScore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -250,8 +250,8 @@ export function ScoringManagement({
     const scoredRecords = allEmployeeRecords.filter(record =>
       (record.status === 'completed' || record.status === 'scored') && Number(record.totalScore) > 0
     );
-    const topCount = scoredRecords.filter(record => Number(record.totalScore) >= 1.4).length;
-    const bottomCount = scoredRecords.filter(record => Number(record.totalScore) < 0.9).length;
+    const topCount = scoredRecords.filter(record => Number(record.totalScore) >= scoreLevelThresholds.L5).length;
+    const bottomCount = scoredRecords.filter(record => Number(record.totalScore) < scoreLevelThresholds.L3).length;
     const topQuota = Math.ceil(allEmployeeRecords.length * 0.2);
     const bottomRequired = Math.max(1, Math.floor(allEmployeeRecords.length * 0.1));
     return {
@@ -380,7 +380,7 @@ export function ScoringManagement({
   
   const totalScore = calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
 
-  const requiresScoreEvidence = totalScore >= 1.4 || totalScore < 0.9;
+  const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
   
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string }> = {

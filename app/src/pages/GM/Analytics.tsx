@@ -6,6 +6,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { performanceApi, employeeApi } from '@/services/api';
+import { scoreLevelThresholds } from '@/lib/calculateScore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -365,7 +366,7 @@ export function GMAnalytics() {
     
     // 需关注（下滑或低分）
     const attentionNeeded = allEmployeeData
-      .filter(emp => emp.currentScore < 0.9 || (emp.trend === 'down' && emp.previousScore - emp.currentScore > 0.1))
+      .filter(emp => emp.currentScore < scoreLevelThresholds.L3 || (emp.trend === 'down' && emp.previousScore - emp.currentScore > 0.1))
       .sort((a, b) => a.currentScore - b.currentScore);
     
     // 潜力股（初级但高分）

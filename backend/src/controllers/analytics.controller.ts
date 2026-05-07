@@ -3,13 +3,14 @@ import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import logger from '../config/logger';
+import { scoreLevelThresholds } from '../utils/helpers';
 
 const SCORE_BUCKETS = [
-  { level: 'L5', label: '优秀', min: 1.4, max: null as number | null },
-  { level: 'L4', label: '良好', min: 1.15, max: 1.4 },
-  { level: 'L3', label: '合格', min: 0.9, max: 1.15 },
-  { level: 'L2', label: '待改进', min: 0.65, max: 0.9 },
-  { level: 'L1', label: '不合格', min: 0, max: 0.65 },
+  { level: 'L5', label: '优秀', min: scoreLevelThresholds.L5, max: null as number | null },
+  { level: 'L4', label: '良好', min: scoreLevelThresholds.L4, max: scoreLevelThresholds.L5 },
+  { level: 'L3', label: '合格', min: scoreLevelThresholds.L3, max: scoreLevelThresholds.L4 },
+  { level: 'L2', label: '待改进', min: scoreLevelThresholds.L2, max: scoreLevelThresholds.L3 },
+  { level: 'L1', label: '不合格', min: 0, max: scoreLevelThresholds.L2 },
 ];
 
 const isRealRecord = (record: any) => !record?.isDemo && !String(record?.id || '').startsWith('demo-');
@@ -135,8 +136,8 @@ export const getDepartmentComparison = asyncHandler(async (req: Request, res: Re
 
   const comparison = Array.from(recordsByDepartment.entries()).map(([dept, allRecords]) => {
     const avgScore = allRecords.reduce((sum, r) => sum + r.totalScore, 0) / allRecords.length;
-    const excellentRate = allRecords.filter(r => r.totalScore >= 1.4).length / allRecords.length;
-    const poorRate = allRecords.filter(r => r.totalScore < 0.65).length / allRecords.length;
+    const excellentRate = allRecords.filter(r => r.totalScore >= scoreLevelThresholds.L5).length / allRecords.length;
+    const poorRate = allRecords.filter(r => r.totalScore < scoreLevelThresholds.L2).length / allRecords.length;
 
     return {
       department: dept,
@@ -255,7 +256,7 @@ export const generateReport = asyncHandler(async (req: Request, res: Response) =
       const deptAvg = deptRecords.reduce((s, r) => s + r.totalScore, 0) / deptRecords.length;
       const deptTotal = realRecords.filter((record) => record.department === dept).length;
       const excellentRate = deptRecords.length > 0
-        ? ((deptRecords.filter((record) => record.totalScore >= 1.4).length / deptRecords.length) * 100).toFixed(1)
+        ? ((deptRecords.filter((record) => record.totalScore >= scoreLevelThresholds.L5).length / deptRecords.length) * 100).toFixed(1)
         : '0.0';
       return {
         dept,

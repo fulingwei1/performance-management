@@ -7,6 +7,7 @@
 import { memoryStore, USE_MEMORY_DB, query } from '../config/database';
 import { PerformanceRecord } from '../types';
 import { EmployeeModel } from '../models/employee.model';
+import { scoreToLevel } from '../utils/helpers';
 
 // 模拟数据月份范围
 const DEMO_MONTHS = ['2025-08', '2025-09', '2025-10', '2025-11', '2025-12'];
@@ -47,31 +48,13 @@ function splitToFourDimensions(totalScore: number): {
   projectFeedback: number;
   qualityImprovement: number;
 } {
-  // 加一些随机波动，但保证加权计算后接近totalScore
-  // 权重: taskCompletion 40%, initiative 30%, projectFeedback 20%, qualityImprovement 10%
-  const base = totalScore;
-  const variance = 0.1;
-  
-  const taskCompletion = Math.max(0.5, Math.min(1.5, base + (Math.random() - 0.5) * variance));
-  const initiative = Math.max(0.5, Math.min(1.5, base + (Math.random() - 0.5) * variance));
-  const projectFeedback = Math.max(0.5, Math.min(1.5, base + (Math.random() - 0.5) * variance));
-  const qualityImprovement = Math.max(0.5, Math.min(1.5, base + (Math.random() - 0.5) * variance));
-  
+  // 演示数据总分必须等于系统加权公式结果，避免等级/排名/发布分布基于不一致数据。
   return {
-    taskCompletion: Math.round(taskCompletion * 100) / 100,
-    initiative: Math.round(initiative * 100) / 100,
-    projectFeedback: Math.round(projectFeedback * 100) / 100,
-    qualityImprovement: Math.round(qualityImprovement * 100) / 100
+    taskCompletion: totalScore,
+    initiative: totalScore,
+    projectFeedback: totalScore,
+    qualityImprovement: totalScore
   };
-}
-
-// 根据分数计算等级
-function scoreToLevel(score: number): string {
-  if (score >= 1.4) return 'L5';
-  if (score >= 1.2) return 'L4';
-  if (score >= 1.0) return 'L3';
-  if (score >= 0.8) return 'L2';
-  return 'L1';
 }
 
 // 生成单个员工的模拟数据

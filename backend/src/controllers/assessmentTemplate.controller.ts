@@ -269,7 +269,8 @@ export const addScoringCriteria = asyncHandler(async (req: Request, res: Respons
  * 模板匹配：根据员工信息找到最佳模板
  */
 export const matchTemplate = asyncHandler(async (req: Request, res: Response) => {
-  const { role, level, position, department, subDepartment } = req.query;
+  const source = req.method === 'POST' ? req.body || {} : req.query;
+  const { role, level, position, department, subDepartment } = source;
   
   const template = await AssessmentTemplateModel.findMatchingTemplate({
     role: role as string,
