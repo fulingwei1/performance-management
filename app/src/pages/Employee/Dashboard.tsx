@@ -141,7 +141,7 @@ export function EmployeeDashboard() {
                     </div>
                     <ArrowRight className="h-4 w-4 text-gray-400" />
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">可填写问题标签和合理化建议，非强制。</p>
+                  <p className="mt-2 text-xs text-gray-500">可填写问题标签和合理化建议；半年调查期间会在表单后方显示满意度调查。</p>
                 </Link>
               ) : (
                 <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">

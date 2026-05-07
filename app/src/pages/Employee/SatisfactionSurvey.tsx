@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Loader2, MessageSquare, Send } from 'lucide-react';
 import { toast } from 'sonner';
@@ -24,7 +24,17 @@ type CurrentSurveyPayload = {
   myResponse?: SatisfactionSurveyResponse | null;
 };
 
-export function SatisfactionSurvey() {
+interface SatisfactionSurveyPanelProps {
+  embedded?: boolean;
+  hideWhenUnavailable?: boolean;
+  onAvailabilityChange?: (available: boolean) => void;
+}
+
+export function SatisfactionSurveyPanel({
+  embedded = false,
+  hideWhenUnavailable = false,
+  onAvailabilityChange,
+}: SatisfactionSurveyPanelProps) {
   const [survey, setSurvey] = useState<SatisfactionSurveyType | null>(null);
   const [myResponse, setMyResponse] = useState<SatisfactionSurveyResponse | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -33,7 +43,7 @@ export function SatisfactionSurvey() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadCurrent = async () => {
+  const loadCurrent = useCallback(async () => {
     setLoading(true);
     try {
       const response = await satisfactionSurveyApi.getCurrent();
@@ -44,20 +54,23 @@ export function SatisfactionSurvey() {
         setScores(payload.myResponse?.scores || {});
         setComment(payload.myResponse?.comment || '');
         setAnonymous(payload.myResponse?.anonymous !== false);
+        onAvailabilityChange?.(payload.survey?.status === 'open');
       } else {
         setSurvey(null);
         setMyResponse(null);
+        onAvailabilityChange?.(false);
       }
     } catch (error) {
+      onAvailabilityChange?.(false);
       toast.error(error instanceof Error ? error.message : '加载满意度调查失败');
     } finally {
       setLoading(false);
     }
-  };
+  }, [onAvailabilityChange]);
 
   useEffect(() => {
     loadCurrent();
-  }, []);
+  }, [loadCurrent]);
 
   const allQuestionsAnswered = useMemo(() => {
     if (!survey) return false;
@@ -92,6 +105,7 @@ export function SatisfactionSurvey() {
   };
 
   if (loading) {
+    if (embedded && hideWhenUnavailable) return null;
     return (
       <div className="flex min-h-[360px] items-center justify-center text-gray-500">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
@@ -101,6 +115,7 @@ export function SatisfactionSurvey() {
   }
 
   if (!survey) {
+    if (hideWhenUnavailable) return null;
     return (
       <div className="mx-auto max-w-3xl">
         <Card>
@@ -125,20 +140,24 @@ export function SatisfactionSurvey() {
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mx-auto max-w-4xl space-y-6"
+      className={embedded ? 'space-y-4' : 'mx-auto max-w-4xl space-y-6'}
     >
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">半年度满意度调查</h1>
-        <p className="mt-1 text-sm text-gray-500">每半年填写一次，帮助 HR 了解绩效考核和工作支持体验。</p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">半年度满意度调查</h1>
+          <p className="mt-1 text-sm text-gray-500">每半年填写一次，帮助 HR 了解绩效考核和工作支持体验。</p>
+        </div>
+      )}
 
-      <Card>
+      <Card className={embedded ? 'border-blue-100 bg-blue-50/30' : undefined}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-blue-600" />
-            {survey.title}
+            {embedded ? `半年度满意度调查：${survey.title}` : survey.title}
           </CardTitle>
           <CardDescription>
+            {embedded ? '本期需要随月度总结一起完成；提交工作总结后，可继续在这里提交满意度调查。' : null}
+            {embedded ? ' ' : ''}
             周期：{survey.startDate} 至 {survey.endDate} · 状态：{survey.status === 'open' ? '开放填写' : survey.status === 'closed' ? '已关闭' : '草稿'}
           </CardDescription>
         </CardHeader>
@@ -228,4 +247,8 @@ export function SatisfactionSurvey() {
       </Card>
     </motion.div>
   );
+}
+
+export function SatisfactionSurvey() {
+  return <SatisfactionSurveyPanel />;
 }

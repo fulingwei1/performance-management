@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Save, Send, Calendar, FileText, Loader2, CheckCircle, Lightbulb } from 'lucide-react';
@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { SatisfactionSurveyPanel } from './SatisfactionSurvey';
 
 export function WorkSummary() {
   const navigate = useNavigate();
@@ -43,6 +44,8 @@ export function WorkSummary() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
+  const [hasOpenSatisfactionSurvey, setHasOpenSatisfactionSurvey] = useState(false);
+  const satisfactionSurveyRef = useRef<HTMLDivElement | null>(null);
   
   // 冻结状态
   const [frozen, setFrozen] = useState(false);
@@ -133,7 +136,13 @@ export function WorkSummary() {
     if (success && !isDraft) {
       setRecordStatus('submitted');
       setShowSuccess(true);
-      setTimeout(() => navigate('/employee/dashboard'), 800);
+      if (hasOpenSatisfactionSurvey) {
+        setTimeout(() => {
+          satisfactionSurveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 250);
+      } else {
+        setTimeout(() => navigate('/employee/dashboard'), 800);
+      }
     } else if (success && isDraft) {
       setRecordStatus('draft');
       setShowDraftSuccess(true);
@@ -515,6 +524,14 @@ export function WorkSummary() {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        <motion.div ref={satisfactionSurveyRef} variants={itemVariants} className="mt-6">
+          <SatisfactionSurveyPanel
+            embedded
+            hideWhenUnavailable
+            onAvailabilityChange={setHasOpenSatisfactionSurvey}
+          />
         </motion.div>
         
         {/* Tips */}

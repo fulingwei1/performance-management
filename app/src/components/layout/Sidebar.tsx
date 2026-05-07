@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
-import { useSatisfactionSurveyAvailability } from '@/hooks/useSatisfactionSurveyAvailability';
 
 interface SidebarProps {
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
@@ -28,18 +27,15 @@ interface SidebarNavItem {
 
 const employeeNavItems: SidebarNavItem[] = [
   { path: '/employee/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
 const managerNavItems: SidebarNavItem[] = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
 const gmNavItems: SidebarNavItem[] = [
   { path: '/gm/analytics', label: '绩效看板', icon: BarChart3 },
-  { path: '/employee/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
 ];
 
 const gmManagerNavItems: SidebarNavItem[] = [
@@ -54,7 +50,7 @@ const hrAdminBaseNavItems: SidebarNavItem[] = [
   { path: '/hr/data-io', label: '数据管理', icon: Database },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
-  { path: '/hr/satisfaction-survey', label: '满意度调查', icon: MessageSquare },
+  { path: '/hr/satisfaction-survey', label: '满意度统计', icon: MessageSquare },
   { path: '/hr/monthly-automation', label: '手动触发', icon: Zap },
   { path: '/hr/logs', label: '日志管理', icon: ClipboardList },
 ];
@@ -89,7 +85,6 @@ function getDisplayRoleLabels(user: any, role: SidebarProps['role']): string[] {
 export function Sidebar({ role }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const hasOpenSatisfactionSurvey = useSatisfactionSurveyAvailability();
 
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
   const baseNavItems = role === 'employee'
@@ -107,9 +102,7 @@ export function Sidebar({ role }: SidebarProps) {
           ...hrAdminBaseNavItems.slice(2),
         ]
       : hrAdminBaseNavItems;
-  const navItems = baseNavItems.filter((item) => (
-    item.path !== '/employee/satisfaction-survey' || hasOpenSatisfactionSurvey
-  ));
+  const navItems = baseNavItems;
   const roleLabels = getDisplayRoleLabels(user, role).filter(Boolean);
 
   return (

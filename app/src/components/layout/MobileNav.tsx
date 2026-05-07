@@ -14,7 +14,6 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
-import { useSatisfactionSurveyAvailability } from '@/hooks/useSatisfactionSurveyAvailability';
 
 type UserRole = 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 
@@ -27,16 +26,13 @@ interface NavItem {
 const roleNavItems: Record<UserRole, NavItem[]> = {
   employee: [
     { name: '工作台', path: '/employee/dashboard', icon: HomeIcon },
-    { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
     { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
-    { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   gm: [
     { name: '绩效看板', path: '/gm/analytics', icon: ChartBarIcon },
-    { name: '满意度调查', path: '/employee/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
   ],
   hr: [
     { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
@@ -46,7 +42,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
-    { name: '满意度调查', path: '/hr/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
+    { name: '满意度统计', path: '/hr/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
     { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
     { name: '日志管理', path: '/hr/logs', icon: ClipboardDocumentListIcon },
   ],
@@ -58,7 +54,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
-    { name: '满意度调查', path: '/hr/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
+    { name: '满意度统计', path: '/hr/satisfaction-survey', icon: ChatBubbleLeftRightIcon },
     { name: '手动触发', path: '/hr/monthly-automation', icon: BoltIcon },
     { name: '日志管理', path: '/hr/logs', icon: ClipboardDocumentListIcon },
   ],
@@ -72,7 +68,6 @@ export const MobileNav: React.FC = () => {
   const role = (user?.role || 'employee') as UserRole;
   const effectiveRoles = Array.isArray(user?.roles) && user.roles.length > 0 ? user.roles : [role];
   const canManageTeam = Boolean(user?.capabilities?.canManageTeam);
-  const hasOpenSatisfactionSurvey = useSatisfactionSurveyAvailability();
   const filteredItems = useMemo(() => {
     const baseItems = (role === 'employee' || role === 'manager') && canManageTeam
       ? roleNavItems.manager
@@ -88,10 +83,8 @@ export const MobileNav: React.FC = () => {
     const roleItems = (role === 'hr' || role === 'admin') && !canManageTeam
       ? baseItems.filter((item) => !item.path.startsWith('/manager/'))
       : baseItems;
-    return roleItems.filter((item) => (
-      item.path !== '/employee/satisfaction-survey' || hasOpenSatisfactionSurvey
-    ));
-  }, [canManageTeam, hasOpenSatisfactionSurvey, role]);
+    return roleItems;
+  }, [canManageTeam, role]);
   const roleLabels = (() => {
     if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
     if (effectiveRoles.length > 0) {

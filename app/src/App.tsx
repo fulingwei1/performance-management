@@ -8,7 +8,6 @@ import { Toaster } from '@/components/ui/sonner';
 const Login = lazy(() => import('@/pages/Login').then((module) => ({ default: module.Login })));
 const EmployeeDashboard = lazy(() => import('@/pages/Employee/Dashboard').then((module) => ({ default: module.EmployeeDashboard })));
 const WorkSummary = lazy(() => import('@/pages/Employee/WorkSummary').then((module) => ({ default: module.WorkSummary })));
-const EmployeeSatisfactionSurvey = lazy(() => import('@/pages/Employee/SatisfactionSurvey').then((module) => ({ default: module.SatisfactionSurvey })));
 const ManagerDashboard = lazy(() => import('@/pages/Manager/Dashboard').then((module) => ({ default: module.ManagerDashboard })));
 const Analytics = lazy(() => import('@/pages/Manager/Analytics').then((module) => ({ default: module.Analytics })));
 const GMAnalytics = lazy(() => import('@/pages/GM/Analytics').then((module) => ({ default: module.GMAnalytics })));
@@ -258,9 +257,9 @@ function App() {
           <Route path="/employee/summary" element={<WorkSummary />} />
         </Route>
 
-        {/* 半年度满意度调查：所有已登录员工角色都可填写自己的答卷 */}
+        {/* 半年度满意度调查已内嵌到月度总结流程，旧地址统一回工作台 */}
         <Route element={<ProtectedLayout allowedRoles={['employee', 'manager', 'gm', 'hr', 'admin']} />}>
-          <Route path="/employee/satisfaction-survey" element={<EmployeeSatisfactionSurvey />} />
+          <Route path="/employee/satisfaction-survey" element={<Navigate to="/employee/dashboard" replace />} />
         </Route>
 
         {/* Manager routes */}
