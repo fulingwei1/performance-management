@@ -631,6 +631,10 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: monthRangeError });
     }
 
+    if (await AssessmentPublicationModel.isPublished(String(month).trim())) {
+      return res.status(403).json({ success: false, error: '该月份已发布，无法创建空记录' });
+    }
+
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -756,6 +760,14 @@ export const performanceController = {
     let existing = await PerformanceModel.findById(id);
     if (!existing) {
       return res.status(404).json({ success: false, error: '记录不存在' });
+    }
+
+    if (await AssessmentPublicationModel.isPublished(existing.month)) {
+      return res.status(403).json({ success: false, error: '该月份已发布，无法修改评分' });
+    }
+
+    if (existing.status === 'draft') {
+      return res.status(400).json({ success: false, error: '员工尚未提交自评，无法评分' });
     }
 
     // 判断使用新版动态指标还是旧版固定4项
