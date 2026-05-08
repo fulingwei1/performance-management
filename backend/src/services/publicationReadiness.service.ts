@@ -9,7 +9,7 @@ import {
 import { scoreLevelThresholds } from '../utils/helpers';
 
 export interface PublicationReadinessViolation {
-  type: 'incomplete' | 'forced_distribution';
+  type: 'incomplete' | 'forced_distribution' | 'missing_interview_form';
   unitKey?: string;
   message: string;
   total?: number;
@@ -18,6 +18,8 @@ export interface PublicationReadinessViolation {
   topQuota?: number;
   bottomCount?: number;
   bottomRequired?: number;
+  missingInterviewCount?: number;
+  employees?: Array<{ employeeId: string; employeeName?: string; totalScore?: number }>;
 }
 
 export interface PublicationReadinessResult {
@@ -38,6 +40,11 @@ const getDistributionQuota = (total: number) => ({
   topQuota: Math.ceil(total * 0.2),
   bottomRequired: Math.max(1, Math.floor(total * 0.1)),
 });
+
+const hasInterviewForm = (record: PerformanceRecord): boolean => {
+  const attachment = record.interviewFormAttachment as any;
+  return Boolean(attachment && attachment.filename && attachment.uploadedAt);
+};
 
 export const validatePublicationReadiness = async (month: string): Promise<PublicationReadinessResult> => {
   const config = await getPerformanceRankingConfig();
@@ -90,6 +97,10 @@ export const validatePublicationReadiness = async (month: string): Promise<Publi
     const { topQuota, bottomRequired } = getDistributionQuota(unitRecords.length);
     const topCount = unitRecords.filter(isTopScore).length;
     const bottomCount = unitRecords.filter(isBottomScore).length;
+    const bottomRecords = [...unitRecords]
+      .sort((a, b) => Number(a.totalScore || 0) - Number(b.totalScore || 0))
+      .slice(0, bottomRequired);
+    const missingInterviewRecords = bottomRecords.filter((record) => !hasInterviewForm(record));
     const unitViolations: string[] = [];
 
     if (topCount > topQuota) {
@@ -110,6 +121,24 @@ export const validatePublicationReadiness = async (month: string): Promise<Publi
         topQuota,
         bottomCount,
         bottomRequired,
+      });
+    }
+
+    if (missingInterviewRecords.length > 0) {
+      violations.push({
+        type: 'missing_interview_form',
+        unitKey,
+        message: `${unitKey} 2-7-1末位 ${bottomRequired} 人中，${missingInterviewRecords.length} 人未上传绩效面谈表`,
+        total: unitRecords.length,
+        completed: unitRecords.length,
+        bottomCount,
+        bottomRequired,
+        missingInterviewCount: missingInterviewRecords.length,
+        employees: missingInterviewRecords.map((record) => ({
+          employeeId: record.employeeId,
+          employeeName: record.employeeName,
+          totalScore: Number(record.totalScore || 0),
+        })),
       });
     }
   }

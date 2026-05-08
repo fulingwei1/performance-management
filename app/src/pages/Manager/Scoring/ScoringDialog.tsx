@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, Send, X, AlertCircle, TrendingUp, Clock, WalletCards } from 'lucide-react';
+import { FileText, Send, X, AlertCircle, TrendingUp, Clock, WalletCards, Upload, CheckCircle2 } from 'lucide-react';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { Button } from '@/components/ui/button';
@@ -102,6 +102,8 @@ interface ScoringDialogProps {
   setMonthlyStarPublic: (value: boolean) => void;
   totalScore: number;
   loading: boolean;
+  interviewFormUploading?: boolean;
+  onInterviewFormUpload?: (file: File) => void;
   onSubmit: () => void;
 }
 
@@ -122,7 +124,7 @@ export function ScoringDialog({
   monthlyStarCategory, setMonthlyStarCategory,
   monthlyStarReason, setMonthlyStarReason,
   monthlyStarPublic, setMonthlyStarPublic,
-  totalScore, loading, onSubmit
+  totalScore, loading, interviewFormUploading = false, onInterviewFormUpload, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
   const managerCommentRef = useRef(managerComment);
@@ -131,6 +133,7 @@ export function ScoringDialog({
   const [salaryForecastError, setSalaryForecastError] = useState('');
   
   const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
+  const interviewFormAttachment = selectedRecord?.interviewFormAttachment;
   const scoreEvidenceLabel = totalScore >= scoreLevelThresholds.L5 ? '优秀/特别突出事例' : totalScore < scoreLevelThresholds.L3 ? '低分/明显不足事例' : '评分事例说明';
   const draftCoefficient = levelToScore(scoreToLevel(Number(totalScore || 0)));
   
@@ -636,6 +639,52 @@ export function ScoringDialog({
                       />
                     </CardContent>
                   </Card>
+
+                  {totalScore < scoreLevelThresholds.L3 && (
+                    <Card className="shadow-sm border-red-200 bg-red-50/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium">
+                          绩效面谈表
+                          <span className="text-red-500 ml-1">*</span>
+                        </CardTitle>
+                        <p className="text-xs text-gray-600">
+                          如该员工进入 2-7-1 末位 10%，发布前必须上传面谈表。建议低分评分时同步上传，避免 HR 发布时被拦截。
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {interviewFormAttachment ? (
+                          <div className="flex items-center justify-between rounded-lg border border-green-200 bg-white px-4 py-3">
+                            <div className="flex items-center gap-2 text-sm text-green-700">
+                              <CheckCircle2 className="h-4 w-4" />
+                              <span>已上传：{interviewFormAttachment.originalName || interviewFormAttachment.filename}</span>
+                            </div>
+                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100">已留档</Badge>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-red-200 bg-white px-4 py-3 text-sm text-red-700">
+                            尚未上传面谈表；如果该员工属于本部门末位 10%，HR 将无法发布本月绩效。
+                          </div>
+                        )}
+                        <label className="inline-flex cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                            disabled={interviewFormUploading}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              event.target.value = '';
+                              if (file && onInterviewFormUpload) onInterviewFormUpload(file);
+                            }}
+                          />
+                          <span className="inline-flex items-center rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+                            <Upload className="mr-2 h-4 w-4" />
+                            {interviewFormUploading ? '上传中...' : interviewFormAttachment ? '重新上传面谈表' : '上传面谈表'}
+                          </span>
+                        </label>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   <Card className="shadow-sm border-purple-200 bg-purple-50/30">
                     <CardHeader className="pb-3">

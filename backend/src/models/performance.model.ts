@@ -1,5 +1,5 @@
 import { query, transaction, memoryDB, USE_MEMORY_DB, memoryStore } from '../config/database';
-import { PerformanceRecord, RecordStatus, MetricScore } from '../types';
+import { PerformanceRecord, RecordStatus, MetricScore, PerformanceInterviewFormAttachment } from '../types';
 import { EmployeeModel } from './employee.model';
 import {
   getPerformanceRankingConfig,
@@ -23,6 +23,20 @@ const parseJsonArray = (value: unknown): string[] => {
     }
   }
   return [];
+};
+
+const parseJsonObject = <T = Record<string, unknown>>(value: unknown): T | undefined => {
+  if (!value) return undefined;
+  if (typeof value === 'object') return value as T;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' ? parsed as T : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 };
 
 function getQuarterFromMonth(month: string): { year: number; quarter: number } | null {
@@ -255,6 +269,25 @@ export class PerformanceModel {
     
     await query(sql, [...values, id]);
     
+    return this.findById(id);
+  }
+
+  static async updateInterviewFormAttachment(
+    id: string,
+    attachment: PerformanceInterviewFormAttachment
+  ): Promise<PerformanceRecord | null> {
+    if (USE_MEMORY_DB) {
+      const updated = memoryDB.performanceRecords.update(id, {
+        interviewFormAttachment: attachment,
+        updatedAt: new Date()
+      } as Partial<PerformanceRecord>);
+      return updated ? this.enrichRecord(updated) : null;
+    }
+
+    await query(
+      'UPDATE performance_records SET interview_form_attachment = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [JSON.stringify(attachment), id]
+    );
     return this.findById(id);
   }
 
@@ -833,6 +866,7 @@ export class PerformanceModel {
       monthlyStarCategory: row.monthly_star_category || '',
       monthlyStarReason: row.monthly_star_reason || '',
       monthlyStarPublic: row.monthly_star_public !== false && row.monthly_star_public !== 0,
+      interviewFormAttachment: parseJsonObject<PerformanceInterviewFormAttachment>(row.interview_form_attachment),
       groupType: row.group_type,
       groupRank: row.group_rank,
       crossDeptRank: row.cross_dept_rank,

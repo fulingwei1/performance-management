@@ -1,4 +1,7 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import path from 'path';
+import fs from 'fs';
+import multer from 'multer';
 import { performanceController } from '../controllers/performance.controller';
 import { authenticate, requireManagerCapability, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validation';
@@ -12,6 +15,39 @@ import { insertDemoData, clearDemoData, hasDemoData } from '../scripts/generateD
 import { exportController } from '../controllers/export.controller';
 
 const router = Router();
+
+const interviewFormDir = path.join(__dirname, '../../uploads/interview-forms');
+fs.mkdirSync(interviewFormDir, { recursive: true });
+const allowedInterviewFormMimeTypes = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+]);
+const interviewFormUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, interviewFormDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase();
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 10)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (allowedInterviewFormMimeTypes.has(file.mimetype)) return cb(null, true);
+    cb(new Error('只支持 PDF、Word、Excel、JPG、PNG 格式的面谈表'));
+  },
+});
+const uploadInterviewFormMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  interviewFormUpload.single('file')(req, res, (error: unknown) => {
+    if (!error) return next();
+    const message = error instanceof Error ? error.message : '面谈表上传失败';
+    return res.status(400).json({ success: false, message, error: message });
+  });
+};
 
 // 获取当前用户的绩效记录（需要认证）
 router.get('/my-records', authenticate, performanceController.getMyRecords);
@@ -54,6 +90,9 @@ router.get('/:id/template', authenticate, performanceController.getRecordTemplat
 
 // 经理评分（含 HR/管理员兼任经理视角）
 router.post('/score', authenticate, requireManagerCapability, validate(submitScoreValidation), performanceController.submitScore);
+
+// 2-7-1 末位人员绩效面谈表上传
+router.post('/:id/interview-form', authenticate, uploadInterviewFormMiddleware, performanceController.uploadInterviewForm);
 
 // HR批量生成绩效任务
 router.post('/generate-tasks', authenticate, requireRole('hr'), validate(generateTasksValidation), performanceController.generateTasks);

@@ -328,6 +328,14 @@ describe('Security regression API checks', () => {
           nextMonthWorkArrangement: '继续测试',
         });
       }
+      await PerformanceModel.updateInterviewFormAttachment(`rec-${employeeIds[0]}-${month}`, {
+        filename: 'forced-distribution-interview.pdf',
+        originalName: '绩效面谈表.pdf',
+        mimeType: 'application/pdf',
+        size: 1024,
+        uploadedBy: 'm011',
+        uploadedAt: new Date(),
+      });
 
       const hrToken = await TestHelper.getAuthToken('hr');
       const blocked = await request(app)

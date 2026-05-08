@@ -274,6 +274,16 @@ export const performanceApi = {
   // 根据ID获取绩效记录
   getRecordById: (id: string) => request(`/performance/${id}`),
 
+  // 上传2-7-1末位绩效面谈表
+  uploadInterviewForm: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request(`/performance/${id}/interview-form`, {
+      method: 'POST',
+      body: formData
+    });
+  },
+
   // 经理评分
   submitScore: (data: {
     id: string;

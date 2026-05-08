@@ -20,6 +20,7 @@ ALTER TABLE performance_records
   ADD COLUMN IF NOT EXISTS monthly_star_category VARCHAR(50),
   ADD COLUMN IF NOT EXISTS monthly_star_reason TEXT,
   ADD COLUMN IF NOT EXISTS monthly_star_public BOOLEAN DEFAULT true,
+  ADD COLUMN IF NOT EXISTS interview_form_attachment JSONB,
   ADD COLUMN IF NOT EXISTS employee_issue_tags JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS resource_need_tags JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS improvement_suggestion TEXT,

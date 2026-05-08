@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
 import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -1070,6 +1071,57 @@ export const performanceController = {
       success: true,
       message: `已删除全部绩效记录，共 ${deletedCount} 条，并清理关联待办/通知`,
       data: { deletedCount, deletedTodoCount, deletedNotificationCount }
+    });
+  }),
+
+  uploadInterviewForm: asyncHandler(async (req: Request, res: Response) => {
+    const id = String(req.params.id || '').trim();
+    const file = (req as Request & { file?: Express.Multer.File }).file;
+
+    if (!req.user) {
+      if (file?.path && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
+
+    if (!file) {
+      return res.status(400).json({ success: false, error: '请上传绩效面谈表文件' });
+    }
+
+    const existing = await PerformanceModel.findById(id);
+    if (!existing) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(404).json({ success: false, error: '记录不存在' });
+    }
+
+    if (await AssessmentPublicationModel.isPublished(existing.month)) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(403).json({ success: false, error: '该月份已发布，不能再上传面谈表' });
+    }
+
+    const isPrivileged = req.user.role === 'hr' || req.user.role === 'gm' || req.user.role === 'admin';
+    const isInTeam = isPrivileged
+      ? true
+      : await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);
+    if (!isInTeam) {
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      return res.status(403).json({ success: false, error: '只能为自己负责范围内的员工上传面谈表' });
+    }
+
+    const attachment = {
+      filename: file.filename,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      uploadedBy: req.user.userId,
+      uploadedAt: new Date(),
+      path: file.path,
+    };
+
+    const record = await PerformanceModel.updateInterviewFormAttachment(id, attachment);
+    return res.json({
+      success: true,
+      data: record,
+      message: '绩效面谈表上传成功'
     });
   }),
 

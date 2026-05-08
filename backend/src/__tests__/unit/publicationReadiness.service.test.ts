@@ -15,7 +15,7 @@ const addEmployee = (index: number) => {
   return id;
 };
 
-const addRecord = (employeeId: string, totalScore: number, month = '2026-04') => {
+const addRecord = (employeeId: string, totalScore: number, month = '2026-04', options: { hasInterviewForm?: boolean } = {}) => {
   memoryStore.performanceRecords.set(`rec-${employeeId}-${month}`, {
     id: `rec-${employeeId}-${month}`,
     employeeId,
@@ -32,6 +32,14 @@ const addRecord = (employeeId: string, totalScore: number, month = '2026-04') =>
     totalScore,
     managerComment: '经理评价',
     nextMonthWorkArrangement: '下月安排',
+    interviewFormAttachment: options.hasInterviewForm ? {
+      filename: `${employeeId}-interview.pdf`,
+      originalName: '绩效面谈表.pdf',
+      mimeType: 'application/pdf',
+      size: 1234,
+      uploadedBy: 'm001',
+      uploadedAt: new Date(),
+    } : undefined,
     groupType: 'low',
     status: 'completed',
   } as any);
@@ -80,12 +88,32 @@ describe('validatePublicationReadiness', () => {
     const scores = [1.4, 1.28, 1.2, 1.16, 1.1, 1.06, 1.03, 1.0, 0.96, 0.93, 0.89];
     scores.forEach((score, index) => {
       const employeeId = addEmployee(index + 1);
-      addRecord(employeeId, score);
+      addRecord(employeeId, score, '2026-04', { hasInterviewForm: score < 0.9 });
     });
 
     const result = await validatePublicationReadiness('2026-04');
 
     expect(result.ok).toBe(true);
     expect(result.violations).toHaveLength(0);
+  });
+
+  it('requires interview forms for the bottom 10 percent before publication', async () => {
+    const scores = [1.4, 1.28, 1.2, 1.16, 1.1, 1.06, 1.03, 1.0, 0.96, 0.93, 0.89];
+    scores.forEach((score, index) => {
+      const employeeId = addEmployee(index + 1);
+      addRecord(employeeId, score);
+    });
+
+    const result = await validatePublicationReadiness('2026-04');
+
+    expect(result.ok).toBe(false);
+    expect(result.violations).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'missing_interview_form',
+        unitKey: '工程技术中心/测试部',
+        bottomRequired: 1,
+        missingInterviewCount: 1,
+      }),
+    ]));
   });
 });

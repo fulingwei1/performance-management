@@ -969,12 +969,12 @@ export class SchedulerService {
 
     const readiness = await validatePublicationReadiness(targetMonth);
     if (!readiness.ok) {
-      const incompleteViolations = readiness.violations.filter((violation) => violation.type === 'incomplete');
+      const blockingViolations = readiness.violations.filter((violation) => violation.type !== 'forced_distribution');
       const forcedDistributionViolations = readiness.violations.filter((violation) => violation.type === 'forced_distribution');
       const forceReason = String(options.forceReason || '').trim();
 
       if (
-        incompleteViolations.length > 0
+        blockingViolations.length > 0
         || forcedDistributionViolations.length === 0
         || options.forceDistribution !== true
       ) {

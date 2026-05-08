@@ -29,10 +29,10 @@ export const assessmentPublicationController = {
 
     const readiness = await validatePublicationReadiness(month);
     if (!readiness.ok) {
-      const incompleteViolations = readiness.violations.filter((violation) => violation.type === 'incomplete');
+      const blockingViolations = readiness.violations.filter((violation) => violation.type !== 'forced_distribution');
       const forcedDistributionViolations = readiness.violations.filter((violation) => violation.type === 'forced_distribution');
 
-      if (incompleteViolations.length > 0 || forcedDistributionViolations.length === 0 || forceDistribution !== true) {
+      if (blockingViolations.length > 0 || forcedDistributionViolations.length === 0 || forceDistribution !== true) {
         return res.status(400).json({
           success: false,
           message: formatPublicationReadinessMessage(readiness),

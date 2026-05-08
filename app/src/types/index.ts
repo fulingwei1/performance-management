@@ -221,6 +221,14 @@ export interface PerformanceRecord {
   issueAttributionTags?: string[];
   workloadTags?: string[];
   managerSuggestionTags?: string[];
+  interviewFormAttachment?: {
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    uploadedBy: string;
+    uploadedAt: string;
+  };
   
   // 排名
   departmentRank: number;

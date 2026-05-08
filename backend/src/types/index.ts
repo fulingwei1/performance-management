@@ -41,6 +41,16 @@ export interface MetricScore {
   comment?: string;
 }
 
+export interface PerformanceInterviewFormAttachment {
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: string;
+  uploadedAt: Date | string;
+  path?: string;
+}
+
 // 绩效记录
 export interface PerformanceRecord {
   id: string;
@@ -96,6 +106,7 @@ export interface PerformanceRecord {
   monthlyStarCategory?: string;
   monthlyStarReason?: string;
   monthlyStarPublic?: boolean;
+  interviewFormAttachment?: PerformanceInterviewFormAttachment;
   
   // 分组排名
   groupType: 'high' | 'low';

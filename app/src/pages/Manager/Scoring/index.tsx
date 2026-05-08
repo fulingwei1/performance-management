@@ -93,6 +93,7 @@ export function ScoringManagement({
   const [monthlyStarCategory, setMonthlyStarCategory] = useState('');
   const [monthlyStarReason, setMonthlyStarReason] = useState('');
   const [monthlyStarPublic, setMonthlyStarPublic] = useState(true);
+  const [interviewFormUploading, setInterviewFormUploading] = useState(false);
   const [subordinates, setSubordinates] = useState<any[]>([]);
   const [quarterlySummaries, setQuarterlySummaries] = useState<any[]>([]);
 
@@ -375,6 +376,29 @@ export function ScoringManagement({
       if (user) await fetchTeamRecords(user.id, selectedMonth);
     } else {
       toast.error(usePerformanceStore.getState().error || '评分提交失败');
+    }
+  };
+
+  const handleInterviewFormUpload = async (file: File) => {
+    if (!selectedRecord?.id || String(selectedRecord.id).startsWith('temp-')) {
+      toast.error('请先生成绩效记录后再上传面谈表');
+      return;
+    }
+
+    setInterviewFormUploading(true);
+    try {
+      const response = await performanceApi.uploadInterviewForm(selectedRecord.id, file);
+      if (!response.success) {
+        toast.error(response.message || response.error || '面谈表上传失败');
+        return;
+      }
+      setSelectedRecord(response.data);
+      toast.success('绩效面谈表已上传');
+      if (user) await fetchTeamRecords(user.id, selectedMonth);
+    } catch (error: any) {
+      toast.error(error.message || '面谈表上传失败');
+    } finally {
+      setInterviewFormUploading(false);
     }
   };
   
@@ -693,6 +717,8 @@ export function ScoringManagement({
         setMonthlyStarPublic={setMonthlyStarPublic}
         totalScore={totalScore}
         loading={loading}
+        interviewFormUploading={interviewFormUploading}
+        onInterviewFormUpload={handleInterviewFormUpload}
         onSubmit={handleSubmit}
       />
     </div>
