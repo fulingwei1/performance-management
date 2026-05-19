@@ -196,7 +196,7 @@ INSERT INTO assessment_templates (id, name, description, department_type, is_def
 VALUES
   ('template-sales-001', '销售部门标准模板', '适用于销售岗位的考核模板：业绩导向，70%量化指标+30%行为指标', 'sales', true, 'archived'),
   ('template-engineering-001', '工程技术部门标准模板', '适用于工程技术岗位：项目交付50%+技术能力30%+协作成长20%', 'engineering', true, 'archived'),
-  ('template-manufacturing-001', '生产制造部门标准模板', '适用于生产制造岗位：效率40%+质量安全40%+现场管理20%', 'manufacturing', true, 'archived'),
+  ('template-manufacturing-001', '生产制造部门标准模板', '适用于生产制造岗位：任务交付25%+作业质量30%+工艺规范20%+现场管理15%+团队协作10%', 'manufacturing', true, 'archived'),
   ('template-support-001', '支持部门标准模板', '适用于财务、人事、行政、采购等支持岗位：质量50%+服务30%+能力20%', 'support', true, 'archived')
 ON CONFLICT (id) DO NOTHING;
 
@@ -217,14 +217,11 @@ VALUES
   ('metric-eng-006', 'template-engineering-001', '技术文档完整性', 'DOCUMENTATION', 'performance', 5.00, '技术文档的完整性和规范性', 'qualitative', 6),
   ('metric-eng-007', 'template-engineering-001', '跨部门协作', 'CROSS_TEAM_COLLABORATION', 'collaboration', 10.00, '与其他部门的协作配合', 'qualitative', 7),
   ('metric-eng-008', 'template-engineering-001', '技术分享与培训', 'KNOWLEDGE_SHARING', 'collaboration', 10.00, '技术分享次数和质量', 'quantitative', 8),
-  ('metric-mfg-001', 'template-manufacturing-001', '产量完成率', 'OUTPUT_COMPLETION', 'performance', 20.00, '实际产量/目标产量', 'quantitative', 1),
-  ('metric-mfg-002', 'template-manufacturing-001', '生产效率', 'PRODUCTION_EFFICIENCY', 'performance', 10.00, '单位时间产出', 'quantitative', 2),
-  ('metric-mfg-003', 'template-manufacturing-001', '设备利用率', 'EQUIPMENT_UTILIZATION', 'performance', 10.00, '设备有效运转时间占比', 'quantitative', 3),
-  ('metric-mfg-004', 'template-manufacturing-001', '产品合格率', 'QUALITY_RATE', 'performance', 20.00, '合格产品数/总产品数', 'quantitative', 4),
-  ('metric-mfg-005', 'template-manufacturing-001', '安全事故率', 'SAFETY_INCIDENT_RATE', 'performance', 15.00, '安全事故次数（零事故=满分）', 'quantitative', 5),
-  ('metric-mfg-006', 'template-manufacturing-001', '物料损耗率', 'MATERIAL_LOSS_RATE', 'performance', 5.00, '物料浪费比例', 'quantitative', 6),
-  ('metric-mfg-007', 'template-manufacturing-001', '5S现场管理', '5S_MANAGEMENT', 'behavior', 10.00, '现场整理整顿清扫清洁素养', 'qualitative', 7),
-  ('metric-mfg-008', 'template-manufacturing-001', '团队协作', 'TEAMWORK', 'collaboration', 10.00, '班组协作、互帮互助', 'qualitative', 8),
+  ('metric-mfg-001', 'template-manufacturing-001', '任务完成与交付', 'TASK_DELIVERY', 'performance', 25.00, '按派工/计划要求完成本月任务，不按产量硬指标考核', 'qualitative', 1),
+  ('metric-mfg-002', 'template-manufacturing-001', '作业质量与返工控制', 'WORK_QUALITY_REWORK_CONTROL', 'performance', 30.00, '装配、接线、机加等作业质量，以及错漏、返工和异常控制', 'qualitative', 2),
+  ('metric-mfg-003', 'template-manufacturing-001', '工艺规范执行', 'PROCESS_COMPLIANCE', 'behavior', 20.00, '按图纸、工艺、检验要求规范作业，减少随意操作', 'qualitative', 3),
+  ('metric-mfg-004', 'template-manufacturing-001', '物料管理与现场5S', 'MATERIAL_AND_5S', 'behavior', 15.00, '物料领用、标识、保管、节约意识和现场5S执行', 'qualitative', 4),
+  ('metric-mfg-005', 'template-manufacturing-001', '团队协作与问题反馈', 'TEAMWORK_AND_FEEDBACK', 'collaboration', 10.00, '班组协作、异常及时反馈、跨岗位配合和改善建议', 'qualitative', 5),
   ('metric-sup-001', 'template-support-001', '工作准确率', 'ACCURACY_RATE', 'performance', 25.00, '工作无差错率', 'quantitative', 1),
   ('metric-sup-002', 'template-support-001', '工作及时性', 'TIMELINESS', 'performance', 15.00, '按时完成率', 'quantitative', 2),
   ('metric-sup-003', 'template-support-001', '合规性', 'COMPLIANCE', 'performance', 10.00, '制度执行、无违规', 'qualitative', 3),

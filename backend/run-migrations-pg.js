@@ -37,6 +37,7 @@ const migrationFiles = [
   'migrations/026_fix_ranking_departments_and_metric_templates.sql',
   'migrations/027_fix_employee_manager_and_assessor_integrity.sql',
   'migrations/028_assessment_publication_exemptions.sql',
+  'migrations/029_update_manufacturing_template_metrics.sql',
 ];
 
 async function runMigrations() {

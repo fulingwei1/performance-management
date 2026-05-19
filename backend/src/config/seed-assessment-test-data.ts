@@ -99,12 +99,11 @@ function generateRandomScores(departmentType: string) {
       { metricName: '团队协作', metricCode: 'TEAMWORK', weight: 5 }
     ],
     manufacturing: [
-      { metricName: '产量完成率', metricCode: 'OUTPUT_COMPLETION', weight: 25 },
-      { metricName: '产品合格率', metricCode: 'QUALITY_RATE', weight: 25 },
-      { metricName: '安全事故次数', metricCode: 'SAFETY_INCIDENTS', weight: 20 },
-      { metricName: '设备利用率', metricCode: 'EQUIPMENT_UTILIZATION', weight: 15 },
-      { metricName: '成本控制', metricCode: 'COST_CONTROL', weight: 10 },
-      { metricName: '5S管理', metricCode: 'FIVE_S', weight: 5 }
+      { metricName: '任务完成与交付', metricCode: 'TASK_DELIVERY', weight: 25 },
+      { metricName: '作业质量与返工控制', metricCode: 'WORK_QUALITY_REWORK_CONTROL', weight: 30 },
+      { metricName: '工艺规范执行', metricCode: 'PROCESS_COMPLIANCE', weight: 20 },
+      { metricName: '物料管理与现场5S', metricCode: 'MATERIAL_AND_5S', weight: 15 },
+      { metricName: '团队协作与问题反馈', metricCode: 'TEAMWORK_AND_FEEDBACK', weight: 10 }
     ],
     support: [
       { metricName: '工作准确率', metricCode: 'ACCURACY_RATE', weight: 25 },
