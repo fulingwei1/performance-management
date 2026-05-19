@@ -195,7 +195,7 @@ CREATE INDEX IF NOT EXISTS idx_level_template_rules_template ON level_template_r
 INSERT INTO assessment_templates (id, name, description, department_type, is_default, status)
 VALUES
   ('template-sales-001', '销售部门标准模板', '适用于销售岗位的考核模板：业绩导向，70%量化指标+30%行为指标', 'sales', true, 'archived'),
-  ('template-engineering-001', '工程技术部门标准模板', '适用于工程技术岗位：项目交付50%+技术能力30%+协作成长20%', 'engineering', true, 'archived'),
+  ('template-engineering-001', '工程技术部门标准模板', '适用于工程技术岗位：任务交付25%+质量验收20%+技术方案25%+文档沉淀15%+协作改进15%', 'engineering', true, 'archived'),
   ('template-manufacturing-001', '生产制造部门标准模板', '适用于生产制造岗位：任务交付25%+作业质量30%+工艺规范20%+现场管理15%+团队协作10%', 'manufacturing', true, 'archived'),
   ('template-support-001', '支持部门标准模板', '适用于财务、人事、行政、采购等支持岗位：质量50%+服务30%+能力20%', 'support', true, 'archived')
 ON CONFLICT (id) DO NOTHING;
@@ -209,14 +209,11 @@ VALUES
   ('metric-sales-005', 'template-sales-001', '客户关系维护', 'CLIENT_RELATIONSHIP', 'behavior', 10.00, '客户拜访频率、关系维护质量', 'qualitative', 5),
   ('metric-sales-006', 'template-sales-001', '团队协作', 'TEAMWORK', 'collaboration', 10.00, '跨部门协作、信息共享', 'qualitative', 6),
   ('metric-sales-007', 'template-sales-001', '专业能力提升', 'SKILL_DEVELOPMENT', 'behavior', 10.00, '产品知识、销售技巧提升', 'qualitative', 7),
-  ('metric-eng-001', 'template-engineering-001', '项目按时完成率', 'PROJECT_ONTIME_RATE', 'performance', 20.00, '按时交付项目数/总项目数', 'quantitative', 1),
-  ('metric-eng-002', 'template-engineering-001', '一次验收通过率', 'FIRST_PASS_RATE', 'performance', 15.00, '一次验收通过数/总验收数', 'quantitative', 2),
-  ('metric-eng-003', 'template-engineering-001', '技术方案合理性', 'SOLUTION_QUALITY', 'performance', 15.00, '方案设计质量、可行性评估', 'qualitative', 3),
-  ('metric-eng-004', 'template-engineering-001', '技术难题解决能力', 'PROBLEM_SOLVING', 'innovation', 15.00, '攻克技术难题的能力', 'qualitative', 4),
-  ('metric-eng-005', 'template-engineering-001', '创新贡献', 'INNOVATION', 'innovation', 10.00, '专利、技术改进提案', 'quantitative', 5),
-  ('metric-eng-006', 'template-engineering-001', '技术文档完整性', 'DOCUMENTATION', 'performance', 5.00, '技术文档的完整性和规范性', 'qualitative', 6),
-  ('metric-eng-007', 'template-engineering-001', '跨部门协作', 'CROSS_TEAM_COLLABORATION', 'collaboration', 10.00, '与其他部门的协作配合', 'qualitative', 7),
-  ('metric-eng-008', 'template-engineering-001', '技术分享与培训', 'KNOWLEDGE_SHARING', 'collaboration', 10.00, '技术分享次数和质量', 'quantitative', 8),
+  ('metric-eng-001', 'template-engineering-001', '任务交付与进度', 'TASK_DELIVERY_PROGRESS', 'performance', 25.00, '按项目计划、任务安排完成交付，关注进度响应和闭环', 'qualitative', 1),
+  ('metric-eng-002', 'template-engineering-001', '质量验收与问题控制', 'QUALITY_ACCEPTANCE_CONTROL', 'performance', 20.00, '交付成果质量、验收通过情况、问题和返工控制', 'qualitative', 2),
+  ('metric-eng-003', 'template-engineering-001', '技术方案与问题解决', 'SOLUTION_AND_PROBLEM_SOLVING', 'innovation', 25.00, '方案合理性、技术难点处理、异常定位和改进能力', 'qualitative', 3),
+  ('metric-eng-004', 'template-engineering-001', '文档规范与知识沉淀', 'DOCUMENTATION_KNOWLEDGE', 'performance', 15.00, '图纸、代码、测试记录、技术文档和经验沉淀的完整规范性', 'qualitative', 4),
+  ('metric-eng-005', 'template-engineering-001', '协作沟通与主动改进', 'COLLABORATION_IMPROVEMENT', 'collaboration', 15.00, '跨部门协作、沟通反馈、主动改进和技术分享', 'qualitative', 5),
   ('metric-mfg-001', 'template-manufacturing-001', '任务完成与交付', 'TASK_DELIVERY', 'performance', 25.00, '按派工/计划要求完成本月任务，不按产量硬指标考核', 'qualitative', 1),
   ('metric-mfg-002', 'template-manufacturing-001', '作业质量与返工控制', 'WORK_QUALITY_REWORK_CONTROL', 'performance', 30.00, '装配、接线、机加等作业质量，以及错漏、返工和异常控制', 'qualitative', 2),
   ('metric-mfg-003', 'template-manufacturing-001', '工艺规范执行', 'PROCESS_COMPLIANCE', 'behavior', 20.00, '按图纸、工艺、检验要求规范作业，减少随意操作', 'qualitative', 3),

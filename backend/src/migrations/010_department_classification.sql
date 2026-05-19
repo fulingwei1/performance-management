@@ -160,7 +160,7 @@ INSERT INTO assessment_templates (id, name, description, department_type, is_def
 VALUES (
     'template-engineering-001',
     '工程技术部门标准模板',
-    '适用于工程技术岗位：项目交付50%+技术能力30%+协作成长20%',
+    '适用于工程技术岗位：任务交付25%+质量验收20%+技术方案25%+文档沉淀15%+协作改进15%',
     'engineering',
     true
 ) ON CONFLICT DO NOTHING;
@@ -168,14 +168,11 @@ VALUES (
 -- 工程模板指标
 INSERT INTO template_metrics (id, template_id, metric_name, metric_code, category, weight, description, evaluation_type, sort_order)
 VALUES 
-    ('metric-eng-001', 'template-engineering-001', '项目按时完成率', 'PROJECT_ONTIME_RATE', 'performance', 20.00, '按时交付项目数/总项目数', 'quantitative', 1),
-    ('metric-eng-002', 'template-engineering-001', '一次验收通过率', 'FIRST_PASS_RATE', 'performance', 15.00, '一次验收通过数/总验收数', 'quantitative', 2),
-    ('metric-eng-003', 'template-engineering-001', '技术方案合理性', 'SOLUTION_QUALITY', 'performance', 15.00, '方案设计质量、可行性评估', 'qualitative', 3),
-    ('metric-eng-004', 'template-engineering-001', '技术难题解决能力', 'PROBLEM_SOLVING', 'innovation', 15.00, '攻克技术难题的能力', 'qualitative', 4),
-    ('metric-eng-005', 'template-engineering-001', '创新贡献', 'INNOVATION', 'innovation', 10.00, '专利、技术改进提案', 'quantitative', 5),
-    ('metric-eng-006', 'template-engineering-001', '技术文档完整性', 'DOCUMENTATION', 'performance', 5.00, '技术文档的完整性和规范性', 'qualitative', 6),
-    ('metric-eng-007', 'template-engineering-001', '跨部门协作', 'CROSS_TEAM_COLLABORATION', 'collaboration', 10.00, '与其他部门的协作配合', 'qualitative', 7),
-    ('metric-eng-008', 'template-engineering-001', '技术分享与培训', 'KNOWLEDGE_SHARING', 'collaboration', 10.00, '技术分享次数和质量', 'quantitative', 8)
+    ('metric-eng-001', 'template-engineering-001', '任务交付与进度', 'TASK_DELIVERY_PROGRESS', 'performance', 25.00, '按项目计划、任务安排完成交付，关注进度响应和闭环', 'qualitative', 1),
+    ('metric-eng-002', 'template-engineering-001', '质量验收与问题控制', 'QUALITY_ACCEPTANCE_CONTROL', 'performance', 20.00, '交付成果质量、验收通过情况、问题和返工控制', 'qualitative', 2),
+    ('metric-eng-003', 'template-engineering-001', '技术方案与问题解决', 'SOLUTION_AND_PROBLEM_SOLVING', 'innovation', 25.00, '方案合理性、技术难点处理、异常定位和改进能力', 'qualitative', 3),
+    ('metric-eng-004', 'template-engineering-001', '文档规范与知识沉淀', 'DOCUMENTATION_KNOWLEDGE', 'performance', 15.00, '图纸、代码、测试记录、技术文档和经验沉淀的完整规范性', 'qualitative', 4),
+    ('metric-eng-005', 'template-engineering-001', '协作沟通与主动改进', 'COLLABORATION_IMPROVEMENT', 'collaboration', 15.00, '跨部门协作、沟通反馈、主动改进和技术分享', 'qualitative', 5)
 ON CONFLICT DO NOTHING;
 
 -- 生产制造部门模板

@@ -90,13 +90,11 @@ function generateRandomScores(departmentType: string) {
       { metricName: '市场拓展能力', metricCode: 'MARKET_EXPANSION', weight: 5 }
     ],
     engineering: [
-      { metricName: '项目按时交付率', metricCode: 'ON_TIME_DELIVERY', weight: 25 },
-      { metricName: '代码质量', metricCode: 'CODE_QUALITY', weight: 20 },
-      { metricName: '技术创新', metricCode: 'INNOVATION', weight: 15 },
-      { metricName: 'Bug修复率', metricCode: 'BUG_FIX_RATE', weight: 15 },
-      { metricName: '文档完整性', metricCode: 'DOCUMENTATION', weight: 10 },
-      { metricName: '技术分享', metricCode: 'KNOWLEDGE_SHARING', weight: 10 },
-      { metricName: '团队协作', metricCode: 'TEAMWORK', weight: 5 }
+      { metricName: '任务交付与进度', metricCode: 'TASK_DELIVERY_PROGRESS', weight: 25 },
+      { metricName: '质量验收与问题控制', metricCode: 'QUALITY_ACCEPTANCE_CONTROL', weight: 20 },
+      { metricName: '技术方案与问题解决', metricCode: 'SOLUTION_AND_PROBLEM_SOLVING', weight: 25 },
+      { metricName: '文档规范与知识沉淀', metricCode: 'DOCUMENTATION_KNOWLEDGE', weight: 15 },
+      { metricName: '协作沟通与主动改进', metricCode: 'COLLABORATION_IMPROVEMENT', weight: 15 }
     ],
     manufacturing: [
       { metricName: '任务完成与交付', metricCode: 'TASK_DELIVERY', weight: 25 },
