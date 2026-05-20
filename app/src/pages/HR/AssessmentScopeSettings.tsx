@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  FileText,
   Save,
   Settings,
   UserRound,
@@ -82,12 +81,6 @@ interface TemplateAssignmentPreview {
   };
   template: TemplateOption | null;
   matchReason: string;
-}
-
-interface SelectedUnitSummary {
-  unitKey: string;
-  unitName: string;
-  employeeCount: number;
 }
 
 const defaultConfig: RankingConfig = {
@@ -349,15 +342,6 @@ export default function AssessmentScopeSettings() {
     [activeEmployeeIds, employees]
   );
   const orgTree = useMemo(() => buildOrgTree(activeEmployees), [activeEmployees]);
-  const orgNodeMap = useMemo(() => {
-    const map = new Map<string, OrgNode>();
-    const visit = (node: OrgNode) => {
-      map.set(node.key, node);
-      node.children.forEach(visit);
-    };
-    orgTree.forEach(visit);
-    return map;
-  }, [orgTree]);
   const templateMap = useMemo(
     () => new Map(templates.map((template) => [template.id, template])),
     [templates]
@@ -373,24 +357,6 @@ export default function AssessmentScopeSettings() {
 
   const participantCount = activeEmployees.filter(isParticipating).length;
   const selectedMarkCount = activeEmployees.filter(isMarked).length;
-  const requiredTemplateUnitKeys = useMemo(
-    () => participation.mode === 'include' ? unique(participation.includedUnitKeys) : [],
-    [participation.includedUnitKeys, participation.mode]
-  );
-  const selectedUnitSummaries = useMemo<SelectedUnitSummary[]>(() => (
-    requiredTemplateUnitKeys.map((unitKey) => {
-      const node = orgNodeMap.get(unitKey);
-      const employeeCount = node ? getNodeEmployees(node).length : 0;
-      return {
-        unitKey,
-        unitName: node?.name || unitKey.split('/').slice(-1)[0] || unitKey,
-        employeeCount,
-      };
-    })
-  ).sort((a, b) => a.unitKey.localeCompare(b.unitKey, 'zh-Hans-CN')), [
-    orgNodeMap,
-    requiredTemplateUnitKeys,
-  ]);
   const selectedTemplateCount = Object.keys(rankingConfig.templateAssignments || {})
     .filter((key) => key.startsWith('employee:')).length;
 
@@ -694,50 +660,6 @@ export default function AssessmentScopeSettings() {
           <Badge variant="outline" className="text-sm">员工模板调整：{selectedTemplateCount} 人</Badge>
         </div>
       </motion.div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4" />
-            已保存配置摘要
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm text-muted-foreground">
-            保存后，这里会展示参与考核的部门。模板不按部门一刀切，而是按员工“部门 + 岗位 + 任职资格等级”自动推荐；需要例外时，在组织树员工行直接调整。
-          </div>
-
-          {participation.mode !== 'include' ? (
-            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              当前是“默认全员参与、勾选不参与”的模式，所以这里不单独展示参与部门。模板仍会按岗位和任职资格等级自动匹配。
-            </div>
-          ) : selectedUnitSummaries.length > 0 ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {selectedUnitSummaries.map((summary) => (
-                  <div key={summary.unitKey} className="rounded-lg border bg-white p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-medium text-gray-900">{summary.unitName}</div>
-                        <div className="mt-1 text-xs text-gray-500">{summary.unitKey}</div>
-                        <div className="mt-1 text-xs text-gray-500">参与人数：{summary.employeeCount} 人</div>
-                      </div>
-                      <Badge variant="outline">按员工自动推荐模板</Badge>
-                    </div>
-                    <div className="mt-3">
-                      <Badge variant="outline" className="text-xs text-blue-700">
-                        员工模板在下方组织树中逐人显示/调整
-                      </Badge>
-                    </div>
-                  </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              当前还没有勾选参与考核的部门。先在下面组织树里勾选要参与考核的部门。
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="pb-3">
