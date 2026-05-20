@@ -161,6 +161,9 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
                 </p>
               </div>
             )}
+            {!result.success && result.message && (
+              <p className="mt-2 text-sm text-red-700">{result.message}</p>
+            )}
             {result.success && result.unresolvedManagers && result.unresolvedManagers.length > 0 && (
               <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p className="text-sm font-medium text-amber-800">直接上级未匹配明细：</p>

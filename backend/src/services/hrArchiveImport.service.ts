@@ -7,6 +7,7 @@ import { cache } from '../config/cache';
 import { syncDepartmentsFromEmployees } from '../config/local-schema';
 import { syncWecomUserIdsForEmployees } from './wecomDirectory.service';
 import { syncPendingPerformanceAssessorsForEmployees } from './performanceAssessorSync.service';
+import logger from '../config/logger';
 
 const JSZip = require('jszip');
 
@@ -519,13 +520,20 @@ export async function importHrArchive(filePath: string) {
     employees.map((employee) => employee.id)
   );
   await syncDepartmentsFromEmployees();
-  const wecomSyncResult = await syncWecomUserIdsForEmployees(
-    employees.map((employee) => ({
-      id: employee.id,
-      name: employee.name,
-      status: employee.status,
-    }))
-  );
+  const employeesForWecomSync = employees.map((employee) => ({
+    id: employee.id,
+    name: employee.name,
+    status: employee.status,
+  }));
+  void syncWecomUserIdsForEmployees(employeesForWecomSync)
+    .then((wecomSyncResult) => {
+      logger.info(
+        `[HRArchiveImport] 企业微信 userid 后台同步完成：更新 ${wecomSyncResult.updated} 人，跳过 ${wecomSyncResult.skipped} 人`
+      );
+    })
+    .catch((error) => {
+      logger.warn(`[HRArchiveImport] 企业微信 userid 后台同步失败：${error?.message || error}`);
+    });
   cache.invalidateByPrefix('employee:');
 
   const activeEmployees = employees.filter((employee) => employee.status === 'active');
@@ -550,7 +558,8 @@ export async function importHrArchive(filePath: string) {
     unresolvedManagers,
     assessorSyncUpdatedRecords: assessorSyncResult.updatedRecords,
     assessorSyncMovedTodos: assessorSyncResult.movedTodos,
-    wecomMappedCount: wecomSyncResult.updated,
+    wecomMappedCount: 0,
+    wecomSyncPending: true,
     departmentCounts,
   };
 }

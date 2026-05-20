@@ -209,10 +209,11 @@ export const importHrArchive = [
       const messageParts = [
         `已导入人事档案：参与考核在职 ${result.assessmentEligibleCount} 人`,
         `离职/非在职 ${result.disabledCount} 人已停用`,
+        result.wecomSyncPending ? '企业微信 userid 已转入后台同步' : '',
       ];
       res.json({
         success: true,
-        message: messageParts.join('，'),
+        message: messageParts.filter(Boolean).join('，'),
         data: result,
       });
     } finally {
