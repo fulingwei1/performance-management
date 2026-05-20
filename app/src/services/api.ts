@@ -436,6 +436,11 @@ export const logApi = {
     page?: number;
     limit?: number;
   }) => request(`/audit-logs${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
+
+  getAutomationLogs: (params?: {
+    page?: number;
+    limit?: number;
+  }) => request(`/automation/logs${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
 };
 
 // 考核结果发布相关API

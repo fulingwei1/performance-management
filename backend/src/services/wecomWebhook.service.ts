@@ -46,8 +46,13 @@ async function getAccessToken(): Promise<string> {
   return cachedToken;
 }
 
-/** 发送应用消息（markdown 格式），touser: @all 或逗号分隔的用户ID */
+/** 发送应用消息（markdown 格式），touser: 企业微信用户ID或逗号分隔用户ID；绩效催办禁止默认 @all */
 export async function sendAppMessage(touser: string, content: string): Promise<boolean> {
+  if (!String(touser || '').trim()) {
+    logger.warn('[Wecom] 未指定精准接收人，跳过推送');
+    return false;
+  }
+
   if (!ENABLED()) {
     logger.debug('[Wecom] 未配置企业微信，跳过推送');
     return false;
@@ -250,13 +255,23 @@ export class WecomWebhookService {
     ].join('\n');
   }
 
-  /** 发送催办提醒（必须传入精准接收人；仅兜底兼容时才使用 @all） */
-  static async sendReminder(params: ReminderParams, touser: string = '@all'): Promise<boolean> {
-    return sendAppMessage(touser, this.buildReminderMarkdown(params));
+  /** 发送催办提醒：必须传入精准接收人，禁止默认 @all，避免发给不参与考核人员 */
+  static async sendReminder(params: ReminderParams, touser?: string): Promise<boolean> {
+    const targetUser = String(touser || '').trim();
+    if (!targetUser || targetUser === '@all') {
+      logger.warn('[Wecom] 催办提醒缺少精准接收人或试图发送 @all，已跳过');
+      return false;
+    }
+    return sendAppMessage(targetUser, this.buildReminderMarkdown(params));
   }
 
-  /** 发送逾期通知（推送给全员） */
-  static async sendOverdue(params: OverdueParams): Promise<boolean> {
+  /** 发送逾期通知：必须传入精准接收人，禁止默认 @all */
+  static async sendOverdue(params: OverdueParams, touser?: string): Promise<boolean> {
+    const targetUser = String(touser || '').trim();
+    if (!targetUser || targetUser === '@all') {
+      logger.warn('[Wecom] 逾期通知缺少精准接收人或试图发送 @all，已跳过');
+      return false;
+    }
     const { cycleName, taskType, deadlineDate, overdueCount, employeeNames } = params;
     const names = employeeNames.length <= 20
       ? employeeNames.join('、')
@@ -275,11 +290,16 @@ export class WecomWebhookService {
       '请相关人员尽快完成，或联系上级/HR协调处理。',
     ].join('\n');
 
-    return sendAppMessage('@all', md);
+    return sendAppMessage(targetUser, md);
   }
 
   /** 发送月度任务生成通知 */
-  static async sendTaskGenerated(params: TaskGeneratedParams, touser: string = '@all'): Promise<boolean> {
+  static async sendTaskGenerated(params: TaskGeneratedParams, touser?: string): Promise<boolean> {
+    const targetUser = String(touser || '').trim();
+    if (!targetUser || targetUser === '@all') {
+      logger.warn('[Wecom] 月度任务生成通知缺少精准接收人或试图发送 @all，已跳过');
+      return false;
+    }
     const { month, totalCount, dueDate, operationGuide } = params;
     const md = [
       '## ✅ 月度绩效任务已生成',
@@ -291,7 +311,7 @@ export class WecomWebhookService {
       operationGuide || '请各位员工及时登录系统完成工作总结填写。',
     ].join('\n');
 
-    return sendAppMessage(touser, md);
+    return sendAppMessage(targetUser, md);
   }
 
   /** 发送结果发布通知 */
