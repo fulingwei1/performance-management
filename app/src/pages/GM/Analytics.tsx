@@ -1,5 +1,5 @@
 /**
- * 总经理绩效看板
+ * 绩效结果分析中心
  * 展示全公司绩效概览、部门横向对比、人才梯队、趋势预警
  */
 
@@ -454,8 +454,8 @@ export function GMAnalytics() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">公司绩效看板</h1>
-          <p className="text-gray-500 mt-1">全局视角 · 部门对比 · 人才洞察</p>
+          <h1 className="text-2xl font-bold text-gray-900">绩效结果分析中心</h1>
+          <p className="text-gray-500 mt-1">全局视角 · 部门对比 · 人才洞察 · 发布风险</p>
         </div>
         <div className="flex items-center gap-3">
           {hasDemoData && (
@@ -504,7 +504,7 @@ export function GMAnalytics() {
           {/* Stats Cards */}
           <ReportSummaryCard
             summary={reportSummary}
-            title="总经理执行摘要"
+            title="绩效结果执行摘要"
             description={`${currentMonth} 公司绩效完成、分布、部门风险与发布检查`}
           />
 

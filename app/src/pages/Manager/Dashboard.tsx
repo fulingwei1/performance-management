@@ -14,6 +14,7 @@ import { TodoSection } from '@/components/dashboard/TodoSection';
 import { toast } from 'sonner';
 import { ScoringManagement } from './Scoring';
 import { ReportSummaryCard, type ReportSummaryData } from '@/components/reports/ReportSummaryCard';
+import { Analytics as PerformanceResultAnalysis } from './Analytics';
 
 interface ParticipationMember {
   employeeId: string;
@@ -125,6 +126,14 @@ export function ManagerDashboard() {
         setMySummaryLoaded(true);
       });
   }, [user, summaryMonth]);
+
+  useEffect(() => {
+    if (searchParams.get('section') !== 'analysis') return;
+    const timer = window.setTimeout(() => {
+      document.getElementById('performance-result-analysis')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchParams]);
 
   // 获取当前月份的绩效记录
   const currentMonthRecords = useMemo(
@@ -352,13 +361,13 @@ export function ManagerDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Link
-                    to="/manager/analytics"
+                  <a
+                    href="#performance-result-analysis"
                     className="inline-flex items-center justify-center gap-1 rounded-md bg-white px-3 py-2 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-100"
                   >
                     查看分析
                     <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  </a>
                 </div>
               </div>
               <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-3">
@@ -394,6 +403,10 @@ export function ManagerDashboard() {
           description={`${currentMonth} 团队完成率、分布和待评分风险`}
           showDepartments={false}
         />
+      </motion.div>
+
+      <motion.div id="performance-result-analysis" variants={itemVariants} className="scroll-mt-6">
+        <PerformanceResultAnalysis embedded analysisMonth={currentMonth} />
       </motion.div>
 
       <motion.div variants={itemVariants}>

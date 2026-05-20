@@ -34,7 +34,12 @@ const TIME_RANGE_OPTIONS = [
   { value: '12', label: '最近12个月' },
 ];
 
-export function Analytics() {
+interface AnalyticsProps {
+  embedded?: boolean;
+  analysisMonth?: string;
+}
+
+export function Analytics({ embedded = false, analysisMonth }: AnalyticsProps = {}) {
   const { user } = useAuthStore();
   const [records, setRecords] = useState<any[]>([]);
   const [subordinates, setSubordinates] = useState<any[]>([]);
@@ -42,7 +47,7 @@ export function Analytics() {
   const [timeRange, setTimeRange] = useState('6');
   const [hasDemoData, setHasDemoData] = useState(false);
 
-  const currentMonth = getDefaultAssessmentMonth();
+  const currentMonth = analysisMonth || getDefaultAssessmentMonth();
   const keywordLabelMap = useMemo(() => {
     const entries = [...(keywordsData.positive || []), ...(keywordsData.negative || [])]
       .map((item: any) => [String(item.id), String(item.text)] as const);
@@ -277,8 +282,10 @@ export function Analytics() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">绩效分析看板</h1>
-          <p className="text-gray-500 mt-1">团队趋势 · 标签画像 · 多维分析</p>
+          <h1 className={embedded ? 'text-xl font-bold text-gray-900' : 'text-2xl font-bold text-gray-900'}>
+            绩效结果分析中心
+          </h1>
+          <p className="text-gray-500 mt-1">团队趋势 · 标签画像 · 多维分析 · 管理建议</p>
         </div>
         <div className="flex items-center gap-3">
           {hasDemoData && (

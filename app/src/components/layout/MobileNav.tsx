@@ -29,17 +29,15 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   ],
   manager: [
     { name: '工作台', path: '/manager/dashboard', icon: HomeIcon },
-    { name: '绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
     { name: '考核模板', path: '/manager/assessment-templates', icon: Cog6ToothIcon },
   ],
   gm: [
-    { name: '绩效看板', path: '/gm/analytics', icon: ChartBarIcon },
+    { name: '绩效结果分析中心', path: '/gm/analytics', icon: ChartBarIcon },
   ],
   hr: [
     { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
     { name: '部门经理工作台', path: '/manager/dashboard', icon: UserGroupIcon },
-    { name: '部门绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
-    { name: '全公司绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
+    { name: '绩效结果分析中心', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
@@ -50,8 +48,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   admin: [
     { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
     { name: '部门经理工作台', path: '/manager/dashboard', icon: UserGroupIcon },
-    { name: '部门绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
-    { name: '全公司绩效看板', path: '/hr/analytics', icon: ChartBarIcon },
+    { name: '绩效结果分析中心', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
     { name: '每月之星', path: '/hr/monthly-stars', icon: StarIcon },
@@ -77,7 +74,6 @@ export const MobileNav: React.FC = () => {
         : role === 'gm' && canManageTeam
       ? [
           { name: '管辖绩效', path: '/manager/dashboard', icon: UserGroupIcon },
-          { name: '管辖绩效看板', path: '/manager/analytics', icon: ChartBarIcon },
           ...roleNavItems.gm,
         ]
       : roleNavItems[role] || roleNavItems.employee;
