@@ -104,7 +104,7 @@ SELECT
   department_type,
   level,
   template_id,
-  'admin',
+  NULL,
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 FROM rule_candidates

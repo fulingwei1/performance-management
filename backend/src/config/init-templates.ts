@@ -559,7 +559,7 @@ async function syncTemplatesToDatabase() {
           id, department_type, level, template_id, set_by, created_at, updated_at
         ) VALUES (
           'rule-sales-intermediate-v2', 'sales', 'intermediate', 'template-sales-inter-001',
-          'admin', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          NULL, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
         ON CONFLICT (department_type, level)
         DO UPDATE SET
