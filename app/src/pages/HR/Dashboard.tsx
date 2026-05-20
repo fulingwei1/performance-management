@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { analyticsApi, performanceApi } from '@/services/api';
+import { analyticsApi, performanceApi, performanceConfigApi } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
@@ -32,6 +32,16 @@ import { TodoSection } from '@/components/dashboard/TodoSection';
 import { todoApi } from '@/services/api';
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
+
+interface RankingConfig {
+  participation: {
+    mode: 'include' | 'exclude';
+    includedUnitKeys: string[];
+    excludedUnitKeys: string[];
+    includedEmployeeIds: string[];
+    excludedEmployeeIds: string[];
+  };
+}
 
 interface ImprovementSuggestionSummary {
   totalCount: number;
@@ -58,6 +68,66 @@ function hasValidManagerRelationship(employee: any, activeEmployeeIds: Set<strin
   return Boolean(managerId && managerId !== employeeId && activeEmployeeIds.has(managerId));
 }
 
+function cleanSegment(value?: string): string {
+  const normalized = String(value || '').trim();
+  return normalized && normalized !== '/' && normalized !== '-' ? normalized : '';
+}
+
+function getEmployeeUnitKey(employee: any): string {
+  const department = cleanSegment(employee.department);
+  const subDepartment = cleanSegment(employee.subDepartment);
+  return department && subDepartment ? `${department}/${subDepartment}` : department || subDepartment;
+}
+
+function matchesConfiguredUnit(unitKey: string, configuredKey: string): boolean {
+  const key = String(configuredKey || '').trim();
+  return Boolean(key && (unitKey === key || unitKey.startsWith(`${key}/`)));
+}
+
+function resolveUnitDecision(
+  unitKey: string,
+  includedUnitKeys: string[],
+  excludedUnitKeys: string[]
+): 'include' | 'exclude' | null {
+  let bestLength = -1;
+  let decision: 'include' | 'exclude' | null = null;
+
+  for (const key of includedUnitKeys || []) {
+    if (matchesConfiguredUnit(unitKey, key) && key.length > bestLength) {
+      bestLength = key.length;
+      decision = 'include';
+    }
+  }
+
+  for (const key of excludedUnitKeys || []) {
+    if (matchesConfiguredUnit(unitKey, key) && key.length >= bestLength) {
+      bestLength = key.length;
+      decision = 'exclude';
+    }
+  }
+
+  return decision;
+}
+
+function isParticipatingEmployee(employee: any, rankingConfig: RankingConfig | null): boolean {
+  if (!rankingConfig) return false;
+  const participation = rankingConfig.participation;
+  const employeeId = String(employee?.id || '').trim();
+  const unitKey = getEmployeeUnitKey(employee);
+
+  if ((participation.excludedEmployeeIds || []).includes(employeeId)) return false;
+  if ((participation.includedEmployeeIds || []).includes(employeeId)) return true;
+
+  const unitDecision = resolveUnitDecision(
+    unitKey,
+    participation.includedUnitKeys || [],
+    participation.excludedUnitKeys || []
+  );
+  if (unitDecision) return unitDecision === 'include';
+
+  return participation.mode !== 'include';
+}
+
 export function HRDashboard() {
   const { user } = useAuthStore();
   const { 
@@ -77,12 +147,19 @@ export function HRDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestionSummary, setSuggestionSummary] = useState<ImprovementSuggestionSummary | null>(null);
   const [reportSummary, setReportSummary] = useState<ReportSummaryData | null>(null);
+  const [rankingConfig, setRankingConfig] = useState<RankingConfig | null>(null);
+  const tableSectionRef = useRef<HTMLDivElement | null>(null);
   const todoRole = user?.role === 'admin' ? 'admin' : 'hr';
   const showSuggestionSummary = user?.role === 'admin' || user?.role === 'hr';
   
   useEffect(() => {
     fetchEmployees();
     fetchAllPerformanceRecords();
+    performanceConfigApi.getRankingConfig()
+      .then((res) => {
+        if (res.success) setRankingConfig(res.data || null);
+      })
+      .catch(() => setRankingConfig(null));
   }, [fetchEmployees, fetchAllPerformanceRecords]);
   
   useEffect(() => {
@@ -110,6 +187,8 @@ export function HRDashboard() {
     );
     const assessableInScopeEmployees = employeesList.filter((employee: any) => {
       if (employee.status && employee.status !== 'active') return false;
+      if (!['employee', 'manager'].includes(String(employee.role || ''))) return false;
+      if (!isParticipatingEmployee(employee, rankingConfig)) return false;
       return hasValidManagerRelationship(employee, activeEmployeeIds);
     });
     const activeCompanyEmployees = employeesList.filter((employee: any) => {
@@ -177,7 +256,7 @@ export function HRDashboard() {
     };
 
     return { deptRecords, stats };
-  }, [employeesList, allPerformanceRecords, currentMonth, statusFilter, sortBy, sortOrder]);
+  }, [employeesList, allPerformanceRecords, currentMonth, statusFilter, sortBy, sortOrder, rankingConfig]);
 
   const filteredDeptRecords = useMemo(() => {
     if (!searchQuery.trim()) return deptRecords;
@@ -276,6 +355,13 @@ export function HRDashboard() {
       setExporting(false);
     }
   };
+
+  const handleStatFilterChange = (filter: 'all' | 'pending' | 'completed') => {
+    setStatusFilter(filter);
+    window.setTimeout(() => {
+      tableSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  };
   
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
@@ -312,7 +398,7 @@ export function HRDashboard() {
       
       {/* Stat Cards */}
       <motion.div variants={itemVariants}>
-        <StatCards stats={stats} activeFilter={statusFilter} onFilterChange={setStatusFilter} />
+        <StatCards stats={stats} activeFilter={statusFilter} onFilterChange={handleStatFilterChange} />
       </motion.div>
 
       <motion.div variants={itemVariants}>
@@ -370,7 +456,7 @@ export function HRDashboard() {
       )}
       
       {/* Department Performance Table */}
-      <motion.div variants={itemVariants}>
+      <motion.div ref={tableSectionRef} variants={itemVariants}>
         <DeptPerformanceTable
           currentMonth={currentMonth}
           deptRecords={filteredDeptRecords}
