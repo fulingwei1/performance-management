@@ -36,6 +36,7 @@ type ExistingEmployee = {
   role: ArchiveEmployee['role'];
   status?: string | null;
   manager_id?: string | null;
+  id_card_last6_hash?: string | null;
 };
 
 type UnresolvedManagerLink = {
@@ -307,7 +308,7 @@ function buildNameIndex(existingEmployees: ExistingEmployee[]): Map<string, Exis
 
 async function loadExistingEmployees(): Promise<ExistingEmployee[]> {
   if (USE_MEMORY_DB) return [];
-  return await query('SELECT id, name, role, status, manager_id FROM employees');
+  return await query('SELECT id, name, role, status, manager_id, id_card_last6_hash FROM employees');
 }
 
 function parseArchiveEmployees(rows: WorksheetRow[], existingEmployees: ExistingEmployee[]): ArchiveEmployee[] {
@@ -417,11 +418,20 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
   return { managerIds, unresolvedManagers };
 }
 
-async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: Map<string, string>) {
+async function upsertArchiveEmployees(
+  employees: ArchiveEmployee[],
+  managerIds: Map<string, string>,
+  existingEmployees: ExistingEmployee[],
+) {
+  const existingById = new Map(existingEmployees.map((employee) => [employee.id, employee]));
+  // password 列仅为兼容旧表结构保留；登录统一校验 id_card_last6_hash。
+  // 旧密码哈希不再每次导入重新生成，避免 500+ 员工上传时被 bcrypt 阻塞到前端超时。
+  const placeholderPasswordHash = await bcrypt.hash('disabled-legacy-password', 10);
+
   for (const employee of employees) {
-    // password 列仅为兼容旧表结构保留；登录统一校验 id_card_last6_hash。
-    const passwordHash = await bcrypt.hash(`disabled-legacy-password-${crypto.randomUUID()}`, 10);
-    const idCardLast6Hash = employee.idCardLast6
+    const existing = existingById.get(employee.id);
+    const shouldCreateIdCardHash = employee.idCardLast6 && !existing?.id_card_last6_hash;
+    const idCardLast6Hash = shouldCreateIdCardHash
       ? await bcrypt.hash(employee.idCardLast6, 10)
       : null;
     const managerId = managerIds.get(employee.id) || null;
@@ -439,7 +449,7 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
         role = EXCLUDED.role,
         level = EXCLUDED.level,
         manager_id = COALESCE(EXCLUDED.manager_id, employees.manager_id),
-        password = EXCLUDED.password,
+        password = employees.password,
         id_card_last6_hash = COALESCE(EXCLUDED.id_card_last6_hash, employees.id_card_last6_hash),
         status = EXCLUDED.status,
         must_change_password = FALSE,
@@ -453,7 +463,7 @@ async function upsertArchiveEmployees(employees: ArchiveEmployee[], managerIds: 
         employee.role,
         employee.level,
         managerId,
-        passwordHash,
+        placeholderPasswordHash,
         idCardLast6Hash,
         employee.status,
         false,
@@ -513,7 +523,7 @@ export async function importHrArchive(filePath: string) {
     return left.status === 'active' ? 1 : -1;
   });
 
-  await upsertArchiveEmployees(upsertOrder, managerIds);
+  await upsertArchiveEmployees(upsertOrder, managerIds, existingEmployees);
   await normalizeEmployeeOrgPaths();
   await disableEmployeesMissingFromArchive(employees.map((employee) => employee.id));
   const assessorSyncResult = await syncPendingPerformanceAssessorsForEmployees(

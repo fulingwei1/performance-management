@@ -59,12 +59,17 @@ const secureDownload = async (url: string, filename: string) => {
   URL.revokeObjectURL(a.href);
 };
 
+type ApiRequestOptions = RequestInit & {
+  timeoutMs?: number;
+};
+
 // 通用请求函数
-export const request = async (url: string, options: RequestInit = {}) => {
+export const request = async (url: string, options: ApiRequestOptions = {}) => {
+  const { timeoutMs: requestTimeoutMs, ...fetchOptions } = options;
   const token = getToken();
-  const isFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const isFormDataBody = typeof FormData !== 'undefined' && fetchOptions.body instanceof FormData;
   const headers: Record<string, string> = {
-    ...options.headers as Record<string, string>
+    ...fetchOptions.headers as Record<string, string>
   };
 
   if (!isFormDataBody) {
@@ -75,9 +80,9 @@ export const request = async (url: string, options: RequestInit = {}) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const method = (options.method || 'GET').toUpperCase();
+  const method = (fetchOptions.method || 'GET').toUpperCase();
   const maxAttempts = method === 'GET' ? 2 : 1;
-  const timeoutMs = Number((import.meta as any).env.VITE_API_TIMEOUT_MS || 15000);
+  const timeoutMs = Number(requestTimeoutMs || (import.meta as any).env.VITE_API_TIMEOUT_MS || 15000);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
@@ -85,9 +90,9 @@ export const request = async (url: string, options: RequestInit = {}) => {
 
     try {
       const response = await fetch(`${API_BASE_URL}${url}`, {
-        ...options,
+        ...fetchOptions,
         headers,
-        signal: options.signal || controller.signal
+        signal: fetchOptions.signal || controller.signal
       });
 
       window.clearTimeout(timeoutId);
@@ -545,12 +550,14 @@ export const dataImportApi = {
     return request('/data-import/employees', {
       method: 'POST',
       body: formData,
+      timeoutMs: 120000,
     });
   },
   importHrArchive: async (formData: FormData) => {
     return request('/data-import/hr-archive', {
       method: 'POST',
       body: formData,
+      timeoutMs: 120000,
     });
   },
 };
