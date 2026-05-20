@@ -260,7 +260,6 @@ export class NotificationModel {
       const performanceRelated =
         link.startsWith('/employee/summary') ||
         link === '/manager/dashboard' ||
-        link === '/manager/scoring' ||
         title.includes('绩效') ||
         title.includes('工作总结') ||
         title.includes('评分') ||
@@ -288,7 +287,7 @@ export class NotificationModel {
     const performancePredicate = `
       (
         link LIKE '/employee/summary%'
-        OR link IN ('/manager/dashboard', '/manager/scoring')
+        OR link = '/manager/dashboard'
         OR title LIKE '%绩效%'
         OR title LIKE '%工作总结%'
         OR title LIKE '%评分%'

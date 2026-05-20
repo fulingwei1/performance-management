@@ -1,3 +1,0 @@
--- Fixed-password seed data was removed for security.
--- Initialize employees through backend/src/config/init-data.ts with INITIAL_EMPLOYEE_TEMP_PASSWORD
--- so imported accounts are marked must_change_password and cannot keep a shared repository password.

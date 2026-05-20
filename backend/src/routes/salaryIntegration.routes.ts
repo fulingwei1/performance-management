@@ -10,9 +10,6 @@ router.use(authenticate);
 // GET /api/integrations/salary/status — 连接配置状态（不暴露密钥）
 router.get('/status', requireRole('hr', 'admin', 'gm'), salaryIntegrationController.getStatus);
 
-// POST /api/salary-integration/salary-forecast — 经理评分时只读查看绩效工资预测
-router.post('/salary-forecast', requireRole('manager', 'hr', 'admin', 'gm'), salaryIntegrationController.getSalaryForecast);
-
 // POST /api/salary-integration/push — 按月/按季度推送绩效
 router.post('/push', requireRole('hr', 'admin'), salaryIntegrationController.pushByPeriod);
 

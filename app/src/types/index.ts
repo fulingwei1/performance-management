@@ -79,97 +79,6 @@ export interface EmployeeArchive extends Employee {
   providentFundNumber?: string;
 }
 
-// 月度任务（由HR上传）
-export interface MonthlyTask {
-  id: string;
-  managerId: string;
-  month: string;
-  tasks: {
-    id: string;
-    name: string;
-    target: string;
-    weight: number;
-    completed: boolean;
-    completionRate: number;
-  }[];
-  uploadedBy: string;
-  uploadedAt: string;
-}
-
-// 临时工作
-export interface TemporaryWork {
-  id: string;
-  managerId: string;
-  month: string;
-  name: string;
-  description: string;
-  completed: boolean;
-  completionRate: number;
-  addedBy: string;
-  addedAt: string;
-}
-
-// 部门人才培养指标
-export interface TalentDevelopment {
-  id: string;
-  managerId: string;
-  quarter: string; // 2025-Q1格式
-  indicators: {
-    trainingSessions: number; // 培训场次
-    employeesTrained: number; // 培训人数
-    promotions: number; // 晋升人数
-    newHires: number; // 新入职人数
-    turnoverRate: number; // 离职率
-    skillAssessments: number; // 技能评估次数
-  };
-  notes: string;
-}
-
-// 经理季度工作总结
-export interface QuarterlySummary {
-  id: string;
-  managerId: string;
-  managerName: string;
-  quarter: string; // 2026-Q1
-  summary: string;
-  nextQuarterPlan: string;
-  status: 'draft' | 'submitted';
-  createdAt: string;
-  updatedAt: string;
-}
-
-// 晋升/加薪申请
-export interface PromotionRequest {
-  id: string;
-  employeeId: string;
-  employeeName?: string;
-  department?: string;
-  subDepartment?: string;
-  employeeLevel?: EmployeeLevel;
-  requesterId: string;
-  requesterName?: string;
-  requesterRole: 'employee' | 'manager';
-  targetLevel: EmployeeLevel;
-  targetPosition: string;
-  raisePercentage: number;
-  performanceSummary: string;
-  skillSummary: string;
-  competencySummary: string;
-  workSummary: string;
-  status: 'draft' | 'submitted' | 'manager_approved' | 'gm_approved' | 'hr_approved' | 'rejected';
-  nextRole?: 'manager' | 'gm' | 'hr' | null;
-  managerComment?: string;
-  gmComment?: string;
-  hrComment?: string;
-  rejectedReason?: string;
-  rejectedByRole?: 'manager' | 'gm' | 'hr';
-  createdAt?: string;
-  updatedAt?: string;
-  managerApprovedAt?: string;
-  gmApprovedAt?: string;
-  hrApprovedAt?: string;
-}
-
 // 绩效考核记录
 export interface PerformanceRecord {
   id: string;
@@ -189,9 +98,6 @@ export interface PerformanceRecord {
   resourceNeedTags?: string[];
   improvementSuggestion?: string;
   suggestionAnonymous?: boolean;
-  
-  // AI建议
-  aiSuggestion?: AISuggestion;
   
   // 经理评分 (L1-L5对应0.5-1.5)
   taskCompletion: number;
@@ -214,6 +120,7 @@ export interface PerformanceRecord {
   managerComment: string;
   nextMonthWorkArrangement: string;
   evaluationKeywords?: string[];
+  scoreEvidence?: string;
   issueTypeTags?: string[];
   highlightTags?: string[];
   workTypeTags?: string[];
@@ -221,6 +128,10 @@ export interface PerformanceRecord {
   issueAttributionTags?: string[];
   workloadTags?: string[];
   managerSuggestionTags?: string[];
+  monthlyStarRecommended?: boolean;
+  monthlyStarCategory?: string;
+  monthlyStarReason?: string;
+  monthlyStarPublic?: boolean;
   interviewFormAttachment?: {
     filename: string;
     originalName: string;
@@ -240,24 +151,11 @@ export interface PerformanceRecord {
   departmentAverageScore?: number | null;
   departmentScoredCount?: number;
   isPublished?: boolean;
+  quarterlySummary?: Record<string, unknown> | null;
   
-  status: 'draft' | 'submitted' | 'scored' | 'completed';
+  status: 'draft' | 'submitted' | 'scored' | 'completed' | 'not_submitted';
   createdAt: string;
   updatedAt: string;
-}
-
-// AI建议
-export interface AISuggestion {
-  summary: string;
-  strengths: string[];
-  improvements: string[];
-  suggestedScores: {
-    taskCompletion: number;
-    initiative: number;
-    projectFeedback: number;
-    qualityImprovement: number;
-  };
-  reasoning: string;
 }
 
 // 评分等级
@@ -362,50 +260,6 @@ export interface Position {
   updatedAt: string;
 }
 
-export interface OrgNode {
-  id: string;
-  name: string;
-  type: 'company' | 'department' | 'position' | 'employee';
-  data: Department | Position | Employee;
-  children?: OrgNode[];
-}
-
-// ============ 考核周期管理 ============
-export type AssessmentCycleType = 'monthly' | 'quarterly' | 'annual' | 'probation';
-
-export interface AssessmentCycle {
-  id: string;
-  name: string;
-  type: AssessmentCycleType;
-  year: number;
-  startDate: string;
-  endDate: string;
-  selfAssessmentDeadline?: string;
-  managerReviewDeadline?: string;
-  hrReviewDeadline?: string;
-  appealDeadline?: string;
-  status: 'draft' | 'active' | 'completed' | 'archived';
-  reminderDays: number;
-  autoSubmit: boolean;
-  excludeHolidays: boolean;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AssessmentCalendar {
-  year: number;
-  cycles: AssessmentCycle[];
-  holidays: Holiday[];
-}
-
-export interface Holiday {
-  id: string;
-  name: string;
-  date: string;
-  type: 'national' | 'company';
-}
-
 // ============ 指标库管理 ============
 export type MetricCategory = 'performance' | 'ability' | 'attitude' | 'bonus' | 'penalty';
 export type MetricType = 'quantitative' | 'qualitative' | 'composite';
@@ -479,105 +333,4 @@ export interface AssessmentTemplate {
   applicableLevels?: string[];
   applicablePositions?: string[];
   priority?: number;
-}
-
-// ============ 考核流程扩展 ============
-export interface AssessmentAppeal {
-  id: string;
-  recordId: string;
-  employeeId: string;
-  employeeName: string;
-  reason: string;
-  evidence?: string;
-  status: 'pending' | 'reviewing' | 'approved' | 'rejected';
-  submitTime: string;
-  reviewerId?: string;
-  reviewerName?: string;
-  reviewComment?: string;
-  reviewTime?: string;
-  originalScore: number;
-  adjustedScore?: number;
-}
-
-// OKR/目标相关类型
-export interface StrategicObjective {
-  id: string;
-  title: string;
-  description?: string;
-  year: number;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
-  createdBy?: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
-  type?: 'company-strategy' | 'company-key-work' | 'department-key-work';
-  department?: string;
-  content?: string;
-  progress?: number;
-}
-
-export type FeedbackCycle = 'weekly' | 'biweekly' | 'monthly' | 'quarterly';
-
-export interface QuarterlyTarget {
-  target: string;
-  weight: number;
-}
-
-export interface MonthlyTargets {
-  M1?: string;
-  M2?: string;
-  M3?: string;
-  M4?: string;
-  M5?: string;
-  M6?: string;
-  M7?: string;
-  M8?: string;
-  M9?: string;
-  M10?: string;
-  M11?: string;
-  M12?: string;
-}
-
-export interface Objective {
-  id: string;
-  title: string;
-  description?: string;
-  level: 'company' | 'department' | 'individual';
-  parentId?: string;
-  strategicObjectiveId?: string;
-  department?: string;
-  ownerId?: string;
-  year: number;
-  quarter?: string;
-  weight: number;
-  progress: number;
-  status: 'draft' | 'active' | 'completed' | 'cancelled';
-  startDate?: Date | string;
-  endDate?: Date | string;
-  feedbackCycle?: FeedbackCycle;
-  targetValue?: string;
-  quarterlyTargets?: {
-    Q1: QuarterlyTarget;
-    Q2: QuarterlyTarget;
-    Q3: QuarterlyTarget;
-    Q4: QuarterlyTarget;
-  };
-  monthlyTargets?: MonthlyTargets;
-  employeeConfirmedAt?: Date | string;
-  employeeFeedback?: string;
-}
-
-export interface KeyResult {
-  id: string;
-  objectiveId: string;
-  title: string;
-  metricType: 'number' | 'percentage' | 'boolean' | 'currency';
-  targetValue?: number;
-  currentValue: number;
-  unit?: string;
-  weight: number;
-  progress: number;
-  status: 'not_started' | 'in_progress' | 'completed' | 'at_risk';
-  dueDate?: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
 }

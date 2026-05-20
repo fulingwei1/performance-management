@@ -3,8 +3,7 @@
  * 提供完整的CRUD操作模拟
  */
 
-import { Employee, PerformanceRecord, Department, Position, AssessmentCycle, Holiday, PerformanceMetric, MetricTemplate, PromotionRequest, QuarterlySummary, PerformanceContract, MonthlyReport, PerformanceInterview, Attachment, BonusConfig, BonusResult, GoalProgress, Appeal } from '../types';
-import { AIUsageLog } from '../models/aiUsageLog.model';
+import { Employee, PerformanceRecord, Department } from '../types';
 import { Notification } from '../models/notification.model';
 import logger from './logger';
 
@@ -12,27 +11,7 @@ import logger from './logger';
 interface MemoryStore {
   employees: Map<string, Employee>;
   performanceRecords: Map<string, PerformanceRecord>;
-  quarterlySummaries: Map<string, QuarterlySummary>;
-  promotionRequests: Map<string, PromotionRequest>;
   departments: Map<string, Department>;
-  positions: Map<string, Position>;
-  assessmentCycles: Map<string, AssessmentCycle>;
-  holidays: Map<string, Holiday>;
-  performanceMetrics: Map<string, PerformanceMetric>;
-  metricTemplates: Map<string, MetricTemplate>;
-  strategicObjectives: Map<string, any>;
-  objectives: Map<string, any>;
-  keyResults: Map<string, any>;
-  kpiAssignments: Map<string, any>;
-  performanceContracts: Map<string, PerformanceContract>;
-  monthlyReports: Map<string, MonthlyReport>;
-  performanceInterviews: Map<string, PerformanceInterview>;
-  attachments: Map<string, Attachment>;
-  bonusConfig: Map<string, BonusConfig>;
-  bonusResults: Map<string, BonusResult>;
-  goalProgress?: Map<string, GoalProgress>;
-  aiUsageLogs: Map<string, AIUsageLog>;
-  appeals?: Map<string, Appeal>;
   notifications?: Map<string, Notification>;
   todos?: Map<string, any>;
   assessmentTemplates?: Map<string, any>;
@@ -50,27 +29,7 @@ interface MemoryStore {
 export const memoryStore: MemoryStore = {
   employees: new Map(),
   performanceRecords: new Map(),
-  quarterlySummaries: new Map(),
-  promotionRequests: new Map(),
   departments: new Map(),
-  positions: new Map(),
-  assessmentCycles: new Map(),
-  holidays: new Map(),
-  performanceMetrics: new Map(),
-  metricTemplates: new Map(),
-  strategicObjectives: new Map(),
-  objectives: new Map(),
-  keyResults: new Map(),
-  kpiAssignments: new Map(),
-  performanceContracts: new Map(),
-  monthlyReports: new Map(),
-  performanceInterviews: new Map(),
-  attachments: new Map(),
-  bonusConfig: new Map(),
-  bonusResults: new Map(),
-  goalProgress: new Map(),
-  aiUsageLogs: new Map(),
-  appeals: new Map(),
   notifications: new Map(),
 
   assessmentTemplates: new Map(),
@@ -180,98 +139,10 @@ const performanceRecordOperations = {
   },
 };
 
-// 经理季度总结数据操作
-const quarterlySummaryOperations = {
-  findById: (id: string): QuarterlySummary | undefined => {
-    return memoryStore.quarterlySummaries.get(id);
-  },
-
-  findByManagerId: (managerId: string): QuarterlySummary[] => {
-    return Array.from(memoryStore.quarterlySummaries.values())
-      .filter(summary => summary.managerId === managerId)
-      .sort((a, b) => {
-        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-        return dateB - dateA;
-      });
-  },
-
-  findAll: (): QuarterlySummary[] => {
-    return Array.from(memoryStore.quarterlySummaries.values());
-  },
-
-  create: (summary: QuarterlySummary): QuarterlySummary => {
-    memoryStore.quarterlySummaries.set(summary.id, summary);
-    return summary;
-  },
-
-  update: (id: string, updates: Partial<QuarterlySummary>): QuarterlySummary | undefined => {
-    const existing = memoryStore.quarterlySummaries.get(id);
-    if (!existing) return undefined;
-    const updated = { ...existing, ...updates, updatedAt: new Date() };
-    memoryStore.quarterlySummaries.set(id, updated as QuarterlySummary);
-    return updated as QuarterlySummary;
-  },
-
-  delete: (id: string): boolean => {
-    return memoryStore.quarterlySummaries.delete(id);
-  },
-};
-
-// 晋升/加薪申请数据操作
-const promotionRequestOperations = {
-  findById: (id: string): PromotionRequest | undefined => {
-    return memoryStore.promotionRequests.get(id);
-  },
-
-  findByEmployeeId: (employeeId: string): PromotionRequest[] => {
-    return Array.from(memoryStore.promotionRequests.values())
-      .filter(req => req.employeeId === employeeId)
-      .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-  },
-
-  findByRequesterId: (requesterId: string): PromotionRequest[] => {
-    return Array.from(memoryStore.promotionRequests.values())
-      .filter(req => req.requesterId === requesterId)
-      .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-      });
-  },
-
-  findAll: (): PromotionRequest[] => {
-    return Array.from(memoryStore.promotionRequests.values());
-  },
-
-  create: (request: PromotionRequest): PromotionRequest => {
-    memoryStore.promotionRequests.set(request.id, request);
-    return request;
-  },
-
-  update: (id: string, updates: Partial<PromotionRequest>): PromotionRequest | undefined => {
-    const existing = memoryStore.promotionRequests.get(id);
-    if (!existing) return undefined;
-    const updated = { ...existing, ...updates, updatedAt: new Date() };
-    memoryStore.promotionRequests.set(id, updated as PromotionRequest);
-    return updated as PromotionRequest;
-  },
-
-  delete: (id: string): boolean => {
-    return memoryStore.promotionRequests.delete(id);
-  },
-};
-
 // 内存数据库接口
 export const memoryDB = {
   employees: employeeOperations,
   performanceRecords: performanceRecordOperations,
-  quarterlySummaries: quarterlySummaryOperations,
-  promotionRequests: promotionRequestOperations,
 };
 
 // 初始化内存数据库
@@ -339,28 +210,7 @@ export const initMemoryDB = (): void => {
   // 清空现有数据
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
-  memoryStore.quarterlySummaries.clear();
-  memoryStore.promotionRequests.clear();
   memoryStore.departments.clear();
-  memoryStore.positions.clear();
-  memoryStore.assessmentCycles.clear();
-  memoryStore.holidays.clear();
-  memoryStore.performanceMetrics.clear();
-  memoryStore.metricTemplates.clear();
-  memoryStore.strategicObjectives.clear();
-  memoryStore.objectives.clear();
-  memoryStore.keyResults.clear();
-  memoryStore.kpiAssignments.clear();
-  memoryStore.performanceContracts.clear();
-  memoryStore.monthlyReports.clear();
-  memoryStore.performanceInterviews.clear();
-
-  memoryStore.attachments.clear();
-  memoryStore.bonusConfig.clear();
-  memoryStore.bonusResults.clear();
-  memoryStore.goalProgress?.clear();
-  memoryStore.aiUsageLogs.clear();
-
   // 初始化默认部门
   const defaultDepts: Department[] = [
     { id: 'dept-1', name: '总公司', code: 'HQ', sortOrder: 0, status: 'active' },
@@ -371,21 +221,6 @@ export const initMemoryDB = (): void => {
   ];
   defaultDepts.forEach(d => memoryStore.departments.set(d.id, d));
 
-  // 初始化默认奖金配置
-  memoryStore.bonusConfig.set('default', {
-    id: 'default',
-    rules: [
-      { grade: 'A+', coefficient: 2.0, label: '卓越', minScore: 95 },
-      { grade: 'A', coefficient: 1.5, label: '优秀', minScore: 85 },
-      { grade: 'B+', coefficient: 1.2, label: '良好', minScore: 75 },
-      { grade: 'B', coefficient: 1.0, label: '合格', minScore: 60 },
-      { grade: 'C', coefficient: 0.5, label: '待改进', minScore: 40 },
-      { grade: 'D', coefficient: 0, label: '不合格', minScore: 0 },
-    ],
-    updatedBy: 'system',
-    updatedAt: new Date().toISOString(),
-  });
-  
   logger.info('✅ 内存数据库已初始化');
 };
 
@@ -393,72 +228,18 @@ export const initMemoryDB = (): void => {
 export const clearMemoryDB = (): void => {
   memoryStore.employees.clear();
   memoryStore.performanceRecords.clear();
-  memoryStore.quarterlySummaries.clear();
-  memoryStore.promotionRequests.clear();
   memoryStore.departments.clear();
-  memoryStore.positions.clear();
-  memoryStore.assessmentCycles.clear();
-  memoryStore.holidays.clear();
-  memoryStore.performanceMetrics.clear();
-  memoryStore.metricTemplates.clear();
-  memoryStore.strategicObjectives.clear();
-  memoryStore.objectives.clear();
-  memoryStore.keyResults.clear();
-  memoryStore.kpiAssignments.clear();
-  memoryStore.performanceContracts.clear();
-  memoryStore.monthlyReports.clear();
-  memoryStore.performanceInterviews.clear();
-
-  memoryStore.attachments.clear();
-  memoryStore.bonusConfig.clear();
-  memoryStore.bonusResults.clear();
-  memoryStore.goalProgress?.clear();
-  memoryStore.aiUsageLogs.clear();
 };
 
 // 获取统计信息
 export const getMemoryDBStats = (): { 
   employees: number; 
   performanceRecords: number; 
-  quarterlySummaries: number;
-  promotionRequests: number;
   departments: number;
-  positions: number;
-  assessmentCycles: number;
-  holidays: number;
-  performanceMetrics: number;
-  metricTemplates: number;
-  strategicObjectives: number;
-  objectives: number;
-  keyResults: number;
-  kpiAssignments: number;
-  performanceContracts: number;
-  monthlyReports: number;
-  performanceInterviews: number;
-  attachments: number;
-  bonusConfig: number;
-  bonusResults: number;
 } => {
   return {
     employees: memoryStore.employees.size,
     performanceRecords: memoryStore.performanceRecords.size,
-    quarterlySummaries: memoryStore.quarterlySummaries.size,
-    promotionRequests: memoryStore.promotionRequests.size,
     departments: memoryStore.departments.size,
-    positions: memoryStore.positions.size,
-    assessmentCycles: memoryStore.assessmentCycles.size,
-    holidays: memoryStore.holidays.size,
-    performanceMetrics: memoryStore.performanceMetrics.size,
-    metricTemplates: memoryStore.metricTemplates.size,
-    strategicObjectives: memoryStore.strategicObjectives.size,
-    objectives: memoryStore.objectives.size,
-    keyResults: memoryStore.keyResults.size,
-    kpiAssignments: memoryStore.kpiAssignments.size,
-    performanceContracts: memoryStore.performanceContracts.size,
-    monthlyReports: memoryStore.monthlyReports.size,
-    performanceInterviews: memoryStore.performanceInterviews.size,
-    attachments: memoryStore.attachments.size,
-    bonusConfig: memoryStore.bonusConfig.size,
-    bonusResults: memoryStore.bonusResults.size,
   };
 };

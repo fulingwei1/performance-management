@@ -12,8 +12,6 @@ router.post('/generate', employeeQuarterlyController.generate);
 
 // GET /api/employee-quarterly/my — 查看自己的季度汇总
 router.get('/my', employeeQuarterlyController.getMyQuarterly);
-// 兼容前端/历史测试里的 mine 命名
-router.get('/mine', employeeQuarterlyController.getMyQuarterly);
 
 // GET /api/employee-quarterly/team — 查看当前经理负责员工的季度汇总
 router.get('/team', requireManagerCapability, employeeQuarterlyController.getTeamQuarterly);

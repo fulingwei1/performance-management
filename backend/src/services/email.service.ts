@@ -87,11 +87,7 @@ const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/
 const DEFAULT_OPERATION_GUIDE = '点击处理链接进入系统，根据页面待办提示完成任务。';
 const TASK_TYPE_LABELS: Record<string, string> = {
   work_summary: '工作总结',
-  manager_review: '经理评审',
-  manager_scoring: '经理评分',
-  hr_review: 'HR评审',
-  appeal_review: '申诉处理',
-  goal_approval: '目标审批',
+  performance_review: '绩效评分',
 };
 
 // ============================================================
@@ -104,7 +100,7 @@ function getTaskLabel(taskType: string): string {
 
 function getOperationGuide(taskType: string): string {
   if (taskType === 'work_summary') return EMPLOYEE_SUMMARY_OPERATION_GUIDE;
-  if (taskType === 'manager_scoring' || taskType === 'manager_review') return MANAGER_SCORING_OPERATION_GUIDE;
+  if (taskType === 'performance_review') return MANAGER_SCORING_OPERATION_GUIDE;
   return DEFAULT_OPERATION_GUIDE;
 }
 
@@ -217,10 +213,7 @@ function overdueNoticeHtml(
 ): string {
   const typeLabel: Record<string, string> = {
     work_summary: '工作总结',
-    manager_review: '经理评审',
-    hr_review: 'HR评审',
-    appeal_review: '申诉处理',
-    goal_approval: '目标审批',
+    performance_review: '绩效评分',
   };
   const label = typeLabel[taskType] || taskType;
 
@@ -241,10 +234,7 @@ function overdueNoticeText(
 ): string {
   const typeLabel: Record<string, string> = {
     work_summary: '工作总结',
-    manager_review: '经理评审',
-    hr_review: 'HR评审',
-    appeal_review: '申诉处理',
-    goal_approval: '目标审批',
+    performance_review: '绩效评分',
   };
   const label = typeLabel[taskType] || taskType;
 

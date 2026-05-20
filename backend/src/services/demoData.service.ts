@@ -173,6 +173,16 @@ function buildDemoRecord(employee: Employee, assessorId: string, month: string, 
     monthlyStarCategory: totalScore >= 1.32 ? '协作之星' : '',
     monthlyStarReason: totalScore >= 1.32 ? `${DEMO_MARKER} 演示数据：跨部门协作表现突出。` : '',
     monthlyStarPublic: true,
+    interviewFormAttachment: totalScore < scoreLevelThresholds.L3
+      ? {
+        filename: `${DEMO_PREFIX}${employee.id}-${month}-interview.pdf`,
+        originalName: `${employee.name}-${month}-绩效面谈表.pdf`,
+        mimeType: 'application/pdf',
+        size: 1024,
+        uploadedBy: assessorId,
+        uploadedAt: new Date(`${month}-07T18:30:00+08:00`),
+      }
+      : undefined,
     groupType: groupTypeForLevel(employee.level),
     groupRank: 0,
     crossDeptRank: 0,

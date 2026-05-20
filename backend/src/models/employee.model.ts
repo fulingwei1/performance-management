@@ -22,7 +22,7 @@ function normalizeManagerId(value: unknown): string {
 }
 
 export class EmployeeModel {
-  // 根据ID查找员工（MySQL + optional read cache）
+  // 根据ID查找员工（PostgreSQL + optional read cache）
   static async findById(id: string): Promise<EmployeeWithPassword | null> {
     if (USE_MEMORY_DB) {
       return memoryDB.employees.findById(id) as EmployeeWithPassword | null;
@@ -48,7 +48,7 @@ export class EmployeeModel {
     return row;
   }
 
-  // 根据姓名查找员工（MySQL + optional read cache）
+  // 根据姓名查找员工（PostgreSQL + optional read cache）
   static async findByName(name: string): Promise<EmployeeWithPassword | null> {
     if (USE_MEMORY_DB) {
       const matches = memoryDB.employees.findAll().filter((employee: any) => employee.name === name);

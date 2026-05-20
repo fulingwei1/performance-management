@@ -491,7 +491,7 @@ export class SchedulerService {
             title: `评分${employeeRecord.employeeName}${month}月绩效`,
             description: `${employeeRecord.employeeName}已提交${month}月工作总结，请完成绩效评分。`,
             dueDate: employeeRecord.deadline ? new Date(employeeRecord.deadline) : undefined,
-            link: `/manager/scoring?month=${month}`,
+            link: `/manager/dashboard?month=${month}`,
             relatedId,
           });
           todoCount++;
@@ -514,7 +514,7 @@ export class SchedulerService {
         try {
           await EmailService.sendDeadlineReminder(
             group.manager.email, group.manager.name, `${month}月绩效打分`,
-            'manager_scoring', deadlineDate || `${daysLeft}天后`, '/manager/dashboard'
+            'performance_review', deadlineDate || `${daysLeft}天后`, '/manager/dashboard'
           );
           emailCount++;
         } catch (e) {

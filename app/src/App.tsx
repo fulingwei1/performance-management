@@ -20,7 +20,6 @@ const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
 const LogManagement = lazy(() => import('@/pages/HR/LogManagement'));
 const HRSatisfactionSurvey = lazy(() => import('@/pages/HR/SatisfactionSurvey'));
-const MobileDemo = lazy(() => import('@/pages/MobileDemo').then((module) => ({ default: module.MobileDemo })));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 
 const ROLE_HOME: Record<string, string> = {
@@ -42,50 +41,6 @@ function getHomeForUser(user: any): string {
   }
   return ROLE_HOME[user.role] || '/employee/dashboard';
 }
-
-const DISABLED_FEATURE_PATHS = [
-  '/notifications',
-  '/employee/assignments',
-  '/employee/goal-planning',
-  '/employee/goal-setting',
-  '/employee/goal-confirmation',
-  '/employee/goal-progress',
-  '/manager/goal-approval',
-  '/manager/goal-dashboard',
-  '/manager/goal-setting',
-  '/manager/goal-progress',
-  '/gm/goal-setting',
-  '/gm/goal-progress',
-  '/hr/goal-setting',
-  '/hr/goal-progress',
-  '/admin/goal-setting',
-  '/admin/goal-progress',
-  '/employee/appeals',
-  '/employee/kpi',
-  '/employee/monthly-report',
-  '/employee/unified-assessment',
-  '/manager/unified-assessment',
-  '/manager/review-reports',
-  '/manager/differentiated-scoring',
-  '/manager/quarterly-summary',
-  '/manager/interviews',
-  '/manager/interview-plans',
-  '/manager/interview-records',
-  '/manager/appeals',
-  '/hr/appeals',
-  '/hr/department-tree',
-  '/hr/organization-chart',
-  '/employee/peer-review',
-  '/manager/peer-review-management',
-  '/hr/data-management',
-  '/hr/department-classification',
-  '/hr/peer-review-management',
-  '/hr/performance-ranking-config',
-  '/hr/task-freeze',
-  '/hr/template-assignment-rules',
-  '/admin/assessment-publication',
-  '/admin/scoring',
-];
 
 // Protected layout wrapper: checks auth + role, renders <Layout><Outlet /></Layout>
 function ProtectedLayout({ allowedRoles }: { allowedRoles: Array<'employee' | 'manager' | 'gm' | 'hr' | 'admin'> }) {
@@ -135,31 +90,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
   return <>{children}</>;
-}
-
-function MobileDemoRoute() {
-  const { user } = useAuthStore();
-  return (
-    <Layout role={(user?.role || 'employee') as any}>
-      <MobileDemo />
-    </Layout>
-  );
-}
-
-function DisabledFeatureRedirect() {
-  const { isAuthenticated, user } = useAuthStore();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Navigate to={getHomeForUser(user)} replace />;
-}
-
-function RedirectToManagerDashboard() {
-  const location = useLocation();
-  const search = location.search || '';
-  return <Navigate to={`/manager/dashboard${search}`} replace />;
 }
 
 // Wrapper: fetch employee info from route params for performance history
@@ -227,29 +157,9 @@ function App() {
         {/* Login */}
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         
-        {/* Mobile Demo - accessible to all authenticated users */}
-        <Route path="/mobile-demo" element={
-          <ProtectedRoute>
-            <MobileDemoRoute />
-          </ProtectedRoute>
-        } />
-
-        {DISABLED_FEATURE_PATHS.map((path) => (
-          <Route
-            key={path}
-            path={path}
-            element={
-              <ProtectedRoute>
-                <DisabledFeatureRedirect />
-              </ProtectedRoute>
-            }
-          />
-        ))}
-
         {/* Employee routes */}
         <Route element={<ProtectedLayout allowedRoles={['employee']} />}>
           <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
-          <Route path="/employee/scores" element={<Navigate to="/employee/dashboard" replace />} />
         </Route>
 
         {/* 参与考核人员月度总结：入口按 canSubmitSelfSummary 能力控制，路由本身允许已登录角色进入并在页面内兜底提示 */}
@@ -257,62 +167,31 @@ function App() {
           <Route path="/employee/summary" element={<WorkSummary />} />
         </Route>
 
-        {/* 半年度满意度调查已内嵌到月度总结流程，旧地址统一回工作台 */}
-        <Route element={<ProtectedLayout allowedRoles={['employee', 'manager', 'gm', 'hr', 'admin']} />}>
-          <Route path="/employee/satisfaction-survey" element={<Navigate to="/employee/dashboard" replace />} />
-        </Route>
-
         {/* Manager routes */}
         <Route element={<ProtectedLayout allowedRoles={['manager', 'gm']} />}>
           <Route path="/manager/dashboard" element={<ManagerDashboard />} />
           <Route path="/manager/team" element={<TeamList />} />
-          <Route path="/manager/scoring" element={<RedirectToManagerDashboard />} />
-          <Route path="/manager/template-config" element={<Navigate to="/manager/dashboard" replace />} />
-          <Route path="/manager/template-assignment" element={<Navigate to="/manager/dashboard" replace />} />
-          <Route path="/manager/assessment-templates" element={<Navigate to="/manager/dashboard" replace />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
         </Route>
 
         {/* GM routes */}
         <Route element={<ProtectedLayout allowedRoles={['gm']} />}>
-          <Route path="/gm/dashboard" element={<Navigate to="/gm/analytics" replace />} />
-          <Route path="/gm/scoring" element={<Navigate to="/gm/analytics" replace />} />
           <Route path="/gm/analytics" element={<GMAnalytics />} />
-          <Route path="/gm/data-export" element={<Navigate to="/gm/analytics" replace />} />
         </Route>
 
         {/* HR routes */}
         <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
           <Route path="/hr/dashboard" element={<HRDashboard />} />
-          <Route path="/hr/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/analytics" element={<GMAnalytics />} />
           <Route path="/hr/data-io" element={<DataImportExport />} />
-          <Route path="/hr/user-management" element={<Navigate to="/hr/data-io" replace />} />
-          <Route path="/hr/data-import" element={<Navigate to="/hr/data-io" replace />} />
-          <Route path="/hr/assessment-export" element={<Navigate to="/hr/data-io" replace />} />
           <Route path="/hr/assessment-config" element={<AssessmentConfig />} />
           <Route path="/hr/assessment-scope" element={<AssessmentConfig defaultTab="scope" />} />
           <Route path="/hr/assessment-templates" element={<AssessmentConfig defaultTab="templates" />} />
           <Route path="/hr/monthly-stars" element={<MonthlyStars />} />
           <Route path="/hr/satisfaction-survey" element={<HRSatisfactionSurvey />} />
-          <Route path="/hr/metric-library" element={<Navigate to="/hr/assessment-config" replace />} />
           <Route path="/hr/monthly-automation" element={<MonthlyAutomation />} />
           <Route path="/hr/logs" element={<LogManagement />} />
-        </Route>
-
-        <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
-          <Route path="/hr/assessment-publication" element={<Navigate to="/hr/monthly-automation" replace />} />
-        </Route>
-
-        {/* HR/Admin merged routes */}
-        <Route element={<ProtectedLayout allowedRoles={['hr', 'admin']} />}>
-          <Route path="/admin/dashboard" element={<Navigate to="/hr/dashboard" replace />} />
-          <Route path="/admin/user-management" element={<Navigate to="/hr/data-io" replace />} />
-          <Route path="/admin/system-settings" element={<Navigate to="/hr/assessment-config" replace />} />
-          <Route path="/admin/analytics" element={<Navigate to="/hr/analytics" replace />} />
-          <Route path="/admin/data-export" element={<Navigate to="/hr/data-io" replace />} />
-          <Route path="/admin/logs" element={<Navigate to="/hr/logs" replace />} />
         </Route>
 
         {/* Default redirects */}

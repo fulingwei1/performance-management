@@ -1,13 +1,13 @@
 # ATE绩效管理系统后端 API
 
-基于 Node.js + Express + TypeScript + MySQL 开发的 RESTful API 服务。
+基于 Node.js + Express + TypeScript + PostgreSQL 开发的 RESTful API 服务。
 
 ## 技术栈
 
 - **框架**: Express.js
 - **语言**: TypeScript
-- **数据库**: MySQL
-- **ORM**: 原生 SQL (mysql2)
+- **数据库**: PostgreSQL
+- **ORM**: 原生 SQL (pg)
 - **认证**: JWT
 - **密码加密**: bcryptjs
 
@@ -16,8 +16,7 @@
 ```
 src/
 ├── config/          # 配置文件
-│   ├── database.ts  # 数据库连接
-│   └── init-db.sql  # 数据库初始化脚本
+│   └── database.ts  # 数据库连接
 ├── controllers/     # 控制器
 │   ├── auth.controller.ts
 │   ├── employee.controller.ts
@@ -61,11 +60,7 @@ PORT=3001
 NODE_ENV=development
 
 # 数据库配置
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=performance_db
-DB_USER=root
-DB_PASSWORD=your_password
+DATABASE_URL=postgresql://performance_user:performance123@localhost:5432/performance_db
 
 # JWT配置
 JWT_SECRET=your_jwt_secret_key_here
@@ -75,11 +70,11 @@ JWT_EXPIRES_IN=7d
 ### 3. 初始化数据库
 
 ```bash
-# 登录MySQL
-mysql -u root -p
+# 启动本地 PostgreSQL
+npm run db:local:up
 
-# 执行初始化脚本
-source src/config/init-db.sql
+# 执行 PostgreSQL 初始化脚本
+npm run db:migrate:local
 ```
 
 ### 4. 启动服务器

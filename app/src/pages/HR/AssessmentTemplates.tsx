@@ -87,6 +87,7 @@ interface Metric {
   weight: number;
   category: string;
   evaluationType: 'quantitative' | 'qualitative';
+  sortOrder?: number;
 }
 
 interface Template {

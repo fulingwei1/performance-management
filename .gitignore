@@ -28,6 +28,9 @@ lerna-debug.log*
 *.pid
 .run/
 .artifacts/
+.omo/
+dogfood-output/
+logs/
 uat_reports/
 backend/dev.db
 

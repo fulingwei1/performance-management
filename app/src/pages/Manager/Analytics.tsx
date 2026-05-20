@@ -44,7 +44,8 @@ export function Analytics() {
 
   const currentMonth = getDefaultAssessmentMonth();
   const keywordLabelMap = useMemo(() => {
-    const entries = [...(keywordsData.positive || []), ...(keywordsData.negative || [])].map((item: any) => [item.id, item.text]);
+    const entries = [...(keywordsData.positive || []), ...(keywordsData.negative || [])]
+      .map((item: any) => [String(item.id), String(item.text)] as const);
     return new Map<string, string>(entries);
   }, []);
 

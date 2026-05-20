@@ -61,7 +61,7 @@ BEGIN
 
     UPDATE assessment_templates
     SET applicable_positions = ARRAY['销售经理','大客户经理','营销中心总监']::TEXT[],
-        applicable_levels = ARRAY['manager','senior']::TEXT[],
+        applicable_levels = ARRAY['manager']::TEXT[],
         applicable_roles = ARRAY['manager']::TEXT[],
         priority = 60,
         updated_at = CURRENT_TIMESTAMP
@@ -73,7 +73,7 @@ WITH rule_candidates(department_type, level, template_id) AS (
   VALUES
     ('sales', 'assistant', 'template-sales-junior-001'),
     ('sales', 'junior', 'template-sales-junior-001'),
-    ('sales', 'intermediate', 'template-sales-junior-001'),
+    ('sales', 'intermediate', 'template-sales-inter-001'),
     ('sales', 'senior', 'template-sales-senior-001'),
     ('sales', 'manager', 'template-sales-mgr-001'),
 

@@ -254,6 +254,14 @@ describe('SchedulerService monthly performance task generation', () => {
         totalScore: 1,
         managerComment: '稳定完成任务',
         nextMonthWorkArrangement: '继续跟进任务',
+        interviewFormAttachment: {
+          filename: `test-interview-${employeeId}-${month}.pdf`,
+          originalName: `${employeeId}-${month}-绩效面谈表.pdf`,
+          mimeType: 'application/pdf',
+          size: 1024,
+          uploadedBy: 'hr001',
+          uploadedAt: new Date('2026-05-07T18:30:00+08:00').toISOString(),
+        },
         groupType: 'low',
         status: 'completed',
       } as any);
@@ -268,7 +276,7 @@ describe('SchedulerService monthly performance task generation', () => {
 
     const published = await SchedulerService.autoPublishPreviousMonth(new Date('2026-05-08T08:00:00+08:00'), {
       forceDistribution: true,
-      forceReason: '演示数据分布特殊，HR确认允许豁免并保留记录',
+      forceReason: '部门阶段性分布特殊，HR确认允许豁免并保留记录',
       publishedBy: 'hr001',
     });
 

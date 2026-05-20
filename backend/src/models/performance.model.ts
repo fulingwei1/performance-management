@@ -747,7 +747,6 @@ export class PerformanceModel {
     if (USE_MEMORY_DB) {
       const count = memoryStore.performanceRecords.size;
       memoryStore.performanceRecords.clear();
-      memoryStore.quarterlySummaries.clear();
       return count;
     }
 
@@ -759,9 +758,7 @@ export class PerformanceModel {
 
   private static async deleteAllDerivedQuarterlySummaries(): Promise<number> {
     if (USE_MEMORY_DB) {
-      const count = memoryStore.quarterlySummaries.size;
-      memoryStore.quarterlySummaries.clear();
-      return count;
+      return 0;
     }
 
     const result = await query('DELETE FROM employee_quarterly_summaries', []) as unknown as { affectedRows: number };
@@ -782,19 +779,7 @@ export class PerformanceModel {
     if (uniqueEmployeeIds.length === 0 || quarters.length === 0) return 0;
 
     if (USE_MEMORY_DB) {
-      let count = 0;
-      for (const [id, summary] of memoryStore.quarterlySummaries.entries()) {
-        const summaryEmployeeId = (summary as any).employeeId || (summary as any).employee_id;
-        const summaryYear = Number((summary as any).year);
-        const summaryQuarter = Number((summary as any).quarter);
-        const matchesEmployee = uniqueEmployeeIds.includes(summaryEmployeeId);
-        const matchesQuarter = quarters.some((item) => item.year === summaryYear && item.quarter === summaryQuarter);
-        if (matchesEmployee && matchesQuarter) {
-          memoryStore.quarterlySummaries.delete(id);
-          count++;
-        }
-      }
-      return count;
+      return 0;
     }
 
     let deleted = 0;

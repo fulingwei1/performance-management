@@ -92,14 +92,12 @@ export function GMAnalytics() {
       .catch(() => setReportSummary(null));
   }, [user, currentMonth]);
 
-  // 清除模拟数据
   const handleClearDemo = async () => {
     try {
       const res = await performanceApi.clearDemoData();
       if (res.success) {
         toast.success(res.message);
         setHasDemoData(false);
-        // 重新获取数据
         const recordsRes = await performanceApi.getAllRecords(parseInt(timeRange));
         if (recordsRes.success) setRecords(recordsRes.data);
       }
@@ -792,7 +790,6 @@ export function GMAnalytics() {
             potentialStars={talentData.potentialStars}
           />
 
-          {/* 模拟数据管理 */}
           {hasDemoData && (
             <Card className="border-orange-200 bg-orange-50/50">
               <CardContent className="py-4">
@@ -810,6 +807,7 @@ export function GMAnalytics() {
               </CardContent>
             </Card>
           )}
+
         </>
       )}
     </div>

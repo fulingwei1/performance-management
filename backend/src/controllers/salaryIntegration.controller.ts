@@ -25,27 +25,6 @@ export const salaryIntegrationController = {
   }),
 
   /**
-   * POST /api/salary-integration/salary-forecast
-   * 经理评分时只读查看绩效工资预测，不暴露完整薪资字段。
-   */
-  getSalaryForecast: asyncHandler(async (req: Request, res: Response) => {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: '未认证' });
-    }
-
-    const authorizedPayload = await SalaryIntegrationService.buildAuthorizedForecastPayload(req.body, req.user);
-    if (!authorizedPayload.success || !authorizedPayload.payload) {
-      return res.status(authorizedPayload.status || 400).json({
-        success: false,
-        message: authorizedPayload.message,
-      });
-    }
-
-    const result = await SalaryIntegrationService.fetchSalaryForecast(authorizedPayload.payload);
-    res.json(result);
-  }),
-
-  /**
    * POST /api/salary-integration/push
    * 管理员选择按月或按季度推送绩效到薪资系统
    */

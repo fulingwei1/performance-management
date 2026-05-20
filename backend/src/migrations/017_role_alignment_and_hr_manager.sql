@@ -38,15 +38,10 @@ BEGIN
   IF hr_manager_id IS NOT NULL AND old_admin_id IS NOT NULL THEN
     FOR fk_record IN
       SELECT * FROM (VALUES
-        ('appeals', 'hr_id'),
-        ('employee_template_bindings', 'set_by'),
         ('employee_transfers', 'created_by'),
         ('level_template_rules', 'set_by'),
         ('monthly_assessment_publications', 'published_by'),
-        ('notifications', 'user_id'),
-        ('objective_adjustments', 'adjusted_by'),
-        ('strategic_objectives', 'approved_by'),
-        ('strategic_objectives', 'approver_id')
+        ('notifications', 'user_id')
       ) AS fk(table_name, column_name)
       WHERE EXISTS (
         SELECT 1

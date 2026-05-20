@@ -792,7 +792,10 @@ export class AssessmentTemplateModel {
           const positions = template.applicablePositions || [];
           const levelCandidates = this.getLevelCandidates(emp);
 
-          if (emp.position && positions.includes(emp.position)) {
+          const positionCandidates = this.getPositionCandidates(emp).map(this.normalizeMatchValue);
+          const normalizedTemplatePositions = positions.map(this.normalizeMatchValue);
+
+          if (positionCandidates.length > 0 && positions.length > 0 && positionCandidates.some(candidate => normalizedTemplatePositions.includes(candidate))) {
             score += 80;
             reasons.push(`岗位匹配: ${emp.position}`);
             if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
@@ -809,7 +812,7 @@ export class AssessmentTemplateModel {
             reasons.push(`角色匹配: ${emp.role}`);
           }
 
-          if (score === 0 && this.getDepartmentType(emp.department) === template.departmentType) {
+          if (score === 0 && template.isDefault && this.getDepartmentType(emp.department) === template.departmentType) {
             score = 20;
             reasons.push(`部门类型兜底: ${template.departmentType}`);
           }

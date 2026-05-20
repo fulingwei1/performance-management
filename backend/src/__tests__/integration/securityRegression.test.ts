@@ -19,11 +19,11 @@ describe('Security regression API checks', () => {
     });
   });
 
-  it('blocks ordinary employees from reading another employee analytics trend', async () => {
+  it('blocks ordinary employees from reading protected analytics summaries', async () => {
     const token = await TestHelper.getAuthToken('employee');
 
     const response = await request(app)
-      .get('/api/analytics/performance-trend?employeeId=m011')
+      .get('/api/analytics/report-summary?month=2099-01')
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(403);
@@ -501,103 +501,21 @@ describe('Security regression API checks', () => {
     ]);
   });
 
-  it('keeps assessment cycles and department list endpoints available', async () => {
-    const token = await TestHelper.getAuthToken('employee');
+  it('keeps assessment config endpoints available', async () => {
     const hrToken = await TestHelper.getAuthToken('hr');
 
-    const cycles = await request(app)
-      .get('/api/cycles')
-      .set('Authorization', `Bearer ${token}`);
-    const departments = await request(app)
-      .get('/api/departments')
-      .set('Authorization', `Bearer ${token}`);
-    const templateBindings = await request(app)
-      .get('/api/template-bindings')
+    const rankingConfig = await request(app)
+      .get('/api/performance-config/ranking')
       .set('Authorization', `Bearer ${hrToken}`);
 
-    expect(cycles.status).toBe(200);
-    expect(cycles.body).toMatchObject({ success: true });
-    expect(Array.isArray(cycles.body.data)).toBe(true);
-    expect(departments.status).toBe(200);
-    expect(departments.body).toMatchObject({ success: true });
-    expect(Array.isArray(departments.body.data)).toBe(true);
-    expect(templateBindings.status).toBe(200);
-    expect(templateBindings.body).toMatchObject({ success: true });
-    expect(Array.isArray(templateBindings.body.data)).toBe(true);
+    expect(rankingConfig.status).toBe(200);
+    expect(rankingConfig.body).toMatchObject({ success: true });
+    expect(rankingConfig.body.data).toHaveProperty('participation');
   });
 
-  it('deduplicates repeated departments in organization APIs', async () => {
-    const token = await TestHelper.getAuthToken('employee');
-    const parentA = {
-      id: 'dept-dup-parent-a',
-      name: '重复部门测试',
-      code: 'DUP-A',
-      sortOrder: 9000,
-      status: 'active',
-      createdAt: new Date('2026-01-01').toISOString(),
-      updatedAt: new Date('2026-01-01').toISOString(),
-    } as any;
-    const parentB = {
-      ...parentA,
-      id: 'dept-dup-parent-b',
-      code: 'DUP-B',
-      sortOrder: 9001,
-      createdAt: new Date('2026-02-01').toISOString(),
-    } as any;
-    const childUnderDuplicateParent = {
-      id: 'dept-dup-child-b',
-      name: '重复子部门测试',
-      code: 'DUP-C',
-      parentId: parentB.id,
-      sortOrder: 9002,
-      status: 'active',
-      createdAt: new Date('2026-02-02').toISOString(),
-      updatedAt: new Date('2026-02-02').toISOString(),
-    } as any;
-
-    memoryStore.departments.set(parentA.id, parentA);
-    memoryStore.departments.set(parentB.id, parentB);
-    memoryStore.departments.set(childUnderDuplicateParent.id, childUnderDuplicateParent);
-
-    try {
-      const flat = await request(app)
-        .get('/api/organization/departments')
-        .set('Authorization', `Bearer ${token}`);
-
-      expect(flat.status).toBe(200);
-      const duplicateParents = flat.body.data.filter((dept: any) => dept.name === '重复部门测试');
-      expect(duplicateParents).toHaveLength(1);
-
-      const tree = await request(app)
-        .get('/api/organization/departments/tree')
-        .set('Authorization', `Bearer ${token}`);
-      expect(tree.status).toBe(200);
-      const root = tree.body.data.find((dept: any) => dept.name === '重复部门测试');
-      expect(root?.children?.some((dept: any) => dept.name === '重复子部门测试')).toBe(true);
-    } finally {
-      memoryStore.departments.delete(parentA.id);
-      memoryStore.departments.delete(parentB.id);
-      memoryStore.departments.delete(childUnderDuplicateParent.id);
-    }
-  });
-
-  it('keeps AI, quarterly summary, salary status, automation trigger and metric template endpoints available', async () => {
+  it('keeps salary status, automation trigger and employee quarterly endpoints available', async () => {
     const employeeToken = await TestHelper.getAuthToken('employee');
     const hrToken = await TestHelper.getAuthToken('hr');
-
-    const aiSuggestions = await request(app)
-      .get('/api/ai/suggestions')
-      .set('Authorization', `Bearer ${employeeToken}`);
-    expect(aiSuggestions.status).toBe(200);
-    expect(aiSuggestions.body.success).toBe(true);
-    expect(aiSuggestions.body.data.length).toBeGreaterThan(0);
-
-    const quarterlySummaries = await request(app)
-      .get('/api/quarterly-summaries')
-      .set('Authorization', `Bearer ${hrToken}`);
-    expect(quarterlySummaries.status).toBe(200);
-    expect(quarterlySummaries.body.success).toBe(true);
-    expect(Array.isArray(quarterlySummaries.body.data)).toBe(true);
 
     const salaryStatus = await request(app)
       .get('/api/integrations/salary/status')
@@ -606,31 +524,19 @@ describe('Security regression API checks', () => {
     expect(salaryStatus.body).toMatchObject({ success: true });
     expect(JSON.stringify(salaryStatus.body)).not.toContain('SALARY_SYSTEM_PUSH_TOKEN');
 
-    const metricTemplates = await request(app)
-      .get('/api/metrics/templates')
-      .set('Authorization', `Bearer ${hrToken}`);
-    expect(metricTemplates.status).toBe(200);
-    expect(metricTemplates.body.success).toBe(true);
-    expect(metricTemplates.body.data.length).toBeGreaterThan(0);
-
     const trigger = await request(app)
-      .post('/api/automation/trigger/generate-monthly-tasks')
+      .post('/api/automation/generate-monthly-tasks')
       .set('Authorization', `Bearer ${hrToken}`)
       .send({ month: '2099-05' });
     expect(trigger.status).not.toBe(404);
     expect(trigger.body.message).not.toBe('接口不存在');
-  });
 
-  it('keeps the employee quarterly mine alias available for the frontend', async () => {
-    const employeeToken = await TestHelper.getAuthToken('employee');
-
-    const response = await request(app)
-      .get('/api/employee-quarterly/mine')
+    const employeeQuarterly = await request(app)
+      .get('/api/employee-quarterly/my')
       .set('Authorization', `Bearer ${employeeToken}`);
-
-    expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(Array.isArray(response.body.data)).toBe(true);
+    expect(employeeQuarterly.status).toBe(200);
+    expect(employeeQuarterly.body.success).toBe(true);
+    expect(Array.isArray(employeeQuarterly.body.data)).toBe(true);
   });
 
   it('rejects invalid manager assignments and supports employee pagination', async () => {
@@ -670,17 +576,11 @@ describe('Security regression API checks', () => {
     expect(response.body.success).toBe(false);
   });
 
-  it('keeps stats alias and satisfaction survey response alias available', async () => {
+  it('keeps satisfaction survey response alias available', async () => {
     jest.useFakeTimers().setSystemTime(new Date(2099, 6, 2, 10));
     try {
       const hrToken = await TestHelper.getAuthToken('hr');
       const employeeToken = await TestHelper.getAuthToken('employee');
-
-      const stats = await request(app)
-        .get('/api/stats/2099-01')
-        .set('Authorization', `Bearer ${hrToken}`);
-      expect(stats.status).toBe(200);
-      expect(stats.body.success).toBe(true);
 
       const ensuredSurvey = await request(app)
         .post('/api/satisfaction-surveys/current/ensure')
@@ -807,28 +707,20 @@ describe('Security regression API checks', () => {
 
 
 
-  it('keeps new API aliases and settings list available', async () => {
-    const employeeToken = await TestHelper.getAuthToken('employee');
+  it('keeps current export and config APIs available', async () => {
     const hrToken = await TestHelper.getAuthToken('hr');
 
-    const activeCycle = await request(app)
-      .get('/api/assessment-cycles/active')
-      .set('Authorization', `Bearer ${employeeToken}`);
-    expect(activeCycle.status).toBe(200);
-    expect(activeCycle.body).toMatchObject({ success: true });
-
-    const settings = await request(app)
-      .get('/api/settings')
+    const rankingConfig = await request(app)
+      .get('/api/performance-config/ranking')
       .set('Authorization', `Bearer ${hrToken}`);
-    expect(settings.status).toBe(200);
-    expect(settings.body).toMatchObject({ success: true });
-    expect(settings.body.data).toHaveProperty('assessmentScope');
+    expect(rankingConfig.status).toBe(200);
+    expect(rankingConfig.body).toMatchObject({ success: true });
 
-    const exportAlias = await request(app)
-      .get('/api/performance/export?month=2099-05')
+    const currentExport = await request(app)
+      .get('/api/assessment-export/monthly-assessments?month=2099-05')
       .set('Authorization', `Bearer ${hrToken}`);
-    expect(exportAlias.status).not.toBe(404);
-    expect(exportAlias.body?.message).not.toBe('接口不存在');
+    expect(currentExport.status).not.toBe(404);
+    expect(currentExport.body?.message).not.toBe('接口不存在');
   });
 
   it('sanitizes unsafe HTML submitted in employee summaries and suggestions', async () => {
@@ -962,24 +854,6 @@ describe('Security regression API checks', () => {
     }
   });
 
-  it('returns 400 for incomplete manager-comment AI payloads instead of crashing', async () => {
-    const managerToken = await TestHelper.getAuthToken('manager');
-
-    const response = await request(app)
-      .post('/api/ai/manager-comment')
-      .set('Authorization', `Bearer ${managerToken}`)
-      .send({
-        employeeName: '测试员工',
-        employeeLevel: '初级工程师',
-        department: '工程技术中心',
-        selfSummary: '完成本月工作',
-      });
-
-    expect(response.status).toBe(400);
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toContain('scores.');
-  });
-
   it('keeps data-import employee upload route registered', async () => {
     const hrToken = await TestHelper.getAuthToken('hr');
 
@@ -1029,7 +903,7 @@ describe('Security regression API checks', () => {
     }
   });
 
-  it('returns assessment-scope from the active performance ranking config', async () => {
+  it('returns participation config from the active performance ranking config', async () => {
     const hrToken = await TestHelper.getAuthToken('hr');
     const systemSettings = memoryStore.systemSettings!;
     const originalRankingConfig = systemSettings.get('performance_ranking_config');
@@ -1059,15 +933,12 @@ describe('Security regression API checks', () => {
 
     try {
       const response = await request(app)
-        .get('/api/settings/assessment-scope')
+        .get('/api/performance-config/ranking')
         .set('Authorization', `Bearer ${hrToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.data).toMatchObject({
-        source: 'performance_ranking_config',
+      expect(response.body.data.participation).toMatchObject({
         mode: 'include',
-        rootDepts: ['工程技术中心'],
-        subDeptsByRoot: { 制造中心: ['装配部'] },
         includedUnitKeys: ['工程技术中心', '制造中心/装配部'],
       });
     } finally {

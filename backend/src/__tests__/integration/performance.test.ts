@@ -276,7 +276,7 @@ describe('Performance API', () => {
         employeeId: 'm011',
         type: 'performance_review',
         status: 'pending',
-        link: `/manager/scoring?month=${month}`,
+        link: `/manager/dashboard?month=${month}`,
       });
     });
 
@@ -422,7 +422,7 @@ describe('Performance API', () => {
         employeeId: 'm011',
         type: 'performance_review',
         title: '评分周欢欢2024-03月绩效',
-        link: '/manager/scoring?month=2024-03',
+        link: '/manager/dashboard?month=2024-03',
         relatedId: reviewRelatedId,
       });
       const workSummaryTodo = await TodoModel.create({

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import { resolveGroupType } from '@/lib/config';
+import type { EmployeeLevel } from '@/types';
 
 export interface DeptRecord {
   rootDepartment: string;
@@ -156,11 +157,11 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                                       : <span className="text-gray-400">--</span>}
                                   </TableCell>
                                   <TableCell className="text-xs text-center">
-                                    {resolveGroupType(emp.record?.groupType, emp.level) ? (
+                                    {resolveGroupType(emp.record?.groupType, emp.level as EmployeeLevel) ? (
                                       <Badge className={cn("text-[10px]",
-                                        resolveGroupType(emp.record?.groupType, emp.level) === 'high' ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
+                                        resolveGroupType(emp.record?.groupType, emp.level as EmployeeLevel) === 'high' ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
                                       )}>
-                                        {resolveGroupType(emp.record?.groupType, emp.level) === 'high' ? '高分组' : '低分组'}
+                                        {resolveGroupType(emp.record?.groupType, emp.level as EmployeeLevel) === 'high' ? '高分组' : '低分组'}
                                       </Badge>
                                     ) : <span className="text-gray-400">—</span>}
                                   </TableCell>

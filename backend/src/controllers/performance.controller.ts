@@ -61,7 +61,7 @@ const normalizeImprovementSuggestionText = (input: unknown): string => {
   return NO_IMPROVEMENT_SUGGESTION_TEXTS.has(compact) ? '' : text;
 };
 
-const managerScoringLink = (month: string): string => `/manager/scoring?month=${encodeURIComponent(month)}`;
+const managerScoringLink = (month: string): string => `/manager/dashboard?month=${encodeURIComponent(month)}`;
 
 function hideUnpublishedScore(record: any): any {
   if (!record) return record;

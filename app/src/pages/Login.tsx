@@ -44,7 +44,7 @@ export function Login() {
         manager: canManageTeam ? '/manager/dashboard' : '/employee/dashboard',
         gm: '/gm/analytics',
         hr: '/hr/dashboard',
-        admin: '/admin/dashboard',
+        admin: '/hr/dashboard',
       };
       const relationshipHome = (role === 'employee' || role === 'manager') && canManageTeam
         ? '/manager/dashboard'

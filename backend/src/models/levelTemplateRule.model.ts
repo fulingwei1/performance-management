@@ -136,7 +136,7 @@ export class LevelTemplateRuleModel {
 
   /**
    * ★ 核心：解析员工的最终模板
-   * 优先级：个人绑定 > 精确组织单元覆盖 > 部门×层级规则 > 自动匹配 > 上级组织单元覆盖兜底 > 默认兜底
+   * 优先级：精确组织单元覆盖 > 部门×层级规则 > 自动匹配 > 上级组织单元覆盖兜底 > 默认兜底
    *
    * 注意：考核范围里勾选“工程技术中心/制造中心”只是确定谁参与考核，不应把整个中心都锁死到一个模板。
    * 只有精确选到员工所在组织单元的模板才算强覆盖；父级覆盖只在没有岗位/层级模板可匹配时兜底。
@@ -144,7 +144,7 @@ export class LevelTemplateRuleModel {
   static async resolveTemplate(employeeId: string): Promise<{
     templateId: string;
     templateName: string;
-    source: 'personal_binding' | 'unit_config' | 'level_rule' | 'auto_match' | 'default';
+    source: 'unit_config' | 'level_rule' | 'auto_match' | 'default';
     departmentType: string;
     level: string;
   }> {
@@ -162,29 +162,7 @@ export class LevelTemplateRuleModel {
       subDepartment: employee.sub_department || employee.subDepartment,
     });
 
-    // 2. 优先查个人绑定
-    const bindingResult = await query(
-      'SELECT * FROM employee_template_bindings WHERE employee_id = $1',
-      [employeeId]
-    );
-    if (bindingResult.length > 0) {
-      const tplResult = await query(
-        `SELECT id, name FROM assessment_templates
-         WHERE id = $1 AND status = 'active'`,
-        [bindingResult[0].template_id]
-      );
-      if (tplResult.length > 0) {
-        return {
-          templateId: tplResult[0].id,
-          templateName: tplResult[0].name,
-          source: 'personal_binding',
-          departmentType,
-          level
-        };
-      }
-    }
-
-    // 3. 查精确组织单元指定模板（不继承父级，避免把整个中心锁成一个模板）
+    // 2. 查精确组织单元指定模板（不继承父级，避免把整个中心锁成一个模板）
     const rankingConfig = await getPerformanceRankingConfig();
     const exactConfiguredTemplateId = getExactConfiguredTemplateId(unitKey, rankingConfig.templateAssignments || {});
     if (exactConfiguredTemplateId) {
@@ -203,7 +181,7 @@ export class LevelTemplateRuleModel {
       }
     }
 
-    // 4. 查部门×层级规则
+    // 3. 查部门×层级规则
     const ruleResult = await query(
       `SELECT r.*, t.name as template_name
        FROM level_template_rules r

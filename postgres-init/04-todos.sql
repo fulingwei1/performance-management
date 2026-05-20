@@ -1,6 +1,6 @@
 -- 待办事项表
 DO $$ BEGIN
-  CREATE TYPE todo_type AS ENUM ('work_summary', 'goal_approval', 'performance_review', 'appeal_review', 'manager_review', 'hr_review');
+  CREATE TYPE todo_type AS ENUM ('work_summary', 'performance_review');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;

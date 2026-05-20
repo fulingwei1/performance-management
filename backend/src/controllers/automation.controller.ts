@@ -2,11 +2,7 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { SchedulerService } from '../services/scheduler.service';
 import { ProgressMonitorService } from '../services/progressMonitor.service';
-import { ArchiveService } from '../services/archive.service';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
-import { EmployeeModel } from '../models/employee.model';
-import { WecomWebhookService } from '../services/wecomWebhook.service';
-import { EmailService } from '../services/email.service';
 import { formatPublicationReadinessMessage, validatePublicationReadiness } from '../services/publicationReadiness.service';
 import { DemoDataService } from '../services/demoData.service';
 import { query } from '../config/database';
@@ -14,7 +10,7 @@ import logger from '../config/logger';
 import { randomUUID } from 'crypto';
 
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
-type AutomationJobType = 'generate_tasks' | 'send_reminders' | 'publish_results' | 'archive_data' | 'generate_demo_data' | 'clear_demo_data';
+type AutomationJobType = 'generate_tasks' | 'send_reminders' | 'publish_results' | 'generate_demo_data' | 'clear_demo_data';
 let automationLogColumnsCache: Set<string> | null = null;
 
 const requestedMonth = (req: Request): string | undefined => {
@@ -130,21 +126,6 @@ export const automationController = {
   }),
 
   /**
-   * 手动触发月度统计报告生成
-   */
-  generateMonthlyStats: asyncHandler(async (req: Request, res: Response) => {
-    const month = requestedMonth(req);
-    const refDate = referenceDateForTargetMonth(month);
-    const result = await SchedulerService.generateMonthlyStatisticsReport(refDate);
-
-    res.json({
-      success: true,
-      message: `${result.month} 统计报告生成完成`,
-      data: result
-    });
-  }),
-
-  /**
    * 手动触发自动发布
    */
   autoPublish: asyncHandler(async (req: Request, res: Response) => {
@@ -190,38 +171,6 @@ export const automationController = {
   }),
 
   /**
-   * 归档指定月份
-   */
-  archiveMonth: asyncHandler(async (req: Request, res: Response) => {
-    const month = req.body.month as string | undefined;
-    if (!month) {
-      return res.status(400).json({ success: false, error: '缺少 month 参数' });
-    }
-    const userId = (req as any).user?.userId || 'system';
-    const startedAt = Date.now();
-    const result = await ArchiveService.archiveMonth(month, userId);
-    await writeAutomationLog('archive_data', month, 'success', result as any, Date.now() - startedAt);
-
-    res.json({
-      success: true,
-      message: `${month} 归档完成`,
-      data: result
-    });
-  }),
-
-  /**
-   * 查询归档列表
-   */
-  listArchives: asyncHandler(async (req: Request, res: Response) => {
-    const result = await ArchiveService.listArchives();
-
-    res.json({
-      success: true,
-      data: result
-    });
-  }),
-
-  /**
    * 手动触发催办提醒检查
    */
   checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
@@ -244,45 +193,6 @@ export const automationController = {
       message: month ? `${month} 催办检查完成` : '催办检查完成',
       data: result,
       durationMs: Date.now() - startedAt,
-    });
-  }),
-
-  /**
-   * 手动触发季度绩效推送
-   */
-  pushQuarterResults: asyncHandler(async (req: Request, res: Response) => {
-    const quarter = req.query.quarter as string | undefined;
-    let result;
-    
-    if (quarter) {
-      // 当前自动化兜底仍按上季度口径执行；写入薪资系统前必须由管理员显式确认。
-      result = await SchedulerService.pushPreviousQuarterResults(new Date(), {
-        confirmedByAdmin: req.body?.confirmedByAdmin === true,
-        confirmedBy: req.user?.userId,
-      });
-    } else {
-      result = await SchedulerService.pushPreviousQuarterResults(new Date(), {
-        confirmedByAdmin: req.body?.confirmedByAdmin === true,
-        confirmedBy: req.user?.userId,
-      });
-    }
-
-    res.status(result.requiresConfirmation ? 409 : 200).json({
-      success: result.pushed,
-      message: result.pushed ? `季度 ${result.quarter} 推送成功 (${result.count} 人)` : result.reason,
-      data: result
-    });
-  }),
-
-  /**
-   * 获取所有有记录的月份列表
-   */
-  listMonths: asyncHandler(async (req: Request, res: Response) => {
-    const months = await ProgressMonitorService.listMonths();
-
-    res.json({
-      success: true,
-      data: months
     });
   }),
 
@@ -374,9 +284,6 @@ export const automationController = {
     });
   }),
 
-  /**
-   * 查看演示数据状态
-   */
   getDemoDataStatus: asyncHandler(async (_req: Request, res: Response) => {
     const result = await DemoDataService.getDemoDataStatus();
     res.json({
@@ -385,9 +292,6 @@ export const automationController = {
     });
   }),
 
-  /**
-   * 生成演示绩效数据（仅 HR/admin）
-   */
   generateDemoData: asyncHandler(async (req: Request, res: Response) => {
     const startedAt = Date.now();
     const month = requestedMonth(req);
@@ -405,9 +309,6 @@ export const automationController = {
     });
   }),
 
-  /**
-   * 清除演示绩效数据（仅 HR/admin）
-   */
   clearDemoData: asyncHandler(async (_req: Request, res: Response) => {
     const startedAt = Date.now();
     const result = await DemoDataService.clearDemoData();
@@ -418,74 +319,6 @@ export const automationController = {
       message: `已清除 ${result.totalDeleted} 条演示数据`,
       data: result
     });
-  }),
-
-  /**
-   * HR 解冻任务（保留旧接口）
-   */
-  unfreezeTask: asyncHandler(async (req: Request, res: Response) => {
-    const { recordId } = req.params;
-    const { query } = await import('../config/database');
-
-    await query(
-      `UPDATE performance_records SET frozen = false, updated_at = NOW() WHERE id = $1`,
-      [recordId]
-    );
-
-    logger.info(`HR 解冻任务 ${recordId}`);
-
-    res.json({
-      success: true,
-      message: '任务已解冻'
-    });
-  }),
-
-  /**
-   * HR 批量解冻任务（保留旧接口）
-   */
-  batchUnfreeze: asyncHandler(async (req: Request, res: Response) => {
-    const { query } = await import('../config/database');
-    const month = req.body.month as string | undefined;
-
-    const result = await query(
-      `UPDATE performance_records SET frozen = false, updated_at = NOW() WHERE month = $1 AND frozen = true`,
-      [month]
-    ) as any;
-
-    const unfrozenCount = (result as any).rowCount || 0;
-
-    res.json({
-      success: true,
-      message: `已解冻 ${unfrozenCount} 条任务`,
-      data: { month, unfrozen: unfrozenCount }
-    });
-  }),
-
-  /**
-   * 测试企业微信连通性
-   */
-  testWecom: asyncHandler(async (_req: Request, res: Response) => {
-    const ok = await WecomWebhookService.testConnection();
-    res.json({
-      success: ok,
-      message: ok ? '企业微信应用消息推送成功' : '企业微信推送失败，请检查配置和日志',
-    });
-  }),
-
-  /**
-   * 测试邮件发送连通性
-   */
-  testEmail: asyncHandler(async (req: Request, res: Response) => {
-    const currentEmployee = req.user?.userId ? await EmployeeModel.findById(req.user.userId) : null;
-    const targetEmail = req.body.email || currentEmployee?.email;
-    if (!targetEmail) {
-      res.status(400).json({ success: false, message: '请提供 email 参数' });
-      return;
-    }
-    const ok = await EmailService.sendTestEmail(targetEmail);
-    res.json({
-      success: ok,
-      message: ok ? `测试邮件已发送至 ${targetEmail}` : '邮件发送失败，请检查 SMTP 配置和日志',
-    });
   })
+
 };

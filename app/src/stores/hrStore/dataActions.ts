@@ -1,9 +1,6 @@
-import type { PerformanceRecord, ReportData } from '@/types';
-import { generateNormalizationReport } from '@/lib/scoreNormalization';
-import { scoreLevelThresholds } from '@/lib/calculateScore';
-import { exportApi, metricLibraryApi, organizationApi, performanceApi } from '@/services/api';
+import { performanceApi } from '@/services/api';
 
-export const createDataActions = (set: any, get: any) => ({
+export const createDataActions = (set: any) => ({
   fetchAllPerformanceRecords: async () => {
     set({ loading: true, error: null });
     try {
@@ -13,87 +10,5 @@ export const createDataActions = (set: any, get: any) => ({
     } catch (error: any) {
       set({ error: error.message || '获取绩效记录失败', loading: false });
     }
-  },
-
-  updatePerformanceRecord: (id: string, updates: Partial<PerformanceRecord>) => {
-    set((state: any) => ({
-      allPerformanceRecords: state.allPerformanceRecords.map((record: PerformanceRecord) =>
-        record.id === id ? { ...record, ...updates, updatedAt: new Date().toISOString() } : record
-      )
-    }));
-  },
-
-  deletePerformanceRecord: (id: string) => {
-    set((state: any) => ({
-      allPerformanceRecords: state.allPerformanceRecords.filter((record: PerformanceRecord) => record.id !== id)
-    }));
-  },
-
-  exportReport: (month: string): ReportData[] => {
-    const records = get().allPerformanceRecords.filter((r: PerformanceRecord) => r.month === month);
-    const departments = [...new Set(records.map((r: PerformanceRecord) => r.subDepartment))];
-    return departments.map((dept: any) => {
-      const deptRecords = records.filter((r: PerformanceRecord) => r.subDepartment === dept);
-      const scores = deptRecords.map((r: PerformanceRecord) => r.totalScore);
-      const average = scores.reduce((a: number, b: number) => a + b, 0) / scores.length;
-      return {
-        month, department: dept, totalEmployees: deptRecords.length,
-        averageScore: parseFloat(average.toFixed(2)),
-        excellentCount: scores.filter((s: number) => s >= scoreLevelThresholds.L5).length,
-        goodCount: scores.filter((s: number) => s >= scoreLevelThresholds.L4 && s < scoreLevelThresholds.L5).length,
-        normalCount: scores.filter((s: number) => s >= scoreLevelThresholds.L3 && s < scoreLevelThresholds.L4).length,
-        needImprovementCount: scores.filter((s: number) => s < scoreLevelThresholds.L3).length
-      };
-    });
-  },
-
-  getNormalizationReport: () => generateNormalizationReport(get().allPerformanceRecords),
-
-  exportMonthlyPerformance: async (month: string, options = {}) => {
-    exportApi.exportMonthlyPerformance(month, options);
-  },
-
-  exportAnnualPerformance: async (year: string, options = {}) => {
-    exportApi.exportAnnualPerformance(year, options);
-  },
-
-  exportEmployeesFromDB: async (options = {}) => {
-    exportApi.exportEmployees(options);
-  },
-
-  fetchMetrics: async () => {
-    set({ loading: true, error: null });
-    try {
-      const response = await metricLibraryApi.getAllMetrics();
-      if (response.success) set({ metricsList: response.data, loading: false });
-      else set({ error: response.error || '获取指标失败', loading: false });
-    } catch (error: any) { set({ error: error.message || '网络错误', loading: false }); }
-  },
-
-  updateMetrics: async (metrics: any[]) => {
-    set({ loading: true, error: null });
-    try {
-      const results = await Promise.all(metrics.map((m: any) => m.id ? metricLibraryApi.updateMetric(m.id, m) : metricLibraryApi.createMetric(m)));
-      if (results.every((r: any) => r.success)) { await get().fetchMetrics(); set({ loading: false }); return true; }
-      else { set({ error: '部分指标更新失败', loading: false }); return false; }
-    } catch (error: any) { set({ error: error.message || '网络错误', loading: false }); return false; }
-  },
-
-  fetchOrganization: async () => {
-    set({ loading: true, error: null });
-    try {
-      const response = await organizationApi.getDepartmentTree();
-      if (response.success) set({ organizationList: response.data, loading: false });
-      else set({ error: response.error || '获取组织架构失败', loading: false });
-    } catch (error: any) { set({ error: error.message || '网络错误', loading: false }); }
-  },
-
-  updateOrganization: async (organization: any[]) => {
-    set({ loading: true, error: null });
-    try {
-      const results = await Promise.all(organization.map((dept: any) => dept.id ? organizationApi.updateDepartment(dept.id, dept) : organizationApi.createDepartment(dept)));
-      if (results.every((r: any) => r.success)) { await get().fetchOrganization(); set({ loading: false }); return true; }
-      else { set({ error: '部分组织架构更新失败', loading: false }); return false; }
-    } catch (error: any) { set({ error: error.message || '网络错误', loading: false }); return false; }
   },
 });

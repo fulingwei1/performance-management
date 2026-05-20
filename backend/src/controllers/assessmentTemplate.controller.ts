@@ -310,7 +310,6 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
   }
 
   const sourceReasonMap: Record<string, string> = {
-    personal_binding: '员工单独指定模板',
     unit_config: '参与部门指定模板',
     level_rule: '部门类型 + 层级规则',
     auto_match: '按模板适用范围自动匹配',

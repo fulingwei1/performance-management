@@ -12,7 +12,6 @@ import {
   generateTasksValidation
 } from '../validators/performance.validator';
 import { insertDemoData, clearDemoData, hasDemoData } from '../scripts/generateDemoData';
-import { exportController } from '../controllers/export.controller';
 
 const router = Router();
 
@@ -54,9 +53,6 @@ router.get('/my-records', authenticate, performanceController.getMyRecords);
 
 // 获取当前用户某月的绩效记录（需要认证）
 router.get('/my-record/:month', authenticate, performanceController.getMyRecordByMonth);
-
-// 兼容前端/旧测试调用的导出别名：/api/performance/export?month=YYYY-MM
-router.get('/export', authenticate, requireRole('hr', 'admin'), exportController.exportMonthlyPerformance);
 
 // 获取经理/兼任经理的评分记录（下属）
 router.get('/team-records', authenticate, requireManagerCapability, performanceController.getTeamRecords);
@@ -100,29 +96,29 @@ router.post('/generate-tasks', authenticate, requireRole('hr'), validate(generat
   // 获取月度统计数据（用于导出）
   router.get('/stats/:month', authenticate, requireRole('hr', 'gm', 'admin'), performanceController.getStatsByMonth);
 
-  // 模拟数据管理（仅管理员，避免经理/总经理误操作真实数据）
-  router.post('/demo-data/generate', authenticate, requireRole('admin'), async (req: Request, res: Response) => {
+  // 演示数据管理（状态用于看板提示；生成/清除保留管理员权限）
+  router.post('/demo-data/generate', authenticate, requireRole('admin'), async (_req: Request, res: Response) => {
   try {
     if (await hasDemoData()) {
-      return res.status(400).json({ success: false, message: '模拟数据已存在，请先清除' });
+      return res.status(400).json({ success: false, message: '演示数据已存在，请先清除' });
     }
     const count = await insertDemoData();
-    res.json({ success: true, message: `成功生成 ${count} 条模拟数据`, count });
+    res.json({ success: true, message: `成功生成 ${count} 条演示数据`, count });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-  router.delete('/demo-data', authenticate, requireRole('admin'), async (req: Request, res: Response) => {
+  router.delete('/demo-data', authenticate, requireRole('admin'), async (_req: Request, res: Response) => {
   try {
     const count = await clearDemoData();
-    res.json({ success: true, message: `成功清除 ${count} 条模拟数据`, count });
+    res.json({ success: true, message: `成功清除 ${count} 条演示数据`, count });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-router.get('/demo-data/status', authenticate, async (req: Request, res: Response) => {
+router.get('/demo-data/status', authenticate, async (_req: Request, res: Response) => {
   try {
     const exists = await hasDemoData();
     res.json({ success: true, hasDemoData: exists });

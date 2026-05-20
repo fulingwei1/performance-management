@@ -108,7 +108,7 @@ The first stable release of the Differentiated Assessment System, featuring core
 
 **Framework & Dependencies**
 - Node.js + Express + TypeScript
-- PostgreSQL / MySQL / Memory DB support
+- PostgreSQL support
 - ExcelJS for Excel generation
 - Winston for logging
 - JWT for authentication
@@ -250,13 +250,8 @@ VITE_API_URL=http://localhost:3001
 **1. Database Setup**
 
 ```bash
-# PostgreSQL
-psql -U performance_user -d performance_db -f backend/migrations/010_department_classification.sql
-psql -U performance_user -d performance_db -f backend/migrations/011_monthly_assessments.sql
-
-# MySQL
-mysql -u performance_user -p performance_db < backend/migrations/010_department_classification_mysql.sql
-mysql -u performance_user -p performance_db < backend/migrations/011_monthly_assessments_mysql.sql
+cd backend
+npm run db:migrate:local
 ```
 
 **2. Initialize Templates**
@@ -284,7 +279,7 @@ pm2 start ecosystem.config.js
 cd app
 npm install
 npm run build
-# Deploy dist/ folder to Nginx/Vercel/Netlify
+# Deploy dist/ folder to Nginx
 ```
 
 ---
@@ -298,7 +293,6 @@ npm run build
   "express": "^4.18.0",
   "typescript": "^5.0.0",
   "pg": "^8.11.0",
-  "mysql2": "^3.6.0",
   "exceljs": "^4.4.0",
   "winston": "^3.11.0",
   "jsonwebtoken": "^9.0.2",
@@ -319,17 +313,6 @@ npm run build
   "tailwindcss": "^4.0.0"
 }
 ```
-
----
-
-### 📖 Documentation Links
-
-- [User Manual](docs/USER_MANUAL.md)
-- [Developer Guide](docs/DEVELOPER_GUIDE.md)
-- [API Reference](docs/API_REFERENCE.md)
-- [Testing Guide](docs/ASSESSMENT_TESTING_GUIDE.md)
-- [Deployment Guide](docs/ASSESSMENT_DEPLOYMENT.md)
-- [Phase 1 Summary](docs/PHASE1_SUMMARY.md)
 
 ---
 
@@ -379,4 +362,4 @@ Copyright © 2026 Your Company. All rights reserved.
 
 ---
 
-*For more details, see [Phase 1 Summary Report](docs/PHASE1_SUMMARY.md)*
+*Historical documentation was removed during the 2026-05 cleanup.*

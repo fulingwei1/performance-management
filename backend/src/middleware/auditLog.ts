@@ -18,8 +18,7 @@ const PATH_TO_MODULE: Record<string, string> = {
   '/api/auth': 'auth',
   '/api/performance': 'performance',
   '/api/employees': 'employee',
-  '/api/assessment-cycles': 'assessment',
-  '/api/ai': 'ai',
+  '/api/assessment-templates': 'assessment',
 };
 
 // 路径到操作的映射

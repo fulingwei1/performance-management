@@ -4,7 +4,7 @@ import { Download, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HrArchiveImport } from '@/pages/HR/DataImport';
 import { AssessmentExport } from '@/pages/HR/AssessmentExport';
-import { RelationshipManagementPanel } from '@/components/admin/RelationshipManagementPanel';
+import { RelationshipManagementPanel } from '@/components/hr/RelationshipManagementPanel';
 
 export function DataImportExport() {
   const [refreshSignal, setRefreshSignal] = useState(0);

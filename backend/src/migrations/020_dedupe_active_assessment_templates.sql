@@ -27,20 +27,6 @@ BEGIN
         template_name = COALESCE(template_name, '销售部门标准模板')
     WHERE template_id = 'template-sales-001';
 
-    IF EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'interview_plans'
-        AND column_name = 'template_id'
-        AND udt_name IN ('varchar', 'text')
-    ) THEN
-      UPDATE interview_plans
-      SET template_id = 'template-sales-default',
-          updated_at = CURRENT_TIMESTAMP
-      WHERE template_id = 'template-sales-001';
-    END IF;
-
     UPDATE metric_template_metrics
     SET template_id = 'template-sales-default'
     WHERE template_id = 'template-sales-001';

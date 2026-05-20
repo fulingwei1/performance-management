@@ -20,24 +20,6 @@ interface PushResultsOptions {
   confirmedBy?: string;
 }
 
-interface SalaryForecastEmployee {
-  employeeExternalId?: string;
-  employeeId?: string;
-  employeeName?: string;
-  department?: string;
-  subDepartment?: string;
-  draftScore?: number;
-  draftCoefficient?: number;
-}
-
-interface SalaryForecastPayload {
-  periodType: PushPeriodType;
-  year: number;
-  month?: number;
-  quarter?: number;
-  employees: SalaryForecastEmployee[];
-}
-
 const getSalaryBaseUrl = (): string => (
   process.env.SALARY_SYSTEM_BASE_URL ||
   process.env.SALARY_API_URL ||
@@ -62,88 +44,6 @@ const getEffectiveQuarter = (year: number, quarter: number): string => (
 );
 
 export class SalaryIntegrationService {
-  static async buildAuthorizedForecastPayload(payload: any, user: any): Promise<{
-    success: boolean;
-    payload?: SalaryForecastPayload;
-    message?: string;
-    status?: number;
-  }> {
-    const periodType = payload?.periodType === 'quarterly' ? 'quarterly' : 'monthly';
-    const year = Number(payload?.year);
-    const month = payload?.month !== undefined ? Number(payload.month) : undefined;
-    const quarter = payload?.quarter !== undefined ? Number(payload.quarter) : undefined;
-    const employees = Array.isArray(payload?.employees) ? payload.employees : [];
-
-    if (!year || Number.isNaN(year)) {
-      return { success: false, status: 400, message: '请提供有效的年份' };
-    }
-    if (periodType === 'monthly' && (!month || month < 1 || month > 12)) {
-      return { success: false, status: 400, message: '请提供有效的月份' };
-    }
-    if (periodType === 'quarterly' && (!quarter || quarter < 1 || quarter > 4)) {
-      return { success: false, status: 400, message: '请提供有效的季度' };
-    }
-    if (!employees.length) {
-      return { success: false, status: 400, message: '请至少选择一名员工' };
-    }
-
-    const normalizedPayload: SalaryForecastPayload = {
-      periodType,
-      year,
-      ...(month ? { month } : {}),
-      ...(quarter ? { quarter } : {}),
-      employees,
-    };
-
-    if (user?.role !== 'manager') {
-      return { success: true, payload: normalizedPayload };
-    }
-
-    const managerId = user.userId || user.id;
-    const authorizedEmployees: SalaryForecastEmployee[] = [];
-
-    for (const item of employees) {
-      const employeeId = String(item?.employeeExternalId || item?.employeeId || '').trim();
-      if (!employeeId) continue;
-
-      const employee = await EmployeeModel.findById(employeeId);
-      if (!employee || employee.managerId !== managerId) continue;
-      if (employee.status && employee.status !== 'active') continue;
-
-      authorizedEmployees.push({
-        ...item,
-        employeeExternalId: employee.id,
-        employeeName: item.employeeName || employee.name,
-        department: item.department || employee.department,
-        subDepartment: item.subDepartment || employee.subDepartment,
-      });
-    }
-
-    if (!authorizedEmployees.length) {
-      return { success: false, status: 403, message: '只能查看自己直属下属的绩效工资预测' };
-    }
-
-    return {
-      success: true,
-      payload: {
-        ...normalizedPayload,
-        employees: authorizedEmployees,
-      },
-    };
-  }
-
-  static async fetchSalaryForecast(payload: SalaryForecastPayload): Promise<any> {
-    try {
-      const response = await this.postToSalary('/api/integrations/performance/salary-forecast', payload as unknown as Record<string, unknown>);
-      return response.data;
-    } catch (error: any) {
-      return {
-        success: false,
-        message: `读取薪资系统绩效工资预测失败：${error?.response?.data?.message || error.message}`,
-      };
-    }
-  }
-
   static async pushResults(options: PushResultsOptions): Promise<any> {
     if (options.periodType === 'monthly') {
       if (!options.month || options.month < 1 || options.month > 12) {

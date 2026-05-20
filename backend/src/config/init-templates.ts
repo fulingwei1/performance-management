@@ -53,7 +53,23 @@ function registerTemplate(t: TemplateDef) {
 }
 
 function registerMetrics(metrics: MetricDef[]) {
-  metrics.forEach(m => memoryStore.templateMetrics?.set(m.id, m));
+  if (metrics.length <= 5) {
+    metrics.forEach(m => memoryStore.templateMetrics?.set(m.id, m));
+    return;
+  }
+
+  const normalizedMetrics = metrics.slice(0, 5).map(metric => ({ ...metric }));
+  const extraWeight = metrics
+    .slice(5)
+    .reduce((sum, metric) => sum + Number(metric.weight || 0), 0);
+  normalizedMetrics[4].weight = Number(normalizedMetrics[4].weight || 0) + extraWeight;
+
+  normalizedMetrics.forEach((metric, index) => {
+    memoryStore.templateMetrics?.set(metric.id, {
+      ...metric,
+      sort_order: index + 1,
+    });
+  });
 }
 
 type TemplateLevelKey = 'standard' | 'junior' | 'intermediate' | 'senior';
@@ -122,18 +138,16 @@ function registerSupplementalTemplateSet(input: SupplementalTemplateSetInput) {
     intermediate: '中级',
     senior: '高级',
   };
-  const allPositions = Array.from(new Set(Object.values(input.positions).flat()));
-
   (Object.keys(levelLabels) as TemplateLevelKey[]).forEach((level) => {
     registerSupplementalTemplate({
       id: `template-${input.baseId}-${level}`,
       name: `${input.label}${levelLabels[level]}模板`,
       description: input.descriptions?.[level] || `${input.label}${levelLabels[level]}模板：按岗位任职资格匹配员工，覆盖任务完成、质量、协作和成长。`,
       departmentType: input.departmentType,
-      positions: level === 'standard' ? allPositions : input.positions[level],
+      positions: level === 'standard' ? [] : input.positions[level],
       levels: level === 'standard' ? [] : [level],
       roles: level === 'senior' ? ['employee', 'manager'] : ['employee'],
-      priority: level === 'standard' ? 45 : 50,
+      priority: level === 'standard' ? 0 : 50,
       metrics: input.metrics[level],
     });
   });
@@ -342,7 +356,7 @@ function registerMissingQualificationTemplates() {
     description: '采购初级：订单准确30%+错采漏采控制25%+确认跟催20%+流程学习15%+沟通纪律10%',
     departmentType: 'support',
     levels: ['junior'],
-    positions: ['采购部', '采购组', '采购助理', '初级采购', '采购专员', '采购工程师'],
+    positions: ['采购部', '采购组', '采购助理', '初级采购'],
     metrics: [
       { name: '采购订单准确性', code: 'PURCHASE_ORDER_ACCURACY', weight: 30, description: '规格型号、品牌、数量、单位、交期、项目号等采购订单信息准确', type: 'quantitative' },
       { name: '错采漏采控制', code: 'WRONG_MISSING_PURCHASE_CONTROL', weight: 25, description: '控制买错、漏买、重复采购、规格型号不符等错采漏采问题', type: 'quantitative' },
@@ -528,6 +542,35 @@ async function syncTemplatesToDatabase() {
   }
 
   await query(
+    `DELETE FROM template_metrics
+     WHERE template_id = ANY($1::text[])
+       AND id <> ALL($2::text[])`,
+    [
+      templates.map((template: any) => template.id),
+      metrics.map((metric: any) => metric.id),
+    ]
+  );
+
+  await query(`
+    DO $$
+    BEGIN
+      IF to_regclass('public.level_template_rules') IS NOT NULL THEN
+        INSERT INTO level_template_rules (
+          id, department_type, level, template_id, set_by, created_at, updated_at
+        ) VALUES (
+          'rule-sales-intermediate-v2', 'sales', 'intermediate', 'template-sales-inter-001',
+          'admin', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (department_type, level)
+        DO UPDATE SET
+          template_id = EXCLUDED.template_id,
+          set_by = EXCLUDED.set_by,
+          updated_at = CURRENT_TIMESTAMP;
+      END IF;
+    END $$;
+  `);
+
+  await query(
     `UPDATE assessment_templates
      SET status = 'archived', updated_at = CURRENT_TIMESTAMP
      WHERE id = ANY($1::text[])`,
@@ -608,8 +651,8 @@ export async function initializeDefaultTemplates() {
     department_type: 'engineering', is_default: false, status: 'active',
     applicableRoles: ['employee'], applicableLevels: ['junior'],
     applicablePositions: [
-      '助理机械工程师', '见习机械工程师', '初级机械工程师', '机械工程师',
-      '助理结构工程师', '初级结构工程师', '结构工程师',
+      '助理机械工程师', '见习机械工程师', '初级机械工程师',
+      '助理结构工程师', '初级结构工程师',
       '机械部', '机械设计部',
       '新能源技术部/结构一组', '结构一组',
       '新能源技术部/结构二组', '结构二组',
@@ -684,8 +727,8 @@ export async function initializeDefaultTemplates() {
     department_type: 'engineering', is_default: false, status: 'active',
     applicableRoles: ['employee'], applicableLevels: ['junior'],
     applicablePositions: [
-      '助理电气工程师', '见习电气工程师', '初级电气工程师', '电气工程师',
-      '助理PLC工程师', '初级PLC工程师', 'PLC工程师',
+      '助理电气工程师', '见习电气工程师', '初级电气工程师',
+      '助理PLC工程师', '初级PLC工程师',
       'PLC 部', 'PLC 部/PLC一组', 'PLC一组',
       'PLC 部/PLC二组', 'PLC二组',
       'PLC 部/PLC三组', 'PLC三组',
@@ -1062,8 +1105,8 @@ export async function initializeDefaultTemplates() {
     id: 'template-sales-junior-001', name: '销售部门普通销售考核模板',
     description: '适用于普通销售：个人业绩50%+客户维护15%+学习成长20%+新客户开发15%',
     department_type: 'sales', is_default: false, status: 'active',
-    applicableRoles: ['employee'], applicableLevels: ['intermediate', 'junior'],
-    applicablePositions: ['普通销售', '销售助理', '销售工程师'], priority: 50
+    applicableRoles: ['employee'], applicableLevels: ['junior'],
+    applicablePositions: ['普通销售', '销售助理', '初级销售工程师'], priority: 50
   });
   registerMetrics([
     { id: 'metric-sales-jnr-01', template_id: 'template-sales-junior-001', metric_name: '个人销售额', metric_code: 'PERSONAL_SALES_AMT', category: 'performance', weight: 30.00, description: '个人实际销售额', evaluation_type: 'quantitative', sort_order: 1 },
@@ -1072,6 +1115,21 @@ export async function initializeDefaultTemplates() {
     { id: 'metric-sales-jnr-04', template_id: 'template-sales-junior-001', metric_name: '新客户开发', metric_code: 'NEW_CLIENT_DEV', category: 'performance', weight: 15.00, description: '新客户获取数量和转化', evaluation_type: 'quantitative', sort_order: 4 },
     { id: 'metric-sales-jnr-05', template_id: 'template-sales-junior-001', metric_name: '学习成长', metric_code: 'LEARNING_GROWTH', category: 'behavior', weight: 10.00, description: '产品培训、销售技巧学习', evaluation_type: 'qualitative', sort_order: 5 },
     { id: 'metric-sales-jnr-06', template_id: 'template-sales-junior-001', metric_name: '工作态度', metric_code: 'WORK_ATTITUDE', category: 'behavior', weight: 10.00, description: '积极性、执行力、出勤', evaluation_type: 'qualitative', sort_order: 6 },
+  ]);
+
+  registerTemplate({
+    id: 'template-sales-inter-001', name: '销售工程师中级考核模板',
+    description: '中级销售：业绩达成35%+回款20%+客户维护20%+项目协同15%+市场信息10%',
+    department_type: 'sales', is_default: false, status: 'active',
+    applicableRoles: ['employee'], applicableLevels: ['intermediate'],
+    applicablePositions: ['销售工程师', '中级销售工程师', '客户经理'], priority: 50
+  });
+  registerMetrics([
+    { id: 'metric-sales-int-01', template_id: 'template-sales-inter-001', metric_name: '销售目标完成率', metric_code: 'SALES_TARGET_RATE', category: 'performance', weight: 35.00, description: '个人销售目标达成情况', evaluation_type: 'quantitative', sort_order: 1 },
+    { id: 'metric-sales-int-02', template_id: 'template-sales-inter-001', metric_name: '回款达成率', metric_code: 'PAYMENT_RATE', category: 'performance', weight: 20.00, description: '合同回款及时性和达成率', evaluation_type: 'quantitative', sort_order: 2 },
+    { id: 'metric-sales-int-03', template_id: 'template-sales-inter-001', metric_name: '客户维护', metric_code: 'CLIENT_MAINTENANCE', category: 'performance', weight: 20.00, description: '客户回访、需求跟进和关系维护', evaluation_type: 'qualitative', sort_order: 3 },
+    { id: 'metric-sales-int-04', template_id: 'template-sales-inter-001', metric_name: '项目协同', metric_code: 'PROJECT_COLLAB', category: 'collaboration', weight: 15.00, description: '与售前、技术、交付团队的项目协同', evaluation_type: 'qualitative', sort_order: 4 },
+    { id: 'metric-sales-int-05', template_id: 'template-sales-inter-001', metric_name: '市场信息', metric_code: 'MARKET_INFO', category: 'innovation', weight: 10.00, description: '市场、竞品、客户线索信息收集', evaluation_type: 'qualitative', sort_order: 5 },
   ]);
 
   registerTemplate({
@@ -1094,7 +1152,7 @@ export async function initializeDefaultTemplates() {
     id: 'template-sales-mgr-001', name: '销售部门销售经理考核模板',
     description: '适用于销售经理：团队业绩40%+个人业绩30%+团队管理15%+战略规划15%',
     department_type: 'sales', is_default: false, status: 'active',
-    applicableRoles: ['manager'], applicableLevels: ['manager', 'senior'],
+    applicableRoles: ['manager'], applicableLevels: ['manager'],
     applicablePositions: ['销售经理', '大客户经理', '营销中心总监'], priority: 60
   });
   registerMetrics([

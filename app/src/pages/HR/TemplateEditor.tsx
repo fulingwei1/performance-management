@@ -45,7 +45,7 @@ interface Metric {
   weight: number;
   description?: string;
   evaluationType: 'quantitative' | 'qualitative';
-  sortOrder: number;
+  sortOrder?: number;
   scoringCriteria?: ScoringCriterion[];
 }
 
@@ -474,7 +474,7 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
                           onChange={(e) => handleUpdateMetric(index, 'metricName', e.target.value)}
                           disabled={viewMode}
                           placeholder="如：销售额完成率"
-                          size="sm"
+                          className="h-8 text-sm"
                         />
                       </div>
                       
@@ -486,7 +486,7 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
                           onChange={(e) => handleUpdateMetric(index, 'metricCode', e.target.value.toUpperCase())}
                           disabled={viewMode}
                           placeholder="SALES_RATE"
-                          size="sm"
+                          className="h-8 text-sm"
                         />
                       </div>
                       
@@ -567,7 +567,7 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
                         onChange={(e) => handleUpdateMetric(index, 'description', e.target.value)}
                         disabled={viewMode}
                         placeholder="如：实际销售额/目标销售额"
-                        size="sm"
+                        className="h-8 text-sm"
                       />
                     </div>
 

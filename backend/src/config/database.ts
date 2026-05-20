@@ -8,8 +8,6 @@ dotenv.config();
 // Only use in-memory store when explicitly set
 const USE_MEMORY_DB = process.env.USE_MEMORY_DB === 'true';
 
-const isVercel = process.env.VERCEL === '1';
-
 // 创建连接池
 const createPool = () => {
   if (USE_MEMORY_DB) {
@@ -26,16 +24,15 @@ const createPool = () => {
 
   logger.info('🔌 Configuring PostgreSQL Pool...');
   
-  // 检测是否为本地连接（localhost, 127.0.0.1, postgres等本地主机名）
-  const isLocal = /localhost|127\.0\.0\.1|postgres|mysql/.test(process.env.DATABASE_URL);
+  // 检测是否为本地 PostgreSQL 连接
+  const isLocal = /localhost|127\.0\.0\.1|postgres/.test(process.env.DATABASE_URL);
   
-  // 配置SSL：本地环境不需要，生产环境（Supabase等）需要
+  // 配置SSL：本地环境不需要，外部 PostgreSQL 连接按需启用
   const config: any = {
     connectionString: process.env.DATABASE_URL,
-    // Vercel Serverless 优化配置
-    max: 1, // 限制连接数
+    max: 5,
     idleTimeoutMillis: 3000,
-    connectionTimeoutMillis: 10000, // 增加超时到10s
+    connectionTimeoutMillis: 10000,
     keepAlive: true, // 开启 TCP KeepAlive
   };
   
@@ -82,7 +79,7 @@ export const testConnection = async (): Promise<boolean> => {
   return false;
 };
 
-// Helper to convert MySQL ? placeholders to Postgres $n
+// Helper to convert legacy ? placeholders to Postgres $n
 const convertSql = (sql: string): string => {
   let i = 1;
   
@@ -102,10 +99,10 @@ const convertSql = (sql: string): string => {
     }
   }
   
-  // Remove backticks (MySQL identifiers)
+  // Remove legacy SQL backtick identifiers
   converted = converted.replace(/`/g, '');
   
-  // Replace MySQL date functions with Postgres equivalents
+  // Replace legacy SQL date functions with Postgres equivalents
   converted = converted.replace(/YEAR\s*\(([^)]+)\)/gi, 'EXTRACT(YEAR FROM $1)');
   converted = converted.replace(/MONTH\s*\(([^)]+)\)/gi, 'EXTRACT(MONTH FROM $1)');
   converted = converted.replace(/DAY\s*\(([^)]+)\)/gi, 'EXTRACT(DAY FROM $1)');
@@ -133,7 +130,7 @@ export const query = async (sql: string, params?: any[]): Promise<any[]> => {
   
   try {
     const { rows, rowCount } = await pool.query(convertedSql, params);
-    // Attach affectedRows to result array to support MySQL-style checks in models
+    // Attach affectedRows to result array to support legacy model checks
     const result = rows;
     (result as any).affectedRows = rowCount;
     return result;

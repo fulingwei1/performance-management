@@ -140,9 +140,6 @@ export const employeeApi = {
     return request(`/employees${query}`);
   },
 
-  // 获取所有经理
-  getManagers: () => request('/employees/managers'),
-
   // 获取下属
   getSubordinates: () => request('/employees/subordinates'),
 
@@ -152,32 +149,10 @@ export const employeeApi = {
   // 根据ID获取员工
   getById: (id: string) => request(`/employees/${id}`),
 
-  // 创建员工
-  create: (data: Record<string, unknown>) => request('/employees', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
   // 更新员工
   updateEmployee: (id: string, data: Record<string, unknown>) => request(`/employees/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
-  }),
-
-  // 删除员工
-  deleteEmployee: (id: string) => request(`/employees/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 重置密码
-  resetPassword: (id: string, payload?: { idCardLast6?: string }) => request(`/employees/${id}/reset-password`, {
-    method: 'PUT',
-    body: JSON.stringify(payload || {})
-  }),
-
-  // 启用/禁用用户
-  toggleStatus: (id: string) => request(`/employees/${id}/toggle-status`, {
-    method: 'PUT'
   })
 };
 
@@ -218,7 +193,7 @@ export const performanceApi = {
   getImprovementSuggestions: (params?: { month?: string; scope?: 'team' | 'all' }) =>
     request(`/performance/improvement-suggestions${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
 
-  // 模拟数据管理
+  // 演示数据状态（看板提示用）
   generateDemoData: () => request('/performance/demo-data/generate', { method: 'POST' }),
   clearDemoData: () => request('/performance/demo-data', { method: 'DELETE' }),
   getDemoDataStatus: () => request('/performance/demo-data/status'),
@@ -334,62 +309,8 @@ export const analyticsApi = {
     request(`/analytics/report-summary?month=${encodeURIComponent(month)}`),
 };
 
-// 月度差异化评分API
-export const monthlyAssessmentApi = {
-  // 获取当月考核列表
-  getMonthlyList: (month?: string) => {
-    const q = month ? `?month=${month}` : '';
-    return request(`/monthly-assessment/monthly-list${q}`);
-  },
-  // 员工自评提交
-  submitSelfAssessment: (data: {
-    employeeId: string;
-    month: string;
-    selfSummary: string;
-    nextMonthPlan: string;
-  }) => request('/monthly-assessment/self-assessment', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  // 主管评分
-  submitScore: (data: {
-    id: string;
-    scores: Array<{ metricName: string; metricCode: string; weight: number; level: string; score: number; comment?: string }>;
-    totalScore: number;
-    managerComment: string;
-    nextMonthWorkArrangement: string;
-    status?: string;
-  }) => request('/monthly-assessment/submit-score', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  // 创建或更新月度评分（兼容旧 API）
-  createOrUpdate: (data: {
-    employeeId: string;
-    month: string;
-    templateId: string;
-    templateName: string;
-    departmentType: string;
-    scores: Array<{
-      metricName: string;
-      metricCode: string;
-      weight: number;
-      level: string;
-      score: number;
-      comment?: string;
-    }>;
-    totalScore: number;
-  }) => request('/monthly-assessment/monthly', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-  // 获取员工历史记录
-  getEmployeeHistory: (employeeId: string) => request(`/monthly-assessment/employee/${employeeId}`),
-  // 获取某月某员工记录
-  getByMonth: (employeeId: string, month: string) => request(`/monthly-assessment/employee/${employeeId}/month/${month}`),
-};
 export const assessmentTemplateApi = {
-  getAll: (params?: { departmentType?: string; includeMetrics?: boolean }) =>
+  getAll: (params?: { departmentType?: string; includeMetrics?: boolean; status?: string }) =>
     request(`/assessment-templates${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
   getById: (id: string) => request(`/assessment-templates/${id}`),
   getDefault: (departmentType: string) => request(`/assessment-templates/default/${departmentType}`),
@@ -413,49 +334,6 @@ export const assessmentTemplateApi = {
     })
 };
 
-// 模板绑定 API（部门经理设置下属考核模板，设置后永久生效）
-export const templateBindingApi = {
-  bind: (employeeId: string, templateId: string) =>
-    request('/template-bindings', {
-      method: 'POST',
-      body: JSON.stringify({ employeeId, templateId })
-    }),
-  batchBind: (bindings: Array<{ employeeId: string; templateId: string }>) =>
-    request('/template-bindings/batch', {
-      method: 'POST',
-      body: JSON.stringify({ bindings })
-    }),
-  unbind: (employeeId: string) =>
-    request(`/template-bindings/${employeeId}`, { method: 'DELETE' }),
-  getEmployeeBinding: (employeeId: string) =>
-    request(`/template-bindings/employee/${employeeId}`),
-  getMyTeamBindings: () => request('/template-bindings/my-team'),
-  getAllBindings: (params?: { department?: string; templateId?: string }) =>
-    request(`/template-bindings/all${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
-  resolve: (employeeId: string) => request(`/template-bindings/resolve/${employeeId}`),
-  getStats: () => request('/template-bindings/stats'),
-};
-
-// 部门×层级模板规则
-export const levelTemplateRuleApi = {
-  setRule: (departmentType: string, level: string, templateId: string) =>
-    request('/level-template-rules', {
-      method: 'POST',
-      body: JSON.stringify({ departmentType, level, templateId })
-    }),
-  batchSetRules: (rules: Array<{ departmentType: string; level: string; templateId: string }>) =>
-    request('/level-template-rules/batch', {
-      method: 'POST',
-      body: JSON.stringify({ rules })
-    }),
-  getAllRules: () => request('/level-template-rules'),
-  getByDepartmentType: (deptType: string) => request(`/level-template-rules/${deptType}`),
-  deleteRule: (departmentType: string, level: string) =>
-    request(`/level-template-rules/${departmentType}/${level}`, { method: 'DELETE' }),
-  resolve: (employeeId: string) => request(`/level-template-rules/resolve/${employeeId}`),
-  getCoverageStats: () => request('/level-template-rules/stats/coverage'),
-};
-
 // 绩效参与范围/排名配置（HR/Admin）
 export const performanceConfigApi = {
   getRankingConfig: () => request('/performance-config/ranking'),
@@ -473,22 +351,6 @@ export const performanceConfigApi = {
     }),
 };
 
-// 经理季度总结API
-export const quarterlySummaryApi = {
-  save: (data: { quarter: string; summary: string; nextQuarterPlan: string; status: 'draft' | 'submitted' }) =>
-    request('/quarterly-summaries', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
-
-  getMySummaries: (quarter?: string) => {
-    const params = new URLSearchParams();
-    if (quarter) params.append('quarter', quarter);
-    const query = params.toString();
-    return request(`/quarterly-summaries/my${query ? `?${query}` : ''}`);
-  }
-};
-
 export const employeeQuarterlyApi = {
   getMy: (params?: { year?: number; quarter?: number }) =>
     request(`/employee-quarterly/my${buildQueryString(params as Record<string, QueryValue> | undefined)}`),
@@ -496,127 +358,7 @@ export const employeeQuarterlyApi = {
     request(`/employee-quarterly/team${buildQueryString(params as Record<string, QueryValue>)}`),
 };
 
-// AI相关API
-export const aiApi = {
-  // AI生成员工自评总结
-  generateSelfSummary: (data: Record<string, unknown>) => request('/ai/self-summary', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // AI生成下月工作计划
-  generateNextMonthPlan: (data: Record<string, unknown>) => request('/ai/next-month-plan', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // AI生成经理综合评价
-  generateManagerComment: (data: Record<string, unknown>) => request('/ai/manager-comment', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // AI生成下月工作安排
-  generateWorkArrangement: (data: Record<string, unknown>) => request('/ai/work-arrangement', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  })
-};
-
-// HR管理API
-export const hrApi = {
-  // 获取所有员工
-  getAllEmployees: () => request('/employees'),
-
-  // 新增员工
-  addEmployee: (data: {
-    name: string;
-    department: string;
-    subDepartment?: string;
-    role: string;
-    level: string;
-    managerId?: string;
-  }) => request('/employees', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 更新员工
-  updateEmployee: (id: string, data: {
-    name?: string;
-    department?: string;
-    subDepartment?: string;
-    role?: string;
-    level?: string;
-    managerId?: string;
-  }) => request(`/employees/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  // 删除员工
-  deleteEmployee: (id: string) => request(`/employees/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 批量导入员工（逐个调用 createEmployee）
-  importEmployees: async (employees: Record<string, unknown>[]) => {
-    let successCount = 0;
-    let failedCount = 0;
-    for (const emp of employees) {
-      try {
-        await request('/employees', {
-          method: 'POST',
-          body: JSON.stringify(emp)
-        });
-        successCount++;
-      } catch {
-        failedCount++;
-      }
-    }
-    return { success: true, data: { successCount, failedCount } };
-  },
-
-  // 导出员工
-  exportEmployees: () => secureDownload(`${API_BASE_URL}/export/employees`, 'employees.xlsx')
-};
-
 export const exportApi = {
-  exportMonthlyPerformance: (month: string, options?: {
-    format?: 'excel' | 'json';
-    includeAnalysis?: boolean;
-  }) => {
-    const params = new URLSearchParams({
-      month,
-      format: options?.format || 'excel',
-      includeAnalysis: String(options?.includeAnalysis ?? true)
-    });
-    return secureDownload(`${API_BASE_URL}/export/monthly-performance?${params.toString()}`, `performance-${month}.xlsx`);
-  },
-
-  exportAnnualPerformance: (year: string, options?: {
-    format?: 'excel' | 'json';
-  }) => {
-    const params = new URLSearchParams({
-      year,
-      format: options?.format || 'excel'
-    });
-    return secureDownload(`${API_BASE_URL}/export/annual-performance?${params.toString()}`, `annual-performance-${year}.xlsx`);
-  },
-
-  exportEmployees: (options?: {
-    department?: string;
-    format?: 'excel' | 'json';
-  }) => {
-    const params = new URLSearchParams({
-      format: options?.format || 'excel'
-    });
-    if (options?.department) {
-      params.append('department', options.department);
-    }
-    return secureDownload(`${API_BASE_URL}/export/employees?${params.toString()}`, 'employees.xlsx');
-  },
-
   // 考核数据导出
   exportMonthlyAssessments: (params: URLSearchParams) =>
     secureDownload(`${API_BASE_URL}/assessment-export/monthly-assessments?${params.toString()}`, `月度绩效考核数据_${Date.now()}.xlsx`),
@@ -649,262 +391,6 @@ export const salaryIntegrationApi = {
     method: 'POST',
     body: JSON.stringify({ year, quarter, confirmedByAdmin: true }),
   }),
-
-  getSalaryForecast: (data: {
-    periodType: 'monthly' | 'quarterly';
-    year: number;
-    month?: number;
-    quarter?: number;
-    employees: Array<{
-      employeeExternalId: string;
-      employeeName: string;
-      department?: string;
-      subDepartment?: string;
-      draftScore?: number;
-      draftCoefficient?: number;
-    }>;
-  }) => request('/integrations/salary/salary-forecast', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  }),
-};
-
-// 晋升/加薪申请
-// 组织架构API
-export const organizationApi = {
-  // 获取组织架构树
-  getOrgTree: () => request('/organization/tree'),
-
-  // 获取所有部门
-  getAllDepartments: () => request('/organization/departments'),
-
-  // 获取部门树
-  getDepartmentTree: () => request('/organization/departments/tree'),
-
-  // 获取部门详情
-  getDepartmentById: (id: string) => request(`/organization/departments/${id}`),
-
-  // 创建部门
-  createDepartment: (data: {
-    name: string;
-    code: string;
-    parentId?: string;
-    managerId?: string;
-    sortOrder?: number;
-  }) => request('/organization/departments', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 更新部门
-  updateDepartment: (id: string, data: Record<string, unknown>) => request(`/organization/departments/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  // 删除部门
-  deleteDepartment: (id: string) => request(`/organization/departments/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 获取所有岗位
-  getAllPositions: () => request('/organization/positions'),
-
-  // 获取部门岗位
-  getPositionsByDepartment: (departmentId: string) => request(`/organization/departments/${departmentId}/positions`),
-
-  // 创建岗位
-  createPosition: (data: {
-    name: string;
-    code: string;
-    departmentId: string;
-    level: string;
-    category: string;
-    description?: string;
-    requirements?: string;
-  }) => request('/organization/positions', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 更新岗位
-  updatePosition: (id: string, data: Record<string, unknown>) => request(`/organization/positions/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  // 删除岗位
-  deletePosition: (id: string) => request(`/organization/positions/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 人员调动
-  transferEmployee: (data: { employeeId: string; toDepartment: string; toPosition?: string; reason?: string }) =>
-    request('/organization/transfer', { method: 'POST', body: JSON.stringify(data) }),
-
-  // 调动历史
-  getTransferHistory: (params?: { employeeId?: string; startDate?: string; endDate?: string }) => {
-    const query = new URLSearchParams();
-    if (params?.employeeId) query.set('employeeId', params.employeeId);
-    if (params?.startDate) query.set('startDate', params.startDate);
-    if (params?.endDate) query.set('endDate', params.endDate);
-    const qs = query.toString();
-    return request(`/organization/transfers${qs ? '?' + qs : ''}`);
-  }
-};
-
-// 设置API（考核范围等，HR 可写）
-export const settingsApi = {
-  getAssessmentScope: () => request('/settings/assessment-scope'),
-  updateAssessmentScope: (data: { rootDepts: string[]; subDeptsByRoot: Record<string, string[]> }) =>
-    request('/settings/assessment-scope', { method: 'PUT', body: JSON.stringify(data) }),
-};
-
-// 考核周期API
-export const assessmentCycleApi = {
-  // 获取所有考核周期
-  getAllCycles: () => request('/cycles'),
-
-  // 获取当前激活的考核周期
-  getActiveCycle: () => request('/cycles/active'),
-
-  // 获取考核日历
-  getCalendar: (year?: number) => request(`/cycles/calendar${year ? `?year=${year}` : ''}`),
-
-  // 获取考核周期详情
-  getCycleById: (id: string) => request(`/cycles/${id}`),
-
-  // 创建考核周期
-  createCycle: (data: {
-    name: string;
-    type: string;
-    year: number;
-    startDate: string;
-    endDate: string;
-    selfAssessmentDeadline?: string;
-    managerReviewDeadline?: string;
-    hrReviewDeadline?: string;
-    appealDeadline?: string;
-    reminderDays?: number;
-    autoSubmit?: boolean;
-    excludeHolidays?: boolean;
-    description?: string;
-  }) => request('/cycles', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 更新考核周期
-  updateCycle: (id: string, data: Record<string, unknown>) => request(`/cycles/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  // 删除考核周期
-  deleteCycle: (id: string) => request(`/cycles/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 激活考核周期
-  activateCycle: (id: string) => request(`/cycles/${id}/activate`, {
-    method: 'POST'
-  }),
-
-  // 批量生成年度的月度考核周期
-  generateMonthlyCycles: (year: number) => request('/cycles/generate-monthly', {
-    method: 'POST',
-    body: JSON.stringify({ year })
-  }),
-
-  // 获取节假日
-  getHolidays: (year?: number) => request(`/cycles/holidays${year ? `?year=${year}` : ''}`),
-
-  // 创建节假日
-  createHoliday: (data: { name: string; date: string; type: string }) => request('/cycles/holidays', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 删除节假日
-  deleteHoliday: (id: string) => request(`/cycles/holidays/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 批量导入节假日
-  importHolidays: (holidays: Record<string, unknown>[]) => request('/cycles/holidays/import', {
-    method: 'POST',
-    body: JSON.stringify({ holidays })
-  })
-};
-
-// 指标库API
-export const metricLibraryApi = {
-  // 获取所有指标
-  getAllMetrics: (category?: string) => request(`/metrics${category ? `?category=${category}` : ''}`),
-
-  // 获取指标详情
-  getMetricById: (id: string) => request(`/metrics/${id}`),
-
-  // 创建指标
-  createMetric: (data: {
-    name: string;
-    code: string;
-    category: string;
-    type: string;
-    description: string;
-    scoringCriteria?: Record<string, unknown>[];
-    weight?: number;
-    departmentIds?: string[];
-    positionIds?: string[];
-    applicableLevels?: string[];
-    minValue?: number;
-    maxValue?: number;
-  }) => request('/metrics', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
-
-  // 更新指标
-  updateMetric: (id: string, data: Record<string, unknown>) => request(`/metrics/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
-
-  // 删除指标
-  deleteMetric: (id: string) => request(`/metrics/${id}`, {
-    method: 'DELETE'
-  }),
-
-  // 批量导入指标
-  importMetrics: (metrics: Record<string, unknown>[]) => request('/metrics/import', {
-    method: 'POST',
-    body: JSON.stringify({ metrics })
-  }),
-
-  // 导出指标
-  exportMetrics: () => secureDownload(`${API_BASE_URL}/metrics/export`, 'metrics.xlsx'),
-
-  // 初始化默认指标
-  initializeDefaultMetrics: () => request('/metrics/initialize', {
-    method: 'POST'
-  }),
-
-  // 获取所有模板
-  getAllTemplates: () => request('/metrics/templates'),
-
-  // 获取岗位模板
-  getTemplateByPosition: (positionId: string) => request(`/metrics/templates/position/${positionId}`),
-
-  // 创建模板
-  createTemplate: (data: {
-    name: string;
-    description?: string;
-    positionId?: string;
-    metrics: { metricId: string; weight: number; required: boolean }[];
-  }) => request('/metrics/templates', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  })
 };
 
 type QueryValue = string | number | boolean | undefined | null;
@@ -971,26 +457,6 @@ export const assessmentPublicationApi = {
     request('/assessment-publications/published')
 };
 
-// 自动化任务相关API
-export const automationApi = {
-  // 检查截止日期提醒
-  checkReminders: () =>
-    request('/automation/check-reminders', {
-      method: 'POST'
-    }),
-  // 解冻单个任务
-  unfreezeTask: (recordId: string) =>
-    request(`/automation/unfreeze/${recordId}`, {
-      method: 'POST'
-    }),
-  // 批量解冻
-  batchUnfreeze: (month: string) =>
-    request('/automation/batch-unfreeze', {
-      method: 'POST',
-      body: JSON.stringify({ month })
-    })
-};
-
 export interface SatisfactionSurveyQuestion {
   key: string;
   label: string;
@@ -1050,28 +516,14 @@ export const satisfactionSurveyApi = {
   close: (surveyId: string) => request(`/satisfaction-surveys/${surveyId}/close`, { method: 'POST' }),
 };
 
-// 系统设置API
-export const systemSettingsApi = {
-  getAll: () => request('/system-settings/'),
-  update: (key: string, value: string) =>
-    request(`/system-settings/${key}`, {
-      method: 'PUT',
-      body: JSON.stringify({ value })
-    })
-};
-
 export default {
   auth: authApi,
   employee: employeeApi,
   performance: performanceApi,
-  quarterlySummary: quarterlySummaryApi,
   employeeQuarterly: employeeQuarterlyApi,
-  ai: aiApi,
   assessmentTemplate: assessmentTemplateApi,
-  monthlyAssessment: monthlyAssessmentApi,
   assessmentPublication: assessmentPublicationApi,
   export: exportApi,
-  automation: automationApi,
   satisfactionSurvey: satisfactionSurveyApi,
   log: logApi
 };

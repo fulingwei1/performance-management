@@ -1,12 +1,11 @@
 import path from "path"
 import react from "@vitejs/plugin-react"
 import { defineConfig } from "vite"
-import { inspectAttr } from 'kimi-plugin-inspect-react'
 
 // https://vite.dev/config/
 export default defineConfig({
   base: process.env.VITE_BASE_PATH || '/',
-  plugins: [inspectAttr(), react()],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -30,19 +29,11 @@ export default defineConfig({
             return 'vendor-recharts';
           }
 
-          if (id.includes('/reactflow/') || id.includes('/@reactflow/')) {
-            return 'vendor-reactflow';
-          }
-
-          if (id.includes('/dagre/')) {
-            return 'vendor-dagre';
-          }
-
           if (id.includes('/framer-motion/') || id.includes('/lucide-react/') || id.includes('/@heroicons/')) {
             return 'vendor-visual';
           }
 
-          if (id.includes('/axios/') || id.includes('/zustand/') || id.includes('/date-fns/') || id.includes('/zod/')) {
+          if (id.includes('/zustand/') || id.includes('/date-fns/')) {
             return 'vendor-utils';
           }
 

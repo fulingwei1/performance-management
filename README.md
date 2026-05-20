@@ -103,7 +103,6 @@
 | Express | ^4.18 | Web框架 |
 | TypeScript | ^5.0 | 类型安全 |
 | PostgreSQL | 13+ | 主数据库 |
-| MySQL | 8.0+ | 备选数据库 |
 | ExcelJS | ^4.4 | Excel导出 |
 | Winston | ^3.11 | 日志系统 |
 | JWT | ^9.0 | 身份认证 |
@@ -128,7 +127,7 @@
 ### 前置要求
 
 - Node.js >= 18.0.0
-- PostgreSQL >= 13 或 MySQL >= 8.0（可选，开发环境可用Memory DB）
+- PostgreSQL >= 13
 - npm >= 8.0.0
 
 ### 安装
@@ -157,7 +156,7 @@ npm install
 ```bash
 # backend/.env
 PORT=3001
-USE_MEMORY_DB=true  # 开发环境使用Memory DB
+DATABASE_URL=postgresql://performance_user:performance123@localhost:5432/performance_db
 NODE_ENV=development
 LOG_LEVEL=debug
 ```
@@ -170,8 +169,10 @@ VITE_API_URL=http://localhost:3001
 #### 4. 初始化数据
 
 ```bash
-# 启动后端（会自动初始化Memory DB和默认模板）
+# 启动后端（会自动初始化默认数据和模板）
 cd backend
+npm run db:local:up
+npm run db:migrate:local
 npm run dev
 ```
 
@@ -246,15 +247,6 @@ performance-management/
 │   ├── package.json
 │   └── vite.config.ts
 │
-├── docs/                      # 文档
-│   ├── USER_MANUAL.md         # 用户手册
-│   ├── DEVELOPER_GUIDE.md     # 开发者文档
-│   ├── API_REFERENCE.md       # API文档
-│   ├── ASSESSMENT_TESTING_GUIDE.md   # 测试指南
-│   ├── ASSESSMENT_DEPLOYMENT.md      # 部署指南
-│   └── PHASE1_SUMMARY.md      # Phase 1总结
-│
-├── test-assessment-system.sh  # 快速测试脚本
 ├── CHANGELOG.md               # 变更日志
 └── README.md                  # 本文件
 ```
@@ -263,24 +255,7 @@ performance-management/
 
 ## 文档
 
-### 完整文档体系（67页，~40,000字）
-
-| 文档 | 描述 | 链接 |
-|------|------|------|
-| **用户手册** | HR/经理/员工操作指南 | [USER_MANUAL.md](docs/USER_MANUAL.md) |
-| **开发者文档** | 技术架构、API设计、扩展开发 | [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) |
-| **API参考** | 完整API文档（20+端点） | [API_REFERENCE.md](docs/API_REFERENCE.md) |
-| **测试指南** | 测试流程、检查清单 | [ASSESSMENT_TESTING_GUIDE.md](docs/ASSESSMENT_TESTING_GUIDE.md) |
-| **部署指南** | 生产环境部署、监控、备份 | [ASSESSMENT_DEPLOYMENT.md](docs/ASSESSMENT_DEPLOYMENT.md) |
-| **Phase 1总结** | 项目总结报告 | [PHASE1_SUMMARY.md](docs/PHASE1_SUMMARY.md) |
-
-### 快速链接
-
-- 📘 [用户操作指南](docs/USER_MANUAL.md#hr-操作指南)
-- 🔧 [开发环境搭建](docs/DEVELOPER_GUIDE.md#本地开发环境搭建)
-- 📡 [API端点列表](docs/API_REFERENCE.md#api-设计)
-- 🧪 [测试步骤](docs/ASSESSMENT_TESTING_GUIDE.md#功能测试流程)
-- 🚀 [生产部署](docs/ASSESSMENT_DEPLOYMENT.md#后端部署)
+历史文档、旧功能报告和临时计划已清理；当前以代码、迁移脚本和本 README 为准。
 
 ---
 
@@ -290,7 +265,7 @@ performance-management/
 
 - Node.js >= 18.0.0
 - npm >= 8.0.0
-- PostgreSQL >= 13（可选）
+- PostgreSQL >= 13
 - VS Code（推荐）
 
 ### 推荐的 VS Code 插件
@@ -352,14 +327,14 @@ npm run build
 ### 开发环境
 
 ```bash
-# 使用 Memory DB（无需数据库）
+# 使用本地 PostgreSQL
 cd backend
-USE_MEMORY_DB=true npm run dev
+npm run db:local:up
+npm run db:migrate:local
+npm run dev
 ```
 
 ### 生产环境
-
-详细部署指南请参考：[ASSESSMENT_DEPLOYMENT.md](docs/ASSESSMENT_DEPLOYMENT.md)
 
 #### 快速部署（Docker）
 
@@ -376,8 +351,8 @@ docker-compose up -d
 
 1. **数据库初始化**
    ```bash
-   psql -U postgres -d performance_db -f backend/migrations/010_department_classification.sql
-   psql -U postgres -d performance_db -f backend/migrations/011_monthly_assessments.sql
+   cd backend
+   npm run db:migrate:local
    ```
 
 2. **后端部署**
@@ -392,7 +367,7 @@ docker-compose up -d
    ```bash
    cd app
    npm run build
-   # 将 dist/ 部署到 Nginx/Vercel
+   # 将 dist/ 部署到 Nginx
    ```
 
 ---
@@ -450,8 +425,6 @@ docker-compose up -d
 - 绩效预测
 - 自然语言评价生成
 - 高级数据分析
-
-详细规划请参考：[PHASE1_SUMMARY.md](docs/PHASE1_SUMMARY.md#下一步计划)
 
 ---
 

@@ -95,8 +95,6 @@ export const MobileNav: React.FC = () => {
       effectiveRoles
         .filter((item) => item !== 'admin' && item !== 'hr')
         .forEach((item) => labels.push(
-        item === 'admin' ? '系统管理员' :
-        item === 'hr' ? '人力资源' :
         item === 'gm' ? '总经理' :
         item === 'manager' ? '部门经理' : '员工'
       ));

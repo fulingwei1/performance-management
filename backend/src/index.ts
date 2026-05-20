@@ -15,38 +15,23 @@ import { ensureLocalPostgresSchema } from './config/local-schema';
 import { buildAllowedOrigins, resolveRateLimitConfig } from './config/cors';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { auditLogMiddleware } from './middleware/auditLog';
-import { disabledFeatureMiddleware } from './middleware/disabledFeatures';
 import { requestLogger } from './middleware/requestLogger';
 
 // 导入路由（auth.ts会检查JWT_SECRET）
 import authRoutes from './routes/auth.routes';
 import employeeRoutes from './routes/employee.routes';
 import performanceRoutes from './routes/performance.routes';
-import organizationRoutes from './routes/organization.routes';
-import assessmentCycleRoutes from './routes/assessmentCycle.routes';
-import metricLibraryRoutes from './routes/metricLibrary.routes';
-import settingsRoutes from './routes/settings.routes';
-import exportRoutes from './routes/export.routes';
-import quarterlySummaryRoutes from './routes/quarterlySummary.routes';
-import departmentRoutes from './routes/department.routes';
-import aiRoutes from './routes/ai.routes';
 import automationRoutes from './routes/automation.routes';
 import assessmentPublicationRoutes from './routes/assessmentPublication.routes';
 import auditLogRoutes from './routes/auditLog.routes';
 import todoRoutes from './routes/todo.routes';
 import dataImportRoutes from './routes/dataImport.routes';
 import analyticsRoutes from './routes/analytics.routes';
-import systemSettingsRoutes from './routes/systemSettings.routes';
 import assessmentTemplateRoutes from './routes/assessmentTemplate.routes';
 import monthlyAssessmentRoutes from './routes/monthlyAssessment.routes';
 import assessmentExportRoutes from './routes/assessmentExport.routes';
-import assessmentStatsRoutes from './routes/assessmentStats.routes';
 import salaryIntegrationRoutes from './routes/salaryIntegration.routes';
-import templateBindingRoutes from './routes/templateBinding.routes';
-import levelTemplateRuleRoutes from './routes/levelTemplateRule.routes';
 import performanceConfigRoutes from './routes/performanceConfig.routes';
-import progressMonitorRoutes from './routes/progressMonitor.routes';
-import archiveRoutes from './routes/archive.routes';
 import employeeQuarterlyRoutes from './routes/employeeQuarterly.routes';
 import satisfactionSurveyRoutes from './routes/satisfactionSurvey.routes';
 import { SchedulerService } from './services/scheduler.service';
@@ -137,9 +122,6 @@ app.use(requestLogger);
 // 审计日志中间件（在路由之前，记录所有操作）
 app.use(auditLogMiddleware);
 
-// 已下线的二期/非核心模块统一拦截，避免只隐藏前端入口但后端仍可访问
-app.use(disabledFeatureMiddleware);
-
 // 健康检查 - Support both /health and /api/health
 const healthHandler = (req: express.Request, res: express.Response) => {
  logger.info('Health check called');
@@ -157,34 +139,17 @@ app.get('/api/health', healthHandler);
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/performance', performanceRoutes);
-app.use('/api/organization', organizationRoutes);
-app.use('/api/cycles', assessmentCycleRoutes);
-app.use('/api/assessment-cycles', assessmentCycleRoutes);
-app.use('/api/metrics', metricLibraryRoutes);
-app.use('/api/settings', settingsRoutes);
-app.use('/api/export', exportRoutes);
-app.use('/api/quarterly-summaries', quarterlySummaryRoutes);
-app.use('/api/departments', departmentRoutes);
-app.use('/api/ai', aiRoutes);
 app.use('/api/automation', automationRoutes);
 app.use('/api/assessment-publications', assessmentPublicationRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/todos', todoRoutes);
 app.use('/api/data-import', dataImportRoutes);
 app.use('/api/analytics', analyticsRoutes);
-app.use('/api/system-settings', systemSettingsRoutes);
 app.use('/api/assessment-templates', assessmentTemplateRoutes);
 app.use('/api/monthly-assessment', monthlyAssessmentRoutes);
 app.use('/api/assessment-export', assessmentExportRoutes);
-app.use('/api/stats', assessmentStatsRoutes);
 app.use('/api/integrations/salary', salaryIntegrationRoutes);
-app.use('/api/template-bindings', templateBindingRoutes);
-app.use('/api/level-template-rules', levelTemplateRuleRoutes);
 app.use('/api/performance-config', performanceConfigRoutes);
-
-// 进度监控与归档
-app.use('/api/progress/monitor', progressMonitorRoutes);
-app.use('/api/archives', archiveRoutes);
 app.use('/api/employee-quarterly', employeeQuarterlyRoutes);
 app.use('/api/satisfaction-surveys', satisfactionSurveyRoutes);
 
@@ -220,13 +185,10 @@ const initializeServer = async () => {
  }
 };
 
-// 只有在非 Vercel 环境下（本地开发）才直接监听端口
-if (process.env.VERCEL !== '1' && process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test') {
  app.listen(PORT, async () => {
   await initializeServer();
  logger.info(`Server is running on port ${PORT}`);
  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
  });
-} else if (process.env.VERCEL === '1') {
- initializeServer();
 }

@@ -1,6 +1,6 @@
 /**
  * Optional in-memory read cache. Enabled via ENABLE_CACHE=true.
- * Use for read-through: get from cache first, then MySQL, then set cache.
+ * Use for read-through: get from cache first, then PostgreSQL, then set cache.
  * Invalidate on create/update/delete.
  */
 
