@@ -75,15 +75,19 @@ interface TemplateOption {
   status?: string;
 }
 
+interface TemplateAssignmentPreview {
+  employee: {
+    id: string;
+    name: string;
+  };
+  template: TemplateOption | null;
+  matchReason: string;
+}
+
 interface SelectedUnitSummary {
   unitKey: string;
   unitName: string;
   employeeCount: number;
-  exactTemplateId: string | null;
-  effectiveTemplateId: string | null;
-  effectiveTemplateName: string | null;
-  inheritedFromUnitKey: string | null;
-  missingTemplate: boolean;
 }
 
 const defaultConfig: RankingConfig = {
@@ -184,55 +188,8 @@ function getTemplateTypeLabel(departmentType?: string): string {
   }
 }
 
-function getDepartmentTypeByName(departmentName?: string): string {
-  const value = String(departmentName || '').trim();
-  if (/营销|销售/.test(value)) return 'sales';
-  if (/项目管理/.test(value)) return 'engineering';
-  if (/工程|技术|研发/.test(value)) return 'engineering';
-  if (/制造|生产|品质/.test(value)) return 'manufacturing';
-  if (/总经|管理|总办/.test(value)) return 'management';
-  return 'support';
-}
-
-function getPreferredDepartmentType(unitKey: string): string {
-  const rootDepartment = unitKey.split('/')[0] || unitKey;
-  return getDepartmentTypeByName(rootDepartment);
-}
-
-function getTemplateAssignmentDetail(
-  unitKey: string,
-  templateAssignments: Record<string, string>
-): {
-  exactTemplateId: string | null;
-  effectiveTemplateId: string | null;
-  inheritedFromUnitKey: string | null;
-} {
-  const exactTemplateId = templateAssignments[unitKey] || null;
-  if (exactTemplateId) {
-    return {
-      exactTemplateId,
-      effectiveTemplateId: exactTemplateId,
-      inheritedFromUnitKey: null,
-    };
-  }
-
-  let inheritedFromUnitKey: string | null = null;
-  let effectiveTemplateId: string | null = null;
-
-  for (const [configuredUnitKey, templateId] of Object.entries(templateAssignments)) {
-    if (!templateId) continue;
-    if (!matchesConfiguredUnit(unitKey, configuredUnitKey)) continue;
-    if (!inheritedFromUnitKey || configuredUnitKey.length > inheritedFromUnitKey.length) {
-      inheritedFromUnitKey = configuredUnitKey;
-      effectiveTemplateId = templateId;
-    }
-  }
-
-  return {
-    exactTemplateId: null,
-    effectiveTemplateId,
-    inheritedFromUnitKey,
-  };
+function getEmployeeTemplateAssignmentKey(employeeId: string): string {
+  return `employee:${employeeId}`;
 }
 
 function getNodeEmployees(node: OrgNode): Employee[] {
@@ -290,6 +247,7 @@ function buildOrgTree(employees: Employee[]): OrgNode[] {
 export default function AssessmentScopeSettings() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
+  const [assignmentPreviews, setAssignmentPreviews] = useState<Map<string, TemplateAssignmentPreview>>(new Map());
   const [rankingConfig, setRankingConfig] = useState<RankingConfig>(defaultConfig);
   const rankingConfigRef = useRef<RankingConfig>(defaultConfig);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -312,10 +270,11 @@ export default function AssessmentScopeSettings() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [empResult, configResult, templateResult] = await Promise.allSettled([
+      const [empResult, configResult, templateResult, assignmentResult] = await Promise.allSettled([
         employeeApi.getAll(),
         performanceConfigApi.getRankingConfig(),
         assessmentTemplateApi.getAll({ includeMetrics: false, status: 'active' }),
+        assessmentTemplateApi.previewAssignments({}),
       ]);
 
       let nextEmployees: Employee[] = [];
@@ -356,6 +315,16 @@ export default function AssessmentScopeSettings() {
           ? templateResult.reason?.message
           : templateResult.value?.message;
         toast.error('考核模板加载失败: ' + (reason || '未知错误'));
+      }
+
+      if (assignmentResult.status === 'fulfilled' && assignmentResult.value.success) {
+        const previews = new Map<string, TemplateAssignmentPreview>();
+        (assignmentResult.value.data || []).forEach((item: TemplateAssignmentPreview) => {
+          if (item?.employee?.id) previews.set(item.employee.id, item);
+        });
+        setAssignmentPreviews(previews);
+      } else {
+        setAssignmentPreviews(new Map());
       }
     } catch (error: any) {
       toast.error('加载数据失败: ' + (error.message || String(error)));
@@ -410,31 +379,20 @@ export default function AssessmentScopeSettings() {
   );
   const selectedUnitSummaries = useMemo<SelectedUnitSummary[]>(() => (
     requiredTemplateUnitKeys.map((unitKey) => {
-      const detail = getTemplateAssignmentDetail(unitKey, rankingConfig.templateAssignments);
       const node = orgNodeMap.get(unitKey);
       const employeeCount = node ? getNodeEmployees(node).length : 0;
-      const effectiveTemplate = detail.effectiveTemplateId ? templateMap.get(detail.effectiveTemplateId) : null;
       return {
         unitKey,
         unitName: node?.name || unitKey.split('/').slice(-1)[0] || unitKey,
         employeeCount,
-        exactTemplateId: detail.exactTemplateId,
-        effectiveTemplateId: detail.effectiveTemplateId,
-        effectiveTemplateName: effectiveTemplate?.name || null,
-        inheritedFromUnitKey:
-          detail.inheritedFromUnitKey && detail.inheritedFromUnitKey !== unitKey
-            ? detail.inheritedFromUnitKey
-            : null,
-        missingTemplate: !detail.effectiveTemplateId,
       };
     })
   ).sort((a, b) => a.unitKey.localeCompare(b.unitKey, 'zh-Hans-CN')), [
     orgNodeMap,
-    rankingConfig.templateAssignments,
     requiredTemplateUnitKeys,
-    templateMap,
   ]);
-  const selectedTemplateCount = Object.keys(rankingConfig.templateAssignments || {}).length;
+  const selectedTemplateCount = Object.keys(rankingConfig.templateAssignments || {})
+    .filter((key) => key.startsWith('employee:')).length;
 
   const setParticipation = (updater: (current: RankingConfig['participation']) => RankingConfig['participation']) => {
     updateRankingConfig((prev) => ({
@@ -518,14 +476,24 @@ export default function AssessmentScopeSettings() {
   };
 
   const toggleEmployee = (employee: Employee, checked: boolean) => {
-    setParticipation((current) => {
+    updateRankingConfig((prev) => {
+      const current = prev.participation;
       const includedEmployeeIds = current.includedEmployeeIds.filter((id) => id !== employee.id);
       const excludedEmployeeIds = current.excludedEmployeeIds.filter((id) => id !== employee.id);
+      const nextTemplateAssignments = { ...(prev.templateAssignments || {}) };
+      if (!checked) {
+        delete nextTemplateAssignments[getEmployeeTemplateAssignmentKey(employee.id)];
+      }
+
       if (current.mode === 'include') {
         return {
-          ...current,
-          includedEmployeeIds: checked ? unique([...includedEmployeeIds, employee.id]) : includedEmployeeIds,
-          excludedEmployeeIds: checked ? excludedEmployeeIds : unique([...excludedEmployeeIds, employee.id]),
+          ...prev,
+          participation: {
+            ...current,
+            includedEmployeeIds: checked ? unique([...includedEmployeeIds, employee.id]) : includedEmployeeIds,
+            excludedEmployeeIds: checked ? excludedEmployeeIds : unique([...excludedEmployeeIds, employee.id]),
+          },
+          templateAssignments: nextTemplateAssignments,
         };
       }
       const unitDecision = resolveUnitDecision(
@@ -534,22 +502,27 @@ export default function AssessmentScopeSettings() {
         current.excludedUnitKeys
       );
       return {
-        ...current,
-        includedEmployeeIds: !checked && unitDecision === 'exclude'
-          ? unique([...includedEmployeeIds, employee.id])
-          : includedEmployeeIds,
-        excludedEmployeeIds: checked ? unique([...excludedEmployeeIds, employee.id]) : excludedEmployeeIds,
+        ...prev,
+        participation: {
+          ...current,
+          includedEmployeeIds: !checked && unitDecision === 'exclude'
+            ? unique([...includedEmployeeIds, employee.id])
+            : includedEmployeeIds,
+          excludedEmployeeIds: checked ? unique([...excludedEmployeeIds, employee.id]) : excludedEmployeeIds,
+        },
+        templateAssignments: nextTemplateAssignments,
       };
     });
   };
 
-  const setUnitTemplate = (unitKey: string, templateId: string) => {
+  const setEmployeeTemplate = (employeeId: string, templateId: string) => {
     updateRankingConfig((prev) => {
       const nextAssignments = { ...(prev.templateAssignments || {}) };
-      if (!templateId || templateId === '__inherit__') {
-        delete nextAssignments[unitKey];
+      const assignmentKey = getEmployeeTemplateAssignmentKey(employeeId);
+      if (!templateId || templateId === '__auto__') {
+        delete nextAssignments[assignmentKey];
       } else {
-        nextAssignments[unitKey] = templateId;
+        nextAssignments[assignmentKey] = templateId;
       }
       return {
         ...prev,
@@ -577,11 +550,17 @@ export default function AssessmentScopeSettings() {
   };
 
   const handleSave = async () => {
-    const latestConfig = rankingConfigRef.current;
+    const latestConfig = {
+      ...rankingConfigRef.current,
+      templateAssignments: Object.fromEntries(
+        Object.entries(rankingConfigRef.current.templateAssignments || {})
+          .filter(([key]) => key.startsWith('employee:'))
+      ),
+    };
     setSaving(true);
     try {
       await performanceConfigApi.updateRankingConfig(latestConfig as unknown as Record<string, unknown>);
-      toast.success('考核范围已保存；模板会优先按岗位和任职资格等级自动匹配，特殊覆盖按本页设置生效');
+      toast.success('考核范围已保存；模板会按规则自动推荐，员工个人模板调整按本页设置生效');
       await loadData();
     } catch (error: any) {
       toast.error('保存失败: ' + (error.message || String(error)));
@@ -592,17 +571,56 @@ export default function AssessmentScopeSettings() {
 
   const renderEmployee = (employee: Employee) => {
     const checked = isMarked(employee);
+    const participating = isParticipating(employee);
+    const assignmentKey = getEmployeeTemplateAssignmentKey(employee.id);
+    const overrideTemplateId = rankingConfig.templateAssignments?.[assignmentKey] || '';
+    const overrideTemplate = overrideTemplateId ? templateMap.get(overrideTemplateId) : null;
+    const preview = assignmentPreviews.get(employee.id);
+    const autoTemplate = preview?.template || null;
     return (
-      <div key={employee.id} className="flex items-center gap-3 rounded-md px-3 py-2 pl-12 hover:bg-gray-50">
+      <div key={employee.id} className="flex flex-wrap items-center gap-3 rounded-md px-3 py-2 pl-12 hover:bg-gray-50">
         <Checkbox checked={checked} onCheckedChange={(value) => toggleEmployee(employee, value === true)} />
         <UserRound className="h-4 w-4 text-gray-400" />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-gray-900">{employee.name}</div>
           <div className="text-xs text-gray-500">{employee.position || employee.role} · {employee.level || '未分级'} · {employee.id}</div>
+          <div className="mt-1 text-xs text-gray-500">
+            自动推荐：{autoTemplate?.name || '暂无匹配模板'}
+            {preview?.matchReason ? `（${preview.matchReason}）` : ''}
+          </div>
         </div>
-        <Badge variant={isParticipating(employee) ? 'default' : 'outline'} className="text-xs">
-          {isParticipating(employee) ? '参与' : '不参与'}
+        <Badge variant={participating ? 'default' : 'outline'} className="text-xs">
+          {participating ? '参与' : '不参与'}
         </Badge>
+        {participating && (
+          <div className="w-full lg:w-[320px]">
+            <Select
+              value={overrideTemplateId || '__auto__'}
+              onValueChange={(value) => setEmployeeTemplate(employee.id, value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="按规则自动推荐" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__auto__">
+                  {autoTemplate ? `按规则自动推荐：${autoTemplate.name}` : '按规则自动推荐'}
+                </SelectItem>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>HR/Admin 可指定员工模板</SelectLabel>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name} · {getTemplateTypeLabel(template.departmentType)}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {overrideTemplate && (
+              <div className="mt-1 text-xs text-amber-700">当前已人工指定：{overrideTemplate.name}</div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -661,7 +679,7 @@ export default function AssessmentScopeSettings() {
               考核范围配置
             </h1>
             <p className="mt-1 text-muted-foreground">
-              按一级/二级/三级部门或具体员工选择谁参与考核；模板默认按岗位和任职资格等级自动匹配。
+              按组织树选择谁参与考核；模板由系统按部门、岗位和任职资格等级自动推荐，少数员工可由 HR/Admin 单独调整。
             </p>
           </div>
           <Button onClick={handleSave} disabled={saving}>
@@ -673,7 +691,7 @@ export default function AssessmentScopeSettings() {
           <Badge variant="outline" className="text-sm">参与考核：{participantCount} 人</Badge>
           <Badge variant="secondary" className="text-sm">不参与：{activeEmployees.length - participantCount} 人</Badge>
           <Badge variant="outline" className="text-sm">当前勾选：{selectedMarkCount} 人</Badge>
-          <Badge variant="outline" className="text-sm">特殊覆盖模板：{selectedTemplateCount} 个</Badge>
+          <Badge variant="outline" className="text-sm">员工模板调整：{selectedTemplateCount} 人</Badge>
         </div>
       </motion.div>
 
@@ -686,7 +704,7 @@ export default function AssessmentScopeSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm text-muted-foreground">
-            保存后，这里会展示参与考核的部门。正常情况下，系统会按员工“岗位 + 任职资格等级”匹配模板；只有少数特殊部门才需要在本页指定覆盖模板。
+            保存后，这里会展示参与考核的部门。模板不按部门一刀切，而是按员工“部门 + 岗位 + 任职资格等级”自动推荐；需要例外时，在组织树员工行直接调整。
           </div>
 
           {participation.mode !== 'include' ? (
@@ -695,9 +713,7 @@ export default function AssessmentScopeSettings() {
             </div>
           ) : selectedUnitSummaries.length > 0 ? (
             <div className="grid gap-3 md:grid-cols-2">
-              {selectedUnitSummaries.map((summary) => {
-                const template = summary.effectiveTemplateId ? templateMap.get(summary.effectiveTemplateId) : null;
-                return (
+              {selectedUnitSummaries.map((summary) => (
                   <div key={summary.unitKey} className="rounded-lg border bg-white p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -705,152 +721,19 @@ export default function AssessmentScopeSettings() {
                         <div className="mt-1 text-xs text-gray-500">{summary.unitKey}</div>
                         <div className="mt-1 text-xs text-gray-500">参与人数：{summary.employeeCount} 人</div>
                       </div>
-                      <Badge variant={summary.missingTemplate ? 'outline' : 'secondary'}>
-                        {summary.missingTemplate ? '自动匹配模板' : '指定覆盖模板'}
+                      <Badge variant="outline">按员工自动推荐模板</Badge>
+                    </div>
+                    <div className="mt-3">
+                      <Badge variant="outline" className="text-xs text-blue-700">
+                        员工模板在下方组织树中逐人显示/调整
                       </Badge>
                     </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {template ? (
-                        <>
-                          <Badge variant="secondary" className="text-xs">
-                            {template.name}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {getTemplateTypeLabel(template.departmentType)}
-                          </Badge>
-                          {summary.inheritedFromUnitKey && (
-                            <Badge variant="outline" className="text-xs">
-                              继承自：{summary.inheritedFromUnitKey}
-                            </Badge>
-                          )}
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-xs text-amber-700">
-                          按岗位和任职资格等级自动匹配
-                        </Badge>
-                      )}
-                    </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           ) : (
             <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
               当前还没有勾选参与考核的部门。先在下面组织树里勾选要参与考核的部门。
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FileText className="h-4 w-4" />
-            特殊部门模板覆盖（可选）
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-sm text-muted-foreground">
-            这里不是新建模板的地方。多数部门不用选，系统会按员工岗位和任职资格等级自动匹配；只有确实需要和岗位规则不同的部门，才在这里指定覆盖模板。
-          </div>
-
-          {participation.mode !== 'include' ? (
-            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              当前是“勾选不参与考核”模式，系统默认其他部门都参与；模板会按岗位和任职资格等级自动匹配，暂不需要逐部门设置。
-            </div>
-          ) : selectedUnitSummaries.length > 0 ? (
-            <div className="space-y-3">
-              {selectedUnitSummaries.map((summary) => {
-                const inheritedTemplate = summary.inheritedFromUnitKey && summary.effectiveTemplateId
-                  ? templateMap.get(summary.effectiveTemplateId)
-                  : null;
-                const exactTemplate = summary.exactTemplateId ? templateMap.get(summary.exactTemplateId) : null;
-                const preferredDepartmentType = getPreferredDepartmentType(summary.unitKey);
-                const recommendedTemplates = templates.filter(
-                  (template) => template.departmentType === preferredDepartmentType
-                );
-                const otherTemplates = templates.filter(
-                  (template) => template.departmentType !== preferredDepartmentType
-                );
-                return (
-                  <div key={`assignment-${summary.unitKey}`} className="rounded-lg border bg-white p-4">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="font-medium text-gray-900">{summary.unitName}</div>
-                        <div className="text-xs text-gray-500">{summary.unitKey}</div>
-                        <div className="mt-1 text-xs text-gray-500">参与人数：{summary.employeeCount} 人</div>
-                      </div>
-
-                      <div className="w-full lg:w-[360px]">
-                        <Select
-                          value={summary.exactTemplateId || '__inherit__'}
-                          onValueChange={(value) => setUnitTemplate(summary.unitKey, value)}
-                        >
-                          <SelectTrigger>
-                          <SelectValue placeholder="可选：指定覆盖模板" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__inherit__">
-                              {inheritedTemplate
-                                ? `继承上级模板：${inheritedTemplate.name}`
-                                : '不指定，按岗位/任职资格自动匹配'}
-                            </SelectItem>
-                            {recommendedTemplates.length > 0 && (
-                              <SelectGroup>
-                                <SelectLabel>
-                                  推荐模板：{getTemplateTypeLabel(preferredDepartmentType)}
-                                </SelectLabel>
-                                {recommendedTemplates.map((template) => (
-                                  <SelectItem key={template.id} value={template.id}>
-                                    {template.name} · {getTemplateTypeLabel(template.departmentType)}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            )}
-                            {otherTemplates.length > 0 && (
-                              <>
-                                <SelectSeparator />
-                                <SelectGroup>
-                                  <SelectLabel>其他类型模板</SelectLabel>
-                                  {otherTemplates.map((template) => (
-                                    <SelectItem key={template.id} value={template.id}>
-                                      {template.name} · {getTemplateTypeLabel(template.departmentType)}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        推荐类型：{getTemplateTypeLabel(preferredDepartmentType)}
-                      </Badge>
-                      {exactTemplate ? (
-                        <Badge variant="secondary" className="text-xs">
-                          当前指定：{exactTemplate.name}
-                        </Badge>
-                      ) : inheritedTemplate ? (
-                        <Badge variant="outline" className="text-xs">
-                          当前继承：{inheritedTemplate.name}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs text-amber-700">
-                          未指定覆盖模板，将自动匹配
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-lg border bg-gray-50 p-4 text-sm text-muted-foreground">
-              先在下面组织树里勾选要参与考核的部门；如需特殊覆盖模板，这里才会出现选择框。
             </div>
           )}
         </CardContent>

@@ -310,7 +310,8 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
   }
 
   const sourceReasonMap: Record<string, string> = {
-    unit_config: '参与部门指定模板',
+    employee_override: 'HR/Admin手工指定员工模板',
+    unit_config: '历史组织单元兜底模板',
     level_rule: '部门类型 + 层级规则',
     auto_match: '按模板适用范围自动匹配',
     default: '默认模板兜底',

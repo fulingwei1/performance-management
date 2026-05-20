@@ -32,6 +32,7 @@ const employeeNavItems: SidebarNavItem[] = [
 const managerNavItems: SidebarNavItem[] = [
   { path: '/manager/dashboard', label: '工作台', icon: LayoutDashboard },
   { path: '/manager/analytics', label: '绩效看板', icon: BarChart3 },
+  { path: '/manager/assessment-templates', label: '考核模板', icon: FileText },
 ];
 
 const gmNavItems: SidebarNavItem[] = [

@@ -59,6 +59,11 @@ function getExactConfiguredTemplateId(unitKey: string, templateAssignments: Reco
   return null;
 }
 
+function getEmployeeTemplateAssignmentKey(employeeId?: string): string | null {
+  const id = String(employeeId || '').trim();
+  return id ? `employee:${id}` : null;
+}
+
 export class LevelTemplateRuleModel {
   /**
    * 创建或更新规则（UPSERT by department_type + level）
@@ -136,15 +141,15 @@ export class LevelTemplateRuleModel {
 
   /**
    * ★ 核心：解析员工的最终模板
-   * 优先级：精确组织单元覆盖 > 部门×层级规则 > 自动匹配 > 上级组织单元覆盖兜底 > 默认兜底
+   * 优先级：员工个人模板 > 部门×层级规则 > 自动匹配 > 历史组织单元覆盖兜底 > 默认兜底
    *
    * 注意：考核范围里勾选“工程技术中心/制造中心”只是确定谁参与考核，不应把整个中心都锁死到一个模板。
-   * 只有精确选到员工所在组织单元的模板才算强覆盖；父级覆盖只在没有岗位/层级模板可匹配时兜底。
+   * 如需人工调整，请 HR/Admin 调整到具体员工；旧的组织单元模板只在没有岗位/层级模板可匹配时兜底。
    */
   static async resolveTemplate(employeeId: string): Promise<{
     templateId: string;
     templateName: string;
-    source: 'unit_config' | 'level_rule' | 'auto_match' | 'default';
+    source: 'employee_override' | 'unit_config' | 'level_rule' | 'auto_match' | 'default';
     departmentType: string;
     level: string;
   }> {
@@ -162,19 +167,22 @@ export class LevelTemplateRuleModel {
       subDepartment: employee.sub_department || employee.subDepartment,
     });
 
-    // 2. 查精确组织单元指定模板（不继承父级，避免把整个中心锁成一个模板）
+    // 2. 查 HR/Admin 为具体员工指定的模板
     const rankingConfig = await getPerformanceRankingConfig();
-    const exactConfiguredTemplateId = getExactConfiguredTemplateId(unitKey, rankingConfig.templateAssignments || {});
-    if (exactConfiguredTemplateId) {
-      const exactConfiguredTemplateResult = await query(
+    const employeeAssignmentKey = getEmployeeTemplateAssignmentKey(employeeId);
+    const employeeConfiguredTemplateId = employeeAssignmentKey
+      ? getExactConfiguredTemplateId(employeeAssignmentKey, rankingConfig.templateAssignments || {})
+      : null;
+    if (employeeConfiguredTemplateId) {
+      const employeeConfiguredTemplateResult = await query(
         `SELECT id, name FROM assessment_templates WHERE id = $1 AND status = 'active'`,
-        [exactConfiguredTemplateId]
+        [employeeConfiguredTemplateId]
       );
-      if (exactConfiguredTemplateResult.length > 0) {
+      if (employeeConfiguredTemplateResult.length > 0) {
         return {
-          templateId: exactConfiguredTemplateResult[0].id,
-          templateName: exactConfiguredTemplateResult[0].name,
-          source: 'unit_config',
+          templateId: employeeConfiguredTemplateResult[0].id,
+          templateName: employeeConfiguredTemplateResult[0].name,
+          source: 'employee_override',
           departmentType,
           level
         };

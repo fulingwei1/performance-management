@@ -15,6 +15,7 @@ const EmployeePerformanceHistory = lazy(() => import('@/pages/Manager/EmployeePe
 const TeamList = lazy(() => import('@/pages/Manager/TeamList').then((module) => ({ default: module.TeamList })));
 const HRDashboard = lazy(() => import('@/pages/HR/Dashboard').then((module) => ({ default: module.HRDashboard })));
 const AssessmentConfig = lazy(() => import('@/pages/HR/AssessmentConfig').then((module) => ({ default: module.AssessmentConfig })));
+const ManagerAssessmentTemplates = lazy(() => import('@/pages/HR/AssessmentTemplates').then((module) => ({ default: () => <module.AssessmentTemplates mode="manager" /> })));
 const DataImportExport = lazy(() => import('@/pages/HR/DataImportExport').then((module) => ({ default: module.DataImportExport })));
 const MonthlyAutomation = lazy(() => import('@/pages/HR/MonthlyAutomation'));
 const MonthlyStars = lazy(() => import('@/pages/HR/MonthlyStars'));
@@ -173,6 +174,7 @@ function App() {
           <Route path="/manager/team" element={<TeamList />} />
           <Route path="/manager/employee/:employeeId" element={<EmployeePerformanceHistoryWrapper />} />
           <Route path="/manager/analytics" element={<Analytics />} />
+          <Route path="/manager/assessment-templates" element={<ManagerAssessmentTemplates />} />
         </Route>
 
         {/* GM routes */}

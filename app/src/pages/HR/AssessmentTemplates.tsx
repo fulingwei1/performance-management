@@ -180,6 +180,7 @@ function buildLevelSlots(templates: Template[]) {
 
 export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
   const { user } = useAuthStore();
+  const readonlyMode = mode === 'manager';
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -241,8 +242,8 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
   };
 
   const handleEdit = (template: Template) => {
-    if (mode === 'manager' && (template.createdBy !== user?.id || template.isDefault)) {
-      toast.info('经理建议先复制模板，再编辑自己的模板版本');
+    if (readonlyMode) {
+      toast.info('模板由 HR/Admin 维护，经理仅查看可选模板和指标');
       return;
     }
     setSelectedTemplate(template);
@@ -387,25 +388,28 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
               <Eye className="w-3 h-3 mr-1" />
               查看
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleEdit(template)}
-              className="flex-1"
-              disabled={mode === 'manager' && (template.createdBy !== user?.id || template.isDefault)}
-            >
-              <Edit className="w-3 h-3 mr-1" />
-              编辑
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleCopy(template)}
-              aria-label={`复制模板 ${template.name}`}
-            >
-              <Copy className="w-3 h-3" />
-            </Button>
-            {(!template.isDefault && mode !== 'manager') || (mode === 'manager' && template.createdBy === user?.id && !template.isDefault) ? (
+            {!readonlyMode && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(template)}
+                  className="flex-1"
+                >
+                  <Edit className="w-3 h-3 mr-1" />
+                  编辑
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCopy(template)}
+                  aria-label={`复制模板 ${template.name}`}
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </>
+            )}
+            {!template.isDefault && !readonlyMode ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -466,14 +470,16 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
           <h2 className="text-2xl font-bold text-gray-900">考核模板管理</h2>
           <p className="text-gray-500 mt-1">
             {mode === 'manager'
-              ? '经理可以复制标准模板，形成自己的部门模板版本，再绑定给本团队使用。'
+              ? '经理可以查看系统可选模板和指标口径；模板调整需由 HR/Admin 在考核配置中维护。'
               : '按岗位序列和任职资格等级维护考核模板，系统生成任务时自动匹配员工'}
           </p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          {mode === 'manager' ? '创建自定义模板' : '创建模板'}
-        </Button>
+        {!readonlyMode && (
+          <Button onClick={handleCreate}>
+            <Plus className="w-4 h-4 mr-2" />
+            创建模板
+          </Button>
+        )}
       </div>
 
       {/* 筛选器 */}

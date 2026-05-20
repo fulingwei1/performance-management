@@ -5,7 +5,7 @@ import {
   type PerformanceRankingConfigV1,
 } from './performanceRankingConfig.service';
 
-export type TaskTemplateSource = 'unit_config' | 'auto_match';
+export type TaskTemplateSource = 'employee_override' | 'unit_config' | 'auto_match';
 
 export type ResolvedTaskTemplate = {
   id: string;
@@ -19,21 +19,26 @@ function isActiveTemplate(template: AssessmentTemplate | null | undefined): temp
 }
 
 function getExactConfiguredTemplateId(
-  unitKey: string,
+  assignmentKey: string,
   config: Pick<PerformanceRankingConfigV1, 'templateAssignments'>
 ): string | null {
-  const normalizedUnitKey = String(unitKey || '').trim();
-  if (!normalizedUnitKey) return null;
+  const normalizedAssignmentKey = String(assignmentKey || '').trim();
+  if (!normalizedAssignmentKey) return null;
 
   for (const [configuredKey, templateId] of Object.entries(config.templateAssignments || {})) {
     const normalizedConfiguredKey = String(configuredKey || '').trim();
     const normalizedTemplateId = String(templateId || '').trim();
-    if (normalizedConfiguredKey === normalizedUnitKey && normalizedTemplateId) {
+    if (normalizedConfiguredKey === normalizedAssignmentKey && normalizedTemplateId) {
       return normalizedTemplateId;
     }
   }
 
   return null;
+}
+
+function getEmployeeTemplateAssignmentKey(employeeId?: string): string | null {
+  const id = String(employeeId || '').trim();
+  return id ? `employee:${id}` : null;
 }
 
 async function toResolvedTemplate(
@@ -57,14 +62,15 @@ async function toResolvedTemplate(
  * 生成月度绩效任务前解析员工考核模板。
  *
  * 顺序：
- * 1. HR 在“考核范围/模板配置”里给当前组织单元精确选择的模板；
+ * 1. HR/Admin 给具体员工设置的个人模板；
  * 2. 按岗位/级别/部门类型自动匹配更细颗粒度的任职资格模板；
- * 3. HR 给上级组织单元选择的模板作为兜底继承模板。
+ * 3. 历史组织单元模板仅作为兜底继承模板，避免一个部门下不同岗位被锁成同一模板。
  *
  * 返回 null 表示没有可用模板，调用方应阻止或跳过生成，避免生成“无模板任务”。
  */
 export async function resolveTaskTemplateForEmployee(
   employee: {
+    id?: string;
     role?: string;
     level?: string;
     position?: string;
@@ -74,11 +80,12 @@ export async function resolveTaskTemplateForEmployee(
   rankingConfig: PerformanceRankingConfigV1
 ): Promise<ResolvedTaskTemplate | null> {
   const unitKey = getOrgUnitKey(employee);
-  const exactConfigured = await toResolvedTemplate(
-    getExactConfiguredTemplateId(unitKey, rankingConfig),
-    'unit_config'
+  const employeeAssignmentKey = getEmployeeTemplateAssignmentKey(employee.id);
+  const employeeConfigured = await toResolvedTemplate(
+    employeeAssignmentKey ? getExactConfiguredTemplateId(employeeAssignmentKey, rankingConfig) : null,
+    'employee_override'
   );
-  if (exactConfigured) return exactConfigured;
+  if (employeeConfigured) return employeeConfigured;
 
   const matched = await AssessmentTemplateModel.findMatchingTemplate({
     role: employee.role || '',

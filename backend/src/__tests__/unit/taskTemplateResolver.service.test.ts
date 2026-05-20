@@ -117,8 +117,30 @@ describe('resolveTaskTemplateForEmployee', () => {
     });
   });
 
-  it('keeps an exact unit template assignment above auto matching', async () => {
+  it('keeps an employee template override above auto matching', async () => {
     const resolved = await resolveTaskTemplateForEmployee({
+      id: 'e001',
+      role: 'employee',
+      level: 'junior',
+      position: '助理机械工程师',
+      department: '工程技术中心',
+      subDepartment: '机械部',
+    }, {
+      ...baseConfig,
+      templateAssignments: {
+        'employee:e001': 'template-elec-default',
+      },
+    });
+
+    expect(resolved).toMatchObject({
+      id: 'template-elec-default',
+      source: 'employee_override',
+    });
+  });
+
+  it('does not let a department template override a more specific employee auto match', async () => {
+    const resolved = await resolveTaskTemplateForEmployee({
+      id: 'e002',
       role: 'employee',
       level: 'junior',
       position: '助理机械工程师',
@@ -132,8 +154,8 @@ describe('resolveTaskTemplateForEmployee', () => {
     });
 
     expect(resolved).toMatchObject({
-      id: 'template-elec-default',
-      source: 'unit_config',
+      id: 'template-mech-junior-001',
+      source: 'auto_match',
     });
   });
 
