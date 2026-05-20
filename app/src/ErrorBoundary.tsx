@@ -21,6 +21,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+
+    const message = `${error?.message || ''}\n${error?.stack || ''}`;
+    const isDynamicImportCacheError = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(message);
+
+    if (isDynamicImportCacheError && sessionStorage.getItem('pm:auto-reloaded-after-chunk-error') !== '1') {
+      sessionStorage.setItem('pm:auto-reloaded-after-chunk-error', '1');
+      window.location.reload();
+    }
   }
 
   render() {
