@@ -19,6 +19,7 @@ import { resolveTaskTemplateForEmployee, type ResolvedTaskTemplate } from '../se
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { validateTaskCreationMonth } from '../utils/assessmentMonthGuard';
 import { sanitizeUserText } from '../utils/sanitizeText';
+import { SatisfactionSurveyService } from '../services/satisfactionSurvey.service';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -559,6 +560,17 @@ export const performanceController = {
         success: false,
         error: '当前账号不在月度绩效自评范围内，无需提交工作总结和下月计划'
       });
+    }
+
+    const currentSurvey = await SatisfactionSurveyService.findCurrentSurvey(new Date());
+    if (currentSurvey) {
+      const surveyResponse = await SatisfactionSurveyService.getMyResponse(currentSurvey.id, employee.id);
+      if (!surveyResponse) {
+        return res.status(400).json({
+          success: false,
+          error: '本期有满意度调查，请先完成满意度调查后再提交工作总结'
+        });
+      }
     }
 
     // 必须先由月度任务生成流程创建空草稿，员工才能提交总结。

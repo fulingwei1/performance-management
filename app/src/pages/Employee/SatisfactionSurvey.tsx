@@ -28,12 +28,14 @@ interface SatisfactionSurveyPanelProps {
   embedded?: boolean;
   hideWhenUnavailable?: boolean;
   onAvailabilityChange?: (available: boolean) => void;
+  onResponseStatusChange?: (submitted: boolean) => void;
 }
 
 export function SatisfactionSurveyPanel({
   embedded = false,
   hideWhenUnavailable = false,
   onAvailabilityChange,
+  onResponseStatusChange,
 }: SatisfactionSurveyPanelProps) {
   const [survey, setSurvey] = useState<SatisfactionSurveyType | null>(null);
   const [myResponse, setMyResponse] = useState<SatisfactionSurveyResponse | null>(null);
@@ -55,13 +57,16 @@ export function SatisfactionSurveyPanel({
         setComment(payload.myResponse?.comment || '');
         setAnonymous(payload.myResponse?.anonymous !== false);
         onAvailabilityChange?.(payload.survey?.status === 'open');
+        onResponseStatusChange?.(Boolean(payload.myResponse));
       } else {
         setSurvey(null);
         setMyResponse(null);
         onAvailabilityChange?.(false);
+        onResponseStatusChange?.(false);
       }
     } catch (error) {
       onAvailabilityChange?.(false);
+      onResponseStatusChange?.(false);
       toast.error(error instanceof Error ? error.message : '加载满意度调查失败');
     } finally {
       setLoading(false);

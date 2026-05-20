@@ -45,6 +45,7 @@ export function WorkSummary() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDraftSuccess, setShowDraftSuccess] = useState(false);
   const [hasOpenSatisfactionSurvey, setHasOpenSatisfactionSurvey] = useState(false);
+  const [hasSubmittedSatisfactionSurvey, setHasSubmittedSatisfactionSurvey] = useState(false);
   const satisfactionSurveyRef = useRef<HTMLDivElement | null>(null);
   
   // 冻结状态
@@ -55,6 +56,7 @@ export function WorkSummary() {
   const [hasGeneratedTask, setHasGeneratedTask] = useState(false);
   const isSubmittedRecord = ['submitted', 'completed', 'scored'].includes(recordStatus || '');
   const isReadOnly = frozen || isSubmittedRecord;
+  const satisfactionSurveyRequired = hasOpenSatisfactionSurvey && !hasSubmittedSatisfactionSurvey;
   
   // 加载该月份的记录（检测冻结状态）
   useEffect(() => {
@@ -110,6 +112,11 @@ export function WorkSummary() {
       toast.error('该月份绩效考核任务尚未生成，暂不能填写总结');
       return;
     }
+    if (!isDraft && satisfactionSurveyRequired) {
+      toast.error('本期有满意度调查，请先完成满意度调查后再提交工作总结');
+      satisfactionSurveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -136,13 +143,7 @@ export function WorkSummary() {
     if (success && !isDraft) {
       setRecordStatus('submitted');
       setShowSuccess(true);
-      if (hasOpenSatisfactionSurvey) {
-        setTimeout(() => {
-          satisfactionSurveyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 250);
-      } else {
-        setTimeout(() => navigate('/employee/dashboard'), 800);
-      }
+      setTimeout(() => navigate('/employee/dashboard'), 800);
     } else if (success && isDraft) {
       setRecordStatus('draft');
       setShowDraftSuccess(true);
@@ -360,7 +361,7 @@ export function WorkSummary() {
                 工作总结表单
               </CardTitle>
               <CardDescription>
-                请如实填写本月工作完成情况及下月工作计划
+                请如实填写本月工作完成情况及下月工作计划；如本期有满意度调查，需先完成调查后提交。
               </CardDescription>
             </CardHeader>
             
@@ -493,6 +494,14 @@ export function WorkSummary() {
 	                  匿名提交后，经理侧汇总只显示“匿名提交”；不填写则不会生成建议记录。
 	                </p>
 	              </div>
+
+                {satisfactionSurveyRequired && (
+                  <Alert className="bg-amber-50 border-amber-200">
+                    <AlertDescription className="text-amber-800">
+                      本期有满意度调查，请先完成下方调查；完成后才能提交月度工作总结。
+                    </AlertDescription>
+                  </Alert>
+                )}
 	              
 	              {/* Actions */}
 	              <div className="flex gap-3 pt-4 border-t">
@@ -511,7 +520,7 @@ export function WorkSummary() {
                 </Button>
                 <Button
                   onClick={() => handleSave(false)}
-                  disabled={isSubmitting || loading || isReadOnly || !selfSummary || !nextMonthPlan}
+                  disabled={isSubmitting || loading || isReadOnly || !selfSummary || !nextMonthPlan || satisfactionSurveyRequired}
                   className="flex-1"
                 >
                   {isSubmitting ? (
@@ -531,6 +540,7 @@ export function WorkSummary() {
             embedded
             hideWhenUnavailable
             onAvailabilityChange={setHasOpenSatisfactionSurvey}
+            onResponseStatusChange={setHasSubmittedSatisfactionSurvey}
           />
         </motion.div>
         
