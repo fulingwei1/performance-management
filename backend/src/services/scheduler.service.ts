@@ -141,6 +141,343 @@ export class SchedulerService {
     return SatisfactionSurveyService.ensureSurveyForAssessmentDate(referenceDate, 'system');
   }
 
+  static getPerformanceDeadline(month: string): Date {
+    const [yearText, monthText] = month.split('-');
+    return new Date(Number(yearText), Number(monthText), 7);
+  }
+
+  /**
+   * HR/Admin 单独为某个员工生成某月绩效任务。
+   * 只按当前考核范围、有效上级和模板规则生成，不会为不参与考核人员创建幽灵任务。
+   */
+  static async generatePerformanceTaskForEmployee(employeeId: string, month: string): Promise<{
+    month: string;
+    employeeId: string;
+    employeeName?: string;
+    status: 'created' | 'exists' | 'updated_assessor';
+    record: any;
+    todoCount: number;
+    notificationCount: number;
+  }> {
+    const employee = await EmployeeModel.findById(employeeId);
+    if (!employee || (employee.status && employee.status !== 'active')) {
+      throw new Error('员工不存在或已离职，不能生成绩效任务');
+    }
+
+    if (await AssessmentPublicationModel.isPublished(month)) {
+      throw new Error('该月份绩效结果已发布，不能生成或重建任务');
+    }
+
+    const allEmployees = await EmployeeModel.findAll();
+    const rankingConfig = await getPerformanceRankingConfig();
+    const validIds = new Set<string>(
+      allEmployees
+        .filter((item: any) => !item.status || item.status === 'active')
+        .map((item: any) => String(item.id))
+    );
+
+    if (!isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: validIds })) {
+      throw new Error('该员工不在当前绩效考核范围内，不能生成任务');
+    }
+
+    const assessorId = resolveAssessorId(employee, validIds);
+    if (!assessorId) {
+      throw new Error('该员工未维护有效直属上级，不能生成绩效任务');
+    }
+
+    const template = await resolveTaskTemplateForEmployee(employee, rankingConfig);
+    if (!template) {
+      throw new Error('该员工没有可用考核模板，请先配置模板规则');
+    }
+
+    const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
+    if (existing) {
+      if (
+        existing.assessorId !== assessorId &&
+        existing.status !== 'completed' &&
+        existing.status !== 'scored'
+      ) {
+        const updated = await PerformanceModel.update(existing.id, {
+          assessorId,
+          templateId: template.id,
+          templateName: template.name,
+          departmentType: template.departmentType,
+        });
+        return {
+          month,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          status: 'updated_assessor',
+          record: updated || existing,
+          todoCount: 0,
+          notificationCount: 0,
+        };
+      }
+
+      return {
+        month,
+        employeeId: employee.id,
+        employeeName: employee.name,
+        status: 'exists',
+        record: existing,
+        todoCount: 0,
+        notificationCount: 0,
+      };
+    }
+
+    const deadline = this.getPerformanceDeadline(month);
+    const record = await PerformanceModel.saveSummary({
+      id: `rec-${employee.id}-${month}`,
+      employeeId: employee.id,
+      assessorId,
+      month,
+      selfSummary: '',
+      nextMonthPlan: '',
+      groupType: getGroupType(employee.level),
+      deadline,
+      templateId: template.id,
+      templateName: template.name,
+      departmentType: template.departmentType,
+    });
+
+    let todoCount = 0;
+    const relatedId = TodoModel.performanceSummaryRelatedId(month);
+    const existingTodo = await TodoModel.findExisting(employee.id, 'work_summary', relatedId);
+    if (!existingTodo) {
+      await TodoModel.create({
+        employeeId: employee.id,
+        type: 'work_summary',
+        title: `提交${month}月度工作总结`,
+        description: `请填写${month}工作总结和下月计划，供经理评分。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE}`,
+        dueDate: deadline,
+        link: `/employee/summary?month=${month}`,
+        relatedId,
+      });
+      todoCount = 1;
+    }
+
+    const notificationCount = await NotificationModel.createBatch([{
+      userId: employee.id,
+      type: 'reminder',
+      title: `请提交${month}月度工作总结`,
+      content: `系统已单独生成${month}绩效考核任务，请尽快填写上月工作总结和本月计划。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE}`,
+      link: `/employee/summary?month=${month}`,
+    }]);
+
+    return {
+      month,
+      employeeId: employee.id,
+      employeeName: employee.name,
+      status: 'created',
+      record,
+      todoCount,
+      notificationCount,
+    };
+  }
+
+  static async deletePerformanceTaskForEmployee(employeeId: string, month: string): Promise<{
+    month: string;
+    employeeId: string;
+    recordDeleted: boolean;
+    todoDeletedCount: number;
+    notificationDeletedCount: number;
+  }> {
+    const record = await PerformanceModel.findByEmployeeIdAndMonth(employeeId, month);
+    if (!record) {
+      return { month, employeeId, recordDeleted: false, todoDeletedCount: 0, notificationDeletedCount: 0 };
+    }
+
+    if (await AssessmentPublicationModel.isPublished(month)) {
+      throw new Error('该月份绩效结果已发布，如需删除请先取消发布');
+    }
+
+    const recordDeleted = await PerformanceModel.delete(record.id);
+    const todoResult = await query(`
+      DELETE FROM todos
+      WHERE (employee_id = $1 AND type = 'work_summary' AND related_id = $2)
+         OR (type = 'performance_review' AND related_id = $3)
+    `, [employeeId, TodoModel.performanceSummaryRelatedId(month), TodoModel.performanceReviewRelatedId(record.id)]);
+
+    const notificationResult = await query(`
+      DELETE FROM notifications
+      WHERE user_id = $1
+        AND (
+          title LIKE $2
+          OR content LIKE $2
+          OR link LIKE $3
+        )
+    `, [employeeId, `%${month}%`, `%month=${month}%`]);
+
+    return {
+      month,
+      employeeId,
+      recordDeleted,
+      todoDeletedCount: (todoResult as any).affectedRows ?? (todoResult as any).rowCount ?? 0,
+      notificationDeletedCount: (notificationResult as any).affectedRows ?? (notificationResult as any).rowCount ?? 0,
+    };
+  }
+
+  static async remindPerformanceTaskForEmployee(employeeId: string, month: string): Promise<{
+    month: string;
+    employeeId: string;
+    employeeName?: string;
+    taskType: '员工提交总结' | '经理评分' | '无需提醒';
+    recipient?: ReminderRecipientLog;
+    notificationCount: number;
+    todoCount: number;
+  }> {
+    const record = await PerformanceModel.findByEmployeeIdAndMonth(employeeId, month);
+    if (!record) {
+      throw new Error('该员工该月份绩效任务尚未生成，无法发送提醒');
+    }
+
+    const employee = await EmployeeModel.findById(record.employeeId);
+    if (!employee || (employee.status && employee.status !== 'active')) {
+      throw new Error('员工不存在或已离职，不能发送提醒');
+    }
+
+    const now = new Date();
+    const deadline = record.deadline ? new Date(record.deadline) : this.getPerformanceDeadline(month);
+    const deadlineDate = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')}`;
+    const daysLeft = Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
+
+    if (record.status === 'draft') {
+      const touser = await resolveEmployeeWecomUserId({
+        id: String(employee.id || '').trim(),
+        name: String(employee.name || '').trim(),
+        wecomUserId: String((employee as any).wecomUserId || '').trim(),
+      });
+      const sent = touser ? await WecomWebhookService.sendReminder({
+        cycleName: `${month}月工作总结`,
+        taskType: '员工提交总结',
+        daysLeft,
+        deadlineDate,
+        pendingCount: 1,
+        employeeNames: [employee.name],
+        operationGuide: EMPLOYEE_SUMMARY_OPERATION_GUIDE,
+        actionPath: `/employee/summary?month=${month}`,
+      }, touser) : false;
+
+      const relatedId = TodoModel.performanceSummaryRelatedId(month);
+      let todoCount = 0;
+      if (!await TodoModel.findExisting(employee.id, 'work_summary', relatedId)) {
+        await TodoModel.create({
+          employeeId: employee.id,
+          type: 'work_summary',
+          title: `提交${month}月度工作总结`,
+          description: `请填写${month}工作总结和下月计划，供经理评分。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE}`,
+          dueDate: deadline,
+          link: `/employee/summary?month=${month}`,
+          relatedId,
+        });
+        todoCount = 1;
+      }
+
+      const notificationCount = await NotificationModel.createBatch([{
+        userId: employee.id,
+        type: 'reminder',
+        title: `请提交${month}月度工作总结`,
+        content: `${month}月绩效考核待提交：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE}`,
+        link: `/employee/summary?month=${month}`,
+      }]);
+
+      return {
+        month,
+        employeeId: employee.id,
+        employeeName: employee.name,
+        taskType: '员工提交总结',
+        notificationCount,
+        todoCount,
+        recipient: {
+          employeeId: employee.id,
+          employeeName: employee.name,
+          department: employee.department,
+          subDepartment: employee.subDepartment,
+          taskType: '员工提交总结',
+          wecomUserId: touser || undefined,
+          sent,
+          ...(sent ? {} : { reason: touser ? '企业微信发送失败' : '未匹配到企业微信用户ID' }),
+        },
+      };
+    }
+
+    if (record.status === 'submitted') {
+      const manager = record.assessorId ? await EmployeeModel.findById(record.assessorId) : null;
+      if (!manager || (manager.status && manager.status !== 'active')) {
+        throw new Error('该绩效任务没有有效考评人，不能发送经理评分提醒');
+      }
+
+      const touser = await resolveEmployeeWecomUserId({
+        id: String(manager.id || '').trim(),
+        name: String(manager.name || '').trim(),
+        wecomUserId: String((manager as any).wecomUserId || '').trim(),
+      });
+      const sent = touser ? await WecomWebhookService.sendReminder({
+        cycleName: `${month}月经理打分`,
+        taskType: '经理评分',
+        daysLeft,
+        deadlineDate,
+        pendingCount: 1,
+        employeeNames: [employee.name],
+        operationGuide: MANAGER_SCORING_OPERATION_GUIDE,
+        actionPath: `/manager/dashboard?month=${month}`,
+      }, touser) : false;
+
+      const relatedId = TodoModel.performanceReviewRelatedId(record.id);
+      let todoCount = 0;
+      if (!await TodoModel.findExisting(manager.id, 'performance_review', relatedId)) {
+        await TodoModel.create({
+          employeeId: manager.id,
+          type: 'performance_review',
+          title: `评分${employee.name}${month}月绩效`,
+          description: `${employee.name}已提交${month}月工作总结，请完成绩效评分。`,
+          dueDate: deadline,
+          link: `/manager/dashboard?month=${month}`,
+          relatedId,
+        });
+        todoCount = 1;
+      }
+
+      const notificationCount = await NotificationModel.createBatch([{
+        userId: manager.id,
+        type: 'reminder',
+        title: `请评分${employee.name}${month}月绩效`,
+        content: `${employee.name}已提交${month}月工作总结。操作方法：${MANAGER_SCORING_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE}`,
+        link: `/manager/dashboard?month=${month}`,
+      }]);
+
+      return {
+        month,
+        employeeId: employee.id,
+        employeeName: employee.name,
+        taskType: '经理评分',
+        notificationCount,
+        todoCount,
+        recipient: {
+          employeeId: manager.id,
+          employeeName: manager.name,
+          department: manager.department,
+          subDepartment: manager.subDepartment,
+          taskType: '经理评分',
+          wecomUserId: touser || undefined,
+          sent,
+          pendingCount: 1,
+          pendingEmployees: [{ employeeId: employee.id, employeeName: employee.name }],
+          ...(sent ? {} : { reason: touser ? '企业微信发送失败' : '未匹配到企业微信用户ID' }),
+        },
+      };
+    }
+
+    return {
+      month,
+      employeeId: employee.id,
+      employeeName: employee.name,
+      taskType: '无需提醒',
+      notificationCount: 0,
+      todoCount: 0,
+    };
+  }
+
   /**
    * 每月 1 日生成上月绩效任务，并通知员工/经理提交上月工作总结。
    */

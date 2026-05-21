@@ -5,12 +5,13 @@ import { ProgressMonitorService } from '../services/progressMonitor.service';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { formatPublicationReadinessMessage, validatePublicationReadiness } from '../services/publicationReadiness.service';
 import { DemoDataService } from '../services/demoData.service';
+import { validateTaskCreationMonth } from '../utils/assessmentMonthGuard';
 import { query } from '../config/database';
 import logger from '../config/logger';
 import { randomUUID } from 'crypto';
 
 const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
-type AutomationJobType = 'generate_tasks' | 'send_reminders' | 'publish_results' | 'generate_demo_data' | 'clear_demo_data';
+type AutomationJobType = 'generate_tasks' | 'send_reminders' | 'publish_results' | 'generate_demo_data' | 'clear_demo_data' | 'generate_employee_task' | 'delete_employee_task' | 'remind_employee_task';
 let automationLogColumnsCache: Set<string> | null = null;
 
 const requestedMonth = (req: Request): string | undefined => {
@@ -27,6 +28,16 @@ const referenceDateForTargetMonth = (month?: string): Date => {
 };
 
 const booleanParam = (value: unknown): boolean => value === true || value === 'true';
+
+const requiredEmployeeTaskParams = (req: Request): { employeeId?: string; month?: string; error?: string } => {
+  const employeeId = String(req.body?.employeeId || req.query?.employeeId || '').trim();
+  const month = String(req.body?.month || req.query?.month || '').trim();
+  if (!employeeId) return { error: '请选择员工' };
+  if (!monthPattern.test(month)) return { error: '请选择正确月份（YYYY-MM）' };
+  const monthRangeError = validateTaskCreationMonth(month, { skipInTest: true });
+  if (monthRangeError) return { error: monthRangeError };
+  return { employeeId, month };
+};
 
 async function getAutomationLogColumns(): Promise<Set<string>> {
   if (process.env.NODE_ENV === 'test') return new Set();
@@ -194,6 +205,111 @@ export const automationController = {
       data: result,
       durationMs: Date.now() - startedAt,
     });
+  }),
+
+  /**
+   * HR/Admin 单独给某个员工生成指定月份绩效任务。
+   */
+  generateEmployeeTask: asyncHandler(async (req: Request, res: Response) => {
+    const params = requiredEmployeeTaskParams(req);
+    if (params.error || !params.employeeId || !params.month) {
+      return res.status(400).json({ success: false, message: params.error || '参数错误' });
+    }
+
+    const startedAt = Date.now();
+    try {
+      const result = await SchedulerService.generatePerformanceTaskForEmployee(params.employeeId, params.month);
+      await writeAutomationLog('generate_employee_task', params.month, 'success', {
+        ...result,
+        operatedBy: req.user?.userId,
+      }, Date.now() - startedAt);
+      return res.json({
+        success: true,
+        message: result.status === 'created'
+          ? `已为 ${result.employeeName || params.employeeId} 生成 ${params.month} 绩效任务`
+          : result.status === 'updated_assessor'
+            ? `已按最新上级关系更新 ${result.employeeName || params.employeeId} 的考评人`
+            : `${result.employeeName || params.employeeId} 的 ${params.month} 绩效任务已存在`,
+        data: result,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await writeAutomationLog('generate_employee_task', params.month, 'failed', {
+        employeeId: params.employeeId,
+        error: message,
+        operatedBy: req.user?.userId,
+      }, Date.now() - startedAt);
+      return res.status(message.includes('已发布') ? 409 : 400).json({ success: false, message });
+    }
+  }),
+
+  /**
+   * HR/Admin 单独删除某个员工指定月份绩效任务。
+   */
+  deleteEmployeeTask: asyncHandler(async (req: Request, res: Response) => {
+    const params = requiredEmployeeTaskParams(req);
+    if (params.error || !params.employeeId || !params.month) {
+      return res.status(400).json({ success: false, message: params.error || '参数错误' });
+    }
+
+    const startedAt = Date.now();
+    try {
+      const result = await SchedulerService.deletePerformanceTaskForEmployee(params.employeeId, params.month);
+      await writeAutomationLog('delete_employee_task', params.month, 'success', {
+        ...result,
+        operatedBy: req.user?.userId,
+      }, Date.now() - startedAt);
+      return res.json({
+        success: true,
+        message: result.recordDeleted
+          ? `已删除 ${params.employeeId} 的 ${params.month} 绩效任务，并清理关联待办/通知`
+          : `${params.employeeId} 的 ${params.month} 绩效任务不存在，无需删除`,
+        data: result,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await writeAutomationLog('delete_employee_task', params.month, 'failed', {
+        employeeId: params.employeeId,
+        error: message,
+        operatedBy: req.user?.userId,
+      }, Date.now() - startedAt);
+      return res.status(message.includes('已发布') ? 409 : 400).json({ success: false, message });
+    }
+  }),
+
+  /**
+   * HR/Admin 重新给某个员工当前任务状态对应的人发送提醒。
+   * draft 发给员工；submitted 发给考评人；已评分/完成不再催办。
+   */
+  remindEmployeeTask: asyncHandler(async (req: Request, res: Response) => {
+    const params = requiredEmployeeTaskParams(req);
+    if (params.error || !params.employeeId || !params.month) {
+      return res.status(400).json({ success: false, message: params.error || '参数错误' });
+    }
+
+    const startedAt = Date.now();
+    try {
+      const result = await SchedulerService.remindPerformanceTaskForEmployee(params.employeeId, params.month);
+      await writeAutomationLog('remind_employee_task', params.month, 'success', {
+        ...result,
+        operatedBy: req.user?.userId,
+      }, Date.now() - startedAt);
+      return res.json({
+        success: true,
+        message: result.taskType === '无需提醒'
+          ? `${result.employeeName || params.employeeId} 的 ${params.month} 任务已流转完成，无需催办`
+          : `已重新发送 ${result.employeeName || params.employeeId} 的 ${params.month} ${result.taskType}提醒`,
+        data: result,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await writeAutomationLog('remind_employee_task', params.month, 'failed', {
+        employeeId: params.employeeId,
+        error: message,
+        operatedBy: req.user?.userId,
+      }, Date.now() - startedAt);
+      return res.status(400).json({ success: false, message });
+    }
   }),
 
   /**

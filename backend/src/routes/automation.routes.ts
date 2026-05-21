@@ -8,6 +8,9 @@ const router = Router();
 router.post('/generate-monthly-tasks', authenticate, requireRole('hr', 'admin'), automationController.generateMonthlyTasks);
 router.post('/auto-publish', authenticate, requireRole('hr', 'admin'), automationController.autoPublish);
 router.post('/check-reminders', authenticate, requireRole('hr', 'admin'), automationController.checkDeadlineReminders);
+router.post('/employee-task/generate', authenticate, requireRole('hr', 'admin'), automationController.generateEmployeeTask);
+router.delete('/employee-task', authenticate, requireRole('hr', 'admin'), automationController.deleteEmployeeTask);
+router.post('/employee-task/remind', authenticate, requireRole('hr', 'admin'), automationController.remindEmployeeTask);
 
 // 进度监控
 router.get('/progress/:month', authenticate, automationController.getProgress);

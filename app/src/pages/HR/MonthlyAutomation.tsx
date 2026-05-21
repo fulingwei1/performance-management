@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import {
   Play, Bell, Archive, Send, FileText, CheckCircle,
   Users, RefreshCw, Calendar, TrendingUp, Zap, ShieldCheck,
-  Database, Trash2
+  Database, Trash2, UserRoundCheck
 } from 'lucide-react';
-import { request, salaryIntegrationApi } from '@/services/api';
+import { employeeApi, request, salaryIntegrationApi } from '@/services/api';
 import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 
 const apiCall = (path: string, options?: RequestInit) => request(`/automation${path}`, options);
@@ -31,6 +31,15 @@ interface DemoDataStatus {
   total: number;
 }
 
+interface EmployeeOption {
+  id: string;
+  name: string;
+  employeeId?: string;
+  department?: string;
+  subDepartment?: string;
+  status?: string;
+}
+
 export default function MonthlyAutomation() {
   const [selectedMonth, setSelectedMonth] = useState(() => getDefaultAssessmentMonth());
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -39,6 +48,8 @@ export default function MonthlyAutomation() {
   const [demoStatus, setDemoStatus] = useState<DemoDataStatus | null>(null);
   const [salaryPushMode, setSalaryPushMode] = useState<'monthly' | 'quarterly'>('quarterly');
   const [salaryPushConfirmed, setSalaryPushConfirmed] = useState(false);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
 
   const loadProgress = useCallback(async (month?: string) => {
     const m = month || selectedMonth;
@@ -62,7 +73,19 @@ export default function MonthlyAutomation() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { loadProgress(); loadLogs(); loadDemoStatus(); }, [loadProgress, loadLogs, loadDemoStatus]);
+  const loadEmployees = useCallback(async () => {
+    try {
+      const r = await employeeApi.getAll();
+      if (r.success) {
+        const list = Array.isArray(r.data) ? r.data : r.data?.employees || [];
+        setEmployees(list.filter((employee: EmployeeOption) => !employee.status || employee.status === 'active'));
+      }
+    } catch {
+      toast.error('加载员工列表失败');
+    }
+  }, []);
+
+  useEffect(() => { loadProgress(); loadLogs(); loadDemoStatus(); loadEmployees(); }, [loadProgress, loadLogs, loadDemoStatus, loadEmployees]);
 
   const runAction = async (action: string, body?: any) => {
     setLoading(true);
@@ -78,6 +101,45 @@ export default function MonthlyAutomation() {
       }
     } catch (e) { toast.error('请求失败: ' + String(e)); }
     setLoading(false);
+  };
+
+  const runEmployeeTaskAction = async (
+    action: 'generate' | 'delete' | 'remind',
+    options?: { confirmed?: boolean },
+  ) => {
+    if (!selectedEmployeeId) {
+      toast.error('请先选择员工');
+      return;
+    }
+    const employee = employees.find((item) => item.id === selectedEmployeeId);
+    if (action === 'delete' && !options?.confirmed) {
+      const ok = window.confirm(`确认删除 ${employee?.name || selectedEmployeeId} 的 ${selectedMonth} 绩效任务吗？会同步清理该员工该月待办/通知，但不会影响其他员工。`);
+      if (!ok) return;
+    }
+
+    setLoading(true);
+    try {
+      const path = action === 'generate'
+        ? '/employee-task/generate'
+        : action === 'remind'
+          ? '/employee-task/remind'
+          : '/employee-task';
+      const r = await apiCall(path, {
+        method: action === 'delete' ? 'DELETE' : 'POST',
+        body: JSON.stringify({ employeeId: selectedEmployeeId, month: selectedMonth }),
+      });
+      if (r.success) {
+        toast.success(r.message || '操作成功');
+        await loadProgress();
+        await loadLogs();
+      } else {
+        toast.error(r.message || '操作失败');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '请求失败');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const generateDemoData = async () => {
@@ -397,6 +459,77 @@ export default function MonthlyAutomation() {
             icon={<Trash2 className="w-4 h-4" />}
             onClick={clearDemoData}
           />
+        </div>
+      </motion.div>
+
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-white">单人员工任务处理</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            可选择月份和员工，单独生成、删除或重新发送提醒；只影响该员工，不会重跑整月任务。
+          </p>
+        </div>
+
+        <div className="bg-gray-900 rounded-lg p-6 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4">
+            <div>
+              <label className="text-xs text-gray-400">选择员工</label>
+              <select
+                value={selectedEmployeeId}
+                onChange={(event) => setSelectedEmployeeId(event.target.value)}
+                className="mt-1 w-full bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700"
+              >
+                <option value="">请选择员工</option>
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name}（{employee.id}）{employee.department ? ` - ${employee.department}${employee.subDepartment ? `/${employee.subDepartment}` : ''}` : ''}
+                  </option>
+                ))}
+              </select>
+              <div className="mt-2 text-xs text-gray-500">
+                月份使用右上角当前选择：{selectedMonth}。单独生成仍会校验是否参与考核、是否有有效直属上级、是否匹配考核模板。
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 text-xs text-blue-100">
+              <div className="font-medium">提醒发送规则</div>
+              <div className="mt-1 text-blue-100/80">
+                草稿状态发给员工；已提交状态发给考评人；已评分/完成则不再催办，并进入自动化日志留痕。
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ActionCard
+              title="单独生成任务"
+              description={`为所选员工生成 ${selectedMonth} 绩效任务；已有任务会提示存在，不会重复创建。`}
+              buttonLabel="生成该员工任务"
+              buttonClassName="bg-blue-600 hover:bg-blue-700"
+              disabled={loading || !selectedEmployeeId}
+              icon={<UserRoundCheck className="w-4 h-4" />}
+              onClick={() => runEmployeeTaskAction('generate')}
+            />
+
+            <ActionCard
+              title="删除该员工任务"
+              description="删除所选员工该月份绩效记录，并清理该员工该月工作总结待办/通知和对应评分待办。"
+              buttonLabel="删除该员工任务"
+              buttonClassName="bg-red-600 hover:bg-red-700"
+              disabled={loading || !selectedEmployeeId}
+              icon={<Trash2 className="w-4 h-4" />}
+              onClick={() => runEmployeeTaskAction('delete')}
+            />
+
+            <ActionCard
+              title="重新发送提醒"
+              description="按该员工当前任务状态精准补发一次提醒，不会发给其他员工或不参与考核人员。"
+              buttonLabel="重发该员工提醒"
+              buttonClassName="bg-amber-600 hover:bg-amber-700"
+              disabled={loading || !selectedEmployeeId}
+              icon={<Bell className="w-4 h-4" />}
+              onClick={() => runEmployeeTaskAction('remind')}
+            />
+          </div>
         </div>
       </motion.div>
 
