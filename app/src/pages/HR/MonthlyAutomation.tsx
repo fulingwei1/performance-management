@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { employeeApi, request, salaryIntegrationApi } from '@/services/api';
 import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
+import { AssessmentFlowSteps } from '@/components/flow/AssessmentFlow';
 
 const apiCall = (path: string, options?: RequestInit) => request(`/automation${path}`, options);
 
@@ -201,6 +202,23 @@ export default function MonthlyAutomation() {
   const effectivePeriodLabel = salaryPushMode === 'monthly'
     ? `${selectedMonthNumber === 12 ? selectedYear + 1 : selectedYear}-${String(selectedMonthNumber === 12 ? 1 : selectedMonthNumber + 1).padStart(2, '0')}`
     : `${selectedQuarter === 4 ? selectedYear + 1 : selectedYear}-Q${selectedQuarter === 4 ? 1 : selectedQuarter + 1}`;
+  const automationSteps = [
+    {
+      title: '确认范围和模板',
+      description: '先在人事档案和考核配置中确认谁参与、用什么模板。',
+      status: 'done' as const,
+    },
+    {
+      title: progress?.eligibleEmployees ? '生成并跟进任务' : '等待生成任务',
+      description: progress?.eligibleEmployees ? `${selectedMonth} 当前需完成 ${progress.eligibleEmployees} 人。` : '选择月份后可补生成缺失任务。',
+      status: progress?.eligibleEmployees ? 'active' as const : 'waiting' as const,
+    },
+    {
+      title: progress?.completedCount === progress?.eligibleEmployees && progress?.eligibleEmployees ? '发布和归档' : '催办与评分',
+      description: progress?.completedCount === progress?.eligibleEmployees && progress?.eligibleEmployees ? '全部完成后发布结果，并可推送薪资。' : '只催办未完成任务，不发给无需考核人员。',
+      status: progress?.completedCount === progress?.eligibleEmployees && progress?.eligibleEmployees ? 'active' as const : 'waiting' as const,
+    },
+  ];
 
   const pushToSalary = async () => {
     if (!salaryPushConfirmed) {
@@ -272,21 +290,31 @@ export default function MonthlyAutomation() {
 
   return (
     <div className="min-h-screen bg-[#0f1117] p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Zap className="w-6 h-6 text-blue-400" />
-          <div>
-            <h1 className="text-xl font-bold text-white">手动触发与完成监控</h1>
-            <p className="text-sm text-gray-400 mt-1">自动化已在后台定时执行，这里只做补跑、补发和完成进度监控。</p>
+      <div className="rounded-3xl border border-blue-500/20 bg-gradient-to-br from-gray-900 via-[#111827] to-blue-950 p-5 shadow-xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-blue-500/20 p-3">
+              <Zap className="w-6 h-6 text-blue-300" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-blue-200">HR 流程控制台 · {selectedMonth}</div>
+              <h1 className="mt-1 text-2xl font-bold text-white">月度考核任务与发布</h1>
+              <p className="text-sm text-gray-300 mt-2">
+                正常按后台定时执行；这里用于补生成、精准催办、单人处理、发布归档和薪资推送。
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-full bg-white/10 px-3 py-2">
+            <Calendar className="w-4 h-4 text-gray-300" />
+            <input type="month" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setSalaryPushConfirmed(false); loadProgress(e.target.value); }}
+              className="bg-transparent text-white rounded px-2 py-1 text-sm outline-none" />
+            <button onClick={() => { loadProgress(); loadLogs(); }} className="p-2 hover:bg-white/10 rounded-full">
+              <RefreshCw className="w-4 h-4 text-gray-300" />
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          <input type="month" value={selectedMonth} onChange={e => { setSelectedMonth(e.target.value); setSalaryPushConfirmed(false); loadProgress(e.target.value); }}
-            className="bg-gray-800 text-white rounded px-3 py-1.5 text-sm border border-gray-700" />
-          <button onClick={() => { loadProgress(); loadLogs(); }} className="p-2 hover:bg-gray-800 rounded-lg">
-            <RefreshCw className="w-4 h-4 text-gray-400" />
-          </button>
+        <div className="mt-5 rounded-2xl bg-white p-3">
+          <AssessmentFlowSteps steps={automationSteps} compact />
         </div>
       </div>
 

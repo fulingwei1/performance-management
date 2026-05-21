@@ -20,6 +20,7 @@ import { zhCN } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { SatisfactionSurveyPanel } from './SatisfactionSurvey';
+import { AssessmentFlowSteps, FlowHero } from '@/components/flow/AssessmentFlow';
 
 export function WorkSummary() {
   const navigate = useNavigate();
@@ -168,6 +169,27 @@ export function WorkSummary() {
 
   const canSubmitSelfSummary = user?.capabilities?.canSubmitSelfSummary;
   const isCapabilityRefreshing = Boolean(user && canSubmitSelfSummary === undefined);
+  const formFlowSteps = [
+    {
+      title: selfSummary.trim() ? '总结已填写' : '填写工作总结',
+      description: '写清本月重点完成事项、问题和经验。',
+      status: selfSummary.trim() ? 'done' as const : 'active' as const,
+    },
+    {
+      title: nextMonthPlan.trim() ? '计划已填写' : '填写下月计划',
+      description: '明确下月目标、项目和需要的资源。',
+      status: nextMonthPlan.trim() ? 'done' as const : selfSummary.trim() ? 'active' as const : 'waiting' as const,
+    },
+    {
+      title: hasOpenSatisfactionSurvey
+        ? hasSubmittedSatisfactionSurvey ? '满意度已完成' : '完成半年满意度'
+        : '确认后提交',
+      description: hasOpenSatisfactionSurvey ? '半年调查期必填，完成后可提交。' : '无调查期时，检查无误即可提交。',
+      status: hasOpenSatisfactionSurvey
+        ? hasSubmittedSatisfactionSurvey ? 'done' as const : 'active' as const
+        : selfSummary.trim() && nextMonthPlan.trim() ? 'active' as const : 'waiting' as const,
+    },
+  ];
 
   if (isCapabilityRefreshing) {
     return (
@@ -281,10 +303,14 @@ export function WorkSummary() {
         animate="visible"
         className="max-w-4xl mx-auto"
       >
-        {/* Header */}
         <motion.div variants={itemVariants} className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">月度工作总结</h1>
-          <p className="text-gray-500 mt-1">填写本月工作总结及下月计划</p>
+          <FlowHero
+            eyebrow={`考核月份：${format(month, 'yyyy-MM')}`}
+            title="月度工作总结"
+            description="按顺序完成总结、下月计划和合理化建议；如果本期有半年满意度调查，会直接接在表单后方。"
+          >
+            <AssessmentFlowSteps steps={formFlowSteps} compact />
+          </FlowHero>
         </motion.div>
         
         {/* Success Alert */}
@@ -495,6 +521,15 @@ export function WorkSummary() {
 	                </p>
 	              </div>
 
+                <div ref={satisfactionSurveyRef}>
+                  <SatisfactionSurveyPanel
+                    embedded
+                    hideWhenUnavailable
+                    onAvailabilityChange={setHasOpenSatisfactionSurvey}
+                    onResponseStatusChange={setHasSubmittedSatisfactionSurvey}
+                  />
+                </div>
+
                 {satisfactionSurveyRequired && (
                   <Alert className="bg-amber-50 border-amber-200">
                     <AlertDescription className="text-amber-800">
@@ -533,15 +568,6 @@ export function WorkSummary() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
-
-        <motion.div ref={satisfactionSurveyRef} variants={itemVariants} className="mt-6">
-          <SatisfactionSurveyPanel
-            embedded
-            hideWhenUnavailable
-            onAvailabilityChange={setHasOpenSatisfactionSurvey}
-            onResponseStatusChange={setHasSubmittedSatisfactionSurvey}
-          />
         </motion.div>
         
         {/* Tips */}

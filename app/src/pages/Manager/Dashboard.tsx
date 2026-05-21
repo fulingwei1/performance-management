@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { ScoringManagement } from './Scoring';
 import { ReportSummaryCard, type ReportSummaryData } from '@/components/reports/ReportSummaryCard';
 import { Analytics as PerformanceResultAnalysis } from './Analytics';
+import { AssessmentFlowSteps, FlowHero } from '@/components/flow/AssessmentFlow';
 
 interface ParticipationMember {
   employeeId: string;
@@ -198,6 +199,25 @@ export function ManagerDashboard() {
       ? `你已提交 ${summaryMonth} 工作总结和下月计划，等待上级评分。`
       : `请补充 ${summaryMonth} 工作总结和下月计划；经理/组长也需要完成自己的总结。`;
   const MySummaryIcon = mySummaryScored || mySummaryDone ? CheckCircle2 : Clock;
+  const managerFlowSteps = [
+    {
+      title: mySummaryDone || !canSubmitSelfSummary ? '个人总结已处理' : '先处理个人总结',
+      description: canSubmitSelfSummary
+        ? mySummaryDone ? '你的月度总结已提交。' : '组长/经理也需要先完成自己的总结。'
+        : '当前账号无需提交个人总结。',
+      status: mySummaryDone || !canSubmitSelfSummary ? 'done' as const : hasGeneratedMySummaryTask ? 'active' as const : 'waiting' as const,
+    },
+    {
+      title: pendingReview > 0 ? '处理待评分' : '团队评分已处理',
+      description: pendingReview > 0 ? `当前还有 ${pendingReview} 人需要处理。` : '当前无待评分人员，可查看分析。',
+      status: pendingReview > 0 ? 'active' as const : completedReview > 0 ? 'done' as const : 'waiting' as const,
+    },
+    {
+      title: completedReview > 0 ? '查看结果分析' : '等待形成数据',
+      description: completedReview > 0 ? '评分后自动形成报表摘要和结果分析。' : '完成评分后会展示趋势、分布和风险。',
+      status: completedReview > 0 ? 'active' as const : 'waiting' as const,
+    },
+  ];
 
   const overviewCards = useMemo(() => [
     { label: '团队人数', value: teamSize, to: `/manager/team?filter=all&month=${currentMonth}`, className: 'bg-blue-50 text-blue-700' },
@@ -226,35 +246,31 @@ export function ManagerDashboard() {
       animate="visible"
       className="space-y-6"
     >
-      {/* Welcome */}
-      <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            经理工作台
-          </h1>
-          <p className="text-gray-500 mt-1">
-            欢迎回来，{user?.name}经理
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-gray-500" />
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="选择月份" />
-            </SelectTrigger>
-            <SelectContent>
-              {monthOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </motion.div>
-
       <motion.div variants={itemVariants}>
-        <TodoSection role="manager" fetchSummary={todoApi.getSummary} />
+        <FlowHero
+          eyebrow={`经理工作台 · ${currentMonth}`}
+          title={`欢迎回来，${user?.name}经理`}
+          description="先看自己是否要提交总结，再集中处理待评分人员；评分完成后再看团队摘要和结果分析。"
+          action={
+            <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
+              <Calendar className="h-4 w-4 text-gray-500" />
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger className="h-9 w-[150px] border-0 bg-transparent shadow-none focus:ring-0">
+                  <SelectValue placeholder="选择月份" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        >
+          <AssessmentFlowSteps steps={managerFlowSteps} compact />
+        </FlowHero>
       </motion.div>
 
       {canSubmitSelfSummary && (
@@ -397,6 +413,10 @@ export function ManagerDashboard() {
       </motion.div>
 
       <motion.div variants={itemVariants}>
+        <ScoringManagement embedded month={currentMonth} hideProgress={false} />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
         <ReportSummaryCard
           summary={reportSummary}
           title="团队月度报表摘要"
@@ -410,7 +430,7 @@ export function ManagerDashboard() {
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <ScoringManagement embedded month={currentMonth} hideProgress />
+        <TodoSection role="manager" fetchSummary={todoApi.getSummary} />
       </motion.div>
     </motion.div>
   );

@@ -55,7 +55,7 @@ export function ScoringManagement({
   const noSummaryParam = searchParams.get('noSummary');
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'scored'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'scored'>('pending');
   const initialMonth = isValidAssessmentMonth(monthParam)
     ? monthParam
     : month || getDefaultAssessmentMonth();
@@ -245,6 +245,14 @@ export function ScoringManagement({
       return matchesSearch && matchesStatus;
     });
   }, [allEmployeeRecords, searchQuery, statusFilter]);
+
+  const filterCounts = useMemo(() => {
+    const pending = allEmployeeRecords.filter((record) => (
+      record.status === 'submitted' || record.status === 'draft' || record.status === 'not_submitted'
+    )).length;
+    const scored = allEmployeeRecords.filter((record) => record.status === 'scored' || record.status === 'completed').length;
+    return { all: allEmployeeRecords.length, pending, scored };
+  }, [allEmployeeRecords]);
 
   const distributionStats = useMemo(() => {
     if (allEmployeeRecords.length <= 10) return null;
@@ -568,9 +576,9 @@ export function ScoringManagement({
             />
             <div className="flex items-center gap-1">
               {([
-                { value: 'all' as const, label: '全部' },
-                { value: 'pending' as const, label: '待评分' },
-                { value: 'scored' as const, label: '已评分' },
+                { value: 'pending' as const, label: `待处理 ${filterCounts.pending}` },
+                { value: 'all' as const, label: `全部 ${filterCounts.all}` },
+                { value: 'scored' as const, label: `已评分 ${filterCounts.scored}` },
               ]).map((tab) => (
                 <Button
                   key={tab.value}

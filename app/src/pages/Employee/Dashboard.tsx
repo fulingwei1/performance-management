@@ -14,6 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TodoSection } from '@/components/dashboard/TodoSection';
 import { employeeApi, todoApi } from '@/services/api';
 import { MyScores } from './MyScores';
+import { AssessmentFlowSteps, FlowHero } from '@/components/flow/AssessmentFlow';
+import { Button } from '@/components/ui/button';
 
 interface ParticipationInfo {
   employeeId: string;
@@ -69,6 +71,32 @@ export function EmployeeDashboard() {
       ? '已提交总结/计划'
       : '待填写总结/计划';
   const scoreLabel = hasScore ? `已评分 ${Number(currentRecord?.totalScore || 0).toFixed(2)}` : '等待经理评分';
+  const nextAction = !participation?.participating
+    ? '当前无需操作'
+    : !hasGeneratedTask
+      ? '等待 HR 生成任务'
+      : !hasSubmittedSummary
+        ? '填写总结和计划'
+        : hasScore
+          ? '查看绩效结果'
+          : '等待经理评分';
+  const flowSteps = [
+    {
+      title: participation?.participating ? '确认参与' : '确认范围',
+      description: participation?.participating ? '你已纳入本期绩效考核。' : '当前无需填写绩效总结。',
+      status: participation?.participating ? 'done' as const : 'waiting' as const,
+    },
+    {
+      title: hasSubmittedSummary ? '总结已提交' : '填写总结/计划',
+      description: !hasGeneratedTask ? 'HR 生成任务后才会开放填写。' : hasSubmittedSummary ? '已提交，等待上级评分。' : '填写工作总结、下月计划和建议。',
+      status: hasSubmittedSummary ? 'done' as const : hasGeneratedTask ? 'active' as const : 'waiting' as const,
+    },
+    {
+      title: hasScore ? '结果已形成' : '经理评分',
+      description: hasScore ? '正式发布后进入历史和季度汇总。' : '员工提交后由直属考评人评分。',
+      status: hasScore ? 'done' as const : hasSubmittedSummary ? 'active' as const : 'waiting' as const,
+    },
+  ];
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -90,19 +118,27 @@ export function EmployeeDashboard() {
       animate="visible"
       className="space-y-6"
     >
-      {/* Welcome */}
       <motion.div variants={itemVariants}>
-        <h1 className="text-2xl font-bold text-gray-900">
-          欢迎回来，{user?.name}
-        </h1>
-        <p className="text-gray-500 mt-1">
-          {format(new Date(), 'yyyy年MM月dd日 EEEE', { locale: zhCN })}
-        </p>
-      </motion.div>
-      
-      {/* 待办事项 */}
-      <motion.div variants={itemVariants}>
-        <TodoSection role="employee" fetchSummary={todoApi.getSummary} />
+        <FlowHero
+          eyebrow={format(new Date(), 'yyyy年MM月dd日 EEEE', { locale: zhCN })}
+          title={`欢迎回来，${user?.name}`}
+          description={`当前考核月：${currentMonth}。这里会优先告诉你现在要做什么，完成后再看历史得分和季度汇总。`}
+          action={
+            hasGeneratedTask && !hasSubmittedSummary ? (
+              <Button asChild className="rounded-full px-5">
+                <Link to={`/employee/summary?month=${currentMonth}`}>
+                  去填写 <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <div className="rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm">
+                {nextAction}
+              </div>
+            )
+          }
+        >
+          <AssessmentFlowSteps steps={flowSteps} compact />
+        </FlowHero>
       </motion.div>
 
       <motion.div variants={itemVariants}>
@@ -172,12 +208,12 @@ export function EmployeeDashboard() {
         </Card>
       </motion.div>
 
-      {/* Main Content */}
       <motion.div variants={itemVariants}>
-        <TaskList
-          tasks={myTasks}
-          title="本月待办任务"
-        />
+        {myTasks.length > 0 ? (
+          <TaskList tasks={myTasks} title="本月待办任务" />
+        ) : (
+          <TodoSection role="employee" fetchSummary={todoApi.getSummary} />
+        )}
       </motion.div>
 
       <motion.div variants={itemVariants} className="space-y-4">
