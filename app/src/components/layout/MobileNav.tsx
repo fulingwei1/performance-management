@@ -14,6 +14,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthStore } from '../../stores/authStore';
+import { getLevelLabel } from '@/lib/config';
 
 type UserRole = 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 
@@ -36,7 +37,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   ],
   hr: [
     { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
-    { name: '部门经理工作台', path: '/manager/dashboard', icon: UserGroupIcon },
+    { name: '考评工作台', path: '/manager/dashboard', icon: UserGroupIcon },
     { name: '绩效结果分析中心', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
@@ -47,7 +48,7 @@ const roleNavItems: Record<UserRole, NavItem[]> = {
   ],
   admin: [
     { name: '管理员工作台', path: '/hr/dashboard', icon: HomeIcon },
-    { name: '部门经理工作台', path: '/manager/dashboard', icon: UserGroupIcon },
+    { name: '考评工作台', path: '/manager/dashboard', icon: UserGroupIcon },
     { name: '绩效结果分析中心', path: '/hr/analytics', icon: ChartBarIcon },
     { name: '数据管理', path: '/hr/data-io', icon: Squares2X2Icon },
     { name: '考核配置', path: '/hr/assessment-config', icon: Cog6ToothIcon },
@@ -83,6 +84,11 @@ export const MobileNav: React.FC = () => {
     return roleItems;
   }, [canManageTeam, role]);
   const roleLabels = (() => {
+    const profileLabels = [
+      String(user?.position || '').trim(),
+      user?.level ? getLevelLabel(user.level) : '',
+    ].filter(Boolean);
+    if (profileLabels.length > 0) return profileLabels;
     if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
     if (effectiveRoles.length > 0) {
       const hasAdmin = effectiveRoles.includes('admin');
@@ -93,11 +99,11 @@ export const MobileNav: React.FC = () => {
         .filter((item) => item !== 'admin' && item !== 'hr')
         .forEach((item) => labels.push(
         item === 'gm' ? '总经理' :
-        item === 'manager' ? '部门经理' : '员工'
+        item === 'manager' ? '考评人' : '员工'
       ));
       return labels;
     }
-    return [role === 'admin' ? '系统管理员' : role === 'hr' ? '人力资源' : role === 'gm' ? '总经理' : role === 'manager' ? '部门经理' : '员工'];
+    return [role === 'admin' ? '系统管理员' : role === 'hr' ? '人力资源' : role === 'gm' ? '总经理' : role === 'manager' ? '考评人' : '员工'];
   })();
 
   const toggleMenu = () => setIsOpen((prev) => !prev);

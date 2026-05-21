@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   BarChart3, 
   Download,
@@ -7,7 +8,14 @@ import {
   ChevronRight,
   ArrowUp,
   ArrowDown,
-  Lightbulb
+  Lightbulb,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Play,
+  Settings,
+  Users
 } from 'lucide-react';
 import { useHRStore } from '@/stores/hrStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -23,6 +31,7 @@ import { toast } from 'sonner';
 import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { ReportSummaryCard, type ReportSummaryData } from '@/components/reports/ReportSummaryCard';
+import { AssessmentFlowSteps, FlowHero } from '@/components/flow/AssessmentFlow';
 
 // Sub-components
 import { StatCards } from './Dashboard/StatCards';
@@ -248,6 +257,7 @@ export function HRDashboard() {
     const stats = {
       companyTotalEmployees: activeCompanyEmployees.length,
       participatingEmployees: assessableInScopeEmployees.length,
+      generatedTasks: monthRecords.length,
       completedScores: scoredRecords.length,
       pendingScores: assessableInScopeEmployees.length - scoredRecords.length,
       averageScore: scoredRecords.length > 0
@@ -365,35 +375,112 @@ export function HRDashboard() {
   
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
+  const hasGeneratedTasks = stats.generatedTasks > 0;
+  const hasAnyScore = stats.completedScores > 0;
+  const completionRate = stats.participatingEmployees > 0
+    ? Math.round((stats.completedScores / stats.participatingEmployees) * 100)
+    : 0;
+  const hrFlowSteps = [
+    {
+      title: '同步档案和配置模板',
+      description: `${stats.companyTotalEmployees} 名在职档案，${stats.participatingEmployees} 人参与本期考核。`,
+      status: rankingConfig ? 'done' as const : 'active' as const,
+    },
+    {
+      title: hasGeneratedTasks ? '跟进填写和评分' : '生成绩效任务',
+      description: hasGeneratedTasks
+        ? `已生成 ${stats.generatedTasks} 条任务，待评分 ${stats.pendingScores} 人。`
+        : `${currentMonth} 尚未生成绩效考核任务。`,
+      status: hasGeneratedTasks ? 'active' as const : 'waiting' as const,
+    },
+    {
+      title: hasAnyScore ? '发布与结果分析' : '等待评分数据',
+      description: hasAnyScore ? `已评分 ${stats.completedScores} 人，完成率 ${completionRate}%。` : '评分完成后再检查发布风险和导出报表。',
+      status: hasAnyScore ? 'active' as const : 'waiting' as const,
+    },
+  ];
+  const quickActions = [
+    {
+      title: '考核配置',
+      description: '确认参与范围、岗位/级别模板和个人模板调整。',
+      to: '/hr/assessment-config',
+      icon: Settings,
+      tone: 'bg-blue-50 text-blue-700 border-blue-100',
+    },
+    {
+      title: '数据管理',
+      description: '上传人事档案，维护直属上级和员工基础信息。',
+      to: '/hr/data-io',
+      icon: Users,
+      tone: 'bg-purple-50 text-purple-700 border-purple-100',
+    },
+    {
+      title: '生成/催办/发布',
+      description: '按月份补生成任务、精准催办、发布并归档结果。',
+      to: '/hr/monthly-automation',
+      icon: Play,
+      tone: 'bg-amber-50 text-amber-700 border-amber-100',
+    },
+    {
+      title: '结果分析中心',
+      description: '查看公司、部门、个人趋势和发布风险。',
+      to: '/hr/analytics',
+      icon: BarChart3,
+      tone: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+    },
+  ];
   
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
-      {/* 待办事项 */}
       <motion.div variants={itemVariants}>
-        <TodoSection role={todoRole} fetchSummary={todoApi.getSummary} />
+        <FlowHero
+          eyebrow={`HR 绩效工作台 · ${currentMonth}`}
+          title={`欢迎回来，${user?.name}`}
+          description="先确认人事档案和考核模板，再生成任务、催办评分，最后发布结果和查看分析。"
+          action={
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm">
+                <Calendar className="h-4 w-4 text-gray-500" />
+                <Input
+                  type="month"
+                  value={currentMonth}
+                  onChange={(e) => setCurrentMonth(e.target.value)}
+                  className="h-8 w-[140px] border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+                />
+              </div>
+              <Button asChild className="rounded-full px-4">
+                <Link to="/hr/monthly-automation">
+                  去生成/催办 <ChevronRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          }
+        >
+          <AssessmentFlowSteps steps={hrFlowSteps} compact />
+        </FlowHero>
       </motion.div>
 
-      {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">人力资源管理系统</h1>
-          <p className="text-gray-500 mt-1">欢迎回来，{user?.name}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Input type="month" value={currentMonth} onChange={(e) => setCurrentMonth(e.target.value)} className="w-auto" />
-          <Input placeholder="搜索员工姓名..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-[200px]" />
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部显示</SelectItem>
-              <SelectItem value="pending">未打绩效</SelectItem>
-              <SelectItem value="completed">已打绩效</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleExport} disabled={exporting}>
-            <Download className="w-4 h-4 mr-2" />{exporting ? '导出中...' : '导出数据'}
-          </Button>
-        </div>
+      <motion.div variants={itemVariants} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link
+              key={action.title}
+              to={action.to}
+              className={cn('rounded-2xl border p-4 transition hover:-translate-y-0.5 hover:shadow-md', action.tone)}
+            >
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-white/70 p-2">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-950">{action.title}</div>
+                  <div className="mt-1 text-sm leading-5 text-gray-600">{action.description}</div>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </motion.div>
       
       {/* Stat Cards */}
@@ -407,6 +494,56 @@ export function HRDashboard() {
           title="HR 月度执行摘要"
           description={`${currentMonth} 公司绩效完成情况、分布和发布风险`}
         />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <Card className="border border-gray-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-blue-600" />
+              员工名单与状态筛选
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+                <div className="rounded-xl bg-gray-50 p-3">
+                  <div className="text-gray-500">任务生成</div>
+                  <div className="mt-1 flex items-center gap-1 font-semibold text-gray-900">
+                    {hasGeneratedTasks ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <Clock className="h-4 w-4 text-amber-600" />}
+                    {stats.generatedTasks}/{stats.participatingEmployees}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-green-50 p-3">
+                  <div className="text-gray-500">已评分</div>
+                  <div className="mt-1 font-semibold text-green-700">{stats.completedScores}</div>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-3">
+                  <div className="text-gray-500">待处理</div>
+                  <div className="mt-1 font-semibold text-amber-700">{stats.pendingScores}</div>
+                </div>
+                <div className="rounded-xl bg-blue-50 p-3">
+                  <div className="text-gray-500">完成率</div>
+                  <div className="mt-1 font-semibold text-blue-700">{completionRate}%</div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Input placeholder="搜索员工姓名..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-[220px]" />
+                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                  <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">全部显示</SelectItem>
+                    <SelectItem value="pending">未打绩效</SelectItem>
+                    <SelectItem value="completed">已打绩效</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                  <Download className="w-4 h-4 mr-2" />{exporting ? '导出中...' : '导出数据'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {showSuggestionSummary && (
@@ -476,6 +613,10 @@ export function HRDashboard() {
         employee={selectedEmployee}
         currentMonth={currentMonth}
       />
+
+      <motion.div variants={itemVariants}>
+        <TodoSection role={todoRole} fetchSummary={todoApi.getSummary} />
+      </motion.div>
     </motion.div>
   );
 }
@@ -563,8 +704,8 @@ export function HROverview({ deptRecords, sortBy, sortOrder, setSortBy, setSortO
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={emp.role === 'manager' ? "default" : "outline"} className={cn(emp.role === 'manager' ? "bg-blue-100 text-blue-700" : "")}>
-                                {emp.role === 'manager' ? '部门经理' : '员工'}
+                              <Badge variant="outline">
+                                {emp.position || '—'}
                               </Badge>
                             </TableCell>
                             <TableCell>{emp.level}</TableCell>

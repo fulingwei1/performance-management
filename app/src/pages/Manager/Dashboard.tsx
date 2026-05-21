@@ -248,8 +248,8 @@ export function ManagerDashboard() {
     >
       <motion.div variants={itemVariants}>
         <FlowHero
-          eyebrow={`经理工作台 · ${currentMonth}`}
-          title={`欢迎回来，${user?.name}经理`}
+          eyebrow={`考评工作台 · ${currentMonth}`}
+          title={`欢迎回来，${user?.name}`}
           description="先看自己是否要提交总结，再集中处理待评分人员；评分完成后再看团队摘要和结果分析。"
           action={
             <div className="flex items-center gap-2 rounded-full bg-white px-3 py-2 shadow-sm">

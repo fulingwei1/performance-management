@@ -243,7 +243,7 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
 
   const handleEdit = (template: Template) => {
     if (readonlyMode) {
-      toast.info('模板由 HR/Admin 维护，经理仅查看可选模板和指标');
+      toast.info('模板由 HR/Admin 维护，组长/经理仅查看可选模板和指标');
       return;
     }
     setSelectedTemplate(template);
@@ -279,7 +279,7 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
       junior: 'L2/初级',
       intermediate: 'L3/中级',
       senior: 'L4+/高级',
-      manager: 'M1+/经理',
+      manager: 'M1+/主管/经理',
     };
     return (levels || []).map((level) => map[level] || level);
   };
@@ -470,7 +470,7 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
           <h2 className="text-2xl font-bold text-gray-900">考核模板管理</h2>
           <p className="text-gray-500 mt-1">
             {mode === 'manager'
-              ? '经理可以查看系统可选模板和指标口径；模板调整需由 HR/Admin 在考核配置中维护。'
+              ? '组长/经理可以查看系统可选模板和指标口径；模板调整需由 HR/Admin 在考核配置中维护。'
               : '按岗位序列和任职资格等级维护考核模板，系统生成任务时自动匹配员工'}
           </p>
         </div>

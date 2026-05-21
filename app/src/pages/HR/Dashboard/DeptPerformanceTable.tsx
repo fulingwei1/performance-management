@@ -33,6 +33,7 @@ export interface EmployeeRecord {
   id: string;
   name: string;
   role: string;
+  position?: string;
   level: string;
   record: any;
   totalScore: number;
@@ -150,7 +151,7 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                                       </div>
                                     </button>
                                   </TableCell>
-                                  <TableCell className="text-xs text-gray-600">{emp.role === 'manager' ? '部门经理' : '员工'}</TableCell>
+                                  <TableCell className="text-xs text-gray-600">{emp.position || '—'}</TableCell>
                                   <TableCell className="text-xs text-right">
                                     {isScoredStatus(emp.status)
                                       ? <span className="font-semibold text-emerald-600">{emp.totalScore.toFixed(2)}</span>

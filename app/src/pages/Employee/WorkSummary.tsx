@@ -324,7 +324,7 @@ export function WorkSummary() {
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle className="w-4 h-4 text-green-600" />
               <AlertDescription className="text-green-700">
-                工作总结提交成功！经理将进行评分
+                工作总结提交成功！直属上级将进行评分
               </AlertDescription>
             </Alert>
           </motion.div>
@@ -372,7 +372,7 @@ export function WorkSummary() {
               <AlertDescription className="text-green-700">
                 {recordStatus === 'completed' || recordStatus === 'scored'
                   ? '本月绩效已完成评分，工作总结已锁定。'
-                  : '本月工作总结已提交，等待经理评分，提交后不可再修改。'}
+                  : '本月工作总结已提交，等待直属上级评分，提交后不可再修改。'}
               </AlertDescription>
             </Alert>
           </motion.div>
@@ -472,7 +472,7 @@ export function WorkSummary() {
                 <div className="rounded-lg border border-gray-200 p-4">
                   <div className="mb-2">
                     <div className="text-sm font-medium text-gray-900">下月资源诉求标签</div>
-                    <div className="text-xs text-gray-500 mt-1">提前告诉经理你下月最需要的支持，便于后续协同和分析。</div>
+                    <div className="text-xs text-gray-500 mt-1">提前告诉直属上级你下月最需要的支持，便于后续协同和分析。</div>
                   </div>
 	                  <StructuredTagSelector
 	                    value={resourceNeedTags}
@@ -517,7 +517,7 @@ export function WorkSummary() {
 	                  className="min-h-[110px] resize-none"
 	                />
 	                <p className="text-xs text-gray-400">
-	                  匿名提交后，经理侧汇总只显示“匿名提交”；不填写则不会生成建议记录。
+	                  匿名提交后，考评人侧汇总只显示“匿名提交”；不填写则不会生成建议记录。
 	                </p>
 	              </div>
 

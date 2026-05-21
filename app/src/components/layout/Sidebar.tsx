@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+import { getLevelLabel } from '@/lib/config';
 
 interface SidebarProps {
   role: 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
@@ -56,7 +57,7 @@ const hrAdminBaseNavItems: SidebarNavItem[] = [
 
 const roleLabelMap: Record<string, string> = {
   employee: '员工',
-  manager: '部门经理',
+  manager: '考评人',
   gm: '总经理',
   hr: '人力资源',
   admin: '系统管理员',
@@ -74,6 +75,11 @@ function buildRoleLabelsFromRoles(roles: string[]): string[] {
 }
 
 function getDisplayRoleLabels(user: any, role: SidebarProps['role']): string[] {
+  const profileLabels = [
+    String(user?.position || '').trim(),
+    user?.level ? getLevelLabel(user.level) : '',
+  ].filter(Boolean);
+  if (profileLabels.length > 0) return profileLabels;
   if (Array.isArray(user?.roleLabels) && user.roleLabels.length > 0) return user.roleLabels;
   if (Array.isArray(user?.roles) && user.roles.length > 0) {
     return buildRoleLabelsFromRoles(user.roles);
@@ -95,7 +101,7 @@ export function Sidebar({ role }: SidebarProps) {
     : canManageTeam
       ? [
           { path: '/hr/dashboard', label: '管理员工作台', icon: LayoutDashboard },
-          { path: '/manager/dashboard', label: '部门经理工作台', icon: Award },
+          { path: '/manager/dashboard', label: '考评工作台', icon: Award },
           { ...hrAdminBaseNavItems[1], label: '绩效结果分析中心' },
           ...hrAdminBaseNavItems.slice(2),
         ]

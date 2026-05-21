@@ -55,7 +55,7 @@ function getRecordStatusText(record: PerformanceRecord, isPublished: boolean): s
     return '已评分待发布';
   }
   if (!isScoredRecord(record)) {
-    return record.status === 'submitted' ? '待经理评分' : '未评分';
+    return record.status === 'submitted' ? '待直属上级评分' : '未评分';
   }
   return isPublished ? '正式' : '草稿';
 }
@@ -256,7 +256,7 @@ export function MyScores({ embedded = false }: { embedded?: boolean }) {
               <div className="py-12 text-center">
                 <BarChart3 className="mx-auto mb-4 h-12 w-12 text-gray-300" />
                 <p className="text-gray-500">暂无绩效记录</p>
-                <p className="mt-2 text-sm text-gray-400">员工提交月度总结、经理完成评分后，这里会按月显示一个绩效得分。</p>
+                <p className="mt-2 text-sm text-gray-400">员工提交月度总结、直属上级完成评分后，这里会按月显示一个绩效得分。</p>
               </div>
             )}
           </CardContent>

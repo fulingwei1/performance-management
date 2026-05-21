@@ -70,7 +70,7 @@ export function EmployeeDashboard() {
     : hasSubmittedSummary
       ? '已提交总结/计划'
       : '待填写总结/计划';
-  const scoreLabel = hasScore ? `已评分 ${Number(currentRecord?.totalScore || 0).toFixed(2)}` : '等待经理评分';
+  const scoreLabel = hasScore ? `已评分 ${Number(currentRecord?.totalScore || 0).toFixed(2)}` : '等待直属上级评分';
   const nextAction = !participation?.participating
     ? '当前无需操作'
     : !hasGeneratedTask
@@ -79,7 +79,7 @@ export function EmployeeDashboard() {
         ? '填写总结和计划'
         : hasScore
           ? '查看绩效结果'
-          : '等待经理评分';
+          : '等待直属上级评分';
   const flowSteps = [
     {
       title: participation?.participating ? '确认参与' : '确认范围',
@@ -92,8 +92,8 @@ export function EmployeeDashboard() {
       status: hasSubmittedSummary ? 'done' as const : hasGeneratedTask ? 'active' as const : 'waiting' as const,
     },
     {
-      title: hasScore ? '结果已形成' : '经理评分',
-      description: hasScore ? '正式发布后进入历史和季度汇总。' : '员工提交后由直属考评人评分。',
+      title: hasScore ? '结果已形成' : '直属上级评分',
+      description: hasScore ? '正式发布后进入历史和季度汇总。' : '员工提交后由直属上级/考评人评分。',
       status: hasScore ? 'done' as const : hasSubmittedSummary ? 'active' as const : 'waiting' as const,
     },
   ];
@@ -146,7 +146,7 @@ export function EmployeeDashboard() {
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">本月绩效进度</CardTitle>
             <CardDescription>
-              先确认是否参与，再填写总结和计划；经理评分后，结果会进入历史绩效和季度汇总。
+              先确认是否参与，再填写总结和计划；直属上级评分后，结果会进入历史绩效和季度汇总。
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

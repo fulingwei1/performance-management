@@ -1,5 +1,5 @@
 /**
- * 部门经理绩效看板
+ * 管辖绩效看板
  * 展示团队绩效趋势、四维分析等
  */
 
@@ -317,11 +317,11 @@ export function Analytics({ embedded = false, analysisMonth }: AnalyticsProps = 
             <p className="text-gray-500 mb-4">
               {realRecords.length > 0
                 ? `当前已有 ${realRecords.length} 条团队绩效任务，但还没有完成评分；等评分完成后，团队趋势、四维分析和标签画像会自动生成。`
-                : '当前还没有团队绩效任务；管理员生成任务、员工提交总结、经理完成评分后，这里会自动生成分析。'}
+                : '当前还没有团队绩效任务；管理员生成任务、员工提交总结、直属上级完成评分后，这里会自动生成分析。'}
             </p>
             <div className="mx-auto mb-4 grid max-w-2xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
               <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">1. 员工提交月度总结和计划</div>
-              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">2. 经理完成评分和标签勾选</div>
+              <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">2. 直属上级完成评分和标签勾选</div>
               <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">3. 看板自动生成趋势和画像</div>
             </div>
             <div className="text-sm text-gray-400">口径说明：1.00 为基准绩效系数，超过 1.00 表示高于基准，低于 1.00 表示低于基准。</div>

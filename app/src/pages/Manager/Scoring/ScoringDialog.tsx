@@ -589,7 +589,7 @@ export function ScoringDialog({
 
                   <Card className="shadow-sm">
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-medium">部门经理综合评价<span className="text-red-500 ml-1">*</span></CardTitle>
+                      <CardTitle className="text-sm font-medium">考评人综合评价<span className="text-red-500 ml-1">*</span></CardTitle>
                       <p className="text-xs text-gray-500 mt-1">请对员工本月的整体工作表现进行评价（关键词已自动插入）</p>
                     </CardHeader>
                     <CardContent>

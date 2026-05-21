@@ -72,7 +72,7 @@ type AutomationLog = {
 
 const roleLabels: Record<string, string> = {
   employee: '员工',
-  manager: '部门经理',
+  manager: '组长/经理',
   gm: '总经理',
   hr: 'HR',
   admin: '管理员',

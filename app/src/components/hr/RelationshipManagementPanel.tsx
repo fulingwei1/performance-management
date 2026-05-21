@@ -158,7 +158,7 @@ export function RelationshipManagementPanel({
         ) : (
           <div className="space-y-4">
             <div className="rounded-lg border bg-slate-50 p-4 text-sm text-slate-600">
-              系统管理员只维护一张“员工 → 直属上级”关系表。经理待评分名单、汇报链和催办对象都会按这张表生效，避免和“部门经理维护”重复。
+              系统管理员只维护一张“员工 → 直属上级”关系表。考评人待评分名单、汇报链和催办对象都会按这张表生效，避免和“部门负责人维护”重复。
             </div>
             <div className="flex flex-col gap-3 rounded-lg border px-4 py-3 md:flex-row md:items-center md:justify-between">
               <div>

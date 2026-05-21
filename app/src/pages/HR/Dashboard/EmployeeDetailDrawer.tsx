@@ -34,7 +34,7 @@ export function EmployeeDetailDrawer({ open, onOpenChange, employee, currentMont
                 <CardContent className="space-y-2">
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div><span className="text-gray-500">姓名：{employee.name}</span></div>
-                    <div><span className="text-gray-500">岗位：{employee.role === 'manager' ? '部门经理' : '员工'}</span></div>
+                    <div><span className="text-gray-500">岗位：{employee.position || '—'}</span></div>
                     <div><span className="text">部门：{employee.department}</span></div>
                     <div><span className="text-gray-500">子部门：{employee.subDepartment || '—'}</span></div>
                     <div><span className="text-gray-500">月份：{currentMonth}</span></div>
@@ -83,7 +83,7 @@ export function EmployeeDetailDrawer({ open, onOpenChange, employee, currentMont
                       <p className="text-sm text-gray-600 whitespace-pre-wrap">{employee.record.nextMonthPlan || '暂无'}</p>
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">部门经理评价</h4>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">考评人评价</h4>
                       <p className="text-sm text-gray-600 whitespace-pre-wrap">{employee.record.managerComment || '暂无'}</p>
                     </div>
                     <div>

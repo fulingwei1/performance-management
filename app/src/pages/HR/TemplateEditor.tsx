@@ -34,7 +34,7 @@ const QUALIFICATION_LEVELS = [
 
 const ROLE_OPTIONS = [
   { value: 'employee', label: '员工' },
-  { value: 'manager', label: '部门经理' },
+  { value: 'manager', label: '组长/经理' },
 ];
 
 interface Metric {

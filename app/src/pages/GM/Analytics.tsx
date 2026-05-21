@@ -486,7 +486,7 @@ export function GMAnalytics() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">暂无可分析的真实评分数据</h3>
             <p className="text-gray-500 mb-4">
               {realRecords.length > 0
-                ? `系统已有 ${realRecords.length} 条真实绩效任务，但目前还没有经理完成评分；评分完成后会自动生成部门对比、趋势和标签分析。`
+                ? `系统已有 ${realRecords.length} 条真实绩效任务，但目前还没有直属上级完成评分；评分完成后会自动生成部门对比、趋势和标签分析。`
                 : '当前还没有真实绩效任务；生成任务并完成经理评分后，本页会自动形成公司绩效分析。'}
             </p>
             <div className="mx-auto mb-4 grid max-w-2xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
@@ -573,7 +573,7 @@ export function GMAnalytics() {
                           <p className="mt-1 text-xs text-gray-500">
                             {employee.department || '未分配部门'}{employee.subDepartment ? ` / ${employee.subDepartment}` : ''}
                           </p>
-                          <p className="mt-1 text-xs text-gray-400">{employee.position || (employee.role === 'manager' ? '部门经理' : '员工')}</p>
+                          <p className="mt-1 text-xs text-gray-400">{employee.position || '—'}</p>
                         </div>
                         <Badge variant={currentCompletedEmployeeIds.has(employee.id) ? 'default' : 'secondary'}>
                           {currentCompletedEmployeeIds.has(employee.id) ? '已评' : '待评'}
