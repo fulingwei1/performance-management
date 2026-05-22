@@ -81,7 +81,7 @@ function wrapHtml(body: string): string {
 /** 纯文本版本的页脚 */
 const TEXT_FOOTER = `\n\n--\n${COMPANY_NAME} · 绩效管理系统\n${COMPANY_NAME_FULL}\n此邮件由系统自动发送，请勿直接回复。`;
 const DEFAULT_SYSTEM_BASE_URL = 'http://8.138.230.46/performance-management';
-const LOGIN_METHOD_GUIDE = '登录方式：姓名 + 当前密码；首次登录或未设置密码时，默认使用身份证后6位。';
+const LOGIN_METHOD_GUIDE = '登录方式：姓名/工号 + 身份证后六位。系统不再使用随机初始密码或管理员自定义密码。';
 const EMPLOYEE_SUMMARY_OPERATION_GUIDE = '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。';
 const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。';
 const DEFAULT_OPERATION_GUIDE = '点击处理链接进入系统，根据页面待办提示完成任务。';

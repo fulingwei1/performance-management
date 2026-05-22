@@ -222,7 +222,7 @@ export function HRDashboard() {
 
         const filteredRecords = records.filter(r => {
           if (statusFilter === 'all') return true;
-          if (statusFilter === 'pending') return !isScoredStatus(r.status);
+          if (statusFilter === 'pending') return Boolean(r.record) && !isScoredStatus(r.status);
           if (statusFilter === 'completed') return isScoredStatus(r.status);
           return true;
         });
@@ -378,8 +378,8 @@ export function HRDashboard() {
   const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
   const hasGeneratedTasks = stats.generatedTasks > 0;
   const hasAnyScore = stats.completedScores > 0;
-  const completionRate = stats.participatingEmployees > 0
-    ? Math.round((stats.completedScores / stats.participatingEmployees) * 100)
+  const completionRate = stats.generatedTasks > 0
+    ? Math.round((stats.completedScores / stats.generatedTasks) * 100)
     : 0;
   const hrFlowSteps = [
     {

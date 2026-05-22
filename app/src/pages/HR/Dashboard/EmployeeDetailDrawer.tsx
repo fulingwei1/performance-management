@@ -14,6 +14,10 @@ interface EmployeeDetailDrawerProps {
 }
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
+const formatScore = (value: unknown) => {
+  const score = Number(value);
+  return Number.isFinite(score) ? score.toFixed(2) : '—';
+};
 
 export function EmployeeDetailDrawer({ open, onOpenChange, employee, currentMonth }: EmployeeDetailDrawerProps) {
   return (
@@ -47,7 +51,7 @@ export function EmployeeDetailDrawer({ open, onOpenChange, employee, currentMont
                     <div>
                       <span className="text-gray-500">考评得分：</span>
                       <span className="font-semibold">
-                        {isScoredStatus(employee.status) ? `${employee.totalScore.toFixed(2)} 分` : '—'}
+                        {isScoredStatus(employee.status) ? `${formatScore(employee.totalScore)} 分` : '—'}
                       </span>
                     </div>
                     <div>
@@ -89,10 +93,10 @@ export function EmployeeDetailDrawer({ open, onOpenChange, employee, currentMont
                     <div>
                       <h4 className="text-sm font-medium text-gray-700 mb-3">得分明细</h4>
                       <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div><span className="text-gray-500">承担任务量：{employee.record.taskCompletion.toFixed(2)}</span></div>
-                        <div><span className="text-gray-500">主动性：{employee.record.initiative.toFixed(2)}</span></div>
-                        <div><span className="text-gray-500">项目反馈：{employee.record.projectFeedback.toFixed(2)}</span></div>
-                        <div><span className="text-gray-500">质量改进：{employee.record.qualityImprovement.toFixed(2)}</span></div>
+                        <div><span className="text-gray-500">承担任务量：{formatScore(employee.record.taskCompletion)}</span></div>
+                        <div><span className="text-gray-500">主动性：{formatScore(employee.record.initiative)}</span></div>
+                        <div><span className="text-gray-500">项目反馈：{formatScore(employee.record.projectFeedback)}</span></div>
+                        <div><span className="text-gray-500">质量改进：{formatScore(employee.record.qualityImprovement)}</span></div>
                       </div>
                     </div>
                   </CardContent>

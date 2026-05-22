@@ -227,7 +227,7 @@ function buildLoginInstructions(actionPath?: string): string[] {
   const loginUrl = buildSystemActionUrl(actionPath);
   return [
     `系统地址：[绩效管理系统](${loginUrl})`,
-    '登录方式：姓名 + 当前密码；首次登录或未设置密码时，默认使用身份证后6位。',
+    '登录方式：姓名/工号 + 身份证后六位。系统不再使用随机初始密码或管理员自定义密码。',
   ];
 }
 

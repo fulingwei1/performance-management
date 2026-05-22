@@ -53,7 +53,7 @@ type DepartmentProgressStats = {
   recipientDetails?: ReminderRecipientLog[];
 };
 
-const LOGIN_METHOD_GUIDE = '登录方式：姓名 + 当前密码；首次登录或未设置密码时，默认使用身份证后6位。';
+const LOGIN_METHOD_GUIDE = '登录方式：姓名/工号 + 身份证后六位。系统不再使用随机初始密码或管理员自定义密码。';
 const EMPLOYEE_SUMMARY_OPERATION_GUIDE = '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。';
 const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。';
 const TASK_GENERATED_OPERATION_GUIDE = `员工：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} 经理：${MANAGER_SCORING_OPERATION_GUIDE}`;
@@ -197,20 +197,66 @@ export class SchedulerService {
         existing.status !== 'completed' &&
         existing.status !== 'scored'
       ) {
+        const previousAssessorId = existing.assessorId;
         const updated = await PerformanceModel.update(existing.id, {
           assessorId,
           templateId: template.id,
           templateName: template.name,
           departmentType: template.departmentType,
         });
+        let todoCount = 0;
+        let notificationCount = 0;
+
+        if (existing.status === 'submitted') {
+          const reviewRelatedId = TodoModel.performanceReviewRelatedId(existing.id);
+          await query(
+            `DELETE FROM todos WHERE employee_id = $1 AND type = 'performance_review' AND related_id = $2`,
+            [previousAssessorId, reviewRelatedId],
+          );
+
+          await query(
+            `DELETE FROM notifications
+             WHERE user_id = $1
+               AND (
+                 title LIKE $2
+                 OR content LIKE $2
+                 OR link LIKE $3
+               )`,
+            [previousAssessorId, `%${employee.name}%`, `%month=${month}%`],
+          );
+
+          const newAssessor = await EmployeeModel.findById(assessorId);
+          if (newAssessor) {
+            if (!await TodoModel.findExisting(assessorId, 'performance_review', reviewRelatedId)) {
+              await TodoModel.create({
+                employeeId: assessorId,
+                type: 'performance_review',
+                title: `评分${employee.name}${month}月绩效`,
+                description: `${employee.name}已提交${month}月工作总结；因直属上级关系更新，请由你完成绩效评分。`,
+                dueDate: existing.deadline ? new Date(existing.deadline) : this.getPerformanceDeadline(month),
+                link: `/manager/dashboard?month=${month}`,
+                relatedId: reviewRelatedId,
+              });
+              todoCount = 1;
+            }
+            notificationCount = await NotificationModel.createBatch([{
+              userId: assessorId,
+              type: 'reminder',
+              title: `请评分${employee.name}${month}月绩效`,
+              content: `${employee.name}的${month}月绩效任务已按最新直属上级关系转给你，请完成评分。操作方法：${MANAGER_SCORING_OPERATION_GUIDE}`,
+              link: `/manager/dashboard?month=${month}`,
+            }]);
+          }
+        }
+
         return {
           month,
           employeeId: employee.id,
           employeeName: employee.name,
           status: 'updated_assessor',
           record: updated || existing,
-          todoCount: 0,
-          notificationCount: 0,
+          todoCount,
+          notificationCount,
         };
       }
 
@@ -298,15 +344,16 @@ export class SchedulerService {
          OR (type = 'performance_review' AND related_id = $3)
     `, [employeeId, TodoModel.performanceSummaryRelatedId(month), TodoModel.performanceReviewRelatedId(record.id)]);
 
-    const notificationResult = await query(`
+    const notificationUsers = Array.from(new Set([employeeId, record.assessorId].filter(Boolean)));
+    const notificationResult = notificationUsers.length > 0 ? await query(`
       DELETE FROM notifications
-      WHERE user_id = $1
+      WHERE user_id = ANY($1::text[])
         AND (
           title LIKE $2
           OR content LIKE $2
           OR link LIKE $3
         )
-    `, [employeeId, `%${month}%`, `%month=${month}%`]);
+    `, [notificationUsers, `%${month}%`, `%month=${month}%`]) : { rowCount: 0 };
 
     return {
       month,
