@@ -4,8 +4,6 @@ const path = require('path');
 
 require('dotenv').config();
 
-const localDatabaseUrl = 'postgresql://performance_user:performance123@localhost:5432/performance_db';
-
 const migrationFiles = [
   '../postgres-init/01-init.sql',
   '../postgres-init/04-todos.sql',
@@ -33,10 +31,19 @@ const migrationFiles = [
   'migrations/028_assessment_publication_exemptions.sql',
   'migrations/029_update_manufacturing_template_metrics.sql',
   'migrations/030_update_engineering_template_metrics.sql',
+  'migrations/031_notification_deadline_type.sql',
 ];
 
 async function runMigrations() {
-  const databaseUrl = process.env.DATABASE_URL || localDatabaseUrl;
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    console.error('❌ 缺少 DATABASE_URL 环境变量');
+    console.log('\n💡 请在 .env 中设置 DATABASE_URL，例如:');
+    console.log('   DATABASE_URL=postgresql://performance_user:<your_password>@localhost:5432/performance_db\n');
+    process.exit(1);
+  }
+
   const pool = new Pool({
     connectionString: databaseUrl,
     max: 1,

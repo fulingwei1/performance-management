@@ -259,7 +259,8 @@ export function HRDashboard() {
       participatingEmployees: assessableInScopeEmployees.length,
       generatedTasks: monthRecords.length,
       completedScores: scoredRecords.length,
-      pendingScores: assessableInScopeEmployees.length - scoredRecords.length,
+      pendingScores: monthRecords.length > 0 ? Math.max(monthRecords.length - scoredRecords.length, 0) : 0,
+      notGeneratedTasks: Math.max(assessableInScopeEmployees.length - monthRecords.length, 0),
       averageScore: scoredRecords.length > 0
         ? scoredRecords.reduce((sum, r) => sum + r.totalScore, 0) / scoredRecords.length
         : 0
@@ -389,7 +390,7 @@ export function HRDashboard() {
     {
       title: hasGeneratedTasks ? '跟进填写和评分' : '生成绩效任务',
       description: hasGeneratedTasks
-        ? `已生成 ${stats.generatedTasks} 条任务，待评分 ${stats.pendingScores} 人。`
+        ? `已生成 ${stats.generatedTasks} 条任务，待评分 ${stats.pendingScores} 人；未生成 ${stats.notGeneratedTasks} 人。`
         : `${currentMonth} 尚未生成绩效考核任务。`,
       status: hasGeneratedTasks ? 'active' as const : 'waiting' as const,
     },

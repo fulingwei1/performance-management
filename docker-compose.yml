@@ -11,9 +11,9 @@ services:
     container_name: ate_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: performance_db
-      POSTGRES_USER: performance_user
-      POSTGRES_PASSWORD: performance123
+      POSTGRES_DB: ${POSTGRES_DB:-performance_db}
+      POSTGRES_USER: ${POSTGRES_USER:-performance_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
       TZ: Asia/Shanghai
     ports:
@@ -42,7 +42,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://performance_user:performance123@postgres:5432/performance_db
+      DATABASE_URL: ${DATABASE_URL:?请在 .env 中设置 DATABASE_URL}
       AUTO_RUN_LOCAL_SCHEMA: "false"
       JWT_SECRET: ${JWT_SECRET:?请在 .env 中设置 JWT_SECRET}
       JWT_EXPIRES_IN: 7d

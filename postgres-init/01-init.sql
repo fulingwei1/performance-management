@@ -138,7 +138,7 @@ CREATE INDEX IF NOT EXISTS idx_monthly_publications_month ON monthly_assessment_
 
 -- 站内消息通知表
 DO $$ BEGIN
-  CREATE TYPE notification_type AS ENUM ('reminder', 'approval', 'system', 'freeze');
+  CREATE TYPE notification_type AS ENUM ('reminder', 'deadline', 'approval', 'system', 'freeze');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
