@@ -35,6 +35,7 @@ describe('performance ranking config', () => {
         includedUnitKeys: ['工程技术中心', '制造中心'],
       },
       templateAssignments: {},
+      groupRank: { defaultStrategy: { type: 'all' }, perUnit: {} },
     });
 
     await expect(getPerformanceRankingConfig()).resolves.toMatchObject({
@@ -43,6 +44,7 @@ describe('performance ranking config', () => {
         includedUnitKeys: ['工程技术中心', '制造中心'],
       },
       templateAssignments: {},
+      groupRank: { defaultStrategy: { type: 'all' }, perUnit: {} },
     });
   });
 });

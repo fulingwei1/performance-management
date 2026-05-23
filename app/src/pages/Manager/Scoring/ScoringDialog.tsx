@@ -149,7 +149,7 @@ export function ScoringDialog({
 
   const getGroupBadge = (groupType: 'high' | 'low' | null, level?: any) => {
     const resolved = resolveGroupType(groupType, level);
-    if (!resolved) return <Badge variant="outline" className="text-gray-400">未分组</Badge>;
+    if (!resolved) return <Badge variant="outline" className="text-gray-500">统一排名</Badge>;
     return resolved === 'high'
       ? <Badge className="bg-purple-100 text-purple-700">高分组</Badge>
       : <Badge className="bg-green-100 text-green-700">低分组</Badge>;

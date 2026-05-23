@@ -5,17 +5,32 @@ import { TestHelper } from '../helpers/testHelper';
 
 describe('Employee API', () => {
   describe('GET /api/employees', () => {
-    it('should return all employees for authenticated user', async () => {
-      const token = await TestHelper.getAuthToken('manager');
+    it('should return employees only for HR/GM/Admin and support search/role filters', async () => {
+      const token = await TestHelper.getAuthToken('hr');
 
       const response = await request(app)
-        .get('/api/employees')
+        .get('/api/employees?search=e001&role=employee')
         .set('Authorization', `Bearer ${token}`);
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       expect(Array.isArray(response.body.data)).toBe(true);
       expect(response.body.data.length).toBeGreaterThan(0);
+      response.body.data.forEach((employee: any) => {
+        expect(employee.role).toBe('employee');
+        expect([employee.id, employee.name, employee.department, employee.subDepartment, employee.position].join(' ').toLowerCase()).toContain('e001');
+      });
+    });
+
+    it('should forbid ordinary employees and managers from listing the company directory', async () => {
+      const token = await TestHelper.getAuthToken('manager');
+
+      const response = await request(app)
+        .get('/api/employees')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
     });
 
     it('should fail without authentication', async () => {
@@ -38,6 +53,7 @@ describe('Employee API', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       expect(Array.isArray(response.body.data)).toBe(true);
+      expect(response.body.data.length).toBeGreaterThan(0);
       response.body.data.forEach((manager: any) => {
         expect(['manager', 'gm', 'hr', 'admin', 'employee']).toContain(manager.role);
         expect(manager.id).toBeTruthy();

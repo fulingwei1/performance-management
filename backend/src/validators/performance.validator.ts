@@ -97,6 +97,14 @@ export const submitScoreValidation = [
     .optional()
     .isFloat({ min: 0.5, max: 1.5 }).withMessage('动态指标分数必须在0.5-1.5之间'),
 
+  body('metricScores.*.weight')
+    .optional()
+    .isFloat({ min: 0.000001 }).withMessage('动态指标权重必须大于0'),
+
+  body('metricScores.*.metricId')
+    .optional()
+    .isString().trim().notEmpty().withMessage('动态指标ID不能为空'),
+
   body('expectedUpdatedAt')
     .optional()
     .isISO8601().withMessage('记录版本时间格式无效'),

@@ -300,8 +300,8 @@ export function HRDashboard() {
       
       const summaryHeaders = ['部门', '本期参与人数', '已评分', '平均分', '优秀', '良好', '合格', '待改进'];
       const summaryRows = summary.map((dept: any) => [dept.department, dept.totalEmployees, dept.scoredCount, dept.averageScore, dept.excellentCount, dept.goodCount, dept.normalCount, dept.needImprovementCount].join(','));
-      const detailHeaders = ['姓名', '部门', '二级部门', '级别', '得分', '等级', '状态'];
-      const detailRows = records.map((r: any) => [r.employeeName || '', r.department || '', r.subDepartment || '', r.employeeLevel || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分'].join(','));
+      const detailHeaders = ['姓名', '部门', '二级部门', '得分', '绩效等级', '状态'];
+      const detailRows = records.map((r: any) => [r.employeeName || '', r.department || '', r.subDepartment || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分'].join(','));
       
       const executiveRows = reportSummary ? [
         ['统计月份', reportSummary.month],
@@ -403,7 +403,7 @@ export function HRDashboard() {
   const quickActions = [
     {
       title: '考核配置',
-      description: '确认参与范围、岗位/级别模板和个人模板调整。',
+      description: '确认参与范围、岗位模板和个人模板调整。',
       to: '/hr/assessment-config',
       icon: Settings,
       tone: 'bg-blue-50 text-blue-700 border-blue-100',

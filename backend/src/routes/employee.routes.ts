@@ -19,8 +19,8 @@ const createEmployeeLimiter = rateLimit({
   message: { success: false, message: '员工创建过于频繁，请稍后再试' },
 });
 
-// 获取所有员工（需要认证）
-router.get('/', authenticate, employeeController.getAllEmployees);
+// 获取员工管理列表（仅 HR/总经理/Admin；普通员工和组长请使用 /subordinates 或个人接口）
+router.get('/', authenticate, requireRole('hr', 'gm', 'admin'), employeeController.getAllEmployees);
 
 // 获取所有经理（需要认证）
 router.get('/managers', authenticate, employeeController.getAllManagers);

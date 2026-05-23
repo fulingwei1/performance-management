@@ -91,10 +91,10 @@ const configSchema: z.ZodType<PerformanceRankingConfigV1> = z.object({
     }),
   groupRank: z
     .object({
-      defaultStrategy: levelGroupingStrategySchema.default({ type: 'by_high_low' }),
+      defaultStrategy: levelGroupingStrategySchema.default({ type: 'all' }),
       perUnit: z.record(z.string(), levelGroupingStrategySchema).default({}),
     })
-    .default({ defaultStrategy: { type: 'by_high_low' }, perUnit: {} }),
+    .default({ defaultStrategy: { type: 'all' }, perUnit: {} }),
   templateAssignments: z.record(z.string(), z.string().min(1)).default({}),
   mergeRankGroups: z.array(mergeRankGroupSchema).default([]),
 });
@@ -111,7 +111,7 @@ export function buildDefaultPerformanceRankingConfig(): PerformanceRankingConfig
       excludedEmployeeIds: [],
     },
     groupRank: {
-      defaultStrategy: { type: 'by_high_low' },
+      defaultStrategy: { type: 'all' },
       perUnit: {},
     },
     templateAssignments: {},
@@ -121,6 +121,11 @@ export function buildDefaultPerformanceRankingConfig(): PerformanceRankingConfig
 
 function uniqueStrings(values?: string[]): string[] {
   return Array.from(new Set((values || []).map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
+function normalizeGroupingStrategy(_strategy?: LevelGroupingStrategy): LevelGroupingStrategy {
+  // 绩效考核关系与排名不再按员工级别拆分；历史配置保留可读，但统一折叠到同一组织排名组。
+  return { type: 'all' };
 }
 
 function normalizeConfig(config: PerformanceRankingConfigV1): PerformanceRankingConfigV1 {
@@ -144,6 +149,14 @@ function normalizeConfig(config: PerformanceRankingConfigV1): PerformanceRanking
       excludedUnitKeys: uniqueStrings(config.participation.excludedUnitKeys),
       includedEmployeeIds: normalizedIncludedEmployeeIds,
       excludedEmployeeIds: normalizedExcludedEmployeeIds,
+    },
+    groupRank: {
+      defaultStrategy: normalizeGroupingStrategy(config.groupRank?.defaultStrategy),
+      perUnit: Object.fromEntries(
+        Object.entries(config.groupRank?.perUnit || {})
+          .map(([key, value]) => [String(key || '').trim(), normalizeGroupingStrategy(value)])
+          .filter(([key]) => Boolean(key))
+      ),
     },
     templateAssignments: Object.fromEntries(
       Object.entries(config.templateAssignments || {})
@@ -283,24 +296,9 @@ export function getConfiguredTemplateId(
   return bestTemplateId || null;
 }
 
-export function resolveGroupName(level: EmployeeLevel | undefined, strategy: LevelGroupingStrategy): string {
-  const safeLevel = level || 'junior';
-
-  switch (strategy.type) {
-    case 'all':
-      return 'all';
-    case 'by_level':
-      return safeLevel;
-    case 'by_high_low':
-      return safeLevel === 'senior' || safeLevel === 'intermediate' ? 'high' : 'low';
-    case 'custom': {
-      const groups = strategy.groups || [];
-      const match = groups.find((g) => (g.levels || []).includes(safeLevel));
-      return match?.name || 'other';
-    }
-    default:
-      return 'by_high_low';
-  }
+export function resolveGroupName(_level: EmployeeLevel | undefined, _strategy: LevelGroupingStrategy): string {
+  // 员工级别只作档案展示，不再决定绩效排名分组。
+  return 'all';
 }
 
 export function resolveGroupKey(record: Pick<PerformanceRecord, 'department' | 'subDepartment' | 'employeeLevel'>, config: PerformanceRankingConfigV1): string {
@@ -312,21 +310,17 @@ export function resolveGroupKey(record: Pick<PerformanceRecord, 'department' | '
     perUnit[unitKey] ||
     (deptPrefix ? perUnit[deptPrefix] : undefined) ||
     config.groupRank.defaultStrategy ||
-    { type: 'by_high_low' };
+    { type: 'all' };
   const groupName = resolveGroupName(record.employeeLevel, strategy);
   return `${unitKey}::${groupName}`;
 }
 
 export function matchMergeRankGroup(record: Pick<PerformanceRecord, 'department' | 'subDepartment' | 'employeeLevel'>, config: PerformanceRankingConfigV1): MergeRankGroup | null {
   const unitKey = getOrgUnitKey(record);
-  const level = record.employeeLevel || 'junior';
-
   for (const group of config.mergeRankGroups || []) {
     if (!group?.enabled) continue;
 
-    const matchLevel = !group.levels || group.levels.length === 0 || group.levels.includes(level);
-    if (!matchLevel) continue;
-
+    // 历史 mergeRankGroups.levels 配置保留但不再参与匹配，避免员工级别影响绩效关系/排名。
     const matchUnit = !group.unitKeys || group.unitKeys.length === 0 || matchesAnyConfiguredUnit(unitKey, group.unitKeys || []);
     if (!matchUnit) continue;
 

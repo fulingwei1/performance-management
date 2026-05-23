@@ -109,7 +109,7 @@ export interface PerformanceRecord {
   interviewFormAttachment?: PerformanceInterviewFormAttachment;
   
   // 分组排名
-  groupType: 'high' | 'low';
+  groupType: 'all' | 'high' | 'low' | string;
   groupRank: number;
   crossDeptRank: number;
   departmentRank: number;

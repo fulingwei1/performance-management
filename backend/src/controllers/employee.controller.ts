@@ -130,11 +130,31 @@ export const employeeController = {
     }
     const includeDisabled = req.query.includeDisabled === 'true' || req.query.status === 'all';
     const employees = await EmployeeModel.findAll();
-    const role = req.user.role;
-    const isPrivileged = role === 'hr' || role === 'gm' || role === 'admin';
-    const scopedEmployees = includeDisabled && isPrivileged
-      ? employees
+    const userRole = req.user.role;
+    const isPrivileged = userRole === 'hr' || userRole === 'gm' || userRole === 'admin';
+    const queryRole = String(req.query.role || '').trim();
+    const search = String(req.query.search || req.query.keyword || '').trim().toLowerCase();
+    const statusFilter = String(req.query.status || '').trim();
+    let scopedEmployees = includeDisabled && isPrivileged
+      ? employees as any[]
       : (employees as any[]).filter((e) => !e.status || e.status === 'active');
+
+    if (statusFilter && statusFilter !== 'all') {
+      scopedEmployees = scopedEmployees.filter((e) => String(e.status || 'active') === statusFilter);
+    }
+    if (queryRole) {
+      scopedEmployees = scopedEmployees.filter((e) => String(e.role || '') === queryRole);
+    }
+    if (search) {
+      scopedEmployees = scopedEmployees.filter((e) => [
+        e.id,
+        e.name,
+        e.department,
+        e.subDepartment,
+        e.position,
+        e.role,
+      ].some((value) => String(value || '').toLowerCase().includes(search)));
+    }
 
     // 非特权用户仅返回“通讯录字段”（避免暴露直属关系、状态等管理字段）
     const toDirectory = (e: any) => ({
@@ -147,7 +167,7 @@ export const employeeController = {
       avatar: e.avatar,
     });
 
-    const sanitized = (scopedEmployees as any[]).map((e) => {
+    const sanitized = scopedEmployees.map((e) => {
       const { password, idCardLast6Hash, ...rest } = e || {};
       const privilegedRest = {
         ...rest,

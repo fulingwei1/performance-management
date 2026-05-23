@@ -526,19 +526,17 @@ export function getLevelColor(level: EmployeeLevel): string {
   return employeeLevels[level]?.color || '#6B7280';
 }
 
-// 判断员工属于高分组还是低分组
+// 历史高/低分组工具保留给旧报表兼容；新的绩效流转不再按员工级别分组。
 export function getGroupType(level: EmployeeLevel): 'high' | 'low' {
   return groupConfig.highLevels.includes(level) ? 'high' : 'low';
 }
 
-// 根据已有分组或员工级别推断分组
 export function resolveGroupType(
-  groupType: 'high' | 'low' | null | undefined,
-  level?: EmployeeLevel
+  groupType: 'all' | 'high' | 'low' | string | null | undefined,
+  _level?: EmployeeLevel
 ): 'high' | 'low' | null {
-  if (groupType) return groupType;
-  if (!level) return null;
-  return getGroupType(level);
+  if (groupType === 'high' || groupType === 'low') return groupType;
+  return null;
 }
 
 // GM评分维度定义

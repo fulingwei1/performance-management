@@ -63,7 +63,7 @@ async function toResolvedTemplate(
  *
  * 顺序：
  * 1. HR/Admin 给具体员工设置的个人模板；
- * 2. 按岗位/级别/部门类型自动匹配更细颗粒度的任职资格模板；
+ * 2. 按岗位/部门类型自动匹配更细颗粒度的岗位模板；
  * 3. 历史组织单元模板仅作为兜底继承模板，避免一个部门下不同岗位被锁成同一模板。
  *
  * 返回 null 表示没有可用模板，调用方应阻止或跳过生成，避免生成“无模板任务”。
@@ -89,7 +89,8 @@ export async function resolveTaskTemplateForEmployee(
 
   const matched = await AssessmentTemplateModel.findMatchingTemplate({
     role: employee.role || '',
-    level: employee.level || '',
+    // 绩效任务生成只看上下级关系；员工级别仅作档案展示，不参与模板自动匹配。
+    level: '',
     position: employee.position || employee.subDepartment || employee.department || '',
     department: employee.department || '',
     subDepartment: employee.subDepartment || '',

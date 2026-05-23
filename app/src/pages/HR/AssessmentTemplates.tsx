@@ -471,7 +471,7 @@ export function AssessmentTemplates({ mode = 'hr' }: AssessmentTemplatesProps) {
           <p className="text-gray-500 mt-1">
             {mode === 'manager'
               ? '组长/经理可以查看系统可选模板和指标口径；模板调整需由 HR/Admin 在考核配置中维护。'
-              : '按岗位序列和任职资格等级维护考核模板，系统生成任务时自动匹配员工'}
+              : '按岗位、部门和小组维护考核模板，系统生成任务时自动匹配员工'}
           </p>
         </div>
         {!readonlyMode && (

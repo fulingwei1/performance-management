@@ -303,7 +303,7 @@ export class PerformanceModel {
     resourceNeedTags?: string[];
     improvementSuggestion?: string;
     suggestionAnonymous?: boolean;
-    groupType: 'high' | 'low';
+    groupType: 'all' | 'high' | 'low' | string;
     deadline?: Date;
     // 模板绑定
     templateId?: string | null;

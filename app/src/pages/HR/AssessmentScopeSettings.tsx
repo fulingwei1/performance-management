@@ -94,7 +94,7 @@ const defaultConfig: RankingConfig = {
     excludedEmployeeIds: [],
   },
   groupRank: {
-    defaultStrategy: { type: 'by_high_low' },
+    defaultStrategy: { type: 'all' },
     perUnit: {},
   },
   templateAssignments: {},
@@ -549,7 +549,7 @@ export default function AssessmentScopeSettings() {
         <UserRound className="h-4 w-4 text-gray-400" />
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium text-gray-900">{employee.name}</div>
-          <div className="text-xs text-gray-500">{employee.position || employee.role} · {employee.level || '未分级'} · {employee.id}</div>
+          <div className="text-xs text-gray-500">{employee.position || employee.role} · {employee.id}</div>
           <div className="mt-1 text-xs text-gray-500">
             自动推荐：{autoTemplate?.name || '暂无匹配模板'}
             {preview?.matchReason ? `（${preview.matchReason}）` : ''}
@@ -645,7 +645,7 @@ export default function AssessmentScopeSettings() {
               考核范围配置
             </h1>
             <p className="mt-1 text-muted-foreground">
-              按组织树选择谁参与考核；模板由系统按部门、岗位和任职资格等级自动推荐，少数员工可由 HR/Admin 单独调整。
+              按组织树选择谁参与考核；模板由系统按部门、岗位和小组自动推荐，少数员工可由 HR/Admin 单独调整。
             </p>
           </div>
           <Button onClick={handleSave} disabled={saving}>

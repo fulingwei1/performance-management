@@ -5,7 +5,7 @@ import { TodoModel } from '../models/todo.model';
 import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
-import { getGroupType, scoreToLevel, levelToScore } from '../utils/helpers';
+import { scoreToLevel, levelToScore } from '../utils/helpers';
 import { getPerformanceRankingConfig } from './performanceRankingConfig.service';
 import { isSelfAssessmentEligibleRecord, resolveAssessorId } from './selfAssessmentEligibility.service';
 import { resolveTaskTemplateForEmployee } from './taskTemplateResolver.service';
@@ -279,7 +279,7 @@ export class SchedulerService {
       month,
       selfSummary: '',
       nextMonthPlan: '',
-      groupType: getGroupType(employee.level),
+      groupType: 'all',
       deadline,
       templateId: template.id,
       templateName: template.name,
@@ -568,7 +568,7 @@ export class SchedulerService {
         continue;
       }
 
-      const groupType = getGroupType(employee.level);
+      const groupType = 'all';
       const assessorId = resolveAssessorId(employee, validIds);
       if (!assessorId) {
         skippedCount++;

@@ -3,7 +3,7 @@ import fs from 'fs';
 import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
-import { getGroupType, scoreLevelThresholds, scoreToLevel } from '../utils/helpers';
+import { scoreLevelThresholds, scoreToLevel } from '../utils/helpers';
 import type { ScoreLevel } from '../types';
 import { getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
@@ -518,12 +518,15 @@ export const performanceController = {
     let finalSelfSummary: string;
     let finalNextMonthPlan: string;
     
-    if (summary || achievements || issues) {
-      // 格式1: 组合 summary, achievements, issues
+    if (summary !== undefined || achievements !== undefined || issues !== undefined) {
+      // 格式1: 组合 summary, achievements, issues；先清洗再判空，避免纯空格/HTML 被当作有效提交。
       const parts = [];
-      if (summary) parts.push(`工作总结：${sanitizeUserText(summary)}`);
-      if (achievements) parts.push(`主要成就：${sanitizeUserText(achievements)}`);
-      if (issues) parts.push(`遇到的问题：${sanitizeUserText(issues)}`);
+      const cleanedSummary = sanitizeUserText(summary || '').trim();
+      const cleanedAchievements = sanitizeUserText(achievements || '').trim();
+      const cleanedIssues = sanitizeUserText(issues || '').trim();
+      if (cleanedSummary) parts.push(`工作总结：${cleanedSummary}`);
+      if (cleanedAchievements) parts.push(`主要成就：${cleanedAchievements}`);
+      if (cleanedIssues) parts.push(`遇到的问题：${cleanedIssues}`);
       
       if (parts.length === 0) {
         return res.status(400).json({
@@ -533,15 +536,23 @@ export const performanceController = {
       }
       
       finalSelfSummary = parts.join('\n\n');
-      finalNextMonthPlan = sanitizeUserText(nextMonthPlan || '待补充');
-    } else if (selfSummary) {
-      // 格式2: 直接使用 selfSummary 和 nextMonthPlan
-      finalSelfSummary = sanitizeUserText(selfSummary);
-      finalNextMonthPlan = sanitizeUserText(nextMonthPlan || '待补充');
+      finalNextMonthPlan = sanitizeUserText(nextMonthPlan || '待补充').trim() || '待补充';
+    } else if (selfSummary !== undefined) {
+      // 格式2: 直接使用 selfSummary 和 nextMonthPlan；清洗后必须仍有正文。
+      finalSelfSummary = sanitizeUserText(selfSummary).trim();
+      finalNextMonthPlan = sanitizeUserText(nextMonthPlan || '待补充').trim() || '待补充';
     } else {
       return res.status(400).json({
         success: false,
         error: '工作总结不能为空（请提供 summary/achievements/issues 或 selfSummary）'
+      });
+    }
+
+
+    if (!finalSelfSummary.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: '工作总结内容不能为空'
       });
     }
 
@@ -595,8 +606,8 @@ export const performanceController = {
       });
     }
 
-    // 确定分组
-    const groupType = getGroupType(employee.level);
+    // 绩效不再按员工级别拆分高/低分组，统一按组织与上级关系流转。
+    const groupType = 'all';
 
     // 生成记录ID
     const recordId = `rec-${employee.id}-${month}`;
@@ -708,8 +719,8 @@ export const performanceController = {
       });
     }
 
-    // 确定分组
-    const groupType = getGroupType(employee.level);
+    // 绩效不再按员工级别拆分高/低分组，统一按组织与上级关系流转。
+    const groupType = 'all';
 
     // 生成记录ID
     const recordId = `rec-${employee.id}-${month}`;
@@ -790,13 +801,26 @@ export const performanceController = {
 
     if (Array.isArray(metricScores) && metricScores.length > 0) {
       // 新版：动态指标评分
+      const seenMetricIds = new Set<string>();
       for (const ms of metricScores) {
+        const metricId = String(ms.metricId || '').trim();
         const score = Number(ms.score);
+        const weight = Number(ms.weight);
+        if (!metricId) {
+          return res.status(400).json({ success: false, error: '指标ID不能为空' });
+        }
+        if (seenMetricIds.has(metricId)) {
+          return res.status(400).json({ success: false, error: `指标"${ms.metricName || metricId}"重复提交` });
+        }
+        seenMetricIds.add(metricId);
         if (isNaN(score) || score < 0.5 || score > 1.5) {
           return res.status(400).json({
             success: false,
             error: `指标"${ms.metricName}"分数范围0.5-1.5`
           });
+        }
+        if (!Number.isFinite(weight) || weight <= 0) {
+          return res.status(400).json({ success: false, error: `指标"${ms.metricName || metricId}"权重必须大于0` });
         }
       }
 
@@ -805,7 +829,7 @@ export const performanceController = {
       let totalWeight = 0;
       processedMetricScores = metricScores.map((ms: any) => {
         const score = Number(ms.score);
-        const weight = Number(ms.weight) || 0;
+        const weight = Number(ms.weight);
         weightedSum += score * weight;
         totalWeight += weight;
         return {
@@ -1062,7 +1086,7 @@ export const performanceController = {
 
   // 删除全部记录（HR）
   deleteAllRecords: asyncHandler(async (req: Request, res: Response) => {
-    const { confirm, force } = req.body as { confirm: string; force?: boolean };
+    const { confirm, force } = (req.body || {}) as { confirm?: string; force?: boolean };
 
     if (!confirm || confirm.trim() === '') {
       return res.status(400).json({ success: false, error: '请填写确认信息' });
@@ -1212,8 +1236,8 @@ export const performanceController = {
         continue;
       }
       
-      // 确定分组和考评人
-      const groupType = getGroupType(employee.level);
+      // 绩效不再按员工级别拆分高/低分组。
+      const groupType = 'all';
 
       const assessorId = resolveAssessorId(employee, validIds);
       if (!assessorId) {

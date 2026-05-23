@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { asyncHandler } from '../middleware/errorHandler';
+import { getPerformanceRankingConfig } from '../services/performanceRankingConfig.service';
+import { resolveTaskTemplateForEmployee } from '../services/taskTemplateResolver.service';
 
 const DEFAULT_SCORING_CRITERIA = [
   { level: 'L1', score: 0.5, description: '不合格：结果明显低于要求，影响工作交付，需要重点辅导和限期改进' },
@@ -270,11 +272,11 @@ export const addScoringCriteria = asyncHandler(async (req: Request, res: Respons
  */
 export const matchTemplate = asyncHandler(async (req: Request, res: Response) => {
   const source = req.method === 'POST' ? req.body || {} : req.query;
-  const { role, level, position, department, subDepartment } = source;
+  const { role, position, department, subDepartment } = source;
   
   const template = await AssessmentTemplateModel.findMatchingTemplate({
     role: role as string,
-    level: level as string,
+    level: '',
     position: position as string,
     department: department as string,
     subDepartment: subDepartment as string,
@@ -297,7 +299,6 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
   const { employeeIds } = req.body;
   
   const { EmployeeModel } = await import('../models/employee.model');
-  const { LevelTemplateRuleModel } = await import('../models/levelTemplateRule.model');
   
   let employees: any[];
   if (employeeIds && employeeIds.length > 0) {
@@ -312,15 +313,25 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
   const sourceReasonMap: Record<string, string> = {
     employee_override: 'HR/Admin手工指定员工模板',
     unit_config: '历史组织单元兜底模板',
-    level_rule: '部门类型 + 层级规则',
-    auto_match: '按模板适用范围自动匹配',
+    auto_match: '按岗位/部门/小组自动匹配',
     default: '默认模板兜底',
   };
+
+  const rankingConfig = await getPerformanceRankingConfig();
 
   const assignments = await Promise.all(
     employees.map(async (employee: any) => {
       try {
-        const resolved = await LevelTemplateRuleModel.resolveTemplate(employee.id);
+        const resolved = await resolveTaskTemplateForEmployee(
+          {
+            id: employee.id,
+            role: employee.role,
+            position: employee.position,
+            department: employee.department,
+            subDepartment: employee.subDepartment || employee.sub_department,
+          },
+          rankingConfig
+        );
         return {
           employee: {
             id: employee.id,
@@ -331,13 +342,13 @@ export const previewTemplateAssignments = asyncHandler(async (req: Request, res:
             department: employee.department,
             subDepartment: employee.subDepartment || employee.sub_department,
           },
-          template: {
-            id: resolved.templateId,
-            name: resolved.templateName,
+          template: resolved ? {
+            id: resolved.id,
+            name: resolved.name,
             departmentType: resolved.departmentType,
-          },
-          matchScore: 100,
-          matchReason: sourceReasonMap[resolved.source] || resolved.source,
+          } : null,
+          matchScore: resolved ? 100 : 0,
+          matchReason: resolved ? (sourceReasonMap[resolved.source] || resolved.source) : '无可用模板',
         };
       } catch (_error) {
         return {

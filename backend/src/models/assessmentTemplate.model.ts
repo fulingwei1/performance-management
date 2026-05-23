@@ -653,13 +653,13 @@ export class AssessmentTemplateModel {
 
   private static getLevelCandidates(employee: { role?: string; level?: string }): string[] {
     const normalizedRole = (employee.role || '').trim();
-    const normalizedLevel = (employee.level || 'junior').trim() || 'junior';
+    const normalizedLevel = (employee.level || '').trim();
     const candidates: string[] = [];
 
     if (normalizedRole === 'manager') candidates.push('manager');
     if (normalizedRole === 'gm') candidates.push('manager', 'senior');
 
-    candidates.push(normalizedLevel);
+    if (normalizedLevel) candidates.push(normalizedLevel);
 
     if (normalizedLevel === 'assistant') candidates.push('junior');
 
@@ -671,15 +671,18 @@ export class AssessmentTemplateModel {
   }
 
   private static getPositionCandidates(employee: {
+    role?: string;
     position?: string;
     department?: string;
     subDepartment?: string;
   }): string[] {
+    const isManagerLike = ['manager', 'gm', 'hr', 'admin'].includes(String(employee.role || ''));
     const candidates = [
       employee.position,
-      employee.subDepartment,
       employee.department,
-      ...(employee.subDepartment || '').split('/'),
+      // 普通员工岗位常写成泛化的“工程师”，可用小组/二级部门辅助识别专业模板；
+      // 管理角色不使用小组线索，避免“组长/副经理”误匹配到一线员工模板。
+      ...(!isManagerLike ? [employee.subDepartment, ...(employee.subDepartment || '').split('/')] : []),
     ];
 
     return Array.from(new Set(candidates.map((value) => String(value || '').trim()).filter(Boolean)));
@@ -687,7 +690,7 @@ export class AssessmentTemplateModel {
 
   /**
    * 根据员工信息匹配最佳模板
-   * 匹配优先级：岗位+层级(100) > 岗位(80) > 层级(60) > 角色(40) > 部门类型(20)
+   * 匹配优先级：岗位/小组(80) > 角色(40) > 部门类型默认模板(20)。员工级别只作档案展示，不参与考核任务匹配。
    */
   static async findMatchingTemplate(employee: {
     role?: string;
@@ -704,38 +707,22 @@ export class AssessmentTemplateModel {
         .map(template => {
           let score = 0;
           const roles = template.applicableRoles || [];
-          const levels = template.applicableLevels || [];
           const positions = template.applicablePositions || [];
-          const levelCandidates = this.getLevelCandidates(employee);
-          const hasSpecificPositionOrLevelRule = positions.length > 0 || levels.length > 0;
+          const hasSpecificPositionRule = positions.length > 0;
           const positionCandidates = this.getPositionCandidates(employee).map(this.normalizeMatchValue);
           const normalizedTemplatePositions = positions.map(this.normalizeMatchValue);
-          const levelMatched = levels.length > 0 && levelCandidates.some(levelCandidate => levels.includes(levelCandidate));
-
-          if (levels.length > 0 && !levelMatched) {
-            return { template, score: 0 };
-          }
 
           // 岗位/部门线索精确匹配：HR 档案里很多技术员工 position 只有“工程师”，
-          // 需要结合 subDepartment（如 PLC 部/PLC四组、测试部、结构组）识别实际任职资格模板。
+          // 需要结合 subDepartment（如 PLC 部/PLC四组、测试部、结构组）识别实际岗位模板。
           if (positionCandidates.length > 0 && positions.length > 0) {
             if (positionCandidates.some(candidate => normalizedTemplatePositions.includes(candidate))) {
               score += 80;
-              // 岗位 + 层级同时匹配
-              if (levelMatched) {
-                score += 20;
-              }
-            }
-          } else if (levels.length > 0) {
-            // 仅层级匹配
-            if (levelMatched) {
-              score += 60;
             }
           }
 
           // 角色匹配
           if (employee.role && roles.length > 0 && roles.includes(employee.role)) {
-            const isBroadRoleTemplate = !hasSpecificPositionOrLevelRule;
+            const isBroadRoleTemplate = !hasSpecificPositionRule;
             if (score > 0 || isBroadRoleTemplate) {
               score += 40;
             }
@@ -749,7 +736,7 @@ export class AssessmentTemplateModel {
           // 默认模板额外加分
           if (template.isDefault && score > 0) score += 5;
 
-          // 自定义优先级只在已经命中岗位/层级/角色/默认部门类型时加分，不能单独制造命中。
+          // 自定义优先级只在已经命中岗位/角色/默认部门类型时加分，不能单独制造命中。
           if (template.priority && score > 0) score += template.priority;
 
           return { template, score };
@@ -788,23 +775,13 @@ export class AssessmentTemplateModel {
           let score = 0;
           let reasons: string[] = [];
           const roles = template.applicableRoles || [];
-          const levels = template.applicableLevels || [];
           const positions = template.applicablePositions || [];
-          const levelCandidates = this.getLevelCandidates(emp);
-
           const positionCandidates = this.getPositionCandidates(emp).map(this.normalizeMatchValue);
           const normalizedTemplatePositions = positions.map(this.normalizeMatchValue);
 
           if (positionCandidates.length > 0 && positions.length > 0 && positionCandidates.some(candidate => normalizedTemplatePositions.includes(candidate))) {
             score += 80;
-            reasons.push(`岗位匹配: ${emp.position}`);
-            if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
-              score += 20;
-              reasons.push(`层级匹配: ${levelCandidates.join('/')}`);
-            }
-          } else if (levelCandidates.some(levelCandidate => levels.includes(levelCandidate))) {
-            score += 60;
-            reasons.push(`层级匹配: ${levelCandidates.join('/')}`);
+            reasons.push(`岗位/小组匹配: ${emp.position || emp.department || ''}`);
           }
 
           if (emp.role && roles.includes(emp.role)) {
@@ -822,7 +799,7 @@ export class AssessmentTemplateModel {
             reasons.push('默认模板');
           }
 
-          if (template.priority) {
+          if (template.priority && score > 0) {
             score += template.priority;
             reasons.push(`优先级+${template.priority}`);
           }

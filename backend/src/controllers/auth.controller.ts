@@ -55,7 +55,9 @@ export const authController = {
     body('username')
       .customSanitizer((value) => String(value || '').trim().replace(/\s+/g, ''))
       .notEmpty()
-      .withMessage('用户名不能为空'),
+      .withMessage('用户名不能为空')
+      .isLength({ max: 50 })
+      .withMessage('用户名最多50个字符'),
     body('idCardLast6')
       .exists({ checkFalsy: true })
       .withMessage('身份证后六位不能为空')

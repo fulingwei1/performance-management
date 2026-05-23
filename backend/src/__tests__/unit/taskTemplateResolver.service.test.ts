@@ -221,7 +221,7 @@ describe('resolveTaskTemplateForEmployee', () => {
     });
   });
 
-  it('does not assign junior department templates to intermediate or senior employees', async () => {
+  it('does not let employee level block department and subgroup template matching', async () => {
     const config = {
       ...baseConfig,
       templateAssignments: {
@@ -236,8 +236,8 @@ describe('resolveTaskTemplateForEmployee', () => {
       department: '工程技术中心',
       subDepartment: 'PLC 部/PLC四组',
     }, config)).resolves.toMatchObject({
-      id: 'template-elec-default',
-      source: 'unit_config',
+      id: 'template-elec-junior-001',
+      source: 'auto_match',
     });
 
     await expect(resolveTaskTemplateForEmployee({

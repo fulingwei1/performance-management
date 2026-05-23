@@ -147,7 +147,7 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                                     <button type="button" className="text-primary hover:underline hover:text-blue-700 text-left w-full" onClick={() => onEmployeeClick(emp)}>
                                       <div className="leading-tight">
                                         <div>{emp.name}</div>
-                                        <div className="text-[10px] text-gray-400 mt-0.5">{emp.id} · {emp.level || '—'}</div>
+                                        <div className="text-[10px] text-gray-400 mt-0.5">{emp.id}</div>
                                       </div>
                                     </button>
                                   </TableCell>

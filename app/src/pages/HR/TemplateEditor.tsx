@@ -329,15 +329,15 @@ export function TemplateEditor({ template, viewMode, managerMode = false, onSave
 
         <div className="rounded-lg border bg-blue-50/50 p-4">
           <div className="mb-3">
-            <h4 className="font-medium text-sm">任职资格适用范围</h4>
+            <h4 className="font-medium text-sm">岗位适用范围</h4>
             <p className="mt-1 text-xs text-gray-500">
-              系统生成考核任务时，会优先按员工档案里的“岗位 + 任职资格等级”匹配模板；部门模板只作为特殊覆盖。
+              系统生成考核任务时，按员工档案里的岗位、部门和小组匹配模板；直属上级关系决定谁考核谁。
             </p>
           </div>
 
           <div className="space-y-4">
             <div>
-              <Label className="text-xs">适用等级</Label>
+              <Label className="text-xs">历史等级标签（不参与自动匹配）</Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {QUALIFICATION_LEVELS.map((level) => (
                   <Button

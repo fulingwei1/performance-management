@@ -112,7 +112,7 @@ export interface PerformanceRecord {
   totalScore: number;
   
   // 分组排名
-  groupType: 'high' | 'low';
+  groupType: 'all' | 'high' | 'low' | string;
   groupRank: number;
   crossDeptRank: number;
   
