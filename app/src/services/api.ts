@@ -555,14 +555,14 @@ export const dataImportApi = {
     return request('/data-import/employees', {
       method: 'POST',
       body: formData,
-      timeoutMs: 120000,
+      timeoutMs: 300000,
     });
   },
   importHrArchive: async (formData: FormData) => {
     return request('/data-import/hr-archive', {
       method: 'POST',
       body: formData,
-      timeoutMs: 120000,
+      timeoutMs: 300000,
     });
   },
 };

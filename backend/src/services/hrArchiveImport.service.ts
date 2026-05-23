@@ -7,6 +7,8 @@ import { cache } from '../config/cache';
 import { syncDepartmentsFromEmployees } from '../config/local-schema';
 import { syncWecomUserIdsForEmployees } from './wecomDirectory.service';
 import { syncPendingPerformanceAssessorsForEmployees } from './performanceAssessorSync.service';
+import { getPerformanceRankingConfig } from './performanceRankingConfig.service';
+import { isSelfAssessmentEligibleRecord } from './selfAssessmentEligibility.service';
 import logger from '../config/logger';
 
 const JSZip = require('jszip');
@@ -547,8 +549,11 @@ export async function importHrArchive(filePath: string) {
   cache.invalidateByPrefix('employee:');
 
   const activeEmployees = employees.filter((employee) => employee.status === 'active');
+  const activeEmployeeIds = new Set(activeEmployees.map((employee) => employee.id));
+  const rankingConfig = await getPerformanceRankingConfig();
   const assessmentEligibleEmployees = activeEmployees.filter((employee) => (
-    employee.role === 'employee' || employee.role === 'manager'
+    (employee.role === 'employee' || employee.role === 'manager') &&
+    isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: activeEmployeeIds })
   ));
   const departmentCounts = assessmentEligibleEmployees.reduce<Record<string, number>>((acc, employee) => {
     const department = employee.department || '未分配部门';
@@ -559,9 +564,9 @@ export async function importHrArchive(filePath: string) {
   return {
     totalRows: rows.length,
     imported: employees.length,
-    activeCount: assessmentEligibleEmployees.length,
+    activeCount: activeEmployees.length,
     assessmentEligibleCount: assessmentEligibleEmployees.length,
-    nonAssessmentRoleCount: 0,
+    nonAssessmentRoleCount: activeEmployees.length - assessmentEligibleEmployees.length,
     disabledCount: employees.length - activeEmployees.length,
     managerLinks: managerIds.size,
     unresolvedManagerCount: unresolvedManagers.length,

@@ -134,7 +134,7 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
                   <div className="text-xl font-semibold text-gray-900">{result.imported ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-white/80 p-3 border border-green-100">
-                  <div className="text-xs text-gray-500">参与考核在职</div>
+                  <div className="text-xs text-gray-500">档案在职人数</div>
                   <div className="text-xl font-semibold text-gray-900">{result.activeCount ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-white/80 p-3 border border-green-100">
@@ -157,7 +157,7 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
                   </p>
                 )}
                 <p className="text-green-700">
-                  说明：这里的在职人数口径，已经只保留真正参与绩效考核的人员，不再把虚拟权限账号算进来。
+                  说明：参与考核人数会同时检查在职状态、考核范围、角色和有效直属上级；不参与考核或未维护有效上级的人员不会生成绩效任务。
                 </p>
               </div>
             )}

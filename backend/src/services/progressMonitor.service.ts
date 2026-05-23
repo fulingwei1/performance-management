@@ -6,7 +6,8 @@
 import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
-import { getPerformanceRankingConfig, isParticipatingRecord } from './performanceRankingConfig.service';
+import { getPerformanceRankingConfig } from './performanceRankingConfig.service';
+import { isSelfAssessmentEligibleRecord } from './selfAssessmentEligibility.service';
 import logger from '../config/logger';
 
 export interface ProgressSnapshot {
@@ -43,12 +44,17 @@ export class ProgressMonitorService {
    */
   static async getMonthProgress(month: string): Promise<ProgressSnapshot> {
     const allEmployees = await EmployeeModel.findAll();
+    const activeEmployeeIds = new Set(
+      allEmployees
+        .filter((e: any) => !e.status || e.status === 'active')
+        .map((e: any) => String(e.id))
+    );
     const activeAssessableEmployees = allEmployees.filter(
-      (e: any) => (e.role === 'employee' || e.role === 'manager') && e.status !== 'disabled'
+      (e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active')
     );
     const rankingConfig = await getPerformanceRankingConfig();
     const eligibleEmployees = activeAssessableEmployees.filter((employee: any) => (
-      isParticipatingRecord(employee, rankingConfig)
+      isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: activeEmployeeIds })
     ));
     const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
