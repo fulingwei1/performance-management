@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
 import { performanceController } from '../controllers/performance.controller';
+import { exportMonthlyAssessments } from '../controllers/assessmentExport.controller';
 import { authenticate, requireManagerCapability, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import {
@@ -80,6 +81,9 @@ router.post('/summary', authenticate, validate(submitSummaryValidation), perform
 
 // 创建空记录（经理给未提交的员工评分时使用）
 router.post('/create-empty-record', authenticate, requireManagerCapability, validate(createRecordValidation), performanceController.createEmptyRecord);
+
+// 导出绩效评分记录（兼容 /api/performance/export?month=YYYY-MM）
+router.get('/export', authenticate, requireRole('hr', 'gm', 'admin'), exportMonthlyAssessments);
 
 // 获取记录对应的评分模板（用于前端动态渲染评分表单）
 router.get('/:id/template', authenticate, performanceController.getRecordTemplate);

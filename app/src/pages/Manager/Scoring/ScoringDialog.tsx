@@ -66,6 +66,7 @@ interface ScoringDialogProps {
   monthlyStarPublic: boolean;
   setMonthlyStarPublic: (value: boolean) => void;
   totalScore: number;
+  metricScores?: any[];
   loading: boolean;
   interviewFormUploading?: boolean;
   onInterviewFormUpload?: (file: File) => void;
@@ -89,15 +90,16 @@ export function ScoringDialog({
   monthlyStarCategory, setMonthlyStarCategory,
   monthlyStarReason, setMonthlyStarReason,
   monthlyStarPublic, setMonthlyStarPublic,
-  totalScore, loading, interviewFormUploading = false, onInterviewFormUpload, onSubmit
+  totalScore, metricScores, loading, interviewFormUploading = false, onInterviewFormUpload, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
   const managerCommentRef = useRef(managerComment);
-  
+
+  const dynamicMetricScores = Array.isArray(metricScores) && metricScores.length > 0 ? metricScores : null;
   const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
   const interviewFormAttachment = selectedRecord?.interviewFormAttachment;
   const scoreEvidenceLabel = totalScore >= scoreLevelThresholds.L5 ? '优秀/特别突出事例' : totalScore < scoreLevelThresholds.L3 ? '低分/明显不足事例' : '评分事例说明';
-  
+
   // 获取员工级别映射
   const getEmployeeLevel = (level?: string): 'basic' | 'senior' | 'manager' | 'executive' => {
     if (!level) return 'basic';
@@ -113,7 +115,7 @@ export function ScoringDialog({
     const selected = allKeywords.filter((kw: any) => keywordIds.includes(kw.id));
     const positive = selected.filter((kw: any) => kw.id.startsWith('p')).map((kw: any) => kw.text);
     const negative = selected.filter((kw: any) => kw.id.startsWith('n')).map((kw: any) => kw.text);
-    
+
     let text = '';
     if (positive.length > 0) {
       text += `优点：${positive.join('、')}`;
@@ -291,12 +293,18 @@ export function ScoringDialog({
                         <div className="h-12 w-px bg-gray-200"></div>
                         <div>
                           <p className="text-xs text-gray-500 mb-1">计算公式</p>
-                          <p className="text-sm text-gray-600 font-mono">
-                            <span className="text-blue-600">{scores.taskCompletion.toFixed(1)}</span>×40% + 
-                            <span className="text-green-600 ml-1">{scores.initiative.toFixed(1)}</span>×30% + 
-                            <span className="text-purple-600 ml-1">{scores.projectFeedback.toFixed(1)}</span>×20% + 
-                            <span className="text-orange-600 ml-1">{scores.qualityImprovement.toFixed(1)}</span>×10%
-                          </p>
+                          {dynamicMetricScores ? (
+                            <p className="text-sm text-gray-600">
+                              按当前绩效模板指标加权平均计算，共 {dynamicMetricScores.length} 个指标；预览与后端提交口径一致。
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-600 font-mono">
+                              <span className="text-blue-600">{scores.taskCompletion.toFixed(1)}</span>×40% +
+                              <span className="text-green-600 ml-1">{scores.initiative.toFixed(1)}</span>×30% +
+                              <span className="text-purple-600 ml-1">{scores.projectFeedback.toFixed(1)}</span>×20% +
+                              <span className="text-orange-600 ml-1">{scores.qualityImprovement.toFixed(1)}</span>×10%
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -309,7 +317,22 @@ export function ScoringDialog({
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-5">
+                  {dynamicMetricScores && (
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {dynamicMetricScores.map((metric: any) => (
+                        <Card key={metric.metricId || metric.metricCode || metric.metricName} className="border-blue-100 bg-white/80 shadow-sm">
+                          <CardContent className="flex items-center justify-between gap-4 p-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{metric.metricName || metric.metricCode || '模板指标'}</p>
+                              <p className="text-xs text-gray-500">权重 {Number(metric.weight || 0)} · {metric.comment || '按模板指标评分'}</p>
+                            </div>
+                            <ScoreDisplay score={Number(metric.score || 0)} showLabel={false} size="sm" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                  {!dynamicMetricScores && <div className="grid grid-cols-2 gap-5">
                     {scoreDimensions.map((dim, index) => {
                       const colors = ['#3B82F6', '#10B981', '#8B5CF6', '#F97316'];
                       const borderColors = ['#BFDBFE', '#A7F3D0', '#DDD6FE', '#FED7AA'];
@@ -337,7 +360,7 @@ export function ScoringDialog({
                         </Card>
                       );
                     })}
-                  </div>
+                  </div>}
                 </TabsContent>
                 <TabsContent value="comment" className="mt-0 space-y-5">
                   {/* 关键词选择器 */}

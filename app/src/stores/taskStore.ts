@@ -58,9 +58,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
     // 为每个员工生成填写工作总结的任务
     employees.filter(e => e.role === 'employee').forEach(employee => {
-      const recordId = `rec-${employee.id}-${targetMonth}`;
       // 从performanceStore获取最新状态
-      const existingRecord = performanceRecords.find(r => r.id === recordId);
+      const existingRecord = performanceRecords.find(r => r.employeeId === employee.id && r.month === targetMonth);
+      const recordId = existingRecord?.id || '';
 
       // 员工任务：填写工作总结
       const summaryTask: Task = {
@@ -84,9 +84,9 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       const teamMembers = employees.filter(e => e.managerId === manager.id);
 
       teamMembers.forEach(employee => {
-        const recordId = `rec-${employee.id}-${targetMonth}`;
         // 从performanceStore获取最新状态
-        const existingRecord = performanceRecords.find(r => r.id === recordId);
+        const existingRecord = performanceRecords.find(r => r.employeeId === employee.id && r.month === targetMonth);
+        const recordId = existingRecord?.id || '';
         // 判断任务是否完成：记录状态为completed且经理已填写评语
         const isCompleted = existingRecord?.status === 'completed' &&
                            existingRecord?.managerComment &&

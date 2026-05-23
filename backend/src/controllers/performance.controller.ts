@@ -990,6 +990,14 @@ export const performanceController = {
       TodoModel.performanceReviewRelatedId(record.id),
     );
 
+    await NotificationModel.create({
+      userId: record.employeeId,
+      type: 'system',
+      title: `${record.month} 绩效评分已完成`,
+      content: `${record.month} 绩效评分已完成，HR 正式发布后即可在“我的绩效”查看结果。`,
+      link: `/employee/dashboard?month=${record.month}`,
+    });
+
     res.json({
       success: true,
       data: record,

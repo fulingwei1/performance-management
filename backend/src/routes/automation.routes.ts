@@ -5,6 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 const router = Router();
 
 // 手动补跑入口：仅保留当前 HR 手动触发页实际使用的能力
+router.get('/months', authenticate, requireRole('hr', 'admin'), automationController.getMonths);
 router.post('/generate-monthly-tasks', authenticate, requireRole('hr', 'admin'), automationController.generateMonthlyTasks);
 router.post('/auto-publish', authenticate, requireRole('hr', 'admin'), automationController.autoPublish);
 router.post('/check-reminders', authenticate, requireRole('hr', 'admin'), automationController.checkDeadlineReminders);

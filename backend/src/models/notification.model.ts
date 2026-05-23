@@ -88,9 +88,12 @@ export class NotificationModel {
       return inputs.length;
     }
 
+    const params: any[] = [];
     const values = inputs.map((input) => {
       const id = uuidv4();
-      return `('${id}', '${input.userId}', '${input.type}', '${input.title.replace(/'/g, "''")}', '${input.content.replace(/'/g, "''")}', ${input.link ? `'${input.link}'` : 'NULL'})`;
+      params.push(id, input.userId, input.type, input.title, input.content, input.link || null);
+      const start = params.length - 5;
+      return `($${start}, $${start + 1}, $${start + 2}, $${start + 3}, $${start + 4}, $${start + 5})`;
     }).join(',');
 
     const sql = `
@@ -98,7 +101,7 @@ export class NotificationModel {
       VALUES ${values}
     `;
     
-    await query(sql, []);
+    await query(sql, params);
     return inputs.length;
   }
 
@@ -243,12 +246,13 @@ export class NotificationModel {
       return beforeCount - memoryStore.notifications.size;
     }
 
+    const safeDays = Math.max(1, Math.min(3650, Number.isFinite(Number(days)) ? Math.floor(Number(days)) : 30));
     const sql = `
       DELETE FROM notifications
-      WHERE created_at < NOW() - INTERVAL '${days} days'
+      WHERE created_at < NOW() - ($1::int * INTERVAL '1 day')
     `;
     
-    const result = await query(sql, []);
+    const result = await query(sql, [safeDays]);
     return (result as any).rowCount || 0;
   }
 

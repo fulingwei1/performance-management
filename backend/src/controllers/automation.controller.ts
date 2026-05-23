@@ -27,6 +27,34 @@ const referenceDateForTargetMonth = (month?: string): Date => {
   return new Date(Number(yearText), Number(monthText), 1);
 };
 
+const formatMonth = (date: Date): string => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+const currentAssessmentMonth = (now = new Date()): string => {
+  // 每月 1-7 号默认处理上月绩效；8号以后看当月执行态。
+  const date = new Date(now);
+  if (date.getDate() <= 7) date.setMonth(date.getMonth() - 1);
+  return formatMonth(date);
+};
+
+async function distinctPerformanceMonths(): Promise<string[]> {
+  if (process.env.USE_MEMORY_DB === 'true') {
+    const { memoryStore } = await import('../config/database');
+    return Array.from(new Set(
+      Array.from(memoryStore.performanceRecords.values())
+        .map((record: any) => String(record.month || '').trim())
+        .filter((month) => monthPattern.test(month))
+    )).sort().reverse();
+  }
+
+  const rows = await query(`
+    SELECT DISTINCT month
+    FROM performance_records
+    WHERE month IS NOT NULL AND month <> ''
+    ORDER BY month DESC
+  `);
+  return rows.map((row: any) => String(row.month || '').trim()).filter((month: string) => monthPattern.test(month));
+}
+
 const booleanParam = (value: unknown): boolean => value === true || value === 'true';
 
 const requiredEmployeeTaskParams = (req: Request): { employeeId?: string; month?: string; error?: string } => {
@@ -119,6 +147,33 @@ async function writeAutomationLog(
 }
 
 export const automationController = {
+  /**
+   * 获取自动化页面可选月份：兼容前端历史 /api/automation/months 调用。
+   */
+  getMonths: asyncHandler(async (_req: Request, res: Response) => {
+    const current = currentAssessmentMonth();
+    const previousDate = referenceDateForTargetMonth(current);
+    previousDate.setMonth(previousDate.getMonth() - 1);
+    const previous = formatMonth(previousDate);
+    const nextDate = referenceDateForTargetMonth(current);
+    nextDate.setMonth(nextDate.getMonth() + 1);
+    const next = formatMonth(nextDate);
+    const months = Array.from(new Set([current, previous, next, ...(await distinctPerformanceMonths())]))
+      .filter((month) => monthPattern.test(month))
+      .sort()
+      .reverse();
+
+    res.json({
+      success: true,
+      data: {
+        months,
+        currentAssessmentMonth: current,
+        defaultMonth: current,
+      },
+      months,
+    });
+  }),
+
   /**
    * 手动触发月初任务生成（也可由 cron 自动触发）
    */

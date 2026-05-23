@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { formatPublicationReadinessMessage, validatePublicationReadiness } from '../services/publicationReadiness.service';
+import { ArchiveService } from '../services/archive.service';
+import { NotificationModel } from '../models/notification.model';
+import { PerformanceModel } from '../models/performance.model';
 
 export const assessmentPublicationController = {
   /**
@@ -56,6 +59,23 @@ export const assessmentPublicationController = {
       readinessSnapshot: readiness,
     });
 
+    let archiveResult: any = null;
+    try {
+      archiveResult = await ArchiveService.archiveMonth(month, req.user.userId);
+    } catch (_error) {
+      archiveResult = null;
+    }
+
+    const completedRecords = (await PerformanceModel.findByMonth(month))
+      .filter((record: any) => record.status === 'completed' || record.status === 'scored');
+    await NotificationModel.createBatch(completedRecords.map((record: any) => ({
+      userId: record.employeeId,
+      type: 'system',
+      title: `${month} 绩效结果已发布`,
+      content: `${month} 绩效结果已正式发布，你可以在“我的绩效”中查看月度得分和排名。`,
+      link: `/employee/dashboard?month=${month}`,
+    })));
+
     if (!readiness.ok) {
       return res.json({
         success: true,
@@ -64,6 +84,7 @@ export const assessmentPublicationController = {
           forceDistribution: true,
           forceReason,
           readiness,
+          archiveResult,
         },
         message: `${month} 的考核结果已发布（已记录2-7-1豁免原因）`
       });
@@ -71,7 +92,7 @@ export const assessmentPublicationController = {
 
     res.json({
       success: true,
-      data: publication,
+      data: { ...publication, archiveResult },
       message: `${month} 的考核结果已发布`
     });
   }),
@@ -98,9 +119,13 @@ export const assessmentPublicationController = {
       });
     }
 
+    const deletedArchiveCount = await ArchiveService.deleteArchivesByMonth(month);
+    const deletedNotificationCount = await NotificationModel.deletePerformanceRelated(month);
+
     res.json({
       success: true,
-      message: `${month} 的发布已取消`
+      message: `${month} 的发布已取消，已清理归档和相关通知`,
+      data: { month, deletedArchiveCount, deletedNotificationCount }
     });
   }),
 

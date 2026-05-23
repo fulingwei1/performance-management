@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import { randomUUID } from 'crypto';
+import ExcelJS from 'exceljs';
 import { EmployeeModel } from '../models/employee.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { EmployeeRole, EmployeeLevel } from '../types';
@@ -27,6 +28,45 @@ function isPrivilegedAccount(role?: string): boolean {
 
 function buildDisabledLegacyPassword(): string {
   return `disabled-legacy-password-${randomUUID()}`;
+}
+
+function sanitizeEmployeeForAdmin(employee: any) {
+  const { password, idCardLast6Hash, ...rest } = employee || {};
+  return {
+    ...rest,
+    hasIdCardLast6: Boolean(rest.hasIdCardLast6 || idCardLast6Hash),
+  };
+}
+
+function filterEmployeesForQuery(employees: any[], req: Request): any[] {
+  const includeDisabled = req.query.includeDisabled === 'true' || req.query.status === 'all';
+  const queryRole = String(req.query.role || '').trim();
+  const search = String(req.query.search || req.query.keyword || '').trim().toLowerCase();
+  const statusFilter = String(req.query.status || '').trim();
+
+  let scopedEmployees = includeDisabled
+    ? employees
+    : employees.filter((e) => !e.status || e.status === 'active');
+
+  if (statusFilter && statusFilter !== 'all') {
+    scopedEmployees = scopedEmployees.filter((e) => String(e.status || 'active') === statusFilter);
+  }
+  if (queryRole) {
+    scopedEmployees = scopedEmployees.filter((e) => String(e.role || '') === queryRole);
+  }
+  if (search) {
+    scopedEmployees = scopedEmployees.filter((e) => [
+      e.id,
+      e.name,
+      e.department,
+      e.subDepartment,
+      e.position,
+      e.role,
+      e.managerId,
+    ].some((value) => String(value || '').toLowerCase().includes(search)));
+  }
+
+  return scopedEmployees;
 }
 
 async function validateManagerAssignment(employeeId: string, managerId: string | null | undefined): Promise<string | null> {
@@ -128,33 +168,12 @@ export const employeeController = {
     if (!req.user) {
       return res.status(401).json({ success: false, error: '未认证' });
     }
-    const includeDisabled = req.query.includeDisabled === 'true' || req.query.status === 'all';
     const employees = await EmployeeModel.findAll();
     const userRole = req.user.role;
     const isPrivileged = userRole === 'hr' || userRole === 'gm' || userRole === 'admin';
-    const queryRole = String(req.query.role || '').trim();
-    const search = String(req.query.search || req.query.keyword || '').trim().toLowerCase();
-    const statusFilter = String(req.query.status || '').trim();
-    let scopedEmployees = includeDisabled && isPrivileged
-      ? employees as any[]
+    const scopedEmployees = isPrivileged
+      ? filterEmployeesForQuery(employees as any[], req)
       : (employees as any[]).filter((e) => !e.status || e.status === 'active');
-
-    if (statusFilter && statusFilter !== 'all') {
-      scopedEmployees = scopedEmployees.filter((e) => String(e.status || 'active') === statusFilter);
-    }
-    if (queryRole) {
-      scopedEmployees = scopedEmployees.filter((e) => String(e.role || '') === queryRole);
-    }
-    if (search) {
-      scopedEmployees = scopedEmployees.filter((e) => [
-        e.id,
-        e.name,
-        e.department,
-        e.subDepartment,
-        e.position,
-        e.role,
-      ].some((value) => String(value || '').toLowerCase().includes(search)));
-    }
 
     // 非特权用户仅返回“通讯录字段”（避免暴露直属关系、状态等管理字段）
     const toDirectory = (e: any) => ({
@@ -168,12 +187,7 @@ export const employeeController = {
     });
 
     const sanitized = scopedEmployees.map((e) => {
-      const { password, idCardLast6Hash, ...rest } = e || {};
-      const privilegedRest = {
-        ...rest,
-        hasIdCardLast6: Boolean(rest.hasIdCardLast6 || idCardLast6Hash),
-      };
-      return isPrivileged ? privilegedRest : toDirectory(rest);
+      return isPrivileged ? sanitizeEmployeeForAdmin(e) : toDirectory(e);
     });
     const page = Number.parseInt(String(req.query.page || ''), 10);
     const limit = Number.parseInt(String(req.query.limit || ''), 10);
@@ -195,6 +209,44 @@ export const employeeController = {
         }
       } : {})
     });
+  }),
+
+  // 导出员工档案（不导出密码/hash，仅导出管理所需字段）
+  exportEmployees: asyncHandler(async (req: Request, res: Response) => {
+    const employees = filterEmployeesForQuery(await EmployeeModel.findAll() as any[], req)
+      .map(sanitizeEmployeeForAdmin);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'ATE绩效管理平台';
+    workbook.created = new Date();
+    const sheet = workbook.addWorksheet('员工档案');
+    sheet.columns = [
+      { header: '工号', key: 'id', width: 14 },
+      { header: '姓名', key: 'name', width: 14 },
+      { header: '部门', key: 'department', width: 22 },
+      { header: '小组/子部门', key: 'subDepartment', width: 22 },
+      { header: '岗位', key: 'position', width: 20 },
+      { header: '系统角色', key: 'role', width: 12 },
+      { header: '状态', key: 'status', width: 10 },
+      { header: '直属上级ID', key: 'managerId', width: 14 },
+      { header: '企业微信ID', key: 'wecomUserId', width: 18 },
+      { header: '已录身份证后六位', key: 'hasIdCardLast6Text', width: 18 },
+    ];
+
+    employees.forEach((employee) => {
+      sheet.addRow({
+        ...employee,
+        status: employee.status || 'active',
+        hasIdCardLast6Text: employee.hasIdCardLast6 ? '是' : '否',
+      });
+    });
+    sheet.getRow(1).font = { bold: true };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const filename = `员工档案_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    res.send(Buffer.from(buffer));
   }),
 
   // 根据ID获取员工

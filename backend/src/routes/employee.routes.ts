@@ -22,6 +22,9 @@ const createEmployeeLimiter = rateLimit({
 // 获取员工管理列表（仅 HR/总经理/Admin；普通员工和组长请使用 /subordinates 或个人接口）
 router.get('/', authenticate, requireRole('hr', 'gm', 'admin'), employeeController.getAllEmployees);
 
+// 导出员工档案（需在 /:id 前注册，避免被当作员工ID）
+router.get('/export', authenticate, requireRole('hr', 'gm', 'admin'), employeeController.exportEmployees);
+
 // 获取所有经理（需要认证）
 router.get('/managers', authenticate, employeeController.getAllManagers);
 

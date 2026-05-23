@@ -1,5 +1,12 @@
-import { memoryStore, query, USE_MEMORY_DB } from '../config/database';
+import { memoryStore, query, transaction, USE_MEMORY_DB } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
+
+function alreadyPublishedError(month: string): Error & { statusCode?: number; code?: string } {
+  const error = new Error(`${month} 的考核结果已发布，无法重复发布`) as Error & { statusCode?: number; code?: string };
+  error.statusCode = 409;
+  error.code = 'ALREADY_PUBLISHED';
+  return error;
+}
 
 export interface AssessmentPublication {
   id: string;
@@ -58,6 +65,9 @@ export class AssessmentPublicationModel {
   ): Promise<AssessmentPublication> {
     const id = uuidv4();
     if (USE_MEMORY_DB) {
+      if (this.getMemoryStore().has(month)) {
+        throw alreadyPublishedError(month);
+      }
       const publication = {
         id,
         month,
@@ -72,22 +82,34 @@ export class AssessmentPublicationModel {
       return this.formatRecord(publication);
     }
 
-    const sql = `
-      INSERT INTO monthly_assessment_publications 
-      (id, month, published_by, published_at, created_at, force_distribution, force_reason, readiness_snapshot)
-      VALUES ($1, $2, $3, NOW(), NOW(), $4, $5, $6)
-      RETURNING *
-    `;
-    
-    const results = await query(sql, [
-      id,
-      month,
-      publishedBy,
-      options.forceDistribution === true,
-      options.forceReason || '',
-      options.readinessSnapshot ? JSON.stringify(options.readinessSnapshot) : null,
-    ]);
-    return this.formatRecord(results[0]);
+    return transaction(async (connection) => {
+      await connection.execute('SELECT pg_advisory_xact_lock(hashtext(?))', [`monthly_assessment_publication:${month}`]);
+
+      const existing = await connection.execute(
+        'SELECT * FROM monthly_assessment_publications WHERE month = ? FOR UPDATE',
+        [month]
+      );
+      if (existing.length > 0) {
+        throw alreadyPublishedError(month);
+      }
+
+      const sql = `
+        INSERT INTO monthly_assessment_publications
+        (id, month, published_by, published_at, created_at, force_distribution, force_reason, readiness_snapshot)
+        VALUES (?, ?, ?, NOW(), NOW(), ?, ?, ?)
+        RETURNING *
+      `;
+
+      const results = await connection.execute(sql, [
+        id,
+        month,
+        publishedBy,
+        options.forceDistribution === true,
+        options.forceReason || '',
+        options.readinessSnapshot ? JSON.stringify(options.readinessSnapshot) : null,
+      ]);
+      return this.formatRecord(results[0]);
+    });
   }
 
   /**
@@ -114,14 +136,14 @@ export class AssessmentPublicationModel {
     }
 
     const sql = `
-      SELECT 
+      SELECT
         p.*,
         e.name as publisher_name
       FROM monthly_assessment_publications p
       LEFT JOIN employees e ON p.published_by = e.id
       ORDER BY p.month DESC
     `;
-    
+
     const results = await query(sql);
     return results.map(this.formatRecord);
   }
@@ -136,14 +158,14 @@ export class AssessmentPublicationModel {
     }
 
     const sql = `
-      SELECT 
+      SELECT
         p.*,
         e.name as publisher_name
       FROM monthly_assessment_publications p
       LEFT JOIN employees e ON p.published_by = e.id
       WHERE p.month = $1
     `;
-    
+
     const results = await query(sql, [month]);
     return results.length > 0 ? this.formatRecord(results[0]) : null;
   }

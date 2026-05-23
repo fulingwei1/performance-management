@@ -133,6 +133,7 @@ export const query = async (sql: string, params?: any[]): Promise<any[]> => {
     // Attach affectedRows to result array to support legacy model checks
     const result = rows;
     (result as any).affectedRows = rowCount;
+    (result as any).rowCount = rowCount;
     return result;
   } catch (error: any) {
     logger.error(`SQL Error: ${error.message}`);
@@ -164,6 +165,7 @@ export const transaction = async <T>(callback: (connection: any) => Promise<T>):
         const { rows, rowCount } = await client.query(convertedSql, params);
         const result = rows;
         (result as any).affectedRows = rowCount;
+        (result as any).rowCount = rowCount;
         return result;
       } catch (err) {
         logger.error(`Transaction Query Error: ${err}`);

@@ -291,6 +291,15 @@ export function HRDashboard() {
     }).filter(dept => dept.subDepartments.length > 0);
   }, [deptRecords, searchQuery]);
   
+
+  const csvCell = (value: unknown) => {
+    const text = String(value ?? '');
+    const safe = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  };
+
+  const csvRow = (values: unknown[]) => values.map(csvCell).join(',');
+
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -299,9 +308,9 @@ export function HRDashboard() {
       const { summary, records } = response.data;
       
       const summaryHeaders = ['部门', '本期参与人数', '已评分', '平均分', '优秀', '良好', '合格', '待改进'];
-      const summaryRows = summary.map((dept: any) => [dept.department, dept.totalEmployees, dept.scoredCount, dept.averageScore, dept.excellentCount, dept.goodCount, dept.normalCount, dept.needImprovementCount].join(','));
+      const summaryRows = summary.map((dept: any) => csvRow([dept.department, dept.totalEmployees, dept.scoredCount, dept.averageScore, dept.excellentCount, dept.goodCount, dept.normalCount, dept.needImprovementCount]));
       const detailHeaders = ['姓名', '部门', '二级部门', '得分', '绩效等级', '状态'];
-      const detailRows = records.map((r: any) => [r.employeeName || '', r.department || '', r.subDepartment || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分'].join(','));
+      const detailRows = records.map((r: any) => csvRow([r.employeeName || '', r.department || '', r.subDepartment || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分']));
       
       const executiveRows = reportSummary ? [
         ['统计月份', reportSummary.month],
@@ -314,45 +323,45 @@ export function HRDashboard() {
         ['较上月完成率变化', `${reportSummary.overview.completionRateDelta}%`],
         ['发布检查', reportSummary.publicationReadiness?.ok ? '通过' : '需关注'],
         ['主要风险', reportSummary.risks?.[0]?.message || '暂无'],
-      ].map((row) => row.join(',')) : [];
+      ].map((row) => csvRow(row)) : [];
 
       const riskRows = reportSummary?.risks?.map((risk) => [
         risk.severity,
         risk.title,
         risk.message,
         risk.department || '',
-      ].join(',')) || [];
+      ].map(csvCell).join(',')) || [];
 
       const focusRows = reportSummary
         ? [
-          ...(reportSummary.focus?.pending || []).map((person) => ['待完成评分', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
-          ...(reportSummary.focus?.lowScores || []).map((person) => ['低分关注', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
-          ...(reportSummary.focus?.declined || []).map((person) => ['环比下降', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
-          ...(reportSummary.focus?.topScores || []).map((person) => ['高分标杆', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status].join(',')),
-        ]
+          ...(reportSummary.focus?.pending || []).map((person) => ['待完成评分', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
+          ...(reportSummary.focus?.lowScores || []).map((person) => ['低分关注', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
+          ...(reportSummary.focus?.declined || []).map((person) => ['环比下降', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
+          ...(reportSummary.focus?.topScores || []).map((person) => ['高分标杆', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
+        ].map((row) => csvRow(row))
         : [];
 
       const csvContent = [
         `${currentMonth} 绩效数据报表`,
         '',
         '【执行摘要】',
-        '项目,值',
+        csvRow(['项目', '值']),
         ...executiveRows,
         '',
         '【风险提醒】',
-        '级别,标题,说明,部门',
+        csvRow(['级别', '标题', '说明', '部门']),
         ...riskRows,
         '',
         '【重点人员】',
-        '类型,姓名,部门,二级部门,得分,较上月变化,状态',
+        csvRow(['类型', '姓名', '部门', '二级部门', '得分', '较上月变化', '状态']),
         ...focusRows,
         '',
         '【部门汇总】',
-        summaryHeaders.join(','),
+        csvRow(summaryHeaders),
         ...summaryRows,
         '',
         '【员工明细】',
-        detailHeaders.join(','),
+        csvRow(detailHeaders),
         ...detailRows
       ].join('\n');
       const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });

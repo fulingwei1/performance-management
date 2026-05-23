@@ -32,6 +32,7 @@ const migrationFiles = [
   'migrations/029_update_manufacturing_template_metrics.sql',
   'migrations/030_update_engineering_template_metrics.sql',
   'migrations/031_notification_deadline_type.sql',
+  'migrations/032_publication_integrity_and_archive_table.sql',
 ];
 
 async function runMigrations() {

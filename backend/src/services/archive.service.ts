@@ -222,4 +222,29 @@ export class ArchiveService {
   static async isArchived(month: string): Promise<boolean> {
     return !!(await this.getArchiveByMonth(month));
   }
+
+  /**
+   * 取消发布时清理该月归档快照，避免重新发布后出现重复归档。
+   */
+  static async deleteArchivesByMonth(month: string): Promise<number> {
+    if (USE_MEMORY_DB) {
+      const archives = ((memoryStore as any).performanceArchives as Map<string, any>) || new Map();
+      let deleted = 0;
+      for (const [id, archive] of archives.entries()) {
+        if (archive.month === month) {
+          archives.delete(id);
+          deleted += 1;
+        }
+      }
+      return deleted;
+    }
+
+    try {
+      const result = await query('DELETE FROM performance_archives WHERE month = $1', [month]);
+      return (result as any).affectedRows ?? (result as any).rowCount ?? 0;
+    } catch (error: any) {
+      if (error?.code === '42P01') return 0;
+      throw error;
+    }
+  }
 }

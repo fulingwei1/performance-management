@@ -104,6 +104,18 @@ export interface PerformanceRecord {
   initiative: number;
   projectFeedback: number;
   qualityImprovement: number;
+  templateId?: string;
+  templateName?: string;
+  departmentType?: string;
+  metricScores?: Array<{
+    metricId: string;
+    metricName?: string;
+    metricCode?: string;
+    weight: number;
+    score: number;
+    level?: string;
+    comment?: string;
+  }>;
   
   // 标准化分数（消除经理习惯差异）
   normalizedScore?: number;

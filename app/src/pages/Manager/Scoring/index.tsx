@@ -37,6 +37,16 @@ function getQuarterKeyFromMonth(month: string) {
   return `${year}-Q${quarter}`;
 }
 
+function calculateMetricScoresTotal(metricScores?: any[]) {
+  const valid = (Array.isArray(metricScores) ? metricScores : [])
+    .map((item) => ({ score: Number(item?.score), weight: Number(item?.weight) }))
+    .filter((item) => Number.isFinite(item.score) && Number.isFinite(item.weight) && item.weight > 0);
+  if (valid.length === 0) return null;
+  const totalWeight = valid.reduce((sum, item) => sum + item.weight, 0);
+  if (totalWeight <= 0) return null;
+  return Number((valid.reduce((sum, item) => sum + item.score * item.weight, 0) / totalWeight).toFixed(2));
+}
+
 export function ScoringManagement({
   embedded = false,
   month,
@@ -376,7 +386,11 @@ export function ScoringManagement({
       monthlyStarCategory,
       monthlyStarReason,
       monthlyStarPublic,
-      expectedUpdatedAt
+      expectedUpdatedAt,
+      metricScores: selectedMetricScores || undefined,
+      templateId: selectedRecord.templateId,
+      templateName: selectedRecord.templateName,
+      departmentType: selectedRecord.departmentType
     });
     if (success) {
       setIsDrawerOpen(false); setSelectedRecord(null); setIsNoSummary(false);
@@ -410,7 +424,11 @@ export function ScoringManagement({
     }
   };
   
-  const totalScore = calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
+  const selectedMetricScores = Array.isArray(selectedRecord?.metricScores) && selectedRecord.metricScores.length > 0
+    ? selectedRecord.metricScores
+    : null;
+  const metricTotalScore = calculateMetricScoresTotal(selectedMetricScores || undefined);
+  const totalScore = metricTotalScore ?? calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
 
   const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
   
@@ -724,6 +742,7 @@ export function ScoringManagement({
         monthlyStarPublic={monthlyStarPublic}
         setMonthlyStarPublic={setMonthlyStarPublic}
         totalScore={totalScore}
+        metricScores={selectedMetricScores || undefined}
         loading={loading}
         interviewFormUploading={interviewFormUploading}
         onInterviewFormUpload={handleInterviewFormUpload}
