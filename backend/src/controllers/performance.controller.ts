@@ -887,7 +887,8 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '工作安排不能为空' });
     }
 
-    const isPrivileged = req.user.role === 'hr' || req.user.role === 'gm' || req.user.role === 'admin';
+    // HR 负责配置/发布/归档，不默认拥有评分权；评分只能由当前上下级链路内人员执行。
+    const isPrivileged = req.user.role === 'gm' || req.user.role === 'admin';
     const isInTeam = isPrivileged
       ? true
       : await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);
@@ -1134,7 +1135,8 @@ export const performanceController = {
       return res.status(403).json({ success: false, error: '该月份已发布，不能再上传面谈表' });
     }
 
-    const isPrivileged = req.user.role === 'hr' || req.user.role === 'gm' || req.user.role === 'admin';
+    // HR 负责配置/发布/归档，不默认拥有评分权；评分只能由当前上下级链路内人员执行。
+    const isPrivileged = req.user.role === 'gm' || req.user.role === 'admin';
     const isInTeam = isPrivileged
       ? true
       : await EmployeeModel.isInManagerTeam(req.user.userId, existing.employeeId);

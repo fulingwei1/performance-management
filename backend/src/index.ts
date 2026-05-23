@@ -34,6 +34,7 @@ import salaryIntegrationRoutes from './routes/salaryIntegration.routes';
 import performanceConfigRoutes from './routes/performanceConfig.routes';
 import employeeQuarterlyRoutes from './routes/employeeQuarterly.routes';
 import satisfactionSurveyRoutes from './routes/satisfactionSurvey.routes';
+import organizationRoutes from './routes/organization.routes';
 import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
@@ -152,6 +153,8 @@ app.use('/api/integrations/salary', salaryIntegrationRoutes);
 app.use('/api/performance-config', performanceConfigRoutes);
 app.use('/api/employee-quarterly', employeeQuarterlyRoutes);
 app.use('/api/satisfaction-surveys', satisfactionSurveyRoutes);
+app.use('/api/organization', organizationRoutes);
+app.use('/api/departments', organizationRoutes);
 
 // 404处理
 app.use(notFoundHandler);

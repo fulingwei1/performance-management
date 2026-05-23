@@ -391,6 +391,36 @@ describe('Security regression API checks', () => {
     expect(response.body.message).not.toBe('接口不存在');
   });
 
+  it('prevents HR from scoring employees outside the reporting line', async () => {
+    const month = '2099-02';
+    const recordId = `rec-e034-${month}`;
+    await PerformanceModel.saveSummary({
+      id: recordId,
+      employeeId: 'e034',
+      assessorId: 'm011',
+      month,
+      selfSummary: '完成HR越权评分测试',
+      nextMonthPlan: '继续验证权限边界',
+      groupType: 'all',
+    });
+
+    const hrToken = await TestHelper.getAuthToken('hr');
+    const response = await request(app)
+      .post('/api/performance/score')
+      .set('Authorization', `Bearer ${hrToken}`)
+      .send({
+        id: recordId,
+        taskCompletion: 1,
+        initiative: 1,
+        projectFeedback: 1,
+        qualityImprovement: 1,
+        managerComment: 'HR不应绕过上下级链路评分',
+        nextMonthWorkArrangement: '由直属上级评分',
+      });
+
+    expect(response.status).toBe(403);
+  });
+
   it('allows dynamic metricScores submission without legacy fixed score fields', async () => {
     const month = '2099-03';
     const recordId = `rec-e034-${month}`;
