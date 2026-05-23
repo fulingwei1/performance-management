@@ -1324,7 +1324,8 @@ export class SchedulerService {
       const emailHtml = `
         <h2>${targetMonth} 月度绩效统计报告</h2>
         <table>
-          <tr><td>总人数</td><td>${progress.totalEmployees}</td></tr>
+          <tr><td>在职总人数</td><td>${progress.totalEmployees}</td></tr>
+          <tr><td>参与考核人数</td><td>${progress.eligibleEmployees}</td></tr>
           <tr><td>已完成</td><td>${progress.completedCount}</td></tr>
           <tr><td>完成率</td><td>${progress.participationRate}%</td></tr>
           <tr><td>平均分</td><td>${stats.avgScore}</td></tr>
@@ -1339,7 +1340,8 @@ export class SchedulerService {
           [email],
           targetMonth,
           {
-            total: progress.totalEmployees,
+            activeTotal: progress.totalEmployees,
+            eligibleEmployees: progress.eligibleEmployees,
             completed: progress.completedCount,
             rate: progress.participationRate,
             avgScore: stats.avgScore,

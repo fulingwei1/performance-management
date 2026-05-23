@@ -142,6 +142,7 @@ export interface ResultPublishedParams {
 export interface MonthlyStatsParams {
   month: string;
   totalEmployees: number;
+  eligibleEmployees?: number;
   completedCount: number;
   avgScore: number;
   participationRate: string;
@@ -335,7 +336,8 @@ export class WecomWebhookService {
     const { month, totalEmployees, completedCount, avgScore, participationRate } = params;
     const md = [
       `## 📈 ${month} 月度绩效统计`,
-      `> 总人数：**${totalEmployees}**`,
+      `> 在职总人数：**${totalEmployees}**`,
+      ...(typeof params.eligibleEmployees === 'number' ? [`> 参与考核人数：**${params.eligibleEmployees}**`] : []),
       `> 已完成：**${completedCount}**`,
       `> 参与率：**${participationRate}**`,
       `> 平均分：**${avgScore.toFixed(1)}**`,

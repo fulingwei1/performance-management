@@ -278,7 +278,9 @@ function monthlyReportHtml(
   const rows: string[] = [];
   for (const [key, value] of Object.entries(summaryStats)) {
     const label = {
-      totalEmployees: '总人数',
+      activeTotal: '在职总人数',
+      totalEmployees: '在职总人数',
+      eligibleEmployees: '参与考核人数',
       submittedCount: '已提交',
       scoredCount: '已评分',
       completedCount: '已完成',
@@ -315,7 +317,9 @@ function monthlyReportText(
   const lines = [`📊 ${month} 月度绩效统计报告\n`];
   for (const [key, value] of Object.entries(summaryStats)) {
     const label = {
-      totalEmployees: '总人数',
+      activeTotal: '在职总人数',
+      totalEmployees: '在职总人数',
+      eligibleEmployees: '参与考核人数',
       submittedCount: '已提交',
       scoredCount: '已评分',
       completedCount: '已完成',

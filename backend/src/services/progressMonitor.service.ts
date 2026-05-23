@@ -49,6 +49,7 @@ export class ProgressMonitorService {
         .filter((e: any) => !e.status || e.status === 'active')
         .map((e: any) => String(e.id))
     );
+    const activeEmployees = allEmployees.filter((e: any) => !e.status || e.status === 'active');
     const activeAssessableEmployees = allEmployees.filter(
       (e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active')
     );
@@ -130,7 +131,7 @@ export class ProgressMonitorService {
 
     return {
       month,
-      totalEmployees: activeAssessableEmployees.length,
+      totalEmployees: activeEmployees.length,
       eligibleEmployees: totalRecords,
       draftCount,
       submittedCount,
