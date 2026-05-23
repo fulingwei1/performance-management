@@ -207,7 +207,8 @@ export const importHrArchive = [
     try {
       const result = await importHrArchiveFile(file.path);
       const messageParts = [
-        `已导入人事档案：参与考核在职 ${result.assessmentEligibleCount} 人`,
+        `已导入人事档案：在职总人数 ${result.activeCount} 人（在职+试用+实习）`,
+        `参与考核 ${result.assessmentEligibleCount} 人`,
         `离职/非在职 ${result.disabledCount} 人已停用`,
         result.wecomSyncPending ? '企业微信 userid 已转入后台同步' : '',
       ];

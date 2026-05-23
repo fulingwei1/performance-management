@@ -134,8 +134,9 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
                   <div className="text-xl font-semibold text-gray-900">{result.imported ?? 0}</div>
                 </div>
                 <div className="rounded-lg bg-white/80 p-3 border border-green-100">
-                  <div className="text-xs text-gray-500">档案在职人数</div>
+                  <div className="text-xs text-gray-500">在职总人数</div>
                   <div className="text-xl font-semibold text-gray-900">{result.activeCount ?? 0}</div>
+                  <div className="mt-1 text-[11px] text-gray-400">在职+试用+实习</div>
                 </div>
                 <div className="rounded-lg bg-white/80 p-3 border border-green-100">
                   <div className="text-xs text-gray-500">参与考核人数</div>
@@ -157,7 +158,7 @@ export function HrArchiveImport({ onImported }: HrArchiveImportProps) {
                   </p>
                 )}
                 <p className="text-green-700">
-                  说明：参与考核人数会同时检查在职状态、考核范围、角色和有效直属上级；不参与考核或未维护有效上级的人员不会生成绩效任务。
+                  说明：在职总人数按人事档案的“在职 + 试用 + 实习”统计；参与考核人数会再检查考核范围、角色和有效直属上级。
                 </p>
               </div>
             )}

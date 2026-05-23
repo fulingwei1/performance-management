@@ -13,7 +13,8 @@ import logger from '../config/logger';
 
 const JSZip = require('jszip');
 
-const ACTIVE_ARCHIVE_STATUSES = new Set(['在职', '试用期', '实习期']);
+// 人事档案口径：在职总人数 = 在职 + 试用/试用期 + 实习/实习期。
+const ACTIVE_ARCHIVE_STATUSES = new Set(['在职', '试用', '试用期', '实习', '实习期']);
 const EMPTY_MARKERS = new Set(['', '/', '-', '—', '无', 'null', 'undefined']);
 
 type WorksheetRow = Record<string, string>;

@@ -29,7 +29,7 @@ export function StatCards({ stats, onFilterChange, activeFilter }: StatCardsProp
             <div>
               <p className="text-sm text-gray-500">公司总人数</p>
               <p className="text-2xl font-bold">{stats.companyTotalEmployees}</p>
-              <p className="mt-1 text-xs text-gray-400">档案内在职考核角色</p>
+              <p className="mt-1 text-xs text-gray-400">在职+试用+实习</p>
             </div>
             <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
               <Users className="w-5 h-5 text-slate-600" />

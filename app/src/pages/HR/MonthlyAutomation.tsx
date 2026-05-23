@@ -327,7 +327,7 @@ export default function MonthlyAutomation() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card icon={<Users className="w-5 h-5 text-blue-400" />} label="需完成任务人数"
-              value={`${progress.eligibleEmployees}`} sub={`公司总人数 ${progress.totalEmployees} 人`} />
+              value={`${progress.eligibleEmployees}`} sub={`在职总人数 ${progress.totalEmployees} 人`} />
             <Card icon={<CheckCircle className="w-5 h-5 text-green-400" />} label="已经完成"
               value={`${progress.completedCount}`} sub="已完成整套流程" />
             <Card icon={<FileText className="w-5 h-5 text-yellow-400" />} label="还未完成"
