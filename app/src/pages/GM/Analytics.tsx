@@ -132,24 +132,43 @@ export function GMAnalytics() {
     };
   }, [realRecords, currentMonth]);
 
-  const assessableEmployees = useMemo(
-    () => employees.filter(e => e.role === 'employee' || e.role === 'manager'),
+  const activeCompanyEmployees = useMemo(
+    () => employees.filter((employee) => {
+      const status = String(employee.status || 'active').toLowerCase();
+      return ['active', 'probation', 'intern'].includes(status) || ['在职', '试用', '实习'].includes(String(employee.status || ''));
+    }),
     [employees]
   );
 
+  const currentMonthAssessmentRecords = useMemo(() => {
+    const recordMap = new Map<string, any>();
+    realRecords
+      .filter((record) => record.month === currentMonth)
+      .forEach((record) => {
+        const employeeId = String(record.employeeId || '').trim();
+        if (!employeeId) return;
+        recordMap.set(employeeId, record);
+      });
+    return Array.from(recordMap.values());
+  }, [realRecords, currentMonth]);
+
   const currentMonthCompletedRecords = useMemo(
-    () => realRecords.filter(
+    () => currentMonthAssessmentRecords.filter(
       (r) =>
-        r.month === currentMonth &&
         Number(r.totalScore || 0) > 0 &&
         (r.status === 'completed' || r.status === 'scored')
     ),
-    [realRecords, currentMonth]
+    [currentMonthAssessmentRecords]
   );
 
   const currentCompletedEmployeeIds = useMemo(
     () => new Set(currentMonthCompletedRecords.map((record) => record.employeeId)),
     [currentMonthCompletedRecords]
+  );
+
+  const currentAssessmentEmployeeIds = useMemo(
+    () => new Set(currentMonthAssessmentRecords.map((record) => record.employeeId)),
+    [currentMonthAssessmentRecords]
   );
 
   // 计算全公司统计数据
@@ -177,15 +196,30 @@ export function GMAnalytics() {
       : 0;
     
     return {
-      totalEmployees: assessableEmployees.length,
+      activeCompanyEmployees: activeCompanyEmployees.length,
+      currentAssessmentCount: currentMonthAssessmentRecords.length,
       currentCompleted: currentMonthCompletedRecords.length,
-      currentPending: Math.max(assessableEmployees.length - currentMonthCompletedRecords.length, 0),
+      currentPending: Math.max(currentMonthAssessmentRecords.length - currentMonthCompletedRecords.length, 0),
       currentAvg,
     };
-  }, [realRecords, assessableEmployees, currentMonth, currentMonthCompletedRecords]);
+  }, [realRecords, activeCompanyEmployees, currentMonth, currentMonthCompletedRecords, currentMonthAssessmentRecords]);
 
   const peopleList = useMemo(() => {
-    const list = assessableEmployees.filter((employee) => {
+    const currentRecordByEmployeeId = new Map<string, any>(
+      currentMonthAssessmentRecords.map((record) => [String(record.employeeId), record])
+    );
+    const list = currentMonthAssessmentRecords.map((record) => {
+      const employee = employeeMap.get(record.employeeId);
+      return {
+        ...employee,
+        id: record.employeeId,
+        name: employee?.name || record.employeeName || record.employeeId,
+        department: employee?.department || record.department,
+        subDepartment: employee?.subDepartment || record.subDepartment,
+        position: employee?.position || record.position,
+        record: currentRecordByEmployeeId.get(String(record.employeeId)) || record,
+      };
+    }).filter((employee) => {
       const isCompleted = currentCompletedEmployeeIds.has(employee.id);
       if (peopleFilter === 'completed') return isCompleted;
       if (peopleFilter === 'pending') return !isCompleted;
@@ -197,9 +231,9 @@ export function GMAnalytics() {
       if (deptCompare !== 0) return deptCompare;
       return String(a.name || '').localeCompare(String(b.name || ''), 'zh-CN');
     });
-  }, [assessableEmployees, currentCompletedEmployeeIds, peopleFilter]);
+  }, [currentMonthAssessmentRecords, employeeMap, currentCompletedEmployeeIds, peopleFilter]);
 
-  const peopleFilterLabel = peopleFilter === 'all' ? '全部考评人员' : peopleFilter === 'completed' ? '本月已评人员' : '本月待评分人员';
+  const peopleFilterLabel = peopleFilter === 'all' ? '本月考核任务人员' : peopleFilter === 'completed' ? '本月已评分人员' : '本月待评分人员';
 
   const statCardClass = (filter: 'all' | 'completed' | 'pending') =>
     `cursor-pointer transition hover:shadow-md ${peopleFilter === filter ? 'ring-2 ring-blue-500' : ''}`;
@@ -508,17 +542,32 @@ export function GMAnalytics() {
             description={`${currentMonth} 公司绩效完成、分布、部门风险与发布检查`}
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">公司总人数</p>
+                    <p className="text-2xl font-bold mt-1">{stats.activeCompanyEmployees}</p>
+                    <p className="text-xs text-gray-400 mt-1">在职 + 试用 + 实习</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className={statCardClass('all')} onClick={() => setPeopleFilter('all')}>
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">考评人数</p>
-                    <p className="text-2xl font-bold mt-1">{stats.totalEmployees}</p>
-                    <p className="text-xs text-blue-500 mt-1">点击查看名单</p>
+                    <p className="text-sm text-gray-500">参与考评人数</p>
+                    <p className="text-2xl font-bold mt-1">{stats.currentAssessmentCount}</p>
+                    <p className="text-xs text-blue-500 mt-1">点击查看参与名单</p>
                   </div>
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center">
+                    <Target className="w-5 h-5 text-indigo-600" />
                   </div>
                 </div>
               </CardContent>
@@ -528,9 +577,9 @@ export function GMAnalytics() {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">本月已评</p>
+                    <p className="text-sm text-gray-500">完成考评人数</p>
                     <p className="text-2xl font-bold mt-1">{stats.currentCompleted}</p>
-                    <p className="text-xs text-green-500 mt-1">点击查看已评人员</p>
+                    <p className="text-xs text-green-500 mt-1">点击查看完成人员</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -543,9 +592,9 @@ export function GMAnalytics() {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">本月待评</p>
+                    <p className="text-sm text-gray-500">未完成人数</p>
                     <p className="text-2xl font-bold mt-1">{stats.currentPending}</p>
-                    <p className="text-xs text-amber-600 mt-1">点击查看待评人员</p>
+                    <p className="text-xs text-amber-600 mt-1">点击查看未完成人员</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-amber-600" />
