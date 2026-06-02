@@ -46,11 +46,18 @@ describe('automationController deadline reminders', () => {
     const res = { json } as any;
     const next = jest.fn();
 
-    automationController.checkDeadlineReminders({ query: { force: 'true' }, body: { month: '2026-05' } } as any, res, next);
+    automationController.checkDeadlineReminders({
+      query: { force: 'true' },
+      body: { month: '2026-05' },
+      user: { userId: 'hr001', role: 'hr' },
+    } as any, res, next);
     await new Promise(process.nextTick);
 
     expect(next).not.toHaveBeenCalled();
-    expect(dailyReminderWorkflow).toHaveBeenCalledWith(true, '2026-05');
+    expect(dailyReminderWorkflow).toHaveBeenCalledWith(true, '2026-05', {
+      allowDuplicateWecom: false,
+      requestedBy: 'hr001',
+    });
     expect(checkOverdueTodos).toHaveBeenCalledTimes(1);
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });

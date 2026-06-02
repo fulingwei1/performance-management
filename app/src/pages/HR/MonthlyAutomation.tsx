@@ -52,6 +52,7 @@ export default function MonthlyAutomation() {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [excludeFromAssessmentOnDelete, setExcludeFromAssessmentOnDelete] = useState(true);
+  const [allowDuplicateReminder, setAllowDuplicateReminder] = useState(false);
 
   const loadProgress = useCallback(async (month?: string) => {
     const m = month || selectedMonth;
@@ -601,17 +602,34 @@ export default function MonthlyAutomation() {
 
           <ActionCard
             title="补发催办提醒"
-            description={`当后台自动催办没有按预期执行时，可为 ${selectedMonth} 强制补发一次；如果今天已发过，会再次发出。`}
+            description={`当后台自动催办没有按预期执行时，为 ${selectedMonth} 补漏检查；同一个人今天已收到过则默认不重复发送。`}
             buttonLabel="强制补发催办"
             buttonClassName="bg-amber-600 hover:bg-amber-700"
             disabled={loading}
             icon={<Bell className="w-4 h-4" />}
             onClick={() => {
-              if (window.confirm(`确认要为 ${selectedMonth} 强制补发催办吗？如果今天已经催办过，员工和经理会再收到一次。`)) {
-                runAction('check-reminders?force=true', { month: selectedMonth, force: true });
+              if (window.confirm(`确认要为 ${selectedMonth} 执行催办补漏吗？同一个人今天默认最多收到一次；${allowDuplicateReminder ? '你已勾选允许重复发送，可能会再次收到。' : '如需重复发送，请先勾选“允许重复发送”。'}`)) {
+                runAction('check-reminders?force=true', { month: selectedMonth, force: true, allowDuplicateWecom: allowDuplicateReminder });
               }
             }}
           />
+
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowDuplicateReminder}
+                onChange={(event) => setAllowDuplicateReminder(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-amber-400 bg-gray-900"
+              />
+              <span>
+                <span className="block font-medium">允许重复发送企业微信催办</span>
+                <span className="mt-1 block text-amber-100/75">
+                  默认关闭：同一员工/经理同一天最多收到一条综合催办。只有确认测试或补救失败时才勾选。
+                </span>
+              </span>
+            </label>
+          </div>
 
           <ActionCard
             title="补跑结果发布"

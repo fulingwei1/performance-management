@@ -243,6 +243,7 @@ export const automationController = {
   checkDeadlineReminders: asyncHandler(async (req: Request, res: Response) => {
     const month = requestedMonth(req);
     const force = booleanParam(req.query?.force) || booleanParam(req.body?.force);
+    const allowDuplicateWecom = booleanParam(req.query?.allowDuplicateWecom) || booleanParam(req.body?.allowDuplicateWecom);
     if (!force && await hasSuccessfulLogToday('send_reminders', month)) {
       return res.json({
         success: true,
@@ -252,7 +253,10 @@ export const automationController = {
     }
 
     const startedAt = Date.now();
-    const result = await SchedulerService.dailyReminderWorkflow(force || Boolean(month), month);
+    const result = await SchedulerService.dailyReminderWorkflow(force || Boolean(month), month, {
+      allowDuplicateWecom,
+      requestedBy: req.user?.userId,
+    });
     await SchedulerService.checkOverdueTodos();
 
     res.json({

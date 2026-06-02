@@ -7,6 +7,7 @@ describe('SchedulerService reminder recipient logging', () => {
     const findExistingMock = jest.fn().mockResolvedValue(null);
     const todoCreateMock = jest.fn().mockResolvedValue({});
     const sendReminderMock = jest.fn().mockResolvedValue(true);
+    const sendCombinedPerformanceReminderMock = jest.fn().mockResolvedValue(true);
     const sendDepartmentProgressMock = jest.fn().mockResolvedValue(true);
     const sendDepartmentDeadlineAlertMock = jest.fn().mockResolvedValue(true);
     const employees = [
@@ -49,6 +50,7 @@ describe('SchedulerService reminder recipient logging', () => {
     jest.doMock('../../services/wecomWebhook.service', () => ({
       WecomWebhookService: {
         sendReminder: sendReminderMock,
+        sendCombinedPerformanceReminder: sendCombinedPerformanceReminderMock,
         sendDepartmentProgress: sendDepartmentProgressMock,
         sendDepartmentDeadlineAlert: sendDepartmentDeadlineAlertMock,
       },
@@ -61,7 +63,7 @@ describe('SchedulerService reminder recipient logging', () => {
     jest.doMock('../../models/organization.model', () => ({ OrganizationModel: { findAllDepartments: jest.fn().mockResolvedValue([]) } }));
 
     const { SchedulerService } = await import('../../services/scheduler.service');
-    return { SchedulerService, queryMock, sendReminderMock, sendDepartmentProgressMock };
+    return { SchedulerService, queryMock, sendReminderMock, sendCombinedPerformanceReminderMock, sendDepartmentProgressMock };
   };
 
   it('records employee reminder recipients and excludes non-assessable employees', async () => {
@@ -94,6 +96,47 @@ describe('SchedulerService reminder recipient logging', () => {
     expect(stats).toMatchObject({ departmentCount: 1, recipientCount: 1, wecomCount: 1, totalPendingCount: 2 });
     expect(stats.recipientDetails).toEqual([
       expect.objectContaining({ employeeId: 'm001', employeeName: '经理A', taskType: '部门进度催办', department: '工程技术中心', wecomUserId: 'wx_m001', sent: true }),
+    ]);
+  });
+
+  it('combines self-summary and manager-scoring reminders into one WeCom message per recipient', async () => {
+    const { SchedulerService, queryMock, sendReminderMock, sendCombinedPerformanceReminderMock } = await loadScheduler();
+    queryMock
+      .mockResolvedValueOnce([
+        { employeeId: 'm001', employeeName: '经理A', department: '工程技术中心', wecomUserId: 'wx_m001' },
+      ])
+      .mockResolvedValueOnce([
+        { assessorId: 'm001', managerName: '经理A', managerWecomUserId: 'wx_m001', employeeId: 'e001', employeeName: '员工A' },
+      ])
+      .mockResolvedValueOnce([{ count: 0 }]);
+
+    const stats = await (SchedulerService as any).sendCombinedPerformanceReminders('2026-04', 2, '2026-05-07', false);
+
+    expect(sendReminderMock).not.toHaveBeenCalled();
+    expect(sendCombinedPerformanceReminderMock).toHaveBeenCalledTimes(1);
+    expect(sendCombinedPerformanceReminderMock.mock.calls[0][0]).toMatchObject({
+      month: '2026-04',
+      selfSummaryPending: true,
+      scorePendingEmployeeNames: ['员工A'],
+    });
+    expect(stats).toMatchObject({ pendingCount: 2, wecomCount: 1, recipientCount: 1 });
+  });
+
+  it('skips combined WeCom reminders when the same recipient already received one today', async () => {
+    const { SchedulerService, queryMock, sendCombinedPerformanceReminderMock } = await loadScheduler();
+    queryMock
+      .mockResolvedValueOnce([
+        { employeeId: 'm001', employeeName: '经理A', department: '工程技术中心', wecomUserId: 'wx_m001' },
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ count: 1 }]);
+
+    const stats = await (SchedulerService as any).sendCombinedPerformanceReminders('2026-04', 2, '2026-05-07', false);
+
+    expect(sendCombinedPerformanceReminderMock).not.toHaveBeenCalled();
+    expect(stats).toMatchObject({ pendingCount: 1, wecomCount: 0, recipientCount: 1 });
+    expect(stats.recipientDetails).toEqual([
+      expect.objectContaining({ employeeId: 'm001', sent: false, reason: '今日已发送过催办，默认不重复发送' }),
     ]);
   });
 });

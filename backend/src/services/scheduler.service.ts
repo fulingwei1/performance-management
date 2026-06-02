@@ -53,6 +53,11 @@ type DepartmentProgressStats = {
   recipientDetails?: ReminderRecipientLog[];
 };
 
+type DailyReminderOptions = {
+  allowDuplicateWecom?: boolean;
+  requestedBy?: string;
+};
+
 const LOGIN_METHOD_GUIDE = '登录方式：姓名/工号 + 身份证后六位。系统不再使用随机初始密码或管理员自定义密码。';
 const EMPLOYEE_SUMMARY_OPERATION_GUIDE = '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。';
 const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。';
@@ -719,7 +724,7 @@ export class SchedulerService {
    * 2. 催经理打分（submitted → scored）
    * 3. 统计部门完成率，推送到企业微信
    */
-  static async dailyReminderWorkflow(forceToday: boolean = false, requestedTargetMonth?: string): Promise<any> {
+  static async dailyReminderWorkflow(forceToday: boolean = false, requestedTargetMonth?: string, options: DailyReminderOptions = {}): Promise<any> {
     const startedAt = Date.now();
     let targetMonth = requestedTargetMonth;
     try {
@@ -748,20 +753,31 @@ export class SchedulerService {
       logger.info(`[Scheduler] 催办 ${targetMonth}，今天是${dayOfMonth}号，距截止还有${daysLeft}天`);
 
       // ========== 第一阶段：催未写总结的员工 ==========
-      const employeeStats = await this.remindEmployeesToSubmit(targetMonth, daysLeft, isLastDay, deadlineDate, forceToday);
+      const employeeStats = await this.remindEmployeesToSubmit(targetMonth, daysLeft, isLastDay, deadlineDate, forceToday, false);
 
       // ========== 第二阶段：催经理给已提交的员工打分 ==========
-      const managerStats = await this.remindManagersToScore(targetMonth, daysLeft, isLastDay, deadlineDate, forceToday);
+      const managerStats = await this.remindManagersToScore(targetMonth, daysLeft, isLastDay, deadlineDate, forceToday, false);
+
+      // ========== 企业微信综合催办：同一接收人当天默认最多一条 ==========
+      const combinedWecomStats = await this.sendCombinedPerformanceReminders(
+        targetMonth,
+        daysLeft,
+        deadlineDate,
+        options.allowDuplicateWecom === true,
+      );
 
       // ========== 第三阶段：统计部门完成率并推送 ==========
-      const departmentStats = await this.pushDepartmentProgress(targetMonth, dayOfMonth, daysLeft);
+      const departmentStats = await this.pushDepartmentProgress(targetMonth, dayOfMonth, daysLeft, false);
 
       const result = {
         month: targetMonth,
         force: forceToday,
+        allowDuplicateWecom: options.allowDuplicateWecom === true,
+        requestedBy: options.requestedBy,
         daysLeft,
         employeeReminders: employeeStats,
         managerReminders: managerStats,
+        combinedWecomReminders: combinedWecomStats,
         departmentProgress: departmentStats,
       };
       await this.writeAutomationLog('send_reminders', targetMonth, 'success', result, Date.now() - startedAt);
@@ -778,7 +794,7 @@ export class SchedulerService {
   /**
    * 催未写总结的员工（draft 状态）
    */
-  private static async remindEmployeesToSubmit(month: string, daysLeft: number, isLastDay: boolean, deadlineDate: string, forceToday: boolean): Promise<ReminderSendStats> {
+  private static async remindEmployeesToSubmit(month: string, daysLeft: number, isLastDay: boolean, deadlineDate: string, forceToday: boolean, sendWecom: boolean = true): Promise<ReminderSendStats> {
     if (USE_MEMORY_DB) return { pendingCount: 0, notificationCount: 0, emailCount: 0, wecomCount: 0 };
 
     const assessableEmployeeIds = await this.getAssessableEmployeeIdSet();
@@ -853,7 +869,9 @@ export class SchedulerService {
       });
       let sent = false;
       let reason: string | undefined;
-      if (!touser) {
+      if (!sendWecom) {
+        reason = '由综合绩效催办统一发送';
+      } else if (!touser) {
         reason = '未匹配到企业微信用户ID';
       } else {
         sent = await WecomWebhookService.sendReminder({
@@ -889,7 +907,7 @@ export class SchedulerService {
    * 催经理给已提交的员工打分（submitted 状态）
    * 按经理分组，列出其下属中待打分的人员
    */
-  private static async remindManagersToScore(month: string, daysLeft: number, isLastDay: boolean, deadlineDate: string, forceToday: boolean): Promise<ReminderSendStats> {
+  private static async remindManagersToScore(month: string, daysLeft: number, isLastDay: boolean, deadlineDate: string, forceToday: boolean, sendWecom: boolean = true): Promise<ReminderSendStats> {
     if (USE_MEMORY_DB) return { pendingCount: 0, notificationCount: 0, emailCount: 0, wecomCount: 0, recipientCount: 0 };
 
     const assessableEmployeeIds = await this.getAssessableEmployeeIdSet();
@@ -993,7 +1011,9 @@ export class SchedulerService {
       });
       let sent = false;
       let reason: string | undefined;
-      if (touser) {
+      if (!sendWecom) {
+        reason = '由综合绩效催办统一发送';
+      } else if (touser) {
         sent = await WecomWebhookService.sendReminder({
           cycleName: `${month}月经理打分`,
           taskType: '经理评分',
@@ -1031,10 +1051,189 @@ export class SchedulerService {
     return { pendingCount: submitted.length, notificationCount, emailCount, wecomCount, recipientCount: Object.keys(byManager).length, todoCount, recipientDetails };
   }
 
+  private static async hasWecomReminderSentToday(month: string, employeeId: string): Promise<boolean> {
+    if (USE_MEMORY_DB) return false;
+    const rows = await query(`
+      WITH logs AS (
+        SELECT details
+        FROM automation_logs
+        WHERE job_type = 'send_reminders'
+          AND month = $1
+          AND status = 'success'
+          AND COALESCE(executed_at, created_at)::date = CURRENT_DATE
+      ),
+      recipients AS (
+        SELECT jsonb_array_elements(COALESCE(details->'combinedWecomReminders'->'recipientDetails', '[]'::jsonb)) AS item FROM logs
+        UNION ALL
+        SELECT jsonb_array_elements(COALESCE(details->'employeeReminders'->'recipientDetails', '[]'::jsonb)) AS item FROM logs
+        UNION ALL
+        SELECT jsonb_array_elements(COALESCE(details->'managerReminders'->'recipientDetails', '[]'::jsonb)) AS item FROM logs
+        UNION ALL
+        SELECT jsonb_array_elements(COALESCE(details->'departmentProgress'->'recipientDetails', '[]'::jsonb)) AS item FROM logs
+      )
+      SELECT COUNT(*)::int AS count
+      FROM recipients
+      WHERE item->>'employeeId' = $2
+        AND item->>'sent' = 'true'
+    `, [month, employeeId]);
+    return Number(rows?.[0]?.count || 0) > 0;
+  }
+
+  private static async sendCombinedPerformanceReminders(
+    month: string,
+    daysLeft: number,
+    deadlineDate: string,
+    allowDuplicateWecom: boolean = false,
+  ): Promise<ReminderSendStats> {
+    if (USE_MEMORY_DB) return { pendingCount: 0, notificationCount: 0, emailCount: 0, wecomCount: 0, recipientCount: 0 };
+
+    const assessableEmployeeIds = await this.getAssessableEmployeeIdSet();
+    if (assessableEmployeeIds.size === 0) return { pendingCount: 0, notificationCount: 0, emailCount: 0, wecomCount: 0, recipientCount: 0 };
+    const assessableIds = Array.from(assessableEmployeeIds);
+
+    const draftRows = await query(`
+      SELECT pr.employee_id as "employeeId",
+             e.name as "employeeName",
+             e.department,
+             e.sub_department as "subDepartment",
+             e.wecom_user_id as "wecomUserId"
+      FROM performance_records pr
+      JOIN employees e ON e.id = pr.employee_id
+      WHERE pr.month = $1 AND pr.status = 'draft'
+        AND pr.employee_id = ANY($2::text[])
+        AND (e.status = 'active' OR e.status IS NULL)
+      ORDER BY e.department, e.name
+    `, [month, assessableIds]);
+
+    const scoreRows = await query(`
+      SELECT pr.employee_id as "employeeId", pr.assessor_id as "assessorId",
+             e.name as "employeeName",
+             mgr.name as "managerName",
+             mgr.department as "managerDepartment",
+             mgr.sub_department as "managerSubDepartment",
+             mgr.wecom_user_id as "managerWecomUserId"
+      FROM performance_records pr
+      JOIN employees e ON e.id = pr.employee_id
+      LEFT JOIN employees mgr ON mgr.id = pr.assessor_id
+      WHERE pr.month = $1 AND pr.status = 'submitted'
+        AND pr.employee_id = ANY($2::text[])
+        AND (e.status = 'active' OR e.status IS NULL)
+        AND mgr.id IS NOT NULL
+        AND (mgr.status = 'active' OR mgr.status IS NULL)
+      ORDER BY pr.assessor_id, e.department, e.name
+    `, [month, assessableIds]);
+
+    const byRecipient = new Map<string, {
+      employeeId: string;
+      employeeName: string;
+      department?: string;
+      subDepartment?: string;
+      wecomUserId?: string;
+      selfSummaryPending: boolean;
+      scorePendingEmployees: Array<{ employeeId: string; employeeName: string }>;
+    }>();
+
+    const ensureRecipient = (payload: { employeeId: string; employeeName: string; department?: string; subDepartment?: string; wecomUserId?: string }) => {
+      const id = String(payload.employeeId || '').trim();
+      if (!byRecipient.has(id)) {
+        byRecipient.set(id, {
+          employeeId: id,
+          employeeName: String(payload.employeeName || id),
+          department: payload.department,
+          subDepartment: payload.subDepartment,
+          wecomUserId: payload.wecomUserId,
+          selfSummaryPending: false,
+          scorePendingEmployees: [],
+        });
+      }
+      const recipient = byRecipient.get(id)!;
+      recipient.employeeName = recipient.employeeName || String(payload.employeeName || id);
+      recipient.department = recipient.department || payload.department;
+      recipient.subDepartment = recipient.subDepartment || payload.subDepartment;
+      recipient.wecomUserId = recipient.wecomUserId || payload.wecomUserId;
+      return recipient;
+    };
+
+    for (const row of draftRows) {
+      const recipient = ensureRecipient({
+        employeeId: String(row.employeeId || ''),
+        employeeName: String(row.employeeName || ''),
+        department: row.department ? String(row.department) : undefined,
+        subDepartment: row.subDepartment ? String(row.subDepartment) : undefined,
+        wecomUserId: row.wecomUserId ? String(row.wecomUserId) : undefined,
+      });
+      recipient.selfSummaryPending = true;
+    }
+
+    for (const row of scoreRows) {
+      const recipient = ensureRecipient({
+        employeeId: String(row.assessorId || ''),
+        employeeName: String(row.managerName || row.assessorId || ''),
+        department: row.managerDepartment ? String(row.managerDepartment) : undefined,
+        subDepartment: row.managerSubDepartment ? String(row.managerSubDepartment) : undefined,
+        wecomUserId: row.managerWecomUserId ? String(row.managerWecomUserId) : undefined,
+      });
+      recipient.scorePendingEmployees.push({
+        employeeId: String(row.employeeId || ''),
+        employeeName: String(row.employeeName || ''),
+      });
+    }
+
+    let wecomCount = 0;
+    const recipientDetails: ReminderRecipientLog[] = [];
+    for (const recipient of byRecipient.values()) {
+      const touser = await resolveEmployeeWecomUserId({
+        id: recipient.employeeId,
+        name: recipient.employeeName,
+        wecomUserId: recipient.wecomUserId || '',
+      });
+      let sent = false;
+      let reason: string | undefined;
+
+      if (!touser) {
+        reason = '未匹配到企业微信用户ID';
+      } else if (!allowDuplicateWecom && await this.hasWecomReminderSentToday(month, recipient.employeeId)) {
+        reason = '今日已发送过催办，默认不重复发送';
+      } else {
+        sent = await WecomWebhookService.sendCombinedPerformanceReminder({
+          month,
+          daysLeft,
+          deadlineDate,
+          selfSummaryPending: recipient.selfSummaryPending,
+          scorePendingEmployeeNames: recipient.scorePendingEmployees.map((employee) => employee.employeeName),
+        }, touser);
+        if (!sent) reason = '企业微信发送失败';
+      }
+
+      if (sent) wecomCount++;
+      recipientDetails.push({
+        employeeId: recipient.employeeId,
+        employeeName: recipient.employeeName,
+        department: recipient.department,
+        subDepartment: recipient.subDepartment,
+        taskType: '综合绩效催办',
+        wecomUserId: touser || undefined,
+        sent,
+        pendingCount: (recipient.selfSummaryPending ? 1 : 0) + recipient.scorePendingEmployees.length,
+        pendingEmployees: recipient.scorePendingEmployees,
+        ...(reason ? { reason } : {}),
+      });
+    }
+
+    return {
+      pendingCount: draftRows.length + scoreRows.length,
+      notificationCount: 0,
+      emailCount: 0,
+      wecomCount,
+      recipientCount: byRecipient.size,
+      recipientDetails,
+    };
+  }
+
   /**
    * 统计部门完成率并推送到企业微信
    */
-  private static async pushDepartmentProgress(month: string, dayOfMonth: number, daysLeft: number): Promise<DepartmentProgressStats> {
+  private static async pushDepartmentProgress(month: string, dayOfMonth: number, daysLeft: number, sendWecom: boolean = true): Promise<DepartmentProgressStats> {
     if (USE_MEMORY_DB) return { departmentCount: 0, recipientCount: 0, wecomCount: 0, totalPendingCount: 0 };
 
     const assessableEmployeeIds = await this.getAssessableEmployeeIdSet();
@@ -1132,7 +1331,7 @@ export class SchedulerService {
           .map((recipient) => recipient.wecomUserId as string);
         const recipientTarget = Array.from(new Set(deliverableRecipients)).join(',');
         let progressSent = false;
-        if (recipientTarget) {
+        if (sendWecom && recipientTarget) {
           progressSent = await WecomWebhookService.sendDepartmentProgress({
             month,
             dayOfMonth,
@@ -1146,13 +1345,13 @@ export class SchedulerService {
         }
 
         for (const recipient of departmentRecipientDetails) {
-          const sent = Boolean(progressSent && recipient.wecomUserId);
+          const sent = Boolean(sendWecom && progressSent && recipient.wecomUserId);
           recipientDetails.push({
             ...recipient,
             department: String(d.department || recipient.department || ''),
             sent,
             pendingCount: draftCount + submittedCount,
-            ...(sent ? { reason: undefined } : { reason: recipient.reason || (recipientTarget ? '企业微信发送失败' : '未匹配到企业微信用户ID') }),
+            ...(sent ? { reason: undefined } : { reason: sendWecom ? (recipient.reason || (recipientTarget ? '企业微信发送失败' : '未匹配到企业微信用户ID')) : '部门进度不再单独推送，避免重复催办' }),
           });
         }
 
@@ -1161,7 +1360,7 @@ export class SchedulerService {
           wecomCount += deliverableRecipients.length;
         }
 
-        if (dayOfMonth === 6 && (draftCount > 0 || submittedCount > 0) && recipientTarget) {
+        if (sendWecom && dayOfMonth === 6 && (draftCount > 0 || submittedCount > 0) && recipientTarget) {
           await WecomWebhookService.sendDepartmentDeadlineAlert({
           month,
           dayOfMonth,

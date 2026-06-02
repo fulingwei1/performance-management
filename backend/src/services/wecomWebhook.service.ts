@@ -118,6 +118,14 @@ export interface ReminderParams {
   actionPath?: string;
 }
 
+export interface CombinedPerformanceReminderParams {
+  month: string;
+  daysLeft: number;
+  deadlineDate: string;
+  selfSummaryPending?: boolean;
+  scorePendingEmployeeNames?: string[];
+}
+
 export interface OverdueParams {
   cycleName: string;
   taskType: string;
@@ -264,6 +272,46 @@ export class WecomWebhookService {
       return false;
     }
     return sendAppMessage(targetUser, this.buildReminderMarkdown(params));
+  }
+
+  /** 发送单人综合绩效催办：同一个接收人一天最多一条，内容合并“本人总结+下属评分” */
+  static async sendCombinedPerformanceReminder(params: CombinedPerformanceReminderParams, touser?: string): Promise<boolean> {
+    const targetUser = String(touser || '').trim();
+    if (!targetUser || targetUser === '@all') {
+      logger.warn('[Wecom] 综合绩效催办缺少精准接收人或试图发送 @all，已跳过');
+      return false;
+    }
+
+    const scoreNames = params.scorePendingEmployeeNames || [];
+    const scoreNamesText = scoreNames.length <= 20
+      ? scoreNames.join('、')
+      : `${scoreNames.slice(0, 20).join('、')} 等${scoreNames.length}人`;
+    const urgency = params.daysLeft === 1 ? '🔴 **最后一天**' : params.daysLeft <= 3 ? '🟠 **即将截止**' : '🟡 温馨提醒';
+    const tasks: string[] = [];
+    if (params.selfSummaryPending) {
+      tasks.push(`- 提交本人 **${params.month}** 月工作总结和下月计划`);
+    }
+    if (scoreNames.length > 0) {
+      tasks.push(`- 完成 **${scoreNames.length} 名下属** 绩效评分：${scoreNamesText}`);
+    }
+
+    const actionPath = scoreNames.length > 0
+      ? `/manager/dashboard?month=${params.month}`
+      : `/employee/summary?month=${params.month}`;
+    const md = [
+      `## ${urgency} 绩效综合催办`,
+      `> 考核月份：**${params.month}**`,
+      `> 截止日期：**${params.deadlineDate}**`,
+      `> 剩余天数：**${params.daysLeft} 天**`,
+      '',
+      '待完成事项：',
+      ...tasks,
+      '',
+      ...buildLoginInstructions(actionPath),
+      '请登录系统按工作台提示完成；如员工已离职或不参与考核，经理/组长可在评分页反馈“离职/不考核”。',
+    ].join('\n');
+
+    return sendAppMessage(targetUser, md);
   }
 
   /** 发送逾期通知：必须传入精准接收人，禁止默认 @all */
