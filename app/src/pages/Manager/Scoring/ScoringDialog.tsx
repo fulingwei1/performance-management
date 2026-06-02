@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, Send, X, AlertCircle, TrendingUp, Clock, Upload, CheckCircle2 } from 'lucide-react';
+import { FileText, Send, X, AlertCircle, TrendingUp, Clock, Upload, CheckCircle2, UserX } from 'lucide-react';
 import { ScoreSelectorWithCriteria } from '@/components/score/ScoreSelectorWithCriteria';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
 import { Button } from '@/components/ui/button';
@@ -71,6 +71,7 @@ interface ScoringDialogProps {
   loading: boolean;
   interviewFormUploading?: boolean;
   onInterviewFormUpload?: (file: File) => void;
+  onReportNonParticipation?: () => void;
   onSubmit: () => void;
 }
 
@@ -91,7 +92,7 @@ export function ScoringDialog({
   monthlyStarCategory, setMonthlyStarCategory,
   monthlyStarReason, setMonthlyStarReason,
   monthlyStarPublic, setMonthlyStarPublic,
-  totalScore, metricScores, setMetricScores, loading, interviewFormUploading = false, onInterviewFormUpload, onSubmit
+  totalScore, metricScores, setMetricScores, loading, interviewFormUploading = false, onInterviewFormUpload, onReportNonParticipation, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
   const managerCommentRef = useRef(managerComment);
@@ -676,6 +677,15 @@ export function ScoringDialog({
             )}
           </div>
           <div className="flex gap-3">
+            {onReportNonParticipation && (
+              <Button
+                variant="ghost"
+                className="text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+                onClick={onReportNonParticipation}
+              >
+                <UserX className="w-4 h-4 mr-2" />反馈离职/不考核
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
             <Button
               onClick={onSubmit}

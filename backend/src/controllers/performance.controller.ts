@@ -20,6 +20,7 @@ import { AssessmentPublicationModel } from '../models/assessmentPublication.mode
 import { validateTaskCreationMonth } from '../utils/assessmentMonthGuard';
 import { sanitizeUserText } from '../utils/sanitizeText';
 import { SatisfactionSurveyService } from '../services/satisfactionSurvey.service';
+import { SchedulerService } from '../services/scheduler.service';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -63,6 +64,9 @@ const normalizeImprovementSuggestionText = (input: unknown): string => {
 };
 
 const managerScoringLink = (month: string): string => `/manager/dashboard?month=${encodeURIComponent(month)}`;
+const hrMonthlyAutomationLink = (month: string): string => `/hr/monthly-automation?month=${encodeURIComponent(month)}`;
+
+const isValidMonthText = (month: string): boolean => /^\d{4}-(0[1-9]|1[0-2])$/.test(month);
 
 function hideUnpublishedScore(record: any): any {
   if (!record) return record;
@@ -741,6 +745,78 @@ export const performanceController = {
       data: record,
       message: '空记录创建成功'
     });
+  }),
+
+  // 经理/组长反馈员工已离职或本期不参与绩效：删除该员工本月任务，并加入考核排除名单。
+  reportNonParticipation: asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, error: '未认证' });
+    }
+
+    const employeeId = String(req.body?.employeeId || '').trim();
+    const month = String(req.body?.month || '').trim();
+    const reason = sanitizeUserText(req.body?.reason || '员工已离职，不参与本期绩效');
+
+    if (!employeeId) {
+      return res.status(400).json({ success: false, error: '员工ID不能为空' });
+    }
+    if (!month) {
+      return res.status(400).json({ success: false, error: '月份不能为空' });
+    }
+    if (!isValidMonthText(month)) {
+      return res.status(400).json({ success: false, error: '月份格式必须为 YYYY-MM' });
+    }
+
+    const employee = await EmployeeModel.findById(employeeId);
+    if (!employee) {
+      return res.status(404).json({ success: false, error: '员工不存在' });
+    }
+
+    const existingRecord = await PerformanceModel.findByEmployeeIdAndMonth(employeeId, month);
+    const isPrivileged = req.user.role === 'gm' || req.user.role === 'admin';
+    const isCurrentAssessor = existingRecord?.assessorId === req.user.userId;
+    const isInTeam = isPrivileged || isCurrentAssessor || await EmployeeModel.isInManagerTeam(req.user.userId, employeeId);
+    if (!isInTeam) {
+      return res.status(403).json({ success: false, error: '只能反馈自己负责范围内的员工' });
+    }
+
+    try {
+      const result = await SchedulerService.deletePerformanceTaskForEmployee(employeeId, month, {
+        excludeFromAssessment: true,
+        operatedBy: req.user.userId,
+      });
+
+      const reporter = await EmployeeModel.findById(req.user.userId);
+      const allEmployees = await EmployeeModel.findAll();
+      const hrRecipients = allEmployees.filter((item) => (
+        (item.role === 'hr' || item.role === 'admin') &&
+        (!item.status || item.status === 'active') &&
+        item.id !== req.user!.userId
+      ));
+      const notificationCount = await NotificationModel.createBatch(hrRecipients.map((recipient) => ({
+        userId: recipient.id,
+        type: 'system',
+        title: `${employee.name} 被反馈不参与 ${month} 绩效`,
+        content: `${reporter?.name || req.user!.userId}反馈：${employee.name} ${month} 不参与绩效。原因：${reason || '未填写'}。系统已删除该员工本月绩效任务并加入考核排除名单，请HR复核人事档案状态。`,
+        link: hrMonthlyAutomationLink(month),
+      })));
+
+      return res.json({
+        success: true,
+        message: result.recordDeleted
+          ? `已将 ${employee.name} 移出 ${month} 绩效考核，并通知HR复核`
+          : `${employee.name} 的 ${month} 绩效任务不存在，已加入考核排除名单并通知HR复核`,
+        data: {
+          ...result,
+          employeeName: employee.name,
+          reason,
+          notificationCount,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return res.status(message.includes('已发布') ? 409 : 400).json({ success: false, error: message, message });
+    }
   }),
 
   // 经理评分

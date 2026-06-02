@@ -82,6 +82,9 @@ router.post('/summary', authenticate, validate(submitSummaryValidation), perform
 // 创建空记录（经理给未提交的员工评分时使用）
 router.post('/create-empty-record', authenticate, requireManagerCapability, validate(createRecordValidation), performanceController.createEmptyRecord);
 
+// 经理/组长反馈员工已离职或本期不参与考核，并移出本月绩效任务；权限由控制器按上下级/考评人校验
+router.post('/nonparticipation-report', authenticate, performanceController.reportNonParticipation);
+
 // 导出绩效评分记录（兼容 /api/performance/export?month=YYYY-MM）
 router.get('/export', authenticate, requireRole('hr', 'gm', 'admin'), exportMonthlyAssessments);
 

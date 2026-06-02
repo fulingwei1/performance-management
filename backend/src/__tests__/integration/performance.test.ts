@@ -135,6 +135,62 @@ describe('Performance API', () => {
     });
   });
 
+  describe('POST /api/performance/nonparticipation-report', () => {
+    it('allows a manager to report a subordinate as departed and remove the monthly task', async () => {
+      const managerToken = await TestHelper.getAuthToken('manager');
+      const month = '2024-10';
+
+      const createResponse = await request(app)
+        .post('/api/performance/create-empty-record')
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          employeeId: 'e002',
+          month
+        });
+
+      expect(createResponse.status).toBe(200);
+      expect(createResponse.body.data).toHaveProperty('employeeId', 'e002');
+
+      const response = await request(app)
+        .post('/api/performance/nonparticipation-report')
+        .set('Authorization', `Bearer ${managerToken}`)
+        .send({
+          employeeId: 'e002',
+          month,
+          reason: '员工已于考核期间离职，不再提交总结'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toMatchObject({
+        success: true,
+        data: {
+          employeeId: 'e002',
+          month,
+          recordDeleted: true,
+          assessmentExcluded: true,
+        },
+      });
+
+      await expect(PerformanceModel.findByEmployeeIdAndMonth('e002', month)).resolves.toBeNull();
+    });
+
+    it('rejects non-managers reporting employees outside their responsibility scope', async () => {
+      const employeeToken = await TestHelper.getAuthToken('employee');
+
+      const response = await request(app)
+        .post('/api/performance/nonparticipation-report')
+        .set('Authorization', `Bearer ${employeeToken}`)
+        .send({
+          employeeId: 'e002',
+          month: '2024-10',
+          reason: '尝试越权反馈'
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('success', false);
+    });
+  });
+
   describe('GET /api/performance/:id', () => {
     it('should return record by id', async () => {
       const token = await TestHelper.getAuthToken('manager');

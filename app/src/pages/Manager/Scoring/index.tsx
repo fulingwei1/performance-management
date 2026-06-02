@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileText, ChevronRight, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { FileText, ChevronRight, AlertCircle, CheckCircle2, Clock, UserX } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { usePerformanceStore } from '@/stores/performanceStore';
 import { ScoreDisplay } from '@/components/score/ScoreDisplay';
@@ -429,6 +429,39 @@ export function ScoringManagement({
       setInterviewFormUploading(false);
     }
   };
+
+  const handleReportNonParticipation = async (record: any, event?: MouseEvent) => {
+    event?.stopPropagation();
+    const employeeName = record.employeeName || record.name || record.employeeId;
+    const defaultReason = '员工已离职，不参与本期绩效';
+    const reason = window.prompt(
+      `确认将「${employeeName}」移出 ${record.month} 绩效考核吗？\n\n系统会删除该员工本月绩效任务、清理待办/通知，并加入考核排除名单。HR 会收到复核通知。\n\n请填写原因：`,
+      defaultReason
+    );
+    if (reason === null) return;
+    if (!reason.trim()) {
+      toast.error('请填写不参与绩效的原因');
+      return;
+    }
+
+    try {
+      const response = await performanceApi.reportNonParticipation({
+        employeeId: record.employeeId,
+        month: record.month || selectedMonth,
+        reason: reason.trim(),
+      });
+      if (!response.success) {
+        toast.error(response.message || response.error || '反馈失败');
+        return;
+      }
+      toast.success(response.message || `已将 ${employeeName} 移出本期考核`);
+      if (user) await fetchTeamRecords(user.id, selectedMonth);
+      setIsDrawerOpen(false);
+      setSelectedRecord(null);
+    } catch (error: any) {
+      toast.error(error.message || '反馈失败');
+    }
+  };
   
   const metricTotalScore = calculateMetricScoresTotal(selectedMetricScores || undefined);
   const totalScore = metricTotalScore ?? calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
@@ -626,7 +659,7 @@ export function ScoringManagement({
                   <TableHead>评分状态</TableHead>
                   <TableHead className="text-right">月度得分/部门排名</TableHead>
                   <TableHead className="text-right">季度汇总/部门排名</TableHead>
-                  <TableHead className="w-24"></TableHead>
+                  <TableHead className="w-36"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -689,10 +722,20 @@ export function ScoringManagement({
                         ) : <span className="text-gray-400">—</span>}
                       </TableCell>
                       <TableCell>
-                        <Button variant={isPending || isNotSubmitted ? "default" : "outline"} size="sm"
-                          onClick={(e) => { e.stopPropagation(); handleOpenDrawer(record); }}>
-                          {isPending || isNotSubmitted ? '去评分' : isScored ? '修改' : '查看'}<ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button variant={isPending || isNotSubmitted ? "default" : "outline"} size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleOpenDrawer(record); }}>
+                            {isPending || isNotSubmitted ? '去评分' : isScored ? '修改' : '查看'}<ChevronRight className="w-4 h-4 ml-1" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-orange-700 hover:bg-orange-50 hover:text-orange-800"
+                            onClick={(e) => handleReportNonParticipation(record, e)}
+                          >
+                            <UserX className="w-4 h-4 mr-1" />反馈离职
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -750,6 +793,7 @@ export function ScoringManagement({
         loading={loading}
         interviewFormUploading={interviewFormUploading}
         onInterviewFormUpload={handleInterviewFormUpload}
+        onReportNonParticipation={() => selectedRecord && handleReportNonParticipation(selectedRecord)}
         onSubmit={handleSubmit}
       />
     </div>

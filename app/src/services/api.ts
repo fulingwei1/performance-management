@@ -248,6 +248,13 @@ export const performanceApi = {
       body: JSON.stringify(data)
     }),
 
+  // 经理/组长反馈员工离职或本期不参与绩效
+  reportNonParticipation: (data: { employeeId: string; month: string; reason?: string }) =>
+    request('/performance/nonparticipation-report', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
   // 获取绩效记录对应的评分模板（用于动态渲染评分表单）
   getRecordTemplate: (id: string) => request(`/performance/${id}/template`),
 
