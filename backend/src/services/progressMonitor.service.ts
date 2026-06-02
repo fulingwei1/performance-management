@@ -18,6 +18,7 @@ export interface ProgressSnapshot {
   submittedCount: number;
   scoredCount: number;
   completedCount: number;
+  scoredFinishedCount: number;
   participationRate: number;
   departmentProgress: DepartmentProgress[];
   managerProgress: ManagerProgress[];
@@ -67,11 +68,17 @@ export class ProgressMonitorService {
     const draftCount = records.filter(r => r.status === 'draft').length;
     const submittedCount = records.filter(r => r.status === 'submitted').length;
     const scoredCount = records.filter(r => r.status === 'scored').length;
-    const completedCount = records.filter(r => r.status === 'completed').length;
+    const isSubmittedTask = (record: any) => (
+      ['submitted', 'scored', 'completed'].includes(String(record.status || ''))
+      || Boolean(String(record.selfSummary || record.self_summary || '').trim())
+      || Boolean(String(record.nextMonthPlan || record.next_month_plan || '').trim())
+    );
+    const completedCount = records.filter(isSubmittedTask).length;
+    const scoredFinishedCount = records.filter(r => r.status === 'completed' || r.status === 'scored').length;
 
     const totalRecords = eligibleEmployees.length;
     const participationRate = totalRecords > 0
-      ? parseFloat(((completedCount + scoredCount + submittedCount) / totalRecords * 100).toFixed(1))
+      ? parseFloat((completedCount / totalRecords * 100).toFixed(1))
       : 0;
 
     // 按部门统计
@@ -81,7 +88,7 @@ export class ProgressMonitorService {
       if (!deptMap.has(dept)) deptMap.set(dept, { total: 0, completed: 0 });
       deptMap.get(dept)!.total++;
     }
-    for (const rec of records.filter(r => r.status === 'completed' || r.status === 'scored')) {
+    for (const rec of records.filter(isSubmittedTask)) {
       const dept = rec.department || '未分配';
       if (deptMap.has(dept)) deptMap.get(dept)!.completed++;
     }
@@ -111,7 +118,7 @@ export class ProgressMonitorService {
       }
       managerMap.get(mgrId)!.total++;
     }
-    for (const rec of records.filter(r => r.status === 'completed' || r.status === 'scored')) {
+    for (const rec of records.filter(isSubmittedTask)) {
       // 找到该记录对应的经理
       const emp = allEmployees.find(e => e.id === rec.employeeId);
       if (emp?.managerId && managerMap.has(emp.managerId)) {
@@ -137,6 +144,7 @@ export class ProgressMonitorService {
       submittedCount,
       scoredCount,
       completedCount,
+      scoredFinishedCount,
       participationRate,
       departmentProgress,
       managerProgress

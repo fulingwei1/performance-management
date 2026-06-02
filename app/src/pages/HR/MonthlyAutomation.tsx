@@ -20,6 +20,7 @@ interface ProgressData {
   submittedCount: number;
   scoredCount: number;
   completedCount: number;
+  scoredFinishedCount?: number;
   participationRate: number;
   departmentProgress: { department: string; total: number; completed: number; rate: number }[];
 }
@@ -255,9 +256,15 @@ export default function MonthlyAutomation() {
     setSelectedEmployeeIds((current) => current.filter((id) => !visibleEmployeeIds.includes(id)));
   };
   const incompleteCount = progress ? Math.max(progress.eligibleEmployees - progress.completedCount, 0) : 0;
+  const scoredFinishedCount = progress?.scoredFinishedCount ?? progress?.scoredCount ?? 0;
+  const pendingScoreCount = progress ? Math.max(progress.completedCount - scoredFinishedCount, 0) : 0;
   const completionRate = progress?.eligibleEmployees
     ? (progress.completedCount / progress.eligibleEmployees) * 100
     : 0;
+  const scoreCompletionRate = progress?.eligibleEmployees
+    ? (scoredFinishedCount / progress.eligibleEmployees) * 100
+    : 0;
+  const publishReady = Boolean(progress?.eligibleEmployees && scoredFinishedCount === progress.eligibleEmployees);
   const selectedYear = Number(selectedMonth.slice(0, 4));
   const selectedMonthNumber = Number(selectedMonth.slice(5, 7));
   const selectedQuarter = Math.ceil(selectedMonthNumber / 3);
@@ -277,9 +284,9 @@ export default function MonthlyAutomation() {
       status: progress?.eligibleEmployees ? 'active' as const : 'waiting' as const,
     },
     {
-      title: progress?.completedCount === progress?.eligibleEmployees && progress?.eligibleEmployees ? '发布和归档' : '催办与评分',
-      description: progress?.completedCount === progress?.eligibleEmployees && progress?.eligibleEmployees ? '全部完成后发布结果，并可推送薪资。' : '只催办未完成任务，不发给无需考核人员。',
-      status: progress?.completedCount === progress?.eligibleEmployees && progress?.eligibleEmployees ? 'active' as const : 'waiting' as const,
+      title: publishReady ? '发布和归档' : '催办与评分',
+      description: publishReady ? '全部评分完成后发布结果，并可推送薪资。' : '未提交只催员工；已提交未评分只催上级。',
+      status: publishReady ? 'active' as const : 'waiting' as const,
     },
   ];
 
@@ -417,16 +424,19 @@ export default function MonthlyAutomation() {
             <p className="text-sm text-gray-400 mt-1">先看当月要完成多少、完成了多少，再决定要不要手动补跑。</p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <Card icon={<Users className="w-5 h-5 text-blue-400" />} label="需完成任务人数"
               value={`${progress.eligibleEmployees}`} sub={`在职总人数 ${progress.totalEmployees} 人`} />
-            <Card icon={<CheckCircle className="w-5 h-5 text-green-400" />} label="已经完成"
-              value={`${progress.completedCount}`} sub="已完成整套流程" />
-            <Card icon={<FileText className="w-5 h-5 text-yellow-400" />} label="还未完成"
-              value={`${incompleteCount}`} sub="仍需跟进" />
-            <Card icon={<TrendingUp className="w-5 h-5 text-purple-400" />} label="完成率"
+            <Card icon={<CheckCircle className="w-5 h-5 text-green-400" />} label="员工已提交"
+              value={`${progress.completedCount}`} sub="已提交总结/计划" />
+            <Card icon={<FileText className="w-5 h-5 text-yellow-400" />} label="员工未提交"
+              value={`${incompleteCount}`} sub="只催员工本人" />
+            <Card icon={<ShieldCheck className="w-5 h-5 text-blue-400" />} label="上级已评分"
+              value={`${scoredFinishedCount}`} sub={`待评分 ${pendingScoreCount} 人`} />
+            <Card icon={<TrendingUp className="w-5 h-5 text-purple-400" />} label="提交完成率"
               value={`${completionRate.toFixed(1)}%`} sub={rateColor(completionRate)} />
           </div>
+          <p className="text-xs text-gray-400">评分完成率：{scoreCompletionRate.toFixed(1)}%。发布归档按“上级评分完成”判断，不按员工提交完成判断。</p>
 
           {progress.departmentProgress?.length > 0 && (
             <div className="bg-gray-900 rounded-lg p-4">

@@ -15,6 +15,11 @@ const SCORE_BUCKETS = [
 const isScoredRecord = (record: any) =>
   ['completed', 'scored'].includes(record?.status) && Number(record?.totalScore) > 0;
 
+const isSubmittedTaskRecord = (record: any) =>
+  ['submitted', 'completed', 'scored'].includes(String(record?.status || ''))
+  || Boolean(String(record?.selfSummary || record?.self_summary || '').trim())
+  || Boolean(String(record?.nextMonthPlan || record?.next_month_plan || '').trim());
+
 const isRealRecord = (record: any) => !record?.isDemo && !String(record?.id || '').startsWith('demo-');
 
 const getScoreBucket = (score: number) =>
@@ -50,8 +55,10 @@ const round2 = (value: number): number => Number(value.toFixed(2));
 
 const buildMonthlySummary = (records: any[]) => {
   const realRecords = records.filter(isRealRecord);
+  const submitted = realRecords.filter(isSubmittedTaskRecord);
+  const unsubmitted = realRecords.filter((record) => !isSubmittedTaskRecord(record));
   const scored = realRecords.filter(isScoredRecord);
-  const pending = realRecords.filter((record) => !isScoredRecord(record));
+  const pendingScore = submitted.filter((record) => !isScoredRecord(record));
   const scores = scored.map((record) => Number(record.totalScore)).filter((score) => Number.isFinite(score));
   const avgScore = scores.length ? round2(scores.reduce((sum, score) => sum + score, 0) / scores.length) : 0;
 
@@ -69,7 +76,9 @@ const buildMonthlySummary = (records: any[]) => {
 
   const departments = Array.from(departmentMap.entries())
     .map(([department, deptRecords]) => {
+      const deptSubmitted = deptRecords.filter(isSubmittedTaskRecord);
       const deptScored = deptRecords.filter(isScoredRecord);
+      const deptPendingScore = deptSubmitted.filter((record) => !isScoredRecord(record));
       const deptScores = deptScored.map((record) => Number(record.totalScore)).filter(Number.isFinite);
       const deptAvg = deptScores.length
         ? round2(deptScores.reduce((sum, score) => sum + score, 0) / deptScores.length)
@@ -79,9 +88,14 @@ const buildMonthlySummary = (records: any[]) => {
       return {
         department,
         totalCount: deptRecords.length,
+        submittedCount: deptSubmitted.length,
+        unsubmittedCount: deptRecords.length - deptSubmitted.length,
+        submissionRate: deptRecords.length > 0 ? round2((deptSubmitted.length / deptRecords.length) * 100) : 0,
         scoredCount: deptScored.length,
-        pendingCount: deptRecords.length - deptScored.length,
-        completionRate: deptRecords.length > 0 ? round2((deptScored.length / deptRecords.length) * 100) : 0,
+        pendingCount: deptPendingScore.length,
+        scorePendingCount: deptPendingScore.length,
+        scoreCompletionRate: deptRecords.length > 0 ? round2((deptScored.length / deptRecords.length) * 100) : 0,
+        completionRate: deptRecords.length > 0 ? round2((deptSubmitted.length / deptRecords.length) * 100) : 0,
         avgScore: deptAvg,
         maxScore: deptScores.length ? round2(Math.max(...deptScores)) : 0,
         minScore: deptScores.length ? round2(Math.min(...deptScores)) : 0,
@@ -94,9 +108,14 @@ const buildMonthlySummary = (records: any[]) => {
 
   return {
     totalRecords: realRecords.length,
+    submittedCount: submitted.length,
+    unsubmittedCount: unsubmitted.length,
+    submissionRate: realRecords.length > 0 ? round2((submitted.length / realRecords.length) * 100) : 0,
     scoredCount: scored.length,
-    pendingCount: pending.length,
-    completionRate: realRecords.length > 0 ? round2((scored.length / realRecords.length) * 100) : 0,
+    pendingCount: pendingScore.length,
+    scorePendingCount: pendingScore.length,
+    scoreCompletionRate: realRecords.length > 0 ? round2((scored.length / realRecords.length) * 100) : 0,
+    completionRate: realRecords.length > 0 ? round2((submitted.length / realRecords.length) * 100) : 0,
     avgScore,
     maxScore: scores.length ? round2(Math.max(...scores)) : 0,
     minScore: scores.length ? round2(Math.min(...scores)) : 0,
@@ -134,7 +153,8 @@ const buildFocusLists = (currentRecords: any[], previousRecords: any[]) => {
     .forEach((record) => previousByEmployee.set(record.employeeId, record));
 
   const scored = realCurrent.filter(isScoredRecord);
-  const pending = realCurrent.filter((record) => !isScoredRecord(record));
+  const pendingSubmission = realCurrent.filter((record) => !isSubmittedTaskRecord(record));
+  const pendingScore = realCurrent.filter((record) => isSubmittedTaskRecord(record) && !isScoredRecord(record));
 
   const lowScores = scored
     .filter((record) => Number(record.totalScore || 0) < scoreLevelThresholds.L3)
@@ -153,13 +173,20 @@ const buildFocusLists = (currentRecords: any[], previousRecords: any[]) => {
     .sort((a, b) => Number(a.delta || 0) - Number(b.delta || 0))
     .slice(0, 10);
 
-  const pendingPeople = pending
+  const pendingPeople = pendingScore
+    .sort((a, b) => String(a.department || '').localeCompare(String(b.department || ''), 'zh-CN') || String(a.employeeName || '').localeCompare(String(b.employeeName || ''), 'zh-CN'))
+    .slice(0, 20)
+    .map((record) => toFocusPerson(record, previousByEmployee.get(record.employeeId)));
+
+  const pendingSubmissionPeople = pendingSubmission
     .sort((a, b) => String(a.department || '').localeCompare(String(b.department || ''), 'zh-CN') || String(a.employeeName || '').localeCompare(String(b.employeeName || ''), 'zh-CN'))
     .slice(0, 20)
     .map((record) => toFocusPerson(record, previousByEmployee.get(record.employeeId)));
 
   return {
     pending: pendingPeople,
+    pendingSubmission: pendingSubmissionPeople,
+    pendingScore: pendingPeople,
     lowScores,
     topScores,
     declined,
@@ -185,15 +212,18 @@ const buildExecutiveText = (
         ? `较上月下降 ${Math.abs(round2(avgDelta)).toFixed(2)}`
         : '与上月持平'
     : '暂无上月对比';
+  const submitText = summary.unsubmittedCount > 0
+    ? `仍有 ${summary.unsubmittedCount} 人未提交总结/计划`
+    : '员工提交已全部完成';
   const pendingText = summary.pendingCount > 0
-    ? `仍有 ${summary.pendingCount} 人待完成评分`
-    : '评分已全部完成';
+    ? `仍有 ${summary.pendingCount} 人待上级评分`
+    : '上级评分已全部完成';
   const focusText = [
     focus.lowScores.length > 0 ? `${focus.lowScores.length} 名低分关注人员` : '',
     focus.declined.length > 0 ? `${focus.declined.length} 名环比下降明显人员` : '',
   ].filter(Boolean).join('，');
 
-  return `${month} 参与 ${summary.totalRecords} 人，已评分 ${summary.scoredCount} 人，完成率 ${summary.completionRate.toFixed(1)}%，${avgText}，${avgTrend}；${pendingText}${focusText ? `；需关注 ${focusText}` : '。'}`;
+  return `${month} 参与 ${summary.totalRecords} 人，已提交 ${summary.submittedCount} 人，提交完成率 ${summary.completionRate.toFixed(1)}%；已评分 ${summary.scoredCount} 人，评分完成率 ${summary.scoreCompletionRate.toFixed(1)}%，${avgText}，${avgTrend}；${submitText}，${pendingText}${focusText ? `；需关注 ${focusText}` : '。'}`;
 };
 
 const buildRisks = (summary: ReturnType<typeof buildMonthlySummary>, readiness?: Awaited<ReturnType<typeof validatePublicationReadiness>>) => {
@@ -209,26 +239,36 @@ const buildRisks = (summary: ReturnType<typeof buildMonthlySummary>, readiness?:
     return risks;
   }
 
+  if (summary.unsubmittedCount > 0) {
+    risks.push({
+      type: 'pending_submission',
+      severity: summary.completionRate < 80 ? 'danger' : 'warning',
+      title: '仍有员工未提交',
+      message: `还有 ${summary.unsubmittedCount} 人未提交工作总结/下月计划，提交完成率 ${summary.completionRate}%。`,
+      count: summary.unsubmittedCount,
+    });
+  }
+
   if (summary.pendingCount > 0) {
     risks.push({
       type: 'pending_scores',
-      severity: summary.completionRate < 80 ? 'danger' : 'warning',
+      severity: summary.scoreCompletionRate < 80 ? 'danger' : 'warning',
       title: '仍有未完成评分',
-      message: `还有 ${summary.pendingCount} 条绩效记录未完成评分，完成率 ${summary.completionRate}%。`,
+      message: `还有 ${summary.pendingCount} 条已提交记录未完成上级评分，评分完成率 ${summary.scoreCompletionRate}%。`,
       count: summary.pendingCount,
     });
   }
 
   summary.departments
-    .filter((dept) => dept.pendingCount > 0)
+    .filter((dept) => dept.unsubmittedCount > 0 || dept.pendingCount > 0)
     .slice(0, 5)
     .forEach((dept) => {
       risks.push({
         type: 'department_pending',
         severity: dept.completionRate < 80 ? 'warning' : 'info',
-        title: `${dept.department} 未完成`,
-        message: `${dept.department} 还有 ${dept.pendingCount} 人未评分，完成率 ${dept.completionRate}%。`,
-        count: dept.pendingCount,
+        title: `${dept.department} 进度未完成`,
+        message: `${dept.department} 未提交 ${dept.unsubmittedCount} 人，待评分 ${dept.pendingCount} 人；提交率 ${dept.completionRate}%，评分率 ${dept.scoreCompletionRate}%。`,
+        count: dept.unsubmittedCount + dept.pendingCount,
         department: dept.department,
       });
     });
@@ -299,8 +339,13 @@ export const getReportSummary = asyncHandler(async (req: Request, res: Response)
       executiveText,
       overview: {
         totalRecords: summary.totalRecords,
+        submittedCount: summary.submittedCount,
+        unsubmittedCount: summary.unsubmittedCount,
+        submissionRate: summary.submissionRate,
         scoredCount: summary.scoredCount,
         pendingCount: summary.pendingCount,
+        scorePendingCount: summary.scorePendingCount,
+        scoreCompletionRate: summary.scoreCompletionRate,
         completionRate: summary.completionRate,
         avgScore: summary.avgScore,
         maxScore: summary.maxScore,

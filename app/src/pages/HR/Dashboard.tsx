@@ -41,6 +41,13 @@ import { TodoSection } from '@/components/dashboard/TodoSection';
 import { todoApi } from '@/services/api';
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
+const isSubmittedTask = (record: any) => Boolean(
+  record && (
+    ['submitted', 'completed', 'scored'].includes(String(record.status || '')) ||
+    String(record.selfSummary || '').trim() ||
+    String(record.nextMonthPlan || '').trim()
+  )
+);
 
 interface RankingConfig {
   participation: {
@@ -206,6 +213,7 @@ export function HRDashboard() {
     });
     const inScopeEmployeeIds = new Set(assessableInScopeEmployees.map((employee: any) => employee.id));
     const monthRecords = allPerformanceRecords.filter(r => r.month === currentMonth && inScopeEmployeeIds.has(r.employeeId));
+    const submittedTaskRecords = monthRecords.filter(isSubmittedTask);
     const scoredRecords = monthRecords.filter(r => isScoredStatus(r.status));
     const rootDepartments = [...new Set(assessableInScopeEmployees.map(e => e.department))].filter(Boolean);
 
@@ -217,13 +225,20 @@ export function HRDashboard() {
         const subDeptEmployees = rootDeptEmployees.filter(e => displaySubDepartment(e.subDepartment) === subDept);
         const records = subDeptEmployees.map(emp => {
           const record = monthRecords.find(r => r.employeeId === emp.id);
-          return { ...emp, record: record || null, totalScore: record?.totalScore || 0, status: record?.status || 'not_submitted' };
+          return {
+            ...emp,
+            record: record || null,
+            totalScore: record?.totalScore || 0,
+            status: record?.status || 'not_submitted',
+            taskSubmitted: isSubmittedTask(record),
+            scoreCompleted: record ? isScoredStatus(record.status) : false,
+          };
         });
 
         const filteredRecords = records.filter(r => {
           if (statusFilter === 'all') return true;
-          if (statusFilter === 'pending') return Boolean(r.record) && !isScoredStatus(r.status);
-          if (statusFilter === 'completed') return isScoredStatus(r.status);
+          if (statusFilter === 'pending') return Boolean(r.record) && !r.taskSubmitted;
+          if (statusFilter === 'completed') return r.taskSubmitted;
           return true;
         });
 
@@ -241,7 +256,8 @@ export function HRDashboard() {
         return {
           subDepartment: subDept,
           records: sortedRecords,
-          completedCount: sortedRecords.filter(r => isScoredStatus(r.status)).length,
+          completedCount: sortedRecords.filter(r => r.taskSubmitted).length,
+          scoredCount: sortedRecords.filter(r => r.scoreCompleted).length,
           totalCount: sortedRecords.length
         };
       });
@@ -250,6 +266,7 @@ export function HRDashboard() {
         rootDepartment: rootDept,
         subDepartments: subDeptRecords,
         completedCount: subDeptRecords.reduce((sum, s) => sum + s.completedCount, 0),
+        scoredCount: subDeptRecords.reduce((sum, s) => sum + (s.scoredCount || 0), 0),
         totalCount: subDeptRecords.reduce((sum, s) => sum + s.totalCount, 0)
       };
     });
@@ -258,8 +275,10 @@ export function HRDashboard() {
       companyTotalEmployees: activeCompanyEmployees.length,
       participatingEmployees: assessableInScopeEmployees.length,
       generatedTasks: monthRecords.length,
+      completedTasks: submittedTaskRecords.length,
       completedScores: scoredRecords.length,
-      pendingScores: monthRecords.length > 0 ? Math.max(monthRecords.length - scoredRecords.length, 0) : 0,
+      pendingTasks: monthRecords.length > 0 ? Math.max(monthRecords.length - submittedTaskRecords.length, 0) : 0,
+      pendingScores: monthRecords.length > 0 ? Math.max(submittedTaskRecords.length - scoredRecords.length, 0) : 0,
       notGeneratedTasks: Math.max(assessableInScopeEmployees.length - monthRecords.length, 0),
       averageScore: scoredRecords.length > 0
         ? scoredRecords.reduce((sum, r) => sum + r.totalScore, 0) / scoredRecords.length
@@ -278,7 +297,8 @@ export function HRDashboard() {
         return {
           ...sub,
           records,
-          completedCount: records.filter(r => isScoredStatus(r.status)).length,
+          completedCount: records.filter(r => r.taskSubmitted).length,
+          scoredCount: records.filter(r => r.scoreCompleted).length,
           totalCount: records.length,
         };
       }).filter(sub => sub.records.length > 0);
@@ -286,6 +306,7 @@ export function HRDashboard() {
         ...dept,
         subDepartments,
         completedCount: subDepartments.reduce((sum, s) => sum + s.completedCount, 0),
+        scoredCount: subDepartments.reduce((sum, s) => sum + (s.scoredCount || 0), 0),
         totalCount: subDepartments.reduce((sum, s) => sum + s.totalCount, 0),
       };
     }).filter(dept => dept.subDepartments.length > 0);
@@ -307,17 +328,42 @@ export function HRDashboard() {
       if (!response.success) throw new Error(response.message || '获取数据失败');
       const { summary, records } = response.data;
       
-      const summaryHeaders = ['部门', '本期参与人数', '已评分', '平均分', '优秀', '良好', '合格', '待改进'];
-      const summaryRows = summary.map((dept: any) => csvRow([dept.department, dept.totalEmployees, dept.scoredCount, dept.averageScore, dept.excellentCount, dept.goodCount, dept.normalCount, dept.needImprovementCount]));
-      const detailHeaders = ['姓名', '部门', '二级部门', '得分', '绩效等级', '状态'];
-      const detailRows = records.map((r: any) => csvRow([r.employeeName || '', r.department || '', r.subDepartment || '', r.totalScore || 0, r.level || '', r.status === 'completed' || r.status === 'scored' ? '已评分' : '待评分']));
+      const summaryHeaders = ['部门', '本期参与人数', '员工已提交', '上级已评分', '平均分', '优秀', '良好', '合格', '待改进'];
+      const summaryRows = summary.map((dept: any) => csvRow([
+        dept.department,
+        dept.totalEmployees,
+        dept.submittedCount ?? '',
+        dept.scoredCount,
+        dept.averageScore,
+        dept.excellentCount,
+        dept.goodCount,
+        dept.normalCount,
+        dept.needImprovementCount
+      ]));
+      const detailHeaders = ['姓名', '部门', '二级部门', '得分', '绩效等级', '员工任务', '评分状态'];
+      const detailRows = records.map((r: any) => {
+        const submitted = isSubmittedTask(r);
+        const scored = r.status === 'completed' || r.status === 'scored';
+        return csvRow([
+          r.employeeName || '',
+          r.department || '',
+          r.subDepartment || '',
+          scored ? (r.totalScore || 0) : '',
+          scored ? (r.level || '') : '',
+          submitted ? '已提交' : '待提交',
+          scored ? '已评分' : '待评分',
+        ]);
+      });
       
       const executiveRows = reportSummary ? [
         ['统计月份', reportSummary.month],
         ['参与记录', reportSummary.overview.totalRecords],
-        ['已评分', reportSummary.overview.scoredCount],
-        ['待评分', reportSummary.overview.pendingCount],
-        ['完成率', `${reportSummary.overview.completionRate}%`],
+        ['员工已提交', reportSummary.overview.submittedCount ?? ''],
+        ['员工未提交', reportSummary.overview.unsubmittedCount ?? ''],
+        ['上级已评分', reportSummary.overview.scoredCount],
+        ['待上级评分', reportSummary.overview.scorePendingCount ?? reportSummary.overview.pendingCount],
+        ['提交完成率', `${reportSummary.overview.completionRate}%`],
+        ['评分完成率', `${reportSummary.overview.scoreCompletionRate ?? 0}%`],
         ['平均分', reportSummary.overview.avgScore],
         ['较上月平均分变化', reportSummary.overview.avgScoreDelta],
         ['较上月完成率变化', `${reportSummary.overview.completionRateDelta}%`],
@@ -334,7 +380,8 @@ export function HRDashboard() {
 
       const focusRows = reportSummary
         ? [
-          ...(reportSummary.focus?.pending || []).map((person) => ['待完成评分', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
+          ...(reportSummary.focus?.pendingSubmission || []).map((person) => ['员工未提交', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
+          ...(reportSummary.focus?.pending || []).map((person) => ['待上级评分', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
           ...(reportSummary.focus?.lowScores || []).map((person) => ['低分关注', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
           ...(reportSummary.focus?.declined || []).map((person) => ['环比下降', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
           ...(reportSummary.focus?.topScores || []).map((person) => ['高分标杆', person.employeeName, person.department, person.subDepartment || '', person.score ?? '', person.delta ?? '', person.status]),
@@ -388,6 +435,9 @@ export function HRDashboard() {
   const hasGeneratedTasks = stats.generatedTasks > 0;
   const hasAnyScore = stats.completedScores > 0;
   const completionRate = stats.generatedTasks > 0
+    ? Math.round((stats.completedTasks / stats.generatedTasks) * 100)
+    : 0;
+  const scoreCompletionRate = stats.generatedTasks > 0
     ? Math.round((stats.completedScores / stats.generatedTasks) * 100)
     : 0;
   const hrFlowSteps = [
@@ -399,13 +449,13 @@ export function HRDashboard() {
     {
       title: hasGeneratedTasks ? '跟进填写和评分' : '生成绩效任务',
       description: hasGeneratedTasks
-        ? `已生成 ${stats.generatedTasks} 条任务，待评分 ${stats.pendingScores} 人；未生成 ${stats.notGeneratedTasks} 人。`
+        ? `已生成 ${stats.generatedTasks} 条任务；员工未提交 ${stats.pendingTasks} 人，待上级评分 ${stats.pendingScores} 人；未生成 ${stats.notGeneratedTasks} 人。`
         : `${currentMonth} 尚未生成绩效考核任务。`,
       status: hasGeneratedTasks ? 'active' as const : 'waiting' as const,
     },
     {
       title: hasAnyScore ? '发布与结果分析' : '等待评分数据',
-      description: hasAnyScore ? `已评分 ${stats.completedScores} 人，完成率 ${completionRate}%。` : '评分完成后再检查发布风险和导出报表。',
+      description: hasAnyScore ? `员工提交完成率 ${completionRate}%，评分完成率 ${scoreCompletionRate}%。` : '评分完成后再检查发布风险和导出报表。',
       status: hasAnyScore ? 'active' as const : 'waiting' as const,
     },
   ];
@@ -516,7 +566,7 @@ export function HRDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
                 <div className="rounded-xl bg-gray-50 p-3">
                   <div className="text-gray-500">任务生成</div>
                   <div className="mt-1 flex items-center gap-1 font-semibold text-gray-900">
@@ -525,16 +575,20 @@ export function HRDashboard() {
                   </div>
                 </div>
                 <div className="rounded-xl bg-green-50 p-3">
-                  <div className="text-gray-500">已评分</div>
-                  <div className="mt-1 font-semibold text-green-700">{stats.completedScores}</div>
+                  <div className="text-gray-500">员工已提交</div>
+                  <div className="mt-1 font-semibold text-green-700">{stats.completedTasks}</div>
                 </div>
                 <div className="rounded-xl bg-amber-50 p-3">
-                  <div className="text-gray-500">待处理</div>
-                  <div className="mt-1 font-semibold text-amber-700">{stats.pendingScores}</div>
+                  <div className="text-gray-500">员工未提交</div>
+                  <div className="mt-1 font-semibold text-amber-700">{stats.pendingTasks}</div>
                 </div>
                 <div className="rounded-xl bg-blue-50 p-3">
-                  <div className="text-gray-500">完成率</div>
-                  <div className="mt-1 font-semibold text-blue-700">{completionRate}%</div>
+                  <div className="text-gray-500">上级已评分</div>
+                  <div className="mt-1 font-semibold text-blue-700">{stats.completedScores}</div>
+                </div>
+                <div className="rounded-xl bg-purple-50 p-3">
+                  <div className="text-gray-500">待上级评分</div>
+                  <div className="mt-1 font-semibold text-purple-700">{stats.pendingScores}</div>
                 </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -543,8 +597,8 @@ export function HRDashboard() {
                   <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">全部显示</SelectItem>
-                    <SelectItem value="pending">未打绩效</SelectItem>
-                    <SelectItem value="completed">已打绩效</SelectItem>
+                    <SelectItem value="pending">员工未提交</SelectItem>
+                    <SelectItem value="completed">员工已提交</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button variant="outline" onClick={handleExport} disabled={exporting}>
@@ -671,7 +725,8 @@ export function HROverview({ deptRecords, sortBy, sortOrder, setSortBy, setSortO
                 </CardTitle>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <span>共 {dept.totalCount} 人</span>
-                  <span className="text-green-600">已评分 {dept.completedCount} 人</span>
+                  <span className="text-green-600">已提交 {dept.completedCount} 人</span>
+                  <span className="text-blue-600">已评分 {dept.scoredCount || 0} 人</span>
                 </div>
               </div>
             </CardHeader>
@@ -682,7 +737,7 @@ export function HROverview({ deptRecords, sortBy, sortOrder, setSortBy, setSortO
                   <div key={subDept.subDepartment} className="mb-6 last:mb-0">
                     <div className="flex items-center justify-between mb-3 px-4 py-2 bg-gray-50 rounded">
                       <h4 className="font-medium text-gray-700">{subDept.subDepartment}</h4>
-                      <div className="text-sm text-gray-500">共 {subDept.totalCount} 人 · 已评分 {subDept.completedCount} 人</div>
+                      <div className="text-sm text-gray-500">共 {subDept.totalCount} 人 · 已提交 {subDept.completedCount} 人 · 已评分 {subDept.scoredCount || 0} 人</div>
                     </div>
                     <Table>
                       <TableHeader>
@@ -696,9 +751,10 @@ export function HROverview({ deptRecords, sortBy, sortOrder, setSortBy, setSortO
                               {sortBy === 'score' && (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />)}
                             </div>
                           </TableHead>
+                          <TableHead>员工任务</TableHead>
                           <TableHead className="cursor-pointer hover:bg-gray-50" onClick={() => handleSort('status')}>
                             <div className="flex items-center gap-1">
-                              状态
+                              评分状态
                               {sortBy === 'status' && (sortOrder === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />)}
                             </div>
                           </TableHead>
@@ -723,12 +779,15 @@ export function HROverview({ deptRecords, sortBy, sortOrder, setSortBy, setSortO
                               {isScored(emp.status) ? <ScoreDisplay score={emp.totalScore} showLabel={false} size="sm" /> : <span className="text-gray-400">-</span>}
                             </TableCell>
                             <TableCell>
-                              {isScored(emp.status) ? <Badge className="bg-green-100 text-green-700">已评分</Badge> : <Badge className="bg-yellow-100 text-yellow-700">待评分</Badge>}
+                              {emp.taskSubmitted ? <Badge className="bg-green-100 text-green-700">已提交</Badge> : <Badge className="bg-yellow-100 text-yellow-700">待提交</Badge>}
+                            </TableCell>
+                            <TableCell>
+                              {isScored(emp.status) ? <Badge className="bg-blue-100 text-blue-700">已评分</Badge> : <Badge className="bg-gray-100 text-gray-600">待评分</Badge>}
                             </TableCell>
                           </TableRow>
                         ))}
                         {subDept.records.length === 0 && (
-                          <TableRow><TableCell colSpan={5} className="text-center py-8 text-gray-400">暂无数据</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-400">暂无数据</TableCell></TableRow>
                         )}
                       </TableBody>
                     </Table>

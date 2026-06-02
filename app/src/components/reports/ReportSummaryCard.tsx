@@ -23,8 +23,13 @@ export interface ReportRisk {
 export interface ReportDepartmentSummary {
   department: string;
   totalCount: number;
+  submittedCount?: number;
+  unsubmittedCount?: number;
+  submissionRate?: number;
   scoredCount: number;
   pendingCount: number;
+  scorePendingCount?: number;
+  scoreCompletionRate?: number;
   completionRate: number;
   avgScore: number;
   maxScore: number;
@@ -53,8 +58,13 @@ export interface ReportSummaryData {
   executiveText?: string;
   overview: {
     totalRecords: number;
+    submittedCount?: number;
+    unsubmittedCount?: number;
+    submissionRate?: number;
     scoredCount: number;
     pendingCount: number;
+    scorePendingCount?: number;
+    scoreCompletionRate?: number;
     completionRate: number;
     avgScore: number;
     maxScore: number;
@@ -71,6 +81,8 @@ export interface ReportSummaryData {
   }>;
   departments: ReportDepartmentSummary[];
   focus?: {
+    pendingSubmission?: ReportFocusPerson[];
+    pendingScore?: ReportFocusPerson[];
     pending: ReportFocusPerson[];
     lowScores: ReportFocusPerson[];
     topScores: ReportFocusPerson[];
@@ -231,11 +243,20 @@ export function ReportSummaryCard({
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <div className="rounded-xl border bg-white p-4">
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">完成率</p>
+              <p className="text-sm text-gray-500">员工提交</p>
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             </div>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{overview.completionRate.toFixed(1)}%</p>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{overview.submittedCount ?? 0}/{overview.totalRecords}</p>
+            <p className="mt-2 text-xs text-gray-500">未提交 {overview.unsubmittedCount ?? Math.max(overview.totalRecords - (overview.submittedCount || 0), 0)} 人 · {overview.completionRate.toFixed(1)}%</p>
             <div className="mt-2"><DeltaBadge value={overview.completionRateDelta} suffix="%" /></div>
+          </div>
+          <div className="rounded-xl border bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">上级评分</p>
+              <Users className="h-4 w-4 text-purple-600" />
+            </div>
+            <p className="mt-2 text-2xl font-bold text-gray-900">{overview.scoredCount}/{overview.totalRecords}</p>
+            <p className="mt-2 text-xs text-gray-500">待评分 {overview.scorePendingCount ?? overview.pendingCount} 人 · {(overview.scoreCompletionRate ?? 0).toFixed(1)}%</p>
           </div>
           <div className="rounded-xl border bg-white p-4">
             <div className="flex items-center justify-between">
@@ -244,14 +265,6 @@ export function ReportSummaryCard({
             </div>
             <p className="mt-2 text-2xl font-bold text-gray-900">{formatScore(overview.avgScore)}</p>
             <div className="mt-2"><DeltaBadge value={overview.avgScoreDelta} /></div>
-          </div>
-          <div className="rounded-xl border bg-white p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">已评分/参与</p>
-              <Users className="h-4 w-4 text-purple-600" />
-            </div>
-            <p className="mt-2 text-2xl font-bold text-gray-900">{overview.scoredCount}/{overview.totalRecords}</p>
-            <p className="mt-2 text-xs text-gray-500">待评分 {overview.pendingCount} 人</p>
           </div>
           <div className="rounded-xl border bg-white p-4">
             <div className="flex items-center justify-between">
@@ -264,8 +277,9 @@ export function ReportSummaryCard({
         </div>
 
         {summary.focus && (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-            <FocusList title="待完成评分" people={summary.focus.pending || []} emptyText="暂无待评分人员。" accent="amber" />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+            <FocusList title="员工未提交" people={summary.focus.pendingSubmission || []} emptyText="暂无未提交人员。" accent="amber" />
+            <FocusList title="待上级评分" people={summary.focus.pendingScore || summary.focus.pending || []} emptyText="暂无待评分人员。" accent="blue" />
             <FocusList title="低分关注" people={summary.focus.lowScores || []} emptyText="暂无低分关注人员。" accent="red" />
             <FocusList title="环比下降" people={summary.focus.declined || []} emptyText="暂无明显下降人员。" accent="blue" />
             <FocusList title="高分标杆" people={summary.focus.topScores || []} emptyText="暂无高分标杆人员。" accent="green" />
@@ -314,8 +328,15 @@ export function ReportSummaryCard({
               {topDepartments.map((dept) => (
                 <div key={dept.department} className="rounded-lg border bg-gray-50 p-3">
                   <p className="truncate text-sm font-medium text-gray-900">{dept.department}</p>
-                  <p className="mt-2 text-xs text-gray-500">完成率 {dept.completionRate.toFixed(1)}%</p>
-                  <p className="mt-1 text-xs text-gray-500">均分 {formatScore(dept.avgScore)} · 待评 {dept.pendingCount}</p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    提交 {dept.submittedCount ?? 0}/{dept.totalCount} · {dept.completionRate.toFixed(1)}%
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    评分 {dept.scoredCount}/{dept.totalCount} · {(dept.scoreCompletionRate ?? 0).toFixed(1)}%
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    未提交 {dept.unsubmittedCount ?? 0} · 待评分 {dept.scorePendingCount ?? dept.pendingCount} · 均分 {formatScore(dept.avgScore)}
+                  </p>
                 </div>
               ))}
             </div>

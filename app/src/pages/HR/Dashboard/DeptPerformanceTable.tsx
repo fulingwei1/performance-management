@@ -19,6 +19,7 @@ export interface DeptRecord {
   rootDepartment: string;
   subDepartments: SubDeptRecord[];
   completedCount: number;
+  scoredCount?: number;
   totalCount: number;
 }
 
@@ -26,6 +27,7 @@ export interface SubDeptRecord {
   subDepartment: string;
   records: EmployeeRecord[];
   completedCount: number;
+  scoredCount?: number;
   totalCount: number;
 }
 
@@ -38,6 +40,8 @@ export interface EmployeeRecord {
   record: any;
   totalScore: number;
   status: string;
+  taskSubmitted?: boolean;
+  scoreCompleted?: boolean;
 }
 
 const isScoredStatus = (status: string) => status === 'completed' || status === 'scored';
@@ -76,7 +80,7 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
         </CardTitle>
         <p className="text-sm text-gray-500">
           当前显示：
-          {statusFilter === 'all' ? '参与考核人员名单' : statusFilter === 'pending' ? '待评分人员名单' : '已评分人员名单'}
+          {statusFilter === 'all' ? '参与考核人员名单' : statusFilter === 'pending' ? '员工未提交名单' : '员工已提交名单'}
           ，点击员工姓名可查看详情。
         </p>
       </CardHeader>
@@ -96,8 +100,9 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                 </div>
                 <div className="flex items-center gap-4 text-sm">
                   <span className="text-gray-500">共 <span className="font-semibold text-gray-900">{dept.totalCount}</span> 人</span>
-                  <span className="text-emerald-600">已评分 <span className="font-semibold">{dept.completedCount}</span> 人</span>
-                  <span className="text-amber-600">未评分 <span className="font-semibold">{dept.totalCount - dept.completedCount}</span> 人</span>
+                  <span className="text-emerald-600">已提交 <span className="font-semibold">{dept.completedCount}</span> 人</span>
+                  <span className="text-blue-600">已评分 <span className="font-semibold">{dept.scoredCount || 0}</span> 人</span>
+                  <span className="text-amber-600">未提交 <span className="font-semibold">{dept.totalCount - dept.completedCount}</span> 人</span>
                 </div>
               </div>
 
@@ -112,7 +117,8 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                         </div>
                         <div className="flex items-center gap-3 text-xs text-gray-500">
                           <span>共 {subDept.totalCount} 人</span>
-                          <span>已评分 {subDept.completedCount} 人</span>
+                          <span>已提交 {subDept.completedCount} 人</span>
+                          <span>已评分 {subDept.scoredCount || 0} 人</span>
                         </div>
                       </div>
 
@@ -136,7 +142,8 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                                 <TableHead className="text-xs text-center">分组</TableHead>
                                 <TableHead className="text-xs text-center">组内排名</TableHead>
                                 <TableHead className="text-xs text-center">跨部门排名</TableHead>
-                                <TableHead className="text-xs">考评状态</TableHead>
+                                <TableHead className="text-xs">员工任务</TableHead>
+                                <TableHead className="text-xs">评分状态</TableHead>
                                 <TableHead className="text-xs">操作</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -153,7 +160,7 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                                   </TableCell>
                                   <TableCell className="text-xs text-gray-600">{emp.position || '—'}</TableCell>
                                   <TableCell className="text-xs text-right">
-                                    {isScoredStatus(emp.status)
+                                    {emp.scoreCompleted || isScoredStatus(emp.status)
                                       ? <span className="font-semibold text-emerald-600">{emp.totalScore.toFixed(2)}</span>
                                       : <span className="text-gray-400">--</span>}
                                   </TableCell>
@@ -169,9 +176,14 @@ export function DeptPerformanceTable({ currentMonth, deptRecords, sortBy, sortOr
                                   <TableCell className="text-xs text-center">{emp.record?.groupRank || '—'}</TableCell>
                                   <TableCell className="text-xs text-center">{emp.record?.crossDeptRank || '—'}</TableCell>
                                   <TableCell>
-                                    {isScoredStatus(emp.status)
-                                      ? <Badge className="bg-emerald-100 text-emerald-700 text-xs">已评分</Badge>
-                                      : <Badge className="bg-amber-100 text-amber-700 text-xs">待评分</Badge>}
+                                    {emp.taskSubmitted
+                                      ? <Badge className="bg-emerald-100 text-emerald-700 text-xs">已提交</Badge>
+                                      : <Badge className="bg-amber-100 text-amber-700 text-xs">待提交</Badge>}
+                                  </TableCell>
+                                  <TableCell>
+                                    {emp.scoreCompleted || isScoredStatus(emp.status)
+                                      ? <Badge className="bg-blue-100 text-blue-700 text-xs">已评分</Badge>
+                                      : <Badge className="bg-gray-100 text-gray-600 text-xs">待评分</Badge>}
                                   </TableCell>
                                   <TableCell>
                                     <Button variant="ghost" size="sm" className="h-6 w-6" onClick={() => onEmployeeClick(emp)}>

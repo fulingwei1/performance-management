@@ -154,6 +154,16 @@ export function GMAnalytics() {
 
   const currentMonthCompletedRecords = useMemo(
     () => currentMonthAssessmentRecords.filter(
+      (r) => {
+        const hasSubmittedText = Boolean(String(r.selfSummary || '').trim() || String(r.nextMonthPlan || '').trim());
+        return hasSubmittedText || ['submitted', 'completed', 'scored'].includes(String(r.status || ''));
+      }
+    ),
+    [currentMonthAssessmentRecords]
+  );
+
+  const currentMonthScoredRecords = useMemo(
+    () => currentMonthAssessmentRecords.filter(
       (r) =>
         Number(r.totalScore || 0) > 0 &&
         (r.status === 'completed' || r.status === 'scored')
@@ -199,10 +209,11 @@ export function GMAnalytics() {
       activeCompanyEmployees: activeCompanyEmployees.length,
       currentAssessmentCount: currentMonthAssessmentRecords.length,
       currentCompleted: currentMonthCompletedRecords.length,
+      currentScored: currentMonthScoredRecords.length,
       currentPending: Math.max(currentMonthAssessmentRecords.length - currentMonthCompletedRecords.length, 0),
       currentAvg,
     };
-  }, [realRecords, activeCompanyEmployees, currentMonth, currentMonthCompletedRecords, currentMonthAssessmentRecords]);
+  }, [realRecords, activeCompanyEmployees, currentMonth, currentMonthCompletedRecords, currentMonthScoredRecords, currentMonthAssessmentRecords]);
 
   const peopleList = useMemo(() => {
     const currentRecordByEmployeeId = new Map<string, any>(
@@ -577,9 +588,10 @@ export function GMAnalytics() {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">完成考评人数</p>
+                    <p className="text-sm text-gray-500">完成任务人数</p>
                     <p className="text-2xl font-bold mt-1">{stats.currentCompleted}</p>
-                    <p className="text-xs text-green-500 mt-1">点击查看完成人员</p>
+                    <p className="text-xs text-green-500 mt-1">已提交总结和计划</p>
+                    <p className="text-xs text-gray-400 mt-1">其中已评分 {stats.currentScored} 人</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -592,9 +604,9 @@ export function GMAnalytics() {
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">未完成人数</p>
+                    <p className="text-sm text-gray-500">未完成任务人数</p>
                     <p className="text-2xl font-bold mt-1">{stats.currentPending}</p>
-                    <p className="text-xs text-amber-600 mt-1">点击查看未完成人员</p>
+                    <p className="text-xs text-amber-600 mt-1">未提交总结/计划</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -625,8 +637,13 @@ export function GMAnalytics() {
                           <p className="mt-1 text-xs text-gray-400">{employee.position || '—'}</p>
                         </div>
                         <Badge variant={currentCompletedEmployeeIds.has(employee.id) ? 'default' : 'secondary'}>
-                          {currentCompletedEmployeeIds.has(employee.id) ? '已评' : '待评'}
+                          {currentCompletedEmployeeIds.has(employee.id) ? '已提交' : '待提交'}
                         </Badge>
+                        {employee.record && (
+                          <Badge variant={Number(employee.record.totalScore || 0) > 0 ? 'default' : 'secondary'} className="ml-1">
+                            {Number(employee.record.totalScore || 0) > 0 ? '已评分' : '待评分'}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   ))}
