@@ -14,7 +14,7 @@ import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
 import { EmailService } from './email.service';
 import { generateMonthlyReportCharts } from './chart.service';
-import { WecomWebhookService } from './wecomWebhook.service';
+import { WecomWebhookService, sendAppMessage } from './wecomWebhook.service';
 import { resolveEmployeeWecomUserId } from './wecomDirectory.service';
 import { formatPublicationReadinessMessage, validatePublicationReadiness } from './publicationReadiness.service';
 import { SatisfactionSurveyService } from './satisfactionSurvey.service';
@@ -62,6 +62,7 @@ const LOGIN_METHOD_GUIDE = '登录方式：姓名/工号 + 身份证后六位。
 const EMPLOYEE_SUMMARY_OPERATION_GUIDE = '登录系统 → 月度总结 → 填写工作总结和下月计划；标签和合理化建议为非强制；绩效结果会关联薪资绩效工资。';
 const MANAGER_SCORING_OPERATION_GUIDE = '登录系统 → 部门经理工作台/评分 → 完成打分、评价语和标签；查看部门员工报表；结果会关联薪资绩效工资。';
 const TASK_GENERATED_OPERATION_GUIDE = `员工：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} 经理：${MANAGER_SCORING_OPERATION_GUIDE}`;
+const DEFAULT_COMPLETION_REPORT_RECIPIENT_NAMES = ['郑汝才', '骆奕兴', '符凌维'];
 
 export class SchedulerService {
   private static initialized = false;
@@ -86,6 +87,7 @@ export class SchedulerService {
       logger.info('[Scheduler] 执行每日催办任务...');
       try {
         await this.dailyReminderWorkflow();
+        await this.sendMonthlyCompletionReportIfReady(this.getPreviousMonthLabel(new Date()));
         await this.checkOverdueTodos();
       } catch (err) {
         logger.error(`[Scheduler] 每日催办出错: ${err}`);
@@ -149,6 +151,11 @@ export class SchedulerService {
   static getPerformanceDeadline(month: string): Date {
     const [yearText, monthText] = month.split('-');
     return new Date(Number(yearText), Number(monthText), 7);
+  }
+
+  private static getPreviousMonthLabel(referenceDate: Date = new Date()): string {
+    const previousMonthDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 1, 1);
+    return `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
   }
 
   /**
@@ -1444,13 +1451,31 @@ export class SchedulerService {
   }
 
   private static async writeAutomationLog(
-    jobType: 'send_reminders',
+    jobType: 'send_reminders' | 'monthly_completion_report',
     month: string | undefined,
     status: 'success' | 'failed' | 'skipped',
     details: Record<string, unknown>,
     durationMs: number,
   ) {
-    if (USE_MEMORY_DB) return;
+    if (USE_MEMORY_DB) {
+      if (!memoryStore.automationLogs) {
+        memoryStore.automationLogs = new Map();
+      }
+      const id = randomUUID();
+      memoryStore.automationLogs.set(id, {
+        id,
+        job_type: jobType,
+        jobType,
+        month: month || null,
+        status,
+        details,
+        duration_ms: durationMs,
+        durationMs,
+        executed_at: new Date(),
+        executedAt: new Date(),
+      } as any);
+      return;
+    }
     try {
       await query(`
         INSERT INTO automation_logs (id, job_type, month, status, details, duration_ms, executed_at)
@@ -1623,6 +1648,236 @@ export class SchedulerService {
     };
   }
 
+  static async sendMonthlyCompletionReportIfReady(month: string): Promise<{
+    month: string;
+    sent: boolean;
+    reason: string;
+    recipientCount?: number;
+    completedCount?: number;
+    eligibleEmployees?: number;
+  }> {
+    const startedAt = Date.now();
+    const targetMonth = String(month || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(targetMonth)) {
+      return { month: targetMonth, sent: false, reason: '月份格式错误' };
+    }
+
+    const alreadySent = await this.hasAutomationLog('monthly_completion_report', targetMonth, 'success');
+    if (alreadySent) {
+      return { month: targetMonth, sent: false, reason: '已发送' };
+    }
+
+    const allEmployees = await EmployeeModel.findAll();
+    const rankingConfig = await getPerformanceRankingConfig();
+    const activeEmployeeIds = new Set<string>(
+      allEmployees
+        .filter((employee: any) => !employee.status || employee.status === 'active')
+        .map((employee: any) => String(employee.id))
+    );
+    const eligibleEmployees = allEmployees
+      .filter((employee: any) => isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: activeEmployeeIds }));
+    const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
+
+    if (eligibleEmployees.length === 0) {
+      return { month: targetMonth, sent: false, reason: '当前没有参与考核的员工' };
+    }
+
+    const records = (await PerformanceModel.findByMonth(targetMonth))
+      .filter((record) => eligibleEmployeeIds.has(record.employeeId));
+    const completedRecords = records.filter((record) => record.status === 'completed' || record.status === 'scored');
+    const completedEmployeeIds = new Set(completedRecords.map((record) => record.employeeId));
+
+    if (completedEmployeeIds.size < eligibleEmployees.length) {
+      return {
+        month: targetMonth,
+        sent: false,
+        reason: `未全部完成: ${completedEmployeeIds.size}/${eligibleEmployees.length}`,
+        completedCount: completedEmployeeIds.size,
+        eligibleEmployees: eligibleEmployees.length,
+      };
+    }
+
+    const recipientNames = this.getCompletionReportRecipientNames();
+    const recipients: Array<{ employee: any; wecomUserId: string }> = [];
+    const missingRecipients: string[] = [];
+    for (const name of recipientNames) {
+      const matches = allEmployees.filter((employee: any) => String(employee.name || '').trim() === name);
+      const employee = matches.length === 1 ? matches[0] : matches.find((item: any) => item.status === 'active') || matches[0];
+      if (!employee) {
+        missingRecipients.push(name);
+        continue;
+      }
+      const wecomUserId = await resolveEmployeeWecomUserId({
+        id: employee.id,
+        name: employee.name,
+        wecomUserId: employee.wecomUserId,
+      });
+      if (!wecomUserId) {
+        missingRecipients.push(name);
+        continue;
+      }
+      recipients.push({ employee, wecomUserId });
+    }
+
+    if (recipients.length === 0) {
+      const reason = `未找到报告接收人的企业微信ID: ${missingRecipients.join('、') || recipientNames.join('、')}`;
+      await this.writeAutomationLog('monthly_completion_report', targetMonth, 'failed', { reason, missingRecipients }, Date.now() - startedAt);
+      return { month: targetMonth, sent: false, reason };
+    }
+
+    const report = this.buildMonthlyCompletionReportMarkdown(targetMonth, eligibleEmployees.length, completedRecords, recipients.map((item) => item.employee.name));
+    const sent = await sendAppMessage(
+      Array.from(new Set(recipients.map((recipient) => recipient.wecomUserId))).join('|'),
+      report,
+    );
+
+    const details = {
+      month: targetMonth,
+      eligibleEmployees: eligibleEmployees.length,
+      completedCount: completedEmployeeIds.size,
+      recipientNames: recipients.map((recipient) => recipient.employee.name),
+      recipientWecomUserIds: recipients.map((recipient) => recipient.wecomUserId),
+      missingRecipients,
+      sent,
+    };
+    await this.writeAutomationLog('monthly_completion_report', targetMonth, sent ? 'success' : 'failed', details, Date.now() - startedAt);
+
+    return {
+      month: targetMonth,
+      sent,
+      reason: sent ? '综合绩效报告已发送' : '企业微信发送失败',
+      recipientCount: recipients.length,
+      completedCount: completedEmployeeIds.size,
+      eligibleEmployees: eligibleEmployees.length,
+    };
+  }
+
+  private static getCompletionReportRecipientNames(): string[] {
+    const configured = String(process.env.MONTHLY_COMPLETION_REPORT_RECIPIENT_NAMES || '').trim();
+    if (!configured) return DEFAULT_COMPLETION_REPORT_RECIPIENT_NAMES;
+    return configured
+      .split(/[,，|、\n]/)
+      .map((name) => name.trim())
+      .filter(Boolean);
+  }
+
+  private static buildMonthlyCompletionReportMarkdown(
+    month: string,
+    eligibleCount: number,
+    completedRecords: any[],
+    recipientNames: string[],
+  ): string {
+    const scores = completedRecords
+      .map((record) => Number(record.totalScore ?? (record as any).total_score ?? 0))
+      .filter((score) => Number.isFinite(score) && score > 0);
+    const avgScore = scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 0;
+    const coefficients = scores.map((score) => levelToScore(scoreToLevel(score)));
+    const avgCoefficient = coefficients.length ? coefficients.reduce((sum, coefficient) => sum + coefficient, 0) / coefficients.length : 0;
+
+    const levelCounts = { L5: 0, L4: 0, L3: 0, L2: 0, L1: 0 };
+    scores.forEach((score) => {
+      levelCounts[scoreToLevel(score)]++;
+    });
+
+    const departmentMap = new Map<string, { count: number; scoreTotal: number }>();
+    completedRecords.forEach((record) => {
+      const department = String(record.department || '未分配');
+      const score = Number(record.totalScore ?? (record as any).total_score ?? 0);
+      if (!Number.isFinite(score) || score <= 0) return;
+      const current = departmentMap.get(department) || { count: 0, scoreTotal: 0 };
+      current.count++;
+      current.scoreTotal += score;
+      departmentMap.set(department, current);
+    });
+    const departmentLines = Array.from(departmentMap.entries())
+      .map(([department, value]) => ({
+        department,
+        count: value.count,
+        avgScore: value.count ? value.scoreTotal / value.count : 0,
+      }))
+      .sort((a, b) => b.avgScore - a.avgScore)
+      .slice(0, 6)
+      .map((item) => `- ${item.department}：${item.count}人，均分 ${item.avgScore.toFixed(2)}`);
+
+    const rankedRecords = completedRecords
+      .map((record) => ({
+        name: record.employeeName || (record as any).employee_name || record.employeeId,
+        department: record.department || '未分配',
+        score: Number(record.totalScore ?? (record as any).total_score ?? 0),
+      }))
+      .filter((item) => Number.isFinite(item.score) && item.score > 0)
+      .sort((a, b) => b.score - a.score);
+    const topLines = rankedRecords.slice(0, 5).map((item, index) => `${index + 1}. ${item.name}（${item.department}，${item.score.toFixed(2)}）`);
+    const attentionLines = rankedRecords.slice(-5).reverse().map((item, index) => `${index + 1}. ${item.name}（${item.department}，${item.score.toFixed(2)}）`);
+
+    const reportUrl = this.buildPerformanceReportUrl(month);
+    return [
+      `## 📊 ${month} 绩效考核综合报告`,
+      `> 接收人：${recipientNames.join('、')}`,
+      `> 参与考核人数：**${eligibleCount}**`,
+      `> 已完成评分：**${completedRecords.length}**`,
+      `> 完成率：**100%**`,
+      `> 平均绩效系数：**${avgScore.toFixed(2)}**`,
+      `> 平均薪资绩效系数：**${avgCoefficient.toFixed(2)}**`,
+      `> 等级分布：L5 ${levelCounts.L5} / L4 ${levelCounts.L4} / L3 ${levelCounts.L3} / L2 ${levelCounts.L2} / L1 ${levelCounts.L1}`,
+      '',
+      '### 部门横向概览',
+      ...(departmentLines.length ? departmentLines : ['- 暂无部门统计']),
+      '',
+      '### 本月高分关注',
+      ...(topLines.length ? topLines : ['- 暂无高分记录']),
+      '',
+      '### 本月低分/面谈关注',
+      ...(attentionLines.length ? attentionLines : ['- 暂无低分记录']),
+      '',
+      `查看完整分析：[绩效结果分析中心](${reportUrl})`,
+      '',
+      '说明：该报告在本月所有参与人员完成评分后自动发送；同一月份默认只发送一次。',
+    ].join('\n');
+  }
+
+  private static buildPerformanceReportUrl(month: string): string {
+    const configured = String(process.env.PERFORMANCE_SYSTEM_URL || process.env.FRONTEND_URL || '').trim();
+    const fallback = 'http://8.138.230.46/performance-management/hr/analytics';
+    const targetPath = `/performance-management/hr/analytics?month=${encodeURIComponent(month)}`;
+    if (!configured) return `${fallback}?month=${encodeURIComponent(month)}`;
+    try {
+      const parsed = new URL(configured);
+      if (parsed.pathname.includes('/performance-management')) {
+        parsed.pathname = '/performance-management/hr/analytics';
+      } else {
+        parsed.pathname = targetPath.split('?')[0];
+      }
+      parsed.search = `?month=${encodeURIComponent(month)}`;
+      return parsed.toString();
+    } catch {
+      return `${fallback}?month=${encodeURIComponent(month)}`;
+    }
+  }
+
+  private static async hasAutomationLog(jobType: string, month: string, status?: string): Promise<boolean> {
+    if (USE_MEMORY_DB) {
+      return Array.from((memoryStore.automationLogs || new Map()).values()).some((log: any) => (
+        (log.job_type || log.jobType) === jobType
+        && log.month === month
+        && (!status || log.status === status)
+      ));
+    }
+
+    const params: any[] = [jobType, month];
+    let statusSql = '';
+    if (status) {
+      params.push(status);
+      statusSql = ' AND status = $3';
+    }
+    const rows = await query(`
+      SELECT COUNT(*) AS count
+      FROM automation_logs
+      WHERE job_type = $1 AND month = $2${statusSql}
+    `, params);
+    return Number(rows[0]?.count || 0) > 0;
+  }
+
   /**
    * 每月 8 日自动发布上月绩效（兜底）
    * 条件：上月所有 eligible 员工的记录都是 completed/scored 状态，且未发布
@@ -1735,6 +1990,11 @@ export class SchedulerService {
       completedCount: completedRecords.length,
       avgScore: parseFloat(avgScore.toFixed(2)),
     });
+
+    const completionReportResult = await this.sendMonthlyCompletionReportIfReady(targetMonth);
+    if (completionReportResult.sent) {
+      logger.info(`[Scheduler] ${targetMonth} 全员完成综合绩效报告已发送`);
+    }
 
     // 发布后自动归档
     try {

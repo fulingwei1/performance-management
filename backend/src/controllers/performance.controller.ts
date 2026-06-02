@@ -1074,6 +1074,12 @@ export const performanceController = {
       link: `/employee/dashboard?month=${record.month}`,
     });
 
+    // 最后一名员工完成评分后，自动给指定管理层发送月度综合绩效报告。
+    // 这里采用非阻塞触发，避免企业微信发送波动影响经理提交评分。
+    void SchedulerService.sendMonthlyCompletionReportIfReady(record.month).catch((error) => {
+      console.warn(`[Performance] 发送 ${record.month} 全员完成综合报告失败:`, error);
+    });
+
     res.json({
       success: true,
       data: record,
