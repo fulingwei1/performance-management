@@ -6,7 +6,7 @@ import { EmployeeModel } from '../models/employee.model';
 import { PerformanceModel } from '../models/performance.model';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { scoreToLevel, levelToScore } from '../utils/helpers';
-import { getPerformanceRankingConfig } from './performanceRankingConfig.service';
+import { getPerformanceRankingConfig, savePerformanceRankingConfig } from './performanceRankingConfig.service';
 import { isSelfAssessmentEligibleRecord, resolveAssessorId } from './selfAssessmentEligibility.service';
 import { resolveTaskTemplateForEmployee } from './taskTemplateResolver.service';
 import { ProgressMonitorService } from './progressMonitor.service';
@@ -321,20 +321,66 @@ export class SchedulerService {
     };
   }
 
-  static async deletePerformanceTaskForEmployee(employeeId: string, month: string): Promise<{
+  private static async excludeEmployeeFromAssessment(employeeId: string, operatedBy: string = 'system'): Promise<boolean> {
+    const normalizedEmployeeId = String(employeeId || '').trim();
+    if (!normalizedEmployeeId) return false;
+
+    const config = await getPerformanceRankingConfig();
+    const alreadyExcluded = (config.participation.excludedEmployeeIds || [])
+      .some((id) => String(id || '').trim() === normalizedEmployeeId);
+    const wasExplicitlyIncluded = (config.participation.includedEmployeeIds || [])
+      .some((id) => String(id || '').trim() === normalizedEmployeeId);
+    const excludedEmployeeIds = Array.from(new Set([
+      ...(config.participation.excludedEmployeeIds || []),
+      normalizedEmployeeId,
+    ]));
+    const includedEmployeeIds = (config.participation.includedEmployeeIds || [])
+      .filter((id) => String(id || '').trim() !== normalizedEmployeeId);
+
+    if (alreadyExcluded && !wasExplicitlyIncluded) {
+      return false;
+    }
+
+    await savePerformanceRankingConfig({
+      ...config,
+      participation: {
+        ...config.participation,
+        includedEmployeeIds,
+        excludedEmployeeIds,
+      },
+    }, operatedBy);
+    return true;
+  }
+
+  static async deletePerformanceTaskForEmployee(employeeId: string, month: string, options: {
+    excludeFromAssessment?: boolean;
+    operatedBy?: string;
+  } = {}): Promise<{
     month: string;
     employeeId: string;
     recordDeleted: boolean;
     todoDeletedCount: number;
     notificationDeletedCount: number;
+    assessmentExcluded: boolean;
   }> {
-    const record = await PerformanceModel.findByEmployeeIdAndMonth(employeeId, month);
-    if (!record) {
-      return { month, employeeId, recordDeleted: false, todoDeletedCount: 0, notificationDeletedCount: 0 };
-    }
-
     if (await AssessmentPublicationModel.isPublished(month)) {
       throw new Error('该月份绩效结果已发布，如需删除请先取消发布');
+    }
+
+    const assessmentExcluded = options.excludeFromAssessment === true
+      ? await this.excludeEmployeeFromAssessment(employeeId, options.operatedBy || 'system')
+      : false;
+
+    const record = await PerformanceModel.findByEmployeeIdAndMonth(employeeId, month);
+    if (!record) {
+      return {
+        month,
+        employeeId,
+        recordDeleted: false,
+        todoDeletedCount: 0,
+        notificationDeletedCount: 0,
+        assessmentExcluded,
+      };
     }
 
     const recordDeleted = await PerformanceModel.delete(record.id);
@@ -361,6 +407,7 @@ export class SchedulerService {
       recordDeleted,
       todoDeletedCount: (todoResult as any).affectedRows ?? (todoResult as any).rowCount ?? 0,
       notificationDeletedCount: (notificationResult as any).affectedRows ?? (notificationResult as any).rowCount ?? 0,
+      assessmentExcluded,
     };
   }
 

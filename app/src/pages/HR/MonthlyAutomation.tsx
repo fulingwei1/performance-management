@@ -51,6 +51,7 @@ export default function MonthlyAutomation() {
   const [salaryPushConfirmed, setSalaryPushConfirmed] = useState(false);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [excludeFromAssessmentOnDelete, setExcludeFromAssessmentOnDelete] = useState(true);
 
   const loadProgress = useCallback(async (month?: string) => {
     const m = month || selectedMonth;
@@ -79,7 +80,7 @@ export default function MonthlyAutomation() {
       const r = await employeeApi.getAll();
       if (r.success) {
         const list = Array.isArray(r.data) ? r.data : r.data?.employees || [];
-        setEmployees(list.filter((employee: EmployeeOption) => !employee.status || employee.status === 'active'));
+        setEmployees(list);
       }
     } catch {
       toast.error('加载员工列表失败');
@@ -114,7 +115,7 @@ export default function MonthlyAutomation() {
     }
     const employee = employees.find((item) => item.id === selectedEmployeeId);
     if (action === 'delete' && !options?.confirmed) {
-      const ok = window.confirm(`确认删除 ${employee?.name || selectedEmployeeId} 的 ${selectedMonth} 绩效任务吗？会同步清理该员工该月待办/通知，但不会影响其他员工。`);
+      const ok = window.confirm(`确认删除 ${employee?.name || selectedEmployeeId} 的 ${selectedMonth} 绩效任务吗？会同步清理该员工该月待办/通知${excludeFromAssessmentOnDelete ? '，并加入考核排除名单，后续不再生成和催办' : ''}。`);
       if (!ok) return;
     }
 
@@ -127,7 +128,11 @@ export default function MonthlyAutomation() {
           : '/employee-task';
       const r = await apiCall(path, {
         method: action === 'delete' ? 'DELETE' : 'POST',
-        body: JSON.stringify({ employeeId: selectedEmployeeId, month: selectedMonth }),
+        body: JSON.stringify({
+          employeeId: selectedEmployeeId,
+          month: selectedMonth,
+          ...(action === 'delete' ? { excludeFromAssessment: excludeFromAssessmentOnDelete } : {}),
+        }),
       });
       if (r.success) {
         toast.success(r.message || '操作成功');
@@ -510,12 +515,13 @@ export default function MonthlyAutomation() {
                 <option value="">请选择员工</option>
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.name}（{employee.id}）{employee.department ? ` - ${employee.department}${employee.subDepartment ? `/${employee.subDepartment}` : ''}` : ''}
+                    {employee.name}（{employee.id}）{employee.status && employee.status !== 'active' ? `【${employee.status === 'disabled' ? '已禁用/离职' : employee.status}】` : ''}
+                    {employee.department ? ` - ${employee.department}${employee.subDepartment ? `/${employee.subDepartment}` : ''}` : ''}
                   </option>
                 ))}
               </select>
               <div className="mt-2 text-xs text-gray-500">
-                月份使用右上角当前选择：{selectedMonth}。单独生成仍会校验是否参与考核、是否有有效直属上级、是否匹配考核模板。
+                月份使用右上角当前选择：{selectedMonth}。下拉包含已禁用/离职员工，便于处理“任务生成后离职”的情况。
               </div>
             </div>
 
@@ -526,6 +532,21 @@ export default function MonthlyAutomation() {
               </div>
             </div>
           </div>
+
+          <label className="flex items-start gap-3 rounded-lg border border-orange-500/30 bg-orange-500/10 p-3 text-sm text-orange-50">
+            <input
+              type="checkbox"
+              checked={excludeFromAssessmentOnDelete}
+              onChange={(event) => setExcludeFromAssessmentOnDelete(event.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="font-medium">删除员工任务时，同时加入考核排除名单</span>
+              <span className="mt-1 block text-xs text-orange-100/80">
+                适用于员工在考核周期内离职：删除该月任务、清理待办/通知，并从应考人数、进度统计、后续催办和后续任务生成中排除。正式人事状态仍建议在人事档案系统里维护后重新上传。
+              </span>
+            </span>
+          </label>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ActionCard
@@ -540,7 +561,7 @@ export default function MonthlyAutomation() {
 
             <ActionCard
               title="删除该员工任务"
-              description="删除所选员工该月份绩效记录，并清理该员工该月工作总结待办/通知和对应评分待办。"
+              description="删除该月份绩效记录并清理待办/通知；勾选上方选项后，会把离职员工从考核范围中排除。"
               buttonLabel="删除该员工任务"
               buttonClassName="bg-red-600 hover:bg-red-700"
               disabled={loading || !selectedEmployeeId}

@@ -54,4 +54,38 @@ describe('automationController deadline reminders', () => {
     expect(checkOverdueTodos).toHaveBeenCalledTimes(1);
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
+
+  it('should pass excludeFromAssessment when HR deletes a resigned employee task', async () => {
+    const deletePerformanceTaskForEmployee = jest
+      .spyOn(SchedulerService, 'deletePerformanceTaskForEmployee')
+      .mockResolvedValue({
+        month: '2026-05',
+        employeeId: 'e001',
+        recordDeleted: true,
+        todoDeletedCount: 1,
+        notificationDeletedCount: 1,
+        assessmentExcluded: true,
+      });
+
+    const json = jest.fn();
+    const res = { json } as any;
+    const next = jest.fn();
+
+    automationController.deleteEmployeeTask({
+      body: { employeeId: 'e001', month: '2026-05', excludeFromAssessment: true },
+      query: {},
+      user: { userId: 'hr001', role: 'hr' },
+    } as any, res, next);
+    await new Promise(process.nextTick);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(deletePerformanceTaskForEmployee).toHaveBeenCalledWith('e001', '2026-05', {
+      excludeFromAssessment: true,
+      operatedBy: 'hr001',
+    });
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      message: expect.stringContaining('已加入考核排除名单'),
+    }));
+  });
 });

@@ -56,6 +56,7 @@ async function distinctPerformanceMonths(): Promise<string[]> {
 }
 
 const booleanParam = (value: unknown): boolean => value === true || value === 'true';
+const booleanBodyOrQueryParam = (req: Request, key: string): boolean => booleanParam(req.body?.[key]) || booleanParam(req.query?.[key]);
 
 const requiredEmployeeTaskParams = (req: Request): { employeeId?: string; month?: string; error?: string } => {
   const employeeId = String(req.body?.employeeId || req.query?.employeeId || '').trim();
@@ -309,7 +310,11 @@ export const automationController = {
 
     const startedAt = Date.now();
     try {
-      const result = await SchedulerService.deletePerformanceTaskForEmployee(params.employeeId, params.month);
+      const excludeFromAssessment = booleanBodyOrQueryParam(req, 'excludeFromAssessment');
+      const result = await SchedulerService.deletePerformanceTaskForEmployee(params.employeeId, params.month, {
+        excludeFromAssessment,
+        operatedBy: req.user?.userId,
+      });
       await writeAutomationLog('delete_employee_task', params.month, 'success', {
         ...result,
         operatedBy: req.user?.userId,
@@ -317,8 +322,8 @@ export const automationController = {
       return res.json({
         success: true,
         message: result.recordDeleted
-          ? `已删除 ${params.employeeId} 的 ${params.month} 绩效任务，并清理关联待办/通知`
-          : `${params.employeeId} 的 ${params.month} 绩效任务不存在，无需删除`,
+          ? `已删除 ${params.employeeId} 的 ${params.month} 绩效任务，并清理关联待办/通知${result.assessmentExcluded ? '；已加入考核排除名单' : ''}`
+          : `${params.employeeId} 的 ${params.month} 绩效任务不存在${result.assessmentExcluded ? '，已加入考核排除名单' : '，无需删除'}`,
         data: result,
       });
     } catch (error) {
