@@ -383,6 +383,15 @@ export const exportApi = {
 };
 
 export const salaryIntegrationApi = {
+  getQuarterlyCoefficients: (year: number, quarter: number) =>
+    request(`/integrations/salary/quarterly-coefficients?year=${encodeURIComponent(String(year))}&quarter=${encodeURIComponent(String(quarter))}`),
+
+  exportQuarterlyCoefficients: (year: number, quarter: number) =>
+    secureDownload(
+      `${API_BASE_URL}/integrations/salary/quarterly-coefficients/export?year=${encodeURIComponent(String(year))}&quarter=${encodeURIComponent(String(quarter))}`,
+      `季度绩效系数_${year}-Q${quarter}_${Date.now()}.xlsx`
+    ),
+
   pushResults: (data: {
     periodType: 'monthly' | 'quarterly';
     year: number;

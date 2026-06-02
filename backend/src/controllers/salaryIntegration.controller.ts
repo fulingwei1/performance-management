@@ -25,6 +25,42 @@ export const salaryIntegrationController = {
   }),
 
   /**
+   * GET /api/integrations/salary/quarterly-coefficients?year=2026&quarter=2
+   * 预览季度绩效系数，不写入薪资系统。
+   */
+  previewQuarterlyCoefficients: asyncHandler(async (req: Request, res: Response) => {
+    const year = Number(req.query.year);
+    const quarter = Number(req.query.quarter);
+    if (!year || !quarter || quarter < 1 || quarter > 4) {
+      return res.status(400).json({ success: false, message: '请提供有效的 year 和 quarter (1-4)' });
+    }
+
+    const dataset = await SalaryIntegrationService.buildQuarterlyCoefficientDataset(year, quarter);
+    res.json({
+      success: true,
+      data: dataset,
+    });
+  }),
+
+  /**
+   * GET /api/integrations/salary/quarterly-coefficients/export?year=2026&quarter=2
+   * 导出季度绩效系数 Excel，供薪资核算留档或手动导入。
+   */
+  exportQuarterlyCoefficients: asyncHandler(async (req: Request, res: Response) => {
+    const year = Number(req.query.year);
+    const quarter = Number(req.query.quarter);
+    if (!year || !quarter || quarter < 1 || quarter > 4) {
+      return res.status(400).json({ success: false, message: '请提供有效的 year 和 quarter (1-4)' });
+    }
+
+    const buffer = await SalaryIntegrationService.exportQuarterlyCoefficientWorkbook(year, quarter);
+    const filename = encodeURIComponent(`季度绩效系数_${year}-Q${quarter}.xlsx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${filename}`);
+    res.send(buffer);
+  }),
+
+  /**
    * POST /api/salary-integration/push
    * 管理员选择按月或按季度推送绩效到薪资系统
    */

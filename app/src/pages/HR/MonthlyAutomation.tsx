@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   Play, Bell, Archive, Send, FileText, CheckCircle,
   Users, RefreshCw, Calendar, TrendingUp, Zap, ShieldCheck,
-  Database, Trash2, UserRoundCheck
+  Database, Trash2, UserRoundCheck, Eye, Download
 } from 'lucide-react';
 import { employeeApi, request, salaryIntegrationApi } from '@/services/api';
 import { getDefaultAssessmentMonth } from '@/lib/assessmentMonth';
@@ -41,6 +41,30 @@ interface EmployeeOption {
   status?: string;
 }
 
+interface QuarterlyCoefficientPreview {
+  quarter: string;
+  effectiveQuarter: string;
+  summary: {
+    employeeCount: number;
+    avgQuarterScore: number;
+    avgCoefficient: number;
+    minCoefficient: number;
+    maxCoefficient: number;
+    levelCounts?: Record<string, number>;
+  };
+  results: Array<{
+    employeeExternalId: string;
+    employeeName: string;
+    department?: string;
+    subDepartment?: string;
+    quarterScore: number;
+    monthsCount: number;
+    rank: number;
+    level: string;
+    coefficient: number;
+  }>;
+}
+
 export default function MonthlyAutomation() {
   const [selectedMonth, setSelectedMonth] = useState(() => getDefaultAssessmentMonth());
   const [progress, setProgress] = useState<ProgressData | null>(null);
@@ -54,6 +78,7 @@ export default function MonthlyAutomation() {
   const [employeeTaskSearch, setEmployeeTaskSearch] = useState('');
   const [excludeFromAssessmentOnDelete, setExcludeFromAssessmentOnDelete] = useState(true);
   const [allowDuplicateReminder, setAllowDuplicateReminder] = useState(false);
+  const [quarterlyPreview, setQuarterlyPreview] = useState<QuarterlyCoefficientPreview | null>(null);
 
   const loadProgress = useCallback(async (month?: string) => {
     const m = month || selectedMonth;
@@ -286,6 +311,35 @@ export default function MonthlyAutomation() {
     }
   };
 
+  const previewQuarterlyCoefficients = async () => {
+    setLoading(true);
+    try {
+      const result = await salaryIntegrationApi.getQuarterlyCoefficients(selectedYear, selectedQuarter);
+      if (result.success) {
+        setQuarterlyPreview(result.data);
+        toast.success(`已生成 ${selectedYear}-Q${selectedQuarter} 季度绩效系数预览`);
+      } else {
+        toast.error(result.message || '生成季度绩效系数失败');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '生成季度绩效系数失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportQuarterlyCoefficients = async () => {
+    setLoading(true);
+    try {
+      await salaryIntegrationApi.exportQuarterlyCoefficients(selectedYear, selectedQuarter);
+      toast.success('季度绩效系数 Excel 已开始下载');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : '导出季度绩效系数失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const publishWithOptionalDistributionExemption = () => {
     const useExemption = window.confirm('如果只是普通发布点“取消”；如果需要因为 2-7-1 分布不满足但仍要发布，点“确定”并填写豁免原因。');
     if (!useExemption) {
@@ -420,8 +474,9 @@ export default function MonthlyAutomation() {
           </p>
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-6 flex flex-col lg:flex-row lg:items-end gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
+        <div className="bg-gray-900 rounded-lg p-6 space-y-5">
+          <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 flex-1">
             <div>
               <label className="text-xs text-gray-400">推送口径</label>
               <select
@@ -448,36 +503,134 @@ export default function MonthlyAutomation() {
                 {sourcePeriodLabel}
               </div>
             </div>
-          </div>
-
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 lg:max-w-md">
-            <div className="font-medium">管理员确认后才会写入薪资系统</div>
-            <div className="mt-1 text-amber-200/80">
-              本次将按 {sourcePeriodLabel} 推送，影响薪资周期：{effectivePeriodLabel}。确认前不会进入绩效工资计算。
             </div>
+
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 lg:max-w-md">
+              <div className="font-medium">管理员确认后才会写入薪资系统</div>
+              <div className="mt-1 text-amber-200/80">
+                本次将按 {sourcePeriodLabel} 推送，影响薪资周期：{effectivePeriodLabel}。确认前不会进入绩效工资计算。
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSalaryPushConfirmed(true);
+                toast.success('已完成管理员确认，可以推送到薪资系统');
+              }}
+              disabled={loading || salaryPushConfirmed}
+              className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              {salaryPushConfirmed ? '已确认' : '系统管理员确认'}
+            </button>
+
+            <button
+              onClick={pushToSalary}
+              disabled={loading || !salaryPushConfirmed}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+              推送到薪资系统
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setSalaryPushConfirmed(true);
-              toast.success('已完成管理员确认，可以推送到薪资系统');
-            }}
-            disabled={loading || salaryPushConfirmed}
-            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            {salaryPushConfirmed ? '已确认' : '系统管理员确认'}
-          </button>
+          <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-sm font-medium text-purple-100">季度绩效系数预览与导出</div>
+                <div className="mt-1 text-xs text-purple-100/70">
+                  按 {selectedYear}-Q{selectedQuarter} 的已完成月度绩效汇总，生成每个人给薪资系统使用的绩效系数。
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={previewQuarterlyCoefficients}
+                  disabled={loading}
+                  className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Eye className="w-4 h-4" />
+                  预览季度系数
+                </button>
+                <button
+                  type="button"
+                  onClick={exportQuarterlyCoefficients}
+                  disabled={loading}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Download className="w-4 h-4" />
+                  导出季度系数
+                </button>
+              </div>
+            </div>
 
-          <button
-            onClick={pushToSalary}
-            disabled={loading || !salaryPushConfirmed}
-            className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            推送到薪资系统
-          </button>
+            {quarterlyPreview && (
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm md:grid-cols-5">
+                  <div className="rounded bg-gray-950/50 p-3">
+                    <div className="text-gray-400">人数</div>
+                    <div className="text-white text-xl font-semibold">{quarterlyPreview.summary.employeeCount}</div>
+                  </div>
+                  <div className="rounded bg-gray-950/50 p-3">
+                    <div className="text-gray-400">季度均分</div>
+                    <div className="text-white text-xl font-semibold">{quarterlyPreview.summary.avgQuarterScore}</div>
+                  </div>
+                  <div className="rounded bg-gray-950/50 p-3">
+                    <div className="text-gray-400">平均系数</div>
+                    <div className="text-white text-xl font-semibold">{quarterlyPreview.summary.avgCoefficient}</div>
+                  </div>
+                  <div className="rounded bg-gray-950/50 p-3">
+                    <div className="text-gray-400">最低系数</div>
+                    <div className="text-white text-xl font-semibold">{quarterlyPreview.summary.minCoefficient}</div>
+                  </div>
+                  <div className="rounded bg-gray-950/50 p-3">
+                    <div className="text-gray-400">最高系数</div>
+                    <div className="text-white text-xl font-semibold">{quarterlyPreview.summary.maxCoefficient}</div>
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-auto rounded-lg border border-gray-800">
+                  <table className="w-full text-left text-sm">
+                    <thead className="sticky top-0 bg-gray-950 text-xs text-gray-400">
+                      <tr>
+                        <th className="px-3 py-2">排名</th>
+                        <th className="px-3 py-2">员工</th>
+                        <th className="px-3 py-2">部门</th>
+                        <th className="px-3 py-2">有效月份</th>
+                        <th className="px-3 py-2">季度均分</th>
+                        <th className="px-3 py-2">等级</th>
+                        <th className="px-3 py-2">绩效系数</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {quarterlyPreview.results.slice(0, 12).map((row) => (
+                        <tr key={row.employeeExternalId} className="border-t border-gray-800 text-gray-200">
+                          <td className="px-3 py-2">#{row.rank}</td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-white">{row.employeeName}</div>
+                            <div className="text-xs text-gray-500">{row.employeeExternalId}</div>
+                          </td>
+                          <td className="px-3 py-2 text-gray-400">
+                            {[row.department, row.subDepartment].filter(Boolean).join(' / ') || '—'}
+                          </td>
+                          <td className="px-3 py-2">{row.monthsCount}</td>
+                          <td className="px-3 py-2">{row.quarterScore}</td>
+                          <td className="px-3 py-2">{row.level}</td>
+                          <td className="px-3 py-2 font-semibold text-purple-200">{row.coefficient}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {quarterlyPreview.results.length > 12 && (
+                    <div className="border-t border-gray-800 p-3 text-xs text-gray-500">
+                      仅预览前 12 人，完整名单请导出 Excel。
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 

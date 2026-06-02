@@ -10,6 +10,12 @@ router.use(authenticate);
 // GET /api/integrations/salary/status — 连接配置状态（不暴露密钥）
 router.get('/status', requireRole('hr', 'admin', 'gm'), salaryIntegrationController.getStatus);
 
+// GET /api/integrations/salary/quarterly-coefficients — 预览季度绩效系数
+router.get('/quarterly-coefficients', requireRole('hr', 'admin', 'gm'), salaryIntegrationController.previewQuarterlyCoefficients);
+
+// GET /api/integrations/salary/quarterly-coefficients/export — 导出季度绩效系数 Excel
+router.get('/quarterly-coefficients/export', requireRole('hr', 'admin', 'gm'), salaryIntegrationController.exportQuarterlyCoefficients);
+
 // POST /api/salary-integration/push — 按月/按季度推送绩效
 router.post('/push', requireRole('hr', 'admin'), salaryIntegrationController.pushByPeriod);
 
