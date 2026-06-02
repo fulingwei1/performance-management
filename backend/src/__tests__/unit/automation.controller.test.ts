@@ -95,4 +95,45 @@ describe('automationController deadline reminders', () => {
       message: expect.stringContaining('已加入考核排除名单'),
     }));
   });
+
+  it('should batch remind selected employee tasks and keep per-employee results', async () => {
+    const remindPerformanceTaskForEmployee = jest
+      .spyOn(SchedulerService, 'remindPerformanceTaskForEmployee')
+      .mockImplementation(async (employeeId: string) => {
+        if (employeeId === 'e002') throw new Error('该员工没有绩效任务');
+        return {
+          month: '2026-05',
+          employeeId,
+          employeeName: employeeId === 'e001' ? '员工A' : '员工C',
+          taskType: '员工总结',
+          wecomSent: true,
+        } as any;
+      });
+
+    const json = jest.fn();
+    const res = { json } as any;
+    const next = jest.fn();
+
+    automationController.batchRemindEmployeeTasks({
+      body: { employeeIds: ['e001', 'e002', 'e003'], month: '2026-05' },
+      query: {},
+      user: { userId: 'hr001', role: 'hr' },
+    } as any, res, next);
+    await new Promise(process.nextTick);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(remindPerformanceTaskForEmployee).toHaveBeenCalledTimes(3);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      message: '批量补发完成：成功 2 人，失败 1 人',
+      data: expect.objectContaining({
+        successCount: 2,
+        failedCount: 1,
+        results: expect.arrayContaining([
+          expect.objectContaining({ employeeId: 'e001', success: true }),
+          expect.objectContaining({ employeeId: 'e002', success: false, message: '该员工没有绩效任务' }),
+        ]),
+      }),
+    }));
+  });
 });

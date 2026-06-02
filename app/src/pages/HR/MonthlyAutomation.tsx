@@ -50,7 +50,8 @@ export default function MonthlyAutomation() {
   const [salaryPushMode, setSalaryPushMode] = useState<'monthly' | 'quarterly'>('quarterly');
   const [salaryPushConfirmed, setSalaryPushConfirmed] = useState(false);
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+  const [employeeTaskSearch, setEmployeeTaskSearch] = useState('');
   const [excludeFromAssessmentOnDelete, setExcludeFromAssessmentOnDelete] = useState(true);
   const [allowDuplicateReminder, setAllowDuplicateReminder] = useState(false);
 
@@ -110,27 +111,26 @@ export default function MonthlyAutomation() {
     action: 'generate' | 'delete' | 'remind',
     options?: { confirmed?: boolean },
   ) => {
-    if (!selectedEmployeeId) {
-      toast.error('请先选择员工');
+    if (selectedEmployeeIds.length === 0) {
+      toast.error('请先勾选员工');
       return;
     }
-    const employee = employees.find((item) => item.id === selectedEmployeeId);
     if (action === 'delete' && !options?.confirmed) {
-      const ok = window.confirm(`确认删除 ${employee?.name || selectedEmployeeId} 的 ${selectedMonth} 绩效任务吗？会同步清理该员工该月待办/通知${excludeFromAssessmentOnDelete ? '，并加入考核排除名单，后续不再生成和催办' : ''}。`);
+      const ok = window.confirm(`确认删除已勾选 ${selectedEmployeeIds.length} 名员工的 ${selectedMonth} 绩效任务吗？会同步清理这些员工该月待办/通知${excludeFromAssessmentOnDelete ? '，并加入考核排除名单，后续不再生成和催办' : ''}。`);
       if (!ok) return;
     }
 
     setLoading(true);
     try {
       const path = action === 'generate'
-        ? '/employee-task/generate'
+        ? '/employee-tasks/generate'
         : action === 'remind'
-          ? '/employee-task/remind'
-          : '/employee-task';
+          ? '/employee-tasks/remind'
+          : '/employee-tasks';
       const r = await apiCall(path, {
         method: action === 'delete' ? 'DELETE' : 'POST',
         body: JSON.stringify({
-          employeeId: selectedEmployeeId,
+          employeeIds: selectedEmployeeIds,
           month: selectedMonth,
           ...(action === 'delete' ? { excludeFromAssessment: excludeFromAssessmentOnDelete } : {}),
         }),
@@ -197,6 +197,38 @@ export default function MonthlyAutomation() {
   };
 
   const rateColor = (rate: number) => rate >= 80 ? 'text-green-400' : rate >= 50 ? 'text-yellow-400' : 'text-red-400';
+  const normalizedEmployeeTaskSearch = employeeTaskSearch.trim().toLowerCase();
+  const filteredEmployees = employees.filter((employee) => {
+    if (!normalizedEmployeeTaskSearch) return true;
+    return [
+      employee.id,
+      employee.employeeId,
+      employee.name,
+      employee.department,
+      employee.subDepartment,
+      employee.status,
+    ].some((value) => String(value || '').toLowerCase().includes(normalizedEmployeeTaskSearch));
+  });
+  const visibleEmployeeIds = filteredEmployees.map((employee) => employee.id);
+  const selectedVisibleCount = visibleEmployeeIds.filter((id) => selectedEmployeeIds.includes(id)).length;
+  const allVisibleSelected = visibleEmployeeIds.length > 0 && selectedVisibleCount === visibleEmployeeIds.length;
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployeeIds((current) => (
+      current.includes(employeeId)
+        ? current.filter((id) => id !== employeeId)
+        : [...current, employeeId]
+    ));
+  };
+  const selectVisibleEmployees = () => {
+    setSelectedEmployeeIds((current) => {
+      const next = new Set(current);
+      visibleEmployeeIds.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+  };
+  const unselectVisibleEmployees = () => {
+    setSelectedEmployeeIds((current) => current.filter((id) => !visibleEmployeeIds.includes(id)));
+  };
   const incompleteCount = progress ? Math.max(progress.eligibleEmployees - progress.completedCount, 0) : 0;
   const completionRate = progress?.eligibleEmployees
     ? (progress.completedCount / progress.eligibleEmployees) * 100
@@ -498,31 +530,93 @@ export default function MonthlyAutomation() {
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">单人员工任务处理</h2>
+          <h2 className="text-lg font-semibold text-white">勾选员工任务处理</h2>
           <p className="text-sm text-gray-400 mt-1">
-            可选择月份和员工，单独生成、删除或重新发送提醒；只影响该员工，不会重跑整月任务。
+            勾选 1 人就是单人处理，勾选多人就是批量处理；只影响已勾选员工，不会重跑整月任务。
           </p>
         </div>
 
         <div className="bg-gray-900 rounded-lg p-6 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-4">
             <div>
-              <label className="text-xs text-gray-400">选择员工</label>
-              <select
-                value={selectedEmployeeId}
-                onChange={(event) => setSelectedEmployeeId(event.target.value)}
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-xs text-gray-400">勾选员工</label>
+                <div className="text-xs text-gray-400">
+                  已勾选 <span className="text-white font-semibold">{selectedEmployeeIds.length}</span> 人
+                  {filteredEmployees.length !== employees.length ? ` / 当前筛选 ${filteredEmployees.length} 人` : ''}
+                </div>
+              </div>
+              <input
+                value={employeeTaskSearch}
+                onChange={(event) => setEmployeeTaskSearch(event.target.value)}
+                placeholder="搜索姓名、工号、部门、小组、状态..."
                 className="mt-1 w-full bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700"
-              >
-                <option value="">请选择员工</option>
-                {employees.map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.name}（{employee.id}）{employee.status && employee.status !== 'active' ? `【${employee.status === 'disabled' ? '已禁用/离职' : employee.status}】` : ''}
-                    {employee.department ? ` - ${employee.department}${employee.subDepartment ? `/${employee.subDepartment}` : ''}` : ''}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2 text-xs text-gray-500">
-                月份使用右上角当前选择：{selectedMonth}。下拉包含已禁用/离职员工，便于处理“任务生成后离职”的情况。
+              />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded border border-gray-700 px-3 py-1 text-xs text-gray-200 hover:bg-gray-800 disabled:opacity-50"
+                  disabled={visibleEmployeeIds.length === 0 || allVisibleSelected}
+                  onClick={selectVisibleEmployees}
+                >
+                  全选当前筛选
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-gray-700 px-3 py-1 text-xs text-gray-200 hover:bg-gray-800 disabled:opacity-50"
+                  disabled={selectedVisibleCount === 0}
+                  onClick={unselectVisibleEmployees}
+                >
+                  取消当前筛选
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-gray-700 px-3 py-1 text-xs text-gray-200 hover:bg-gray-800 disabled:opacity-50"
+                  disabled={selectedEmployeeIds.length === 0}
+                  onClick={() => setSelectedEmployeeIds([])}
+                >
+                  清空全部
+                </button>
+                <span className="text-xs text-gray-500">
+                  月份使用右上角当前选择：{selectedMonth}；列表包含已禁用/离职员工，便于处理“任务生成后离职”。
+                </span>
+              </div>
+
+              <div className="mt-3 max-h-72 overflow-auto rounded-lg border border-gray-800">
+                {filteredEmployees.length === 0 ? (
+                  <div className="p-6 text-center text-sm text-gray-500">没有匹配员工</div>
+                ) : (
+                  filteredEmployees.map((employee) => {
+                    const checked = selectedEmployeeIds.includes(employee.id);
+                    return (
+                      <label
+                        key={employee.id}
+                        className={`flex cursor-pointer items-start gap-3 border-b border-gray-800 px-3 py-3 text-sm transition last:border-b-0 ${checked ? 'bg-blue-500/10' : 'hover:bg-gray-800/70'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleEmployeeSelection(employee.id)}
+                          className="mt-1"
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <span className="font-medium text-white">{employee.name}</span>
+                            <span className="text-xs text-gray-400">({employee.id})</span>
+                            {employee.status && employee.status !== 'active' && (
+                              <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-xs text-orange-200">
+                                {employee.status === 'disabled' ? '已禁用/离职' : employee.status}
+                              </span>
+                            )}
+                          </span>
+                          <span className="mt-1 block truncate text-xs text-gray-500">
+                            {[employee.department, employee.subDepartment].filter(Boolean).join(' / ') || '未维护部门'}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
               </div>
             </div>
 
@@ -552,10 +646,10 @@ export default function MonthlyAutomation() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ActionCard
               title="单独生成任务"
-              description={`为所选员工生成 ${selectedMonth} 绩效任务；已有任务会提示存在，不会重复创建。`}
-              buttonLabel="生成该员工任务"
+              description={`为已勾选员工生成 ${selectedMonth} 绩效任务；已有任务会提示存在，不会重复创建。`}
+              buttonLabel={`生成任务（${selectedEmployeeIds.length}）`}
               buttonClassName="bg-blue-600 hover:bg-blue-700"
-              disabled={loading || !selectedEmployeeId}
+              disabled={loading || selectedEmployeeIds.length === 0}
               icon={<UserRoundCheck className="w-4 h-4" />}
               onClick={() => runEmployeeTaskAction('generate')}
             />
@@ -563,9 +657,9 @@ export default function MonthlyAutomation() {
             <ActionCard
               title="删除该员工任务"
               description="删除该月份绩效记录并清理待办/通知；勾选上方选项后，会把离职员工从考核范围中排除。"
-              buttonLabel="删除该员工任务"
+              buttonLabel={`删除任务（${selectedEmployeeIds.length}）`}
               buttonClassName="bg-red-600 hover:bg-red-700"
-              disabled={loading || !selectedEmployeeId}
+              disabled={loading || selectedEmployeeIds.length === 0}
               icon={<Trash2 className="w-4 h-4" />}
               onClick={() => runEmployeeTaskAction('delete')}
             />
@@ -573,9 +667,9 @@ export default function MonthlyAutomation() {
             <ActionCard
               title="重新发送提醒"
               description="按该员工当前任务状态精准补发一次提醒，不会发给其他员工或不参与考核人员。"
-              buttonLabel="重发该员工提醒"
+              buttonLabel={`重发提醒（${selectedEmployeeIds.length}）`}
               buttonClassName="bg-amber-600 hover:bg-amber-700"
-              disabled={loading || !selectedEmployeeId}
+              disabled={loading || selectedEmployeeIds.length === 0}
               icon={<Bell className="w-4 h-4" />}
               onClick={() => runEmployeeTaskAction('remind')}
             />

@@ -12,6 +12,9 @@ router.post('/check-reminders', authenticate, requireRole('hr', 'admin'), automa
 router.post('/employee-task/generate', authenticate, requireRole('hr', 'admin'), automationController.generateEmployeeTask);
 router.delete('/employee-task', authenticate, requireRole('hr', 'admin'), automationController.deleteEmployeeTask);
 router.post('/employee-task/remind', authenticate, requireRole('hr', 'admin'), automationController.remindEmployeeTask);
+router.post('/employee-tasks/generate', authenticate, requireRole('hr', 'admin'), automationController.batchGenerateEmployeeTasks);
+router.delete('/employee-tasks', authenticate, requireRole('hr', 'admin'), automationController.batchDeleteEmployeeTasks);
+router.post('/employee-tasks/remind', authenticate, requireRole('hr', 'admin'), automationController.batchRemindEmployeeTasks);
 
 // 进度监控
 router.get('/progress/:month', authenticate, automationController.getProgress);

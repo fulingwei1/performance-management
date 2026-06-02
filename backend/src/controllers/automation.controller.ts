@@ -68,6 +68,30 @@ const requiredEmployeeTaskParams = (req: Request): { employeeId?: string; month?
   return { employeeId, month };
 };
 
+const requiredEmployeeTaskBatchParams = (req: Request): { employeeIds?: string[]; month?: string; error?: string } => {
+  const rawIds: unknown[] = Array.isArray(req.body?.employeeIds)
+    ? req.body.employeeIds
+    : Array.isArray(req.query?.employeeIds)
+      ? req.query.employeeIds
+      : typeof req.body?.employeeIds === 'string'
+        ? req.body.employeeIds.split(',')
+        : typeof req.query?.employeeIds === 'string'
+          ? req.query.employeeIds.split(',')
+          : req.body?.employeeId || req.query?.employeeId
+            ? [req.body?.employeeId || req.query?.employeeId]
+            : [];
+  const employeeIds: string[] = Array.from(new Set<string>(
+    rawIds.map((id: unknown) => String(id || '').trim()).filter(Boolean)
+  ));
+  const month = String(req.body?.month || req.query?.month || '').trim();
+  if (employeeIds.length === 0) return { error: '请至少选择一名员工' };
+  if (employeeIds.length > 200) return { error: '一次最多处理 200 名员工' };
+  if (!monthPattern.test(month)) return { error: '请选择正确月份（YYYY-MM）' };
+  const monthRangeError = validateTaskCreationMonth(month, { skipInTest: true });
+  if (monthRangeError) return { error: monthRangeError };
+  return { employeeIds, month };
+};
+
 async function getAutomationLogColumns(): Promise<Set<string>> {
   if (process.env.NODE_ENV === 'test') return new Set();
   if (automationLogColumnsCache) return automationLogColumnsCache;
@@ -145,6 +169,19 @@ async function writeAutomationLog(
   } catch (error) {
     logger.warn(`[Automation] 写入自动化日志失败: ${error}`);
   }
+}
+
+async function writeBatchEmployeeTaskLog(
+  jobType: AutomationJobType,
+  month: string,
+  status: 'success' | 'failed',
+  details: Record<string, unknown>,
+  durationMs: number,
+) {
+  await writeAutomationLog(jobType, month, status, {
+    mode: 'batch',
+    ...details,
+  }, durationMs);
 }
 
 export const automationController = {
@@ -374,6 +411,159 @@ export const automationController = {
       }, Date.now() - startedAt);
       return res.status(400).json({ success: false, message });
     }
+  }),
+
+  /**
+   * HR/Admin 批量给勾选员工生成指定月份绩效任务。
+   * 单人和多人共用 employeeIds；每个人独立处理并返回成功/失败明细。
+   */
+  batchGenerateEmployeeTasks: asyncHandler(async (req: Request, res: Response) => {
+    const params = requiredEmployeeTaskBatchParams(req);
+    if (params.error || !params.employeeIds || !params.month) {
+      return res.status(400).json({ success: false, message: params.error || '参数错误' });
+    }
+
+    const startedAt = Date.now();
+    const results = [];
+    for (const employeeId of params.employeeIds) {
+      try {
+        const result = await SchedulerService.generatePerformanceTaskForEmployee(employeeId, params.month);
+        results.push({
+          employeeId,
+          employeeName: result.employeeName,
+          success: true,
+          status: result.status,
+          message: result.status === 'created'
+            ? '已生成任务'
+            : result.status === 'updated_assessor'
+              ? '已更新考评人'
+              : '任务已存在',
+          data: result,
+        });
+      } catch (error) {
+        results.push({
+          employeeId,
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const successCount = results.filter((item) => item.success).length;
+    const failedCount = results.length - successCount;
+    await writeBatchEmployeeTaskLog('generate_employee_task', params.month, failedCount === results.length ? 'failed' : 'success', {
+      operatedBy: req.user?.userId,
+      total: results.length,
+      successCount,
+      failedCount,
+      results,
+    }, Date.now() - startedAt);
+
+    return res.json({
+      success: true,
+      message: `批量生成完成：成功 ${successCount} 人，失败 ${failedCount} 人`,
+      data: { total: results.length, successCount, failedCount, results },
+    });
+  }),
+
+  /**
+   * HR/Admin 批量删除勾选员工指定月份绩效任务。
+   */
+  batchDeleteEmployeeTasks: asyncHandler(async (req: Request, res: Response) => {
+    const params = requiredEmployeeTaskBatchParams(req);
+    if (params.error || !params.employeeIds || !params.month) {
+      return res.status(400).json({ success: false, message: params.error || '参数错误' });
+    }
+
+    const excludeFromAssessment = booleanBodyOrQueryParam(req, 'excludeFromAssessment');
+    const startedAt = Date.now();
+    const results = [];
+    for (const employeeId of params.employeeIds) {
+      try {
+        const result = await SchedulerService.deletePerformanceTaskForEmployee(employeeId, params.month, {
+          excludeFromAssessment,
+          operatedBy: req.user?.userId,
+        });
+        results.push({
+          employeeId,
+          success: true,
+          status: result.recordDeleted ? 'deleted' : 'not_found',
+          message: result.recordDeleted ? '已删除任务' : '任务不存在',
+          data: result,
+        });
+      } catch (error) {
+        results.push({
+          employeeId,
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const successCount = results.filter((item) => item.success).length;
+    const failedCount = results.length - successCount;
+    await writeBatchEmployeeTaskLog('delete_employee_task', params.month, failedCount === results.length ? 'failed' : 'success', {
+      operatedBy: req.user?.userId,
+      excludeFromAssessment,
+      total: results.length,
+      successCount,
+      failedCount,
+      results,
+    }, Date.now() - startedAt);
+
+    return res.json({
+      success: true,
+      message: `批量删除完成：成功 ${successCount} 人，失败 ${failedCount} 人`,
+      data: { total: results.length, successCount, failedCount, results },
+    });
+  }),
+
+  /**
+   * HR/Admin 批量给勾选员工当前任务状态对应的人发送提醒。
+   */
+  batchRemindEmployeeTasks: asyncHandler(async (req: Request, res: Response) => {
+    const params = requiredEmployeeTaskBatchParams(req);
+    if (params.error || !params.employeeIds || !params.month) {
+      return res.status(400).json({ success: false, message: params.error || '参数错误' });
+    }
+
+    const startedAt = Date.now();
+    const results = [];
+    for (const employeeId of params.employeeIds) {
+      try {
+        const result = await SchedulerService.remindPerformanceTaskForEmployee(employeeId, params.month);
+        results.push({
+          employeeId,
+          employeeName: result.employeeName,
+          success: true,
+          taskType: result.taskType,
+          message: result.taskType === '无需提醒' ? '任务已流转完成，无需催办' : `已发送${result.taskType}提醒`,
+          data: result,
+        });
+      } catch (error) {
+        results.push({
+          employeeId,
+          success: false,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    const successCount = results.filter((item) => item.success).length;
+    const failedCount = results.length - successCount;
+    await writeBatchEmployeeTaskLog('remind_employee_task', params.month, failedCount === results.length ? 'failed' : 'success', {
+      operatedBy: req.user?.userId,
+      total: results.length,
+      successCount,
+      failedCount,
+      results,
+    }, Date.now() - startedAt);
+
+    return res.json({
+      success: true,
+      message: `批量补发完成：成功 ${successCount} 人，失败 ${failedCount} 人`,
+      data: { total: results.length, successCount, failedCount, results },
+    });
   }),
 
   /**
