@@ -88,6 +88,7 @@ export function ScoringManagement({
   const hasHandledParams = useRef(false);
   
   const [scores, setScores] = useState({ taskCompletion: 1.0, initiative: 1.0, projectFeedback: 1.0, qualityImprovement: 1.0 });
+  const [selectedMetricScores, setSelectedMetricScores] = useState<any[] | null>(null);
   const [managerComment, setManagerComment] = useState('');
   const [nextMonthWorkArrangement, setNextMonthWorkArrangement] = useState('');
   const [evaluationKeywords, setEvaluationKeywords] = useState<string[]>([]);
@@ -287,6 +288,11 @@ export function ScoringManagement({
   const handleOpenDrawer = useCallback((record: any) => {
     setIsNoSummary(!record.selfSummary && !record.nextMonthPlan);
     setSelectedRecord(record);
+    setSelectedMetricScores(
+      Array.isArray(record.metricScores) && record.metricScores.length > 0
+        ? record.metricScores.map((metric: any) => ({ ...metric }))
+        : null
+    );
     setScores({ taskCompletion: record.taskCompletion || 1.0, initiative: record.initiative || 1.0, projectFeedback: record.projectFeedback || 1.0, qualityImprovement: record.qualityImprovement || 1.0 });
     setManagerComment(record.managerComment || '');
     setNextMonthWorkArrangement(record.nextMonthWorkArrangement || '');
@@ -424,9 +430,6 @@ export function ScoringManagement({
     }
   };
   
-  const selectedMetricScores = Array.isArray(selectedRecord?.metricScores) && selectedRecord.metricScores.length > 0
-    ? selectedRecord.metricScores
-    : null;
   const metricTotalScore = calculateMetricScoresTotal(selectedMetricScores || undefined);
   const totalScore = metricTotalScore ?? calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
 
@@ -743,6 +746,7 @@ export function ScoringManagement({
         setMonthlyStarPublic={setMonthlyStarPublic}
         totalScore={totalScore}
         metricScores={selectedMetricScores || undefined}
+        setMetricScores={setSelectedMetricScores}
         loading={loading}
         interviewFormUploading={interviewFormUploading}
         onInterviewFormUpload={handleInterviewFormUpload}

@@ -451,6 +451,46 @@ describe('Performance API', () => {
       });
     });
 
+    it('should allow manager to score a draft record when employee has not submitted summary', async () => {
+      const token = await TestHelper.getAuthToken('manager');
+      const month = '2024-08';
+
+      const draftResponse = await request(app)
+        .post('/api/performance/create-empty-record')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          employeeId: 'e034',
+          month
+        });
+
+      expect(draftResponse.status).toBe(200);
+      expect(draftResponse.body.data).toMatchObject({
+        status: 'draft',
+        selfSummary: '',
+        nextMonthPlan: ''
+      });
+
+      const response = await request(app)
+        .post('/api/performance/score')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          ...validScoreData,
+          id: draftResponse.body.data.id,
+          managerComment: '员工本月未提交总结，经理根据实际交付情况完成评分。',
+          nextMonthWorkArrangement: '下月继续跟进重点项目，并提醒员工及时提交总结。'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body.data).toMatchObject({
+        id: draftResponse.body.data.id,
+        status: 'completed',
+        selfSummary: '',
+        nextMonthPlan: ''
+      });
+      expect(response.body.data.totalScore).toBeGreaterThan(0);
+    });
+
     it('should fail with invalid score values', async () => {
       const token = await TestHelper.getAuthToken('manager');
 

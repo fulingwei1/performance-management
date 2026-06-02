@@ -67,6 +67,7 @@ interface ScoringDialogProps {
   setMonthlyStarPublic: (value: boolean) => void;
   totalScore: number;
   metricScores?: any[];
+  setMetricScores?: (updater: (prev: any[] | null) => any[] | null) => void;
   loading: boolean;
   interviewFormUploading?: boolean;
   onInterviewFormUpload?: (file: File) => void;
@@ -90,7 +91,7 @@ export function ScoringDialog({
   monthlyStarCategory, setMonthlyStarCategory,
   monthlyStarReason, setMonthlyStarReason,
   monthlyStarPublic, setMonthlyStarPublic,
-  totalScore, metricScores, loading, interviewFormUploading = false, onInterviewFormUpload, onSubmit
+  totalScore, metricScores, setMetricScores, loading, interviewFormUploading = false, onInterviewFormUpload, onSubmit
 }: ScoringDialogProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>(evaluationKeywords || []);
   const managerCommentRef = useRef(managerComment);
@@ -99,6 +100,19 @@ export function ScoringDialog({
   const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
   const interviewFormAttachment = selectedRecord?.interviewFormAttachment;
   const scoreEvidenceLabel = totalScore >= scoreLevelThresholds.L5 ? '优秀/特别突出事例' : totalScore < scoreLevelThresholds.L3 ? '低分/明显不足事例' : '评分事例说明';
+
+  const updateMetricScore = (metricIndex: number, score: number) => {
+    if (!setMetricScores) return;
+    const matchedLevel = scoreLevels.find((level) => level.score === score);
+    setMetricScores((prev) => {
+      const source = Array.isArray(prev) ? prev : dynamicMetricScores || [];
+      return source.map((metric, index) => (
+        index === metricIndex
+          ? { ...metric, score, level: matchedLevel?.level || metric.level || 'L3' }
+          : metric
+      ));
+    });
+  };
 
   // 获取员工级别映射
   const getEmployeeLevel = (level?: string): 'basic' | 'senior' | 'manager' | 'executive' => {
@@ -318,15 +332,23 @@ export function ScoringDialog({
                     </div>
                   </div>
                   {dynamicMetricScores && (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {dynamicMetricScores.map((metric: any) => (
+                    <div className="grid grid-cols-1 gap-4">
+                      {dynamicMetricScores.map((metric: any, index: number) => (
                         <Card key={metric.metricId || metric.metricCode || metric.metricName} className="border-blue-100 bg-white/80 shadow-sm">
-                          <CardContent className="flex items-center justify-between gap-4 p-4">
-                            <div>
+                          <CardContent className="space-y-3 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
                               <p className="text-sm font-medium text-gray-900">{metric.metricName || metric.metricCode || '模板指标'}</p>
                               <p className="text-xs text-gray-500">权重 {Number(metric.weight || 0)} · {metric.comment || '按模板指标评分'}</p>
+                              </div>
+                              <ScoreDisplay score={Number(metric.score || 0)} showLabel={false} size="sm" />
                             </div>
-                            <ScoreDisplay score={Number(metric.score || 0)} showLabel={false} size="sm" />
+                            <ScoreSelectorWithCriteria
+                              value={Number(metric.score || 1)}
+                              onChange={(score) => updateMetricScore(index, score)}
+                              dimensionKey={metric.metricCode || metric.metricId || 'taskCompletion'}
+                              compact
+                            />
                           </CardContent>
                         </Card>
                       ))}

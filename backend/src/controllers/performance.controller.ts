@@ -790,9 +790,9 @@ export const performanceController = {
       return res.status(403).json({ success: false, error: '该月份已发布，无法修改评分' });
     }
 
-    if (existing.status === 'draft') {
-      return res.status(400).json({ success: false, error: '员工尚未提交自评，无法评分' });
-    }
+    // 允许经理对未提交总结的 draft 记录直接评分。
+    // 业务口径：员工未提交总结时不再阻塞评分，记录仍保留空 selfSummary/nextMonthPlan，
+    // 报表和详情页据此显示“未提交总结后由经理直接评分”。
 
     // 判断使用新版动态指标还是旧版固定4项
     let tc: number, ini: number, pf: number, qi: number;
