@@ -37,6 +37,7 @@ import satisfactionSurveyRoutes from './routes/satisfactionSurvey.routes';
 import organizationRoutes from './routes/organization.routes';
 import settingsRoutes from './routes/settings.routes';
 import metricsRoutes from './routes/metrics.routes';
+import wecomCallbackRoutes from './routes/wecomCallback.routes';
 import { SchedulerService } from './services/scheduler.service';
 
 const app = express();
@@ -118,6 +119,7 @@ app.use(cors({
  },
  credentials: true
 }));
+app.use('/api/wecom/callback', express.text({ type: ['application/xml', 'text/xml', 'text/plain', '*/xml'], limit: '1mb' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
@@ -161,6 +163,7 @@ app.use('/api/departments', organizationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/system-settings', settingsRoutes);
 app.use('/api/metrics', metricsRoutes);
+app.use('/api/wecom', wecomCallbackRoutes);
 
 // 404处理
 app.use(notFoundHandler);
