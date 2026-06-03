@@ -244,7 +244,7 @@ export function GMAnalytics() {
     });
   }, [currentMonthAssessmentRecords, employeeMap, currentCompletedEmployeeIds, peopleFilter]);
 
-  const peopleFilterLabel = peopleFilter === 'all' ? '本月考核任务人员' : peopleFilter === 'completed' ? '本月已评分人员' : '本月待评分人员';
+  const peopleFilterLabel = peopleFilter === 'all' ? '本月考核任务人员' : peopleFilter === 'completed' ? '本月已提交人员' : '本月未提交人员';
 
   const statCardClass = (filter: 'all' | 'completed' | 'pending') =>
     `cursor-pointer transition hover:shadow-md ${peopleFilter === filter ? 'ring-2 ring-blue-500' : ''}`;
@@ -591,7 +591,7 @@ export function GMAnalytics() {
                     <p className="text-sm text-gray-500">完成任务人数</p>
                     <p className="text-2xl font-bold mt-1">{stats.currentCompleted}</p>
                     <p className="text-xs text-green-500 mt-1">已提交总结和计划</p>
-                    <p className="text-xs text-gray-400 mt-1">其中已评分 {stats.currentScored} 人</p>
+                    <p className="text-xs text-gray-400 mt-1">已评分 {stats.currentScored} 人 · 待上级评分 {Math.max(stats.currentCompleted - stats.currentScored, 0)} 人</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
                     <CheckCircle2 className="w-5 h-5 text-green-600" />

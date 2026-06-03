@@ -68,7 +68,7 @@ export function StatCards({ stats, onFilterChange, activeFilter }: StatCardsProp
               <p className="text-sm text-gray-500">完成任务人数</p>
               <p className="text-2xl font-bold">{stats.completedTasks}</p>
               <p className="mt-1 text-xs text-green-500">已提交总结/计划</p>
-              <p className="mt-1 text-xs text-gray-400">其中已评分 {stats.completedScores} 人</p>
+              <p className="mt-1 text-xs text-gray-400">已评分 {stats.completedScores} 人 · 待上级评分 {stats.pendingScores} 人</p>
             </div>
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
@@ -87,7 +87,7 @@ export function StatCards({ stats, onFilterChange, activeFilter }: StatCardsProp
               <p className="text-sm text-gray-500">未完成任务人数</p>
               <p className="text-2xl font-bold">{stats.pendingTasks}</p>
               <p className="mt-1 text-xs text-yellow-600">未提交总结/计划</p>
-              <p className="mt-1 text-xs text-gray-400">待评分 {stats.pendingScores} 人</p>
+              <p className="mt-1 text-xs text-gray-400">提交后才进入上级评分</p>
             </div>
             <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
               <AlertCircle className="w-5 h-5 text-yellow-600" />
