@@ -61,12 +61,6 @@ const ORG_NAME_ALIASES: Record<string, string> = {
   海尔治县: '海尔治具',
 };
 
-const DEFAULT_ASSESSMENT_MANAGERS = [
-  { keyword: '仓储部', managerName: '周念' },
-  { keyword: '客服部', managerName: '王志红' },
-  { keyword: '生产部', managerName: '高勇' },
-] as const;
-
 const THIRD_LEVEL_PARENT_OVERRIDES: Record<string, string> = {
   结构二组: '新能源技术部',
   海尔治具: '测试部',
@@ -401,22 +395,9 @@ function resolveManagerIds(employees: ArchiveEmployee[], existingEmployees: Exis
     }
   }
 
-  for (const rule of DEFAULT_ASSESSMENT_MANAGERS) {
-    const manager = activeByName.get(rule.managerName) || existingByName.get(rule.managerName);
-    if (!manager) continue;
-
-    for (const employee of employees) {
-      const orgPath = `${employee.department}/${employee.subDepartment}`;
-      if (
-        employee.status === 'active' &&
-        employee.name !== rule.managerName &&
-        !managerIds.has(employee.id) &&
-        orgPath.includes(rule.keyword)
-      ) {
-        managerIds.set(employee.id, manager.id);
-      }
-    }
-  }
+  // 绩效考核关系只来源于人事档案“员工信息表”的直接上级。
+  // 不再按部门/小组默认负责人兜底，避免系统猜错导致整组人员被错误分配给部门经理。
+  // 直接上级缺失或姓名匹配不到时，返回 unresolvedManagers 给 HR 人工处理。
 
   return { managerIds, unresolvedManagers };
 }
