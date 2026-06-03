@@ -283,7 +283,7 @@ export function Analytics({ embedded = false, analysisMonth }: AnalyticsProps = 
       <div className="flex items-center justify-between">
         <div>
           <h1 className={embedded ? 'text-xl font-bold text-gray-900' : 'text-2xl font-bold text-gray-900'}>
-            绩效结果分析中心
+            数据分析
           </h1>
           <p className="text-gray-500 mt-1">团队趋势 · 标签画像 · 多维分析 · 管理建议</p>
         </div>

@@ -1830,7 +1830,7 @@ export class SchedulerService {
       '### 本月低分/面谈关注',
       ...(attentionLines.length ? attentionLines : ['- 暂无低分记录']),
       '',
-      `查看完整分析：[绩效结果分析中心](${reportUrl})`,
+      `查看完整分析：[数据分析](${reportUrl})`,
       '',
       '说明：该报告在本月所有参与人员完成评分后自动发送；同一月份默认只发送一次。',
     ].join('\n');

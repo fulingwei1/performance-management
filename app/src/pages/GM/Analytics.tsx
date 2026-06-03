@@ -1,5 +1,5 @@
 /**
- * 绩效结果分析中心
+ * 数据分析
  * 展示全公司绩效概览、部门横向对比、人才梯队、趋势预警
  */
 
@@ -499,7 +499,7 @@ export function GMAnalytics() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">绩效结果分析中心</h1>
+          <h1 className="text-2xl font-bold text-gray-900">数据分析</h1>
           <p className="text-gray-500 mt-1">全局视角 · 部门对比 · 人才洞察 · 发布风险</p>
         </div>
         <div className="flex items-center gap-3">

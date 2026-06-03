@@ -36,7 +36,7 @@ const managerNavItems: SidebarNavItem[] = [
 ];
 
 const gmNavItems: SidebarNavItem[] = [
-  { path: '/gm/analytics', label: '绩效结果分析中心', icon: BarChart3 },
+  { path: '/gm/analytics', label: '数据分析', icon: BarChart3 },
 ];
 
 const gmManagerNavItems: SidebarNavItem[] = [
@@ -46,7 +46,7 @@ const gmManagerNavItems: SidebarNavItem[] = [
 
 const hrAdminBaseNavItems: SidebarNavItem[] = [
   { path: '/hr/dashboard', label: '工作台', icon: LayoutDashboard },
-  { path: '/hr/analytics', label: '绩效结果分析中心', icon: BarChart3 },
+  { path: '/hr/analytics', label: '数据分析', icon: BarChart3 },
   { path: '/hr/data-io', label: '数据管理', icon: Database },
   { path: '/hr/assessment-config', label: '考核配置', icon: FileText },
   { path: '/hr/monthly-stars', label: '每月之星', icon: Award },
@@ -102,7 +102,7 @@ export function Sidebar({ role }: SidebarProps) {
       ? [
           { path: '/hr/dashboard', label: '管理员工作台', icon: LayoutDashboard },
           { path: '/manager/dashboard', label: '考评工作台', icon: Award },
-          { ...hrAdminBaseNavItems[1], label: '绩效结果分析中心' },
+          { ...hrAdminBaseNavItems[1], label: '数据分析' },
           ...hrAdminBaseNavItems.slice(2),
         ]
       : hrAdminBaseNavItems;
