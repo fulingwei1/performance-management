@@ -1017,10 +1017,10 @@ export const performanceController = {
     const starReason = sanitizeUserText(monthlyStarReason);
     const starPublic = monthlyStarPublic !== false;
 
-    if ((roundedTotalScore >= scoreLevelThresholds.L5 || roundedTotalScore < scoreLevelThresholds.L3) && evidenceText.length < 10) {
+    if ((roundedTotalScore >= scoreLevelThresholds.L5 || roundedTotalScore < scoreLevelThresholds.L2) && evidenceText.length < 10) {
       return res.status(400).json({
         success: false,
-        error: '评分特别优秀或明显偏低时，必须填写不少于10个字的具体事例说明'
+        error: '评分为L5优秀或L1不合格时，必须填写不少于10个字的具体事实依据'
       });
     }
 

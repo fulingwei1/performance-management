@@ -351,7 +351,7 @@ export function ScoringManagement({
     }
 
     if (requiresScoreEvidence && scoreEvidence.trim().length < 10) {
-      toast.error('评分特别优秀或明显偏低时，请填写不少于10个字的具体事例说明');
+      toast.error('评分为L5优秀或L1不合格时，请填写不少于10个字的具体事实依据');
       return;
     }
 
@@ -466,7 +466,7 @@ export function ScoringManagement({
   const metricTotalScore = calculateMetricScoresTotal(selectedMetricScores || undefined);
   const totalScore = metricTotalScore ?? calculateTotalScore(scores.taskCompletion, scores.initiative, scores.projectFeedback, scores.qualityImprovement);
 
-  const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
+  const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L2;
   
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string }> = {

@@ -105,6 +105,39 @@ describe('performanceController hierarchy permissions', () => {
     });
   });
 
+  it('does not require factual evidence for L2 scores', async () => {
+    const currentRecord = memoryStore.performanceRecords.get('rec-e020-2026-04') as any;
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    const res = { status, json } as any;
+    const next = jest.fn();
+
+    performanceController.submitScore({
+      user: { userId: 'm008', id: 'm008', role: 'manager' },
+      body: {
+        id: 'rec-e020-2026-04',
+        taskCompletion: 0.8,
+        initiative: 0.8,
+        projectFeedback: 0.8,
+        qualityImprovement: 0.8,
+        managerComment: '整体表现需要继续改进',
+        nextMonthWorkArrangement: '下月重点跟进交付质量',
+        expectedUpdatedAt: new Date(currentRecord.updatedAt).toISOString(),
+      },
+    } as any, res, next);
+
+    await new Promise(process.nextTick);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({
+      success: true,
+      message: '评分提交成功',
+    }));
+    expect(memoryStore.performanceRecords.get('rec-e020-2026-04')).toMatchObject({
+      totalScore: 0.8,
+    });
+  });
+
   it('uses current hierarchy, not historical assessor_id, when viewing a record', async () => {
     memoryStore.employees.set('e020', {
       ...(memoryStore.employees.get('e020') as any),

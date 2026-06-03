@@ -98,9 +98,9 @@ export function ScoringDialog({
   const managerCommentRef = useRef(managerComment);
 
   const dynamicMetricScores = Array.isArray(metricScores) && metricScores.length > 0 ? metricScores : null;
-  const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L3;
+  const requiresScoreEvidence = totalScore >= scoreLevelThresholds.L5 || totalScore < scoreLevelThresholds.L2;
   const interviewFormAttachment = selectedRecord?.interviewFormAttachment;
-  const scoreEvidenceLabel = totalScore >= scoreLevelThresholds.L5 ? '优秀/特别突出事例' : totalScore < scoreLevelThresholds.L3 ? '低分/明显不足事例' : '评分事例说明';
+  const scoreEvidenceLabel = totalScore >= scoreLevelThresholds.L5 ? 'L5优秀事实依据' : totalScore < scoreLevelThresholds.L2 ? 'L1不合格事实依据' : '评分事例说明';
 
   const updateMetricScore = (metricIndex: number, score: number) => {
     if (!setMetricScores) return;
@@ -515,7 +515,7 @@ export function ScoringDialog({
                         {requiresScoreEvidence && <span className="text-red-500 ml-1">*</span>}
                       </CardTitle>
                       <p className="text-xs text-gray-500">
-                        综合得分达到优秀（≥1.40）或低于合格线（&lt;0.90）时，必须补充具体事件、项目或行为依据。
+                        综合得分为 L5 优秀（≥1.40）或 L1 不合格（&lt;0.65）时，必须补充具体事件、项目或行为依据。
                       </p>
                     </CardHeader>
                     <CardContent>
@@ -667,7 +667,7 @@ export function ScoringDialog({
             )}
             {requiresScoreEvidence && scoreEvidence.trim().length < 10 && managerComment && nextMonthWorkArrangement && (
               <span className="text-orange-600 flex items-center gap-1">
-                <AlertCircle className="w-4 h-4" />高分或低分需要补充具体事例说明
+                <AlertCircle className="w-4 h-4" />L5优秀或L1不合格需要补充具体事实依据
               </span>
             )}
             {monthlyStarRecommended && (!monthlyStarCategory || monthlyStarReason.trim().length < 10) && managerComment && nextMonthWorkArrangement && (
