@@ -8,6 +8,7 @@ import { PerformanceModel } from '../models/performance.model';
 import { EmployeeModel } from '../models/employee.model';
 import { getPerformanceRankingConfig } from './performanceRankingConfig.service';
 import { isSelfAssessmentEligibleRecord } from './selfAssessmentEligibility.service';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 import logger from '../config/logger';
 
 export interface ProgressSnapshot {
@@ -55,13 +56,22 @@ export class ProgressMonitorService {
       (e: any) => (e.role === 'employee' || e.role === 'manager') && (!e.status || e.status === 'active')
     );
     const rankingConfig = await getPerformanceRankingConfig();
-    const eligibleEmployees = activeAssessableEmployees.filter((employee: any) => (
+    const baseEligibleEmployees = activeAssessableEmployees.filter((employee: any) => (
       isSelfAssessmentEligibleRecord(employee, rankingConfig, { validEmployeeIds: activeEmployeeIds })
+    ));
+    const monthRecords = await PerformanceModel.findByMonth(month);
+    const scopeExcludedEmployeeIds = new Set<string>(
+      monthRecords
+        .filter((record) => isScopeExcludedRecord(record))
+        .map((record) => record.employeeId)
+    );
+    const eligibleEmployees = baseEligibleEmployees.filter((employee: any) => (
+      !scopeExcludedEmployeeIds.has(employee.id)
     ));
     const eligibleEmployeeIds = new Set<string>(eligibleEmployees.map((employee: any) => employee.id));
 
-    const records = (await PerformanceModel.findByMonth(month)).filter((record) => (
-      eligibleEmployeeIds.has(record.employeeId)
+    const records = monthRecords.filter((record) => (
+      eligibleEmployeeIds.has(record.employeeId) && !isScopeExcludedRecord(record)
     ));
 
     // 按状态分组

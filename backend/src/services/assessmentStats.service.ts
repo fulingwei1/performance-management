@@ -6,6 +6,7 @@
 import { PerformanceModel } from '../models/performance.model';
 import { AssessmentTemplateModel } from '../models/assessmentTemplate.model';
 import { scoreToLevel } from '../utils/helpers';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 import logger from '../config/logger';
 
 interface DepartmentStats {
@@ -85,7 +86,7 @@ export async function getMonthlyStats(month: string): Promise<MonthlyStats> {
   try {
     logger.info(`Getting monthly stats for ${month}`);
 
-    const assessments = await PerformanceModel.findByMonth(month);
+    const assessments = (await PerformanceModel.findByMonth(month)).filter((record) => !isScopeExcludedRecord(record));
     const scores = assessments.map(a => a.totalScore).filter(score => Number.isFinite(score));
 
     const stats: MonthlyStats = {
@@ -172,9 +173,10 @@ export async function getScoreDistribution(month?: string): Promise<Record<strin
   try {
     logger.info(`Getting score distribution for ${month || 'all months'}`);
 
-    const assessments = month
+    const assessments = (month
       ? await PerformanceModel.findByMonth(month)
-      : await PerformanceModel.findAll();
+      : await PerformanceModel.findAll())
+      .filter((record) => !isScopeExcludedRecord(record));
 
     const distribution = {
       l5: 0,

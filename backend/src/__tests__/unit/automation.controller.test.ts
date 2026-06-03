@@ -68,7 +68,9 @@ describe('automationController deadline reminders', () => {
       .mockResolvedValue({
         month: '2026-05',
         employeeId: 'e001',
-        recordDeleted: true,
+        recordDeleted: false,
+        recordCancelled: true,
+        newStatus: 'exempted',
         todoDeletedCount: 1,
         notificationDeletedCount: 1,
         assessmentExcluded: true,

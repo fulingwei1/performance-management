@@ -8,6 +8,7 @@ import {
   matchMergeRankGroup,
   resolveGroupKey,
 } from '../services/performanceRankingConfig.service';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 
 const parseJsonArray = (value: unknown): string[] => {
   if (!value) return [];
@@ -76,7 +77,8 @@ export class PerformanceModel {
   // 获取员工的所有绩效记录
   static async findByEmployeeId(employeeId: string): Promise<PerformanceRecord[]> {
     if (USE_MEMORY_DB) {
-      const records = memoryDB.performanceRecords.findByEmployeeId(employeeId);
+      const records = memoryDB.performanceRecords.findByEmployeeId(employeeId)
+        .filter((record: PerformanceRecord) => !isScopeExcludedRecord(record));
       return Promise.all(records.map((r: PerformanceRecord) => this.enrichRecord(r)));
     }
     
@@ -92,6 +94,8 @@ export class PerformanceModel {
       LEFT JOIN employees e ON r.employee_id = e.id
       LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.employee_id = ?
+        AND COALESCE(r.is_excluded_from_stats, false) = false
+        AND r.status::text NOT IN ('cancelled', 'exempted')
       ORDER BY r.month DESC
     `;
     const results = await query(sql, [employeeId]);
@@ -110,7 +114,7 @@ export class PerformanceModel {
     if (USE_MEMORY_DB) {
       // 获取这些员工的绩效记录
       const allRecords = Array.from(memoryStore.performanceRecords.values()) as PerformanceRecord[];
-      let records = allRecords.filter(r => teamMemberIds.includes(r.employeeId));
+      let records = allRecords.filter(r => teamMemberIds.includes(r.employeeId) && !isScopeExcludedRecord(r));
       
       if (month) {
         records = records.filter(r => r.month === month);
@@ -133,6 +137,8 @@ export class PerformanceModel {
       LEFT JOIN employees m ON r.assessor_id = m.id
       WHERE r.employee_id IN (${placeholders})
         AND (e.status = 'active' OR e.status IS NULL)
+        AND COALESCE(r.is_excluded_from_stats, false) = false
+        AND r.status::text NOT IN ('cancelled', 'exempted')
     `;
     const params: any[] = [...teamMemberIds];
     
@@ -238,6 +244,11 @@ export class PerformanceModel {
       templateId: 'template_id',
       templateName: 'template_name',
       departmentType: 'department_type',
+      isExcludedFromStats: 'is_excluded_from_stats',
+      excludeReason: 'exclude_reason',
+      excludedBy: 'excluded_by',
+      excludedAt: 'excluded_at',
+      scopeChangeBatchId: 'scope_change_batch_id',
     };
     const keys = Object.keys(data).filter(k => Object.prototype.hasOwnProperty.call(allowedFields, k));
     if (keys.length === 0) return this.findById(id);
@@ -516,7 +527,7 @@ export class PerformanceModel {
         ${
           hasExpectedUpdatedAt
             ? "AND date_trunc('milliseconds', updated_at) = date_trunc('milliseconds', (?::timestamptz AT TIME ZONE current_setting('TimeZone')))"
-            : "AND (status IS NULL OR status NOT IN ('completed', 'scored'))"
+            : "AND (status IS NULL OR status NOT IN ('completed', 'scored', 'cancelled', 'exempted'))"
         }
     `;
 
@@ -565,6 +576,96 @@ export class PerformanceModel {
     }
     
     return record;
+  }
+
+  static async markScopeExcluded(id: string, options: {
+    status: 'cancelled' | 'exempted';
+    reason?: string;
+    operatedBy?: string;
+    batchId?: string;
+  }): Promise<PerformanceRecord | null> {
+    const now = new Date();
+    if (USE_MEMORY_DB) {
+      const updated = memoryDB.performanceRecords.update(id, {
+        status: options.status,
+        isExcludedFromStats: true,
+        excludeReason: options.reason || '',
+        excludedBy: options.operatedBy || 'system',
+        excludedAt: now,
+        scopeChangeBatchId: options.batchId || '',
+        companyRank: 0,
+        departmentRank: 0,
+        groupRank: 0,
+        crossDeptRank: 0,
+        updatedAt: now,
+      } as any);
+      return updated ? this.enrichRecord(updated) : null;
+    }
+
+    await query(
+      `UPDATE performance_records
+       SET status = ?,
+           is_excluded_from_stats = true,
+           exclude_reason = ?,
+           excluded_by = ?,
+           excluded_at = ?,
+           scope_change_batch_id = ?,
+           company_rank = 0,
+           department_rank = 0,
+           group_rank = 0,
+           cross_dept_rank = 0,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [
+        options.status,
+        options.reason || '',
+        options.operatedBy || 'system',
+        now,
+        options.batchId || '',
+        id,
+      ],
+    );
+    const record = await this.findById(id);
+    if (record) {
+      await this.deleteDerivedQuarterlySummaries([record.employeeId], [record.month]);
+      await this.updateRanks(record.month);
+    }
+    return record;
+  }
+
+  static async restoreScopeExcluded(id: string, options: {
+    status?: 'draft' | 'submitted';
+    operatedBy?: string;
+    reason?: string;
+    batchId?: string;
+  } = {}): Promise<PerformanceRecord | null> {
+    const restoredStatus = options.status || 'draft';
+    if (USE_MEMORY_DB) {
+      const updated = memoryDB.performanceRecords.update(id, {
+        status: restoredStatus,
+        isExcludedFromStats: false,
+        excludeReason: '',
+        excludedBy: '',
+        excludedAt: undefined,
+        scopeChangeBatchId: options.batchId || '',
+        updatedAt: new Date(),
+      } as any);
+      return updated ? this.enrichRecord(updated) : null;
+    }
+
+    await query(
+      `UPDATE performance_records
+       SET status = ?,
+           is_excluded_from_stats = false,
+           exclude_reason = NULL,
+           excluded_by = NULL,
+           excluded_at = NULL,
+           scope_change_batch_id = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [restoredStatus, options.batchId || '', id],
+    );
+    return this.findById(id);
   }
 
   // 更新排名
@@ -860,6 +961,11 @@ export class PerformanceModel {
       status: row.status,
       frozen: row.frozen,
       deadline: row.deadline,
+      isExcludedFromStats: row.is_excluded_from_stats === true || row.is_excluded_from_stats === 1,
+      excludeReason: row.exclude_reason || '',
+      excludedBy: row.excluded_by || '',
+      excludedAt: row.excluded_at,
+      scopeChangeBatchId: row.scope_change_batch_id || '',
       // 动态模板评分
       templateId: row.template_id || undefined,
       templateName: row.template_name || undefined,

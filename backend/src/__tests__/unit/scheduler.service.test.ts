@@ -157,6 +157,73 @@ describe('SchedulerService monthly performance task generation', () => {
     expect(Array.from(memoryStore.notifications!.values())).toHaveLength(2);
   });
 
+  it('should cancel a current-cycle employee task instead of hard deleting it', async () => {
+    memoryStore.employees.set('m001', {
+      id: 'm001',
+      name: '经理A',
+      role: 'manager',
+      department: '工程技术中心',
+      subDepartment: '测试部',
+      managerId: 'gm001',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('gm001', {
+      id: 'gm001',
+      name: '总经理',
+      role: 'gm',
+      department: '总经办',
+      status: 'active'
+    } as any);
+    memoryStore.employees.set('e001', {
+      id: 'e001',
+      name: '员工A',
+      role: 'employee',
+      department: '工程技术中心',
+      subDepartment: '测试部',
+      managerId: 'm001',
+      status: 'active'
+    } as any);
+    memoryStore.performanceRecords.set('rec-e001-2026-04', {
+      id: 'rec-e001-2026-04',
+      employeeId: 'e001',
+      assessorId: 'm001',
+      month: '2026-04',
+      selfSummary: '',
+      nextMonthPlan: '',
+      groupType: 'all',
+      status: 'draft',
+    } as any);
+    memoryStore.todos!.set('todo-1', {
+      id: 'todo-1',
+      employeeId: 'e001',
+      type: 'work_summary',
+      relatedId: 'performance-summary-2026-04',
+      status: 'pending',
+    } as any);
+
+    const result = await SchedulerService.deletePerformanceTaskForEmployee('e001', '2026-04', {
+      excludeFromAssessment: true,
+      operatedBy: 'hr001',
+      reason: '员工已在考核周期内离职',
+    } as any);
+
+    expect(result).toMatchObject({
+      month: '2026-04',
+      employeeId: 'e001',
+      recordDeleted: false,
+      recordCancelled: true,
+      assessmentExcluded: true,
+    });
+    const record = memoryStore.performanceRecords.get('rec-e001-2026-04') as any;
+    expect(record).toMatchObject({
+      status: 'exempted',
+      isExcludedFromStats: true,
+      excludeReason: '员工已在考核周期内离职',
+      excludedBy: 'hr001',
+    });
+    expect(memoryStore.todos!.has('todo-1')).toBe(false);
+  });
+
   it('should generate the first-half satisfaction survey when generating June performance tasks', async () => {
     memoryStore.employees.set('m001', {
       id: 'm001',

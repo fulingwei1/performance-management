@@ -5,7 +5,7 @@ export type EmployeeLevel = 'senior' | 'intermediate' | 'junior' | 'assistant';
 export type EmployeeRole = 'employee' | 'manager' | 'gm' | 'hr' | 'admin';
 
 // 绩效记录状态
-export type RecordStatus = 'draft' | 'submitted' | 'scored' | 'completed';
+export type RecordStatus = 'draft' | 'submitted' | 'scored' | 'completed' | 'cancelled' | 'exempted';
 
 // 员工信息
 export interface Employee {
@@ -120,6 +120,13 @@ export interface PerformanceRecord {
   // 任务冻结（超期自动冻结，仅HR可解冻）
   frozen?: boolean;
   deadline?: string; // 截止日期（下月3号）
+
+  // 周期中途范围调整：离职/本期不参与时保留记录但排除统计、排名和催办
+  isExcludedFromStats?: boolean;
+  excludeReason?: string;
+  excludedBy?: string;
+  excludedAt?: Date | string;
+  scopeChangeBatchId?: string;
 
   // 演示数据标记
   isDemo?: boolean;

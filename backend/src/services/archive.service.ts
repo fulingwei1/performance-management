@@ -9,6 +9,7 @@ import { PerformanceModel } from '../models/performance.model';
 import { AssessmentPublicationModel } from '../models/assessmentPublication.model';
 import { getMonthlyStats, getScoreDistribution, detectAnomalousScores } from './assessmentStats.service';
 import { getPerformanceRankingConfig } from './performanceRankingConfig.service';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 import logger from '../config/logger';
 
 export interface ArchiveResult {
@@ -37,7 +38,7 @@ export class ArchiveService {
     logger.info(`[Archive] 开始归档 ${month} 月度绩效数据`);
 
     // 获取所有绩效记录
-    const records = await PerformanceModel.findByMonth(month);
+    const records = (await PerformanceModel.findByMonth(month)).filter((record) => !isScopeExcludedRecord(record));
     const completedRecords = records.filter(r => r.status === 'completed' || r.status === 'scored');
 
     if (completedRecords.length === 0) {

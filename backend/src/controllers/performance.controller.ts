@@ -21,6 +21,7 @@ import { validateTaskCreationMonth } from '../utils/assessmentMonthGuard';
 import { sanitizeUserText } from '../utils/sanitizeText';
 import { SatisfactionSurveyService } from '../services/satisfactionSurvey.service';
 import { SchedulerService } from '../services/scheduler.service';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 import '../middleware/auth'; // Request type extension
 
 const normalizeStringArray = (input: unknown): string[] => {
@@ -124,7 +125,8 @@ async function addPublishedBenchmarks(record: any): Promise<any> {
   const monthRecords = await PerformanceModel.findByMonth(record.month);
   const scoredRecords = monthRecords.filter((item: any) => (
     (item.status === 'completed' || item.status === 'scored') &&
-    Number(item.totalScore || 0) > 0
+    Number(item.totalScore || 0) > 0 &&
+    !isScopeExcludedRecord(item)
   ));
   const recordUnitKey = getBenchmarkUnitKey(record);
   const departmentRecords = scoredRecords.filter((item: any) => getBenchmarkUnitKey(item) === recordUnitKey);
@@ -263,7 +265,7 @@ export const performanceController = {
       if (!/^\d{4}-\d{2}$/.test(month)) {
         return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
       }
-      const records = await PerformanceModel.findByMonth(month);
+      const records = (await PerformanceModel.findByMonth(month)).filter((record) => !isScopeExcludedRecord(record));
       res.json({ success: true, data: records });
     }),
 
@@ -285,6 +287,7 @@ export const performanceController = {
     let records = monthFilter
       ? await PerformanceModel.findByMonth(monthFilter)
       : await PerformanceModel.findAll();
+    records = records.filter((record) => !isScopeExcludedRecord(record));
     
     // 如果指定了months参数，过滤最近N个月的数据
     if (months && !monthFilter) {
@@ -310,7 +313,7 @@ export const performanceController = {
       return res.status(400).json({ success: false, error: '月份格式错误，应为YYYY-MM' });
     }
 
-    const records = await PerformanceModel.findByMonth(month);
+    const records = (await PerformanceModel.findByMonth(month)).filter((record) => !isScopeExcludedRecord(record));
     const monthlyStars = records
       .filter((record) => record.monthlyStarRecommended)
       .sort((a, b) => {
@@ -347,6 +350,7 @@ export const performanceController = {
         : await PerformanceModel.findAll();
 
     const suggestions = records
+      .filter((record) => !isScopeExcludedRecord(record))
       .map((record) => ({
         id: record.id,
         month: record.month,
@@ -597,6 +601,12 @@ export const performanceController = {
         error: '该月份绩效考核任务尚未生成，暂不能提交工作总结'
       });
     }
+    if (isScopeExcludedRecord(existing)) {
+      return res.status(400).json({
+        success: false,
+        error: '该月份已被标记为本期不参与绩效考核，无需提交工作总结'
+      });
+    }
     if (existing && existing.status !== 'draft') {
       return res.status(400).json({
         success: false,
@@ -703,6 +713,12 @@ export const performanceController = {
 
     const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
     if (existing) {
+      if (isScopeExcludedRecord(existing)) {
+        return res.status(400).json({
+          success: false,
+          error: '该员工本期已被标记为不参与绩效考核，不能创建空记录或评分'
+        });
+      }
       if (
         existing.assessorId !== assessorId &&
         existing.status !== 'completed' &&
@@ -747,7 +763,7 @@ export const performanceController = {
     });
   }),
 
-  // 经理/组长反馈员工已离职或本期不参与绩效：删除该员工本月任务，并加入考核排除名单。
+  // 经理/组长反馈员工已离职或本期不参与绩效：取消该员工本月任务，并加入考核排除名单。
   reportNonParticipation: asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ success: false, error: '未认证' });
@@ -784,6 +800,7 @@ export const performanceController = {
       const result = await SchedulerService.deletePerformanceTaskForEmployee(employeeId, month, {
         excludeFromAssessment: true,
         operatedBy: req.user.userId,
+        reason,
       });
 
       const reporter = await EmployeeModel.findById(req.user.userId);
@@ -797,15 +814,15 @@ export const performanceController = {
         userId: recipient.id,
         type: 'system',
         title: `${employee.name} 被反馈不参与 ${month} 绩效`,
-        content: `${reporter?.name || req.user!.userId}反馈：${employee.name} ${month} 不参与绩效。原因：${reason || '未填写'}。系统已删除该员工本月绩效任务并加入考核排除名单，请HR复核人事档案状态。`,
+        content: `${reporter?.name || req.user!.userId}反馈：${employee.name} ${month} 不参与绩效。原因：${reason || '未填写'}。系统已取消该员工本月绩效任务并加入考核排除名单，请HR复核人事档案状态。`,
         link: hrMonthlyAutomationLink(month),
       })));
 
       return res.json({
         success: true,
-        message: result.recordDeleted
+        message: result.recordCancelled
           ? `已将 ${employee.name} 移出 ${month} 绩效考核，并通知HR复核`
-          : `${employee.name} 的 ${month} 绩效任务不存在，已加入考核排除名单并通知HR复核`,
+          : `${employee.name} 的 ${month} 绩效任务不存在或已取消，已加入考核排除名单并通知HR复核`,
         data: {
           ...result,
           employeeName: employee.name,
@@ -1385,7 +1402,7 @@ export const performanceController = {
       .filter((emp: any) => isSelfAssessmentEligibleRecord(emp, rankingConfig, { validEmployeeIds: validIds }));
     const eligibleEmployeeIds = new Set(employees.map((emp: any) => emp.id));
     const records = (await PerformanceModel.findByMonth(month))
-      .filter((record: any) => eligibleEmployeeIds.has(record.employeeId));
+      .filter((record: any) => eligibleEmployeeIds.has(record.employeeId) && !isScopeExcludedRecord(record));
     
     // 按部门统计
     const deptStats = new Map<string, {

@@ -9,6 +9,7 @@ import { scoreToLevel, levelToScore } from '../utils/helpers';
 import { getPerformanceRankingConfig, savePerformanceRankingConfig } from './performanceRankingConfig.service';
 import { isSelfAssessmentEligibleRecord, resolveAssessorId } from './selfAssessmentEligibility.service';
 import { resolveTaskTemplateForEmployee } from './taskTemplateResolver.service';
+import { isExcludedPerformanceStatus, isScopeExcludedRecord } from '../utils/performanceScope';
 import { ProgressMonitorService } from './progressMonitor.service';
 import { ArchiveService } from './archive.service';
 import { getMonthlyStats, detectAnomalousScores } from './assessmentStats.service';
@@ -166,7 +167,7 @@ export class SchedulerService {
     month: string;
     employeeId: string;
     employeeName?: string;
-    status: 'created' | 'exists' | 'updated_assessor';
+    status: 'created' | 'exists' | 'updated_assessor' | 'restored';
     record: any;
     todoCount: number;
     notificationCount: number;
@@ -204,6 +205,67 @@ export class SchedulerService {
 
     const existing = await PerformanceModel.findByEmployeeIdAndMonth(employee.id, month);
     if (existing) {
+      if (isScopeExcludedRecord(existing) || isExcludedPerformanceStatus(existing.status)) {
+        const restoredStatus = String(existing.selfSummary || existing.nextMonthPlan || '').trim()
+          ? 'submitted'
+          : 'draft';
+        const batchId = `scope-restore-${employee.id}-${month}-${Date.now()}`;
+        const restored = await PerformanceModel.restoreScopeExcluded(existing.id, {
+          status: restoredStatus as 'draft' | 'submitted',
+          operatedBy: 'system',
+          reason: 'HR/Admin 单独重新加入本期考核',
+          batchId,
+        });
+        await this.includeEmployeeInAssessment(employee.id, 'system');
+        await this.writeScopeAdjustmentLog({
+          month,
+          employeeId: employee.id,
+          previousStatus: existing.status,
+          newStatus: restoredStatus,
+          action: 'restore',
+          reason: 'HR/Admin 单独重新加入本期考核',
+          operatedBy: 'system',
+          batchId,
+          metadata: { recordId: existing.id, assessorId, templateId: template.id },
+        });
+
+        let todoCount = 0;
+        let notificationCount = 0;
+        const deadline = this.getPerformanceDeadline(month);
+        if (restoredStatus === 'draft') {
+          const relatedId = TodoModel.performanceSummaryRelatedId(month);
+          if (!await TodoModel.findExisting(employee.id, 'work_summary', relatedId)) {
+            await TodoModel.create({
+              employeeId: employee.id,
+              type: 'work_summary',
+              title: `提交${month}月度工作总结`,
+              description: `请填写${month}工作总结和下月计划，供经理评分。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE}`,
+              dueDate: deadline,
+              link: `/employee/summary?month=${month}`,
+              relatedId,
+            });
+            todoCount = 1;
+          }
+          notificationCount = await NotificationModel.createBatch([{
+            userId: employee.id,
+            type: 'reminder',
+            title: `请提交${month}月度工作总结`,
+            content: `你已被重新加入${month}绩效考核任务，请尽快填写上月工作总结和本月计划。操作方法：${EMPLOYEE_SUMMARY_OPERATION_GUIDE} ${LOGIN_METHOD_GUIDE}`,
+            link: `/employee/summary?month=${month}`,
+          }]);
+        }
+
+        return {
+          month,
+          employeeId: employee.id,
+          employeeName: employee.name,
+          status: 'restored',
+          record: restored || existing,
+          todoCount,
+          notificationCount,
+        };
+      }
+
       if (
         existing.assessorId !== assessorId &&
         existing.status !== 'completed' &&
@@ -364,13 +426,82 @@ export class SchedulerService {
     return true;
   }
 
+  private static async includeEmployeeInAssessment(employeeId: string, operatedBy: string = 'system'): Promise<boolean> {
+    const normalizedEmployeeId = String(employeeId || '').trim();
+    if (!normalizedEmployeeId) return false;
+
+    const config = await getPerformanceRankingConfig();
+    const excludedEmployeeIds = (config.participation.excludedEmployeeIds || [])
+      .filter((id) => String(id || '').trim() !== normalizedEmployeeId);
+    if (excludedEmployeeIds.length === (config.participation.excludedEmployeeIds || []).length) {
+      return false;
+    }
+
+    await savePerformanceRankingConfig({
+      ...config,
+      participation: {
+        ...config.participation,
+        excludedEmployeeIds,
+      },
+    }, operatedBy);
+    return true;
+  }
+
+  private static async writeScopeAdjustmentLog(input: {
+    month: string;
+    employeeId: string;
+    previousStatus?: string;
+    newStatus: string;
+    action: 'cancel' | 'exempt' | 'restore';
+    reason?: string;
+    operatedBy?: string;
+    batchId?: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    const id = input.batchId || `scope-${input.action}-${input.employeeId}-${input.month}-${Date.now()}`;
+    if (USE_MEMORY_DB) {
+      const store = (memoryStore as any).performanceScopeAdjustments || new Map();
+      store.set(id, { id, ...input, operatedAt: new Date() });
+      (memoryStore as any).performanceScopeAdjustments = store;
+      return;
+    }
+
+    await query(
+      `INSERT INTO performance_scope_adjustments (
+         id, month, employee_id, previous_status, new_status, action, reason, operated_by, metadata
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+       ON CONFLICT (id) DO UPDATE SET
+         previous_status = EXCLUDED.previous_status,
+         new_status = EXCLUDED.new_status,
+         action = EXCLUDED.action,
+         reason = EXCLUDED.reason,
+         operated_by = EXCLUDED.operated_by,
+         metadata = EXCLUDED.metadata,
+         operated_at = CURRENT_TIMESTAMP`,
+      [
+        id,
+        input.month,
+        input.employeeId,
+        input.previousStatus || '',
+        input.newStatus,
+        input.action,
+        input.reason || '',
+        input.operatedBy || 'system',
+        JSON.stringify(input.metadata || {}),
+      ],
+    );
+  }
+
   static async deletePerformanceTaskForEmployee(employeeId: string, month: string, options: {
     excludeFromAssessment?: boolean;
     operatedBy?: string;
+    reason?: string;
   } = {}): Promise<{
     month: string;
     employeeId: string;
     recordDeleted: boolean;
+    recordCancelled: boolean;
+    newStatus?: 'cancelled' | 'exempted';
     todoDeletedCount: number;
     notificationDeletedCount: number;
     assessmentExcluded: boolean;
@@ -389,36 +520,91 @@ export class SchedulerService {
         month,
         employeeId,
         recordDeleted: false,
+        recordCancelled: false,
         todoDeletedCount: 0,
         notificationDeletedCount: 0,
         assessmentExcluded,
       };
     }
 
-    const recordDeleted = await PerformanceModel.delete(record.id);
-    const todoResult = await query(`
-      DELETE FROM todos
-      WHERE (employee_id = $1 AND type = 'work_summary' AND related_id = $2)
-         OR (type = 'performance_review' AND related_id = $3)
-    `, [employeeId, TodoModel.performanceSummaryRelatedId(month), TodoModel.performanceReviewRelatedId(record.id)]);
+    const newStatus = options.excludeFromAssessment === true ? 'exempted' : 'cancelled';
+    const wasAlreadyExcluded = isScopeExcludedRecord(record);
+    if (!wasAlreadyExcluded) {
+      const batchId = `scope-${newStatus}-${employeeId}-${month}-${Date.now()}`;
+      await PerformanceModel.markScopeExcluded(record.id, {
+        status: newStatus,
+        reason: options.reason || (options.excludeFromAssessment ? '本期不参与绩效考核' : '本期绩效任务已取消'),
+        operatedBy: options.operatedBy || 'system',
+        batchId,
+      });
+      await this.writeScopeAdjustmentLog({
+        month,
+        employeeId,
+        previousStatus: record.status,
+        newStatus,
+        action: newStatus === 'exempted' ? 'exempt' : 'cancel',
+        reason: options.reason,
+        operatedBy: options.operatedBy,
+        batchId,
+        metadata: { recordId: record.id, assessorId: record.assessorId, excludeFromAssessment: options.excludeFromAssessment === true },
+      });
+    }
+    let todoDeletedCount = 0;
+    if (USE_MEMORY_DB) {
+      for (const [todoId, todo] of Array.from((memoryStore.todos || new Map()).entries())) {
+        const isSummaryTodo = todo.employeeId === employeeId
+          && todo.type === 'work_summary'
+          && todo.relatedId === TodoModel.performanceSummaryRelatedId(month);
+        const isReviewTodo = todo.type === 'performance_review'
+          && todo.relatedId === TodoModel.performanceReviewRelatedId(record.id);
+        if (isSummaryTodo || isReviewTodo) {
+          memoryStore.todos?.delete(todoId);
+          todoDeletedCount += 1;
+        }
+      }
+    } else {
+      const todoResult = await query(`
+        DELETE FROM todos
+        WHERE (employee_id = $1 AND type = 'work_summary' AND related_id = $2)
+           OR (type = 'performance_review' AND related_id = $3)
+      `, [employeeId, TodoModel.performanceSummaryRelatedId(month), TodoModel.performanceReviewRelatedId(record.id)]);
+      todoDeletedCount = (todoResult as any).affectedRows ?? (todoResult as any).rowCount ?? 0;
+    }
 
     const notificationUsers = Array.from(new Set([employeeId, record.assessorId].filter(Boolean)));
-    const notificationResult = notificationUsers.length > 0 ? await query(`
-      DELETE FROM notifications
-      WHERE user_id = ANY($1::text[])
-        AND (
-          title LIKE $2
-          OR content LIKE $2
-          OR link LIKE $3
-        )
-    `, [notificationUsers, `%${month}%`, `%month=${month}%`]) : { rowCount: 0 };
+    let notificationDeletedCount = 0;
+    if (USE_MEMORY_DB) {
+      for (const [notificationId, notification] of Array.from((memoryStore.notifications || new Map()).entries())) {
+        const userId = (notification as any).userId || (notification as any).user_id;
+        const link = String((notification as any).link || '');
+        const title = String((notification as any).title || '');
+        const content = String((notification as any).content || '');
+        if (notificationUsers.includes(userId) && (link.includes(`month=${month}`) || title.includes(month) || content.includes(month))) {
+          memoryStore.notifications?.delete(notificationId);
+          notificationDeletedCount += 1;
+        }
+      }
+    } else if (notificationUsers.length > 0) {
+      const notificationResult = await query(`
+        DELETE FROM notifications
+        WHERE user_id = ANY($1::text[])
+          AND (
+            title LIKE $2
+            OR content LIKE $2
+            OR link LIKE $3
+          )
+      `, [notificationUsers, `%${month}%`, `%month=${month}%`]);
+      notificationDeletedCount = (notificationResult as any).affectedRows ?? (notificationResult as any).rowCount ?? 0;
+    }
 
     return {
       month,
       employeeId,
-      recordDeleted,
-      todoDeletedCount: (todoResult as any).affectedRows ?? (todoResult as any).rowCount ?? 0,
-      notificationDeletedCount: (notificationResult as any).affectedRows ?? (notificationResult as any).rowCount ?? 0,
+      recordDeleted: false,
+      recordCancelled: !wasAlreadyExcluded,
+      newStatus,
+      todoDeletedCount,
+      notificationDeletedCount,
       assessmentExcluded,
     };
   }
@@ -816,6 +1002,7 @@ export class SchedulerService {
       JOIN employees e ON e.id = pr.employee_id
       WHERE pr.month = $1 AND pr.status = 'draft'
         AND pr.employee_id = ANY($2::text[])
+        AND COALESCE(pr.is_excluded_from_stats, false) = false
         AND (e.status = 'active' OR e.status IS NULL)
       ORDER BY e.department, e.name
     `;
@@ -932,6 +1119,7 @@ export class SchedulerService {
       LEFT JOIN employees mgr ON mgr.id = pr.assessor_id
       WHERE pr.month = $1 AND pr.status = 'submitted'
         AND pr.employee_id = ANY($2::text[])
+        AND COALESCE(pr.is_excluded_from_stats, false) = false
         AND (e.status = 'active' OR e.status IS NULL)
         AND mgr.id IS NOT NULL
         AND (mgr.status = 'active' OR mgr.status IS NULL)
@@ -1108,6 +1296,7 @@ export class SchedulerService {
       JOIN employees e ON e.id = pr.employee_id
       WHERE pr.month = $1 AND pr.status = 'draft'
         AND pr.employee_id = ANY($2::text[])
+        AND COALESCE(pr.is_excluded_from_stats, false) = false
         AND (e.status = 'active' OR e.status IS NULL)
       ORDER BY e.department, e.name
     `, [month, assessableIds]);
@@ -1124,6 +1313,7 @@ export class SchedulerService {
       LEFT JOIN employees mgr ON mgr.id = pr.assessor_id
       WHERE pr.month = $1 AND pr.status = 'submitted'
         AND pr.employee_id = ANY($2::text[])
+        AND COALESCE(pr.is_excluded_from_stats, false) = false
         AND (e.status = 'active' OR e.status IS NULL)
         AND mgr.id IS NOT NULL
         AND (mgr.status = 'active' OR mgr.status IS NULL)
@@ -1258,6 +1448,8 @@ export class SchedulerService {
       JOIN employees e ON e.id = pr.employee_id
       WHERE pr.month = $1
         AND pr.employee_id = ANY($2::text[])
+        AND COALESCE(pr.is_excluded_from_stats, false) = false
+        AND pr.status::text NOT IN ('cancelled', 'exempted')
         AND (e.status = 'active' OR e.status IS NULL)
       GROUP BY e.department
       ORDER BY e.department
@@ -1498,6 +1690,8 @@ export class SchedulerService {
       FROM performance_records pr
       JOIN employees e ON e.id = pr.employee_id
       WHERE pr.status IN ('draft', 'scored')
+        AND COALESCE(pr.is_excluded_from_stats, false) = false
+        AND pr.status::text NOT IN ('cancelled', 'exempted')
         AND pr.deadline IS NOT NULL
         AND pr.deadline >= CURRENT_DATE
         AND pr.deadline <= CURRENT_DATE + INTERVAL '${reminderDays} days'

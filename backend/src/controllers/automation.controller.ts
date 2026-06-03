@@ -326,7 +326,9 @@ export const automationController = {
           ? `已为 ${result.employeeName || params.employeeId} 生成 ${params.month} 绩效任务`
           : result.status === 'updated_assessor'
             ? `已按最新上级关系更新 ${result.employeeName || params.employeeId} 的考评人`
-            : `${result.employeeName || params.employeeId} 的 ${params.month} 绩效任务已存在`,
+            : result.status === 'restored'
+              ? `已将 ${result.employeeName || params.employeeId} 重新加入 ${params.month} 绩效考核`
+              : `${result.employeeName || params.employeeId} 的 ${params.month} 绩效任务已存在`,
         data: result,
       });
     } catch (error) {
@@ -341,7 +343,7 @@ export const automationController = {
   }),
 
   /**
-   * HR/Admin 单独删除某个员工指定月份绩效任务。
+   * HR/Admin 单独取消某个员工指定月份绩效任务。
    */
   deleteEmployeeTask: asyncHandler(async (req: Request, res: Response) => {
     const params = requiredEmployeeTaskParams(req);
@@ -355,6 +357,7 @@ export const automationController = {
       const result = await SchedulerService.deletePerformanceTaskForEmployee(params.employeeId, params.month, {
         excludeFromAssessment,
         operatedBy: req.user?.userId,
+        reason: typeof req.body?.reason === 'string' ? req.body.reason : undefined,
       });
       await writeAutomationLog('delete_employee_task', params.month, 'success', {
         ...result,
@@ -362,9 +365,9 @@ export const automationController = {
       }, Date.now() - startedAt);
       return res.json({
         success: true,
-        message: result.recordDeleted
-          ? `已删除 ${params.employeeId} 的 ${params.month} 绩效任务，并清理关联待办/通知${result.assessmentExcluded ? '；已加入考核排除名单' : ''}`
-          : `${params.employeeId} 的 ${params.month} 绩效任务不存在${result.assessmentExcluded ? '，已加入考核排除名单' : '，无需删除'}`,
+        message: result.recordCancelled
+          ? `已取消 ${params.employeeId} 的 ${params.month} 绩效任务，并清理关联待办/通知${result.assessmentExcluded ? '；已加入考核排除名单' : ''}`
+          : `${params.employeeId} 的 ${params.month} 绩效任务不存在或已取消${result.assessmentExcluded ? '；已加入考核排除名单' : ''}`,
         data: result,
       });
     } catch (error) {
@@ -437,7 +440,9 @@ export const automationController = {
             ? '已生成任务'
             : result.status === 'updated_assessor'
               ? '已更新考评人'
-              : '任务已存在',
+              : result.status === 'restored'
+                ? '已重新加入本期考核'
+                : '任务已存在',
           data: result,
         });
       } catch (error) {
@@ -467,7 +472,7 @@ export const automationController = {
   }),
 
   /**
-   * HR/Admin 批量删除勾选员工指定月份绩效任务。
+   * HR/Admin 批量取消勾选员工指定月份绩效任务。
    */
   batchDeleteEmployeeTasks: asyncHandler(async (req: Request, res: Response) => {
     const params = requiredEmployeeTaskBatchParams(req);
@@ -483,12 +488,13 @@ export const automationController = {
         const result = await SchedulerService.deletePerformanceTaskForEmployee(employeeId, params.month, {
           excludeFromAssessment,
           operatedBy: req.user?.userId,
+          reason: typeof req.body?.reason === 'string' ? req.body.reason : undefined,
         });
         results.push({
           employeeId,
           success: true,
-          status: result.recordDeleted ? 'deleted' : 'not_found',
-          message: result.recordDeleted ? '已删除任务' : '任务不存在',
+          status: result.recordCancelled ? 'cancelled' : 'not_found',
+          message: result.recordCancelled ? '已取消本期任务' : '任务不存在或已取消',
           data: result,
         });
       } catch (error) {
@@ -513,7 +519,7 @@ export const automationController = {
 
     return res.json({
       success: true,
-      message: `批量删除完成：成功 ${successCount} 人，失败 ${failedCount} 人`,
+      message: `批量取消完成：成功 ${successCount} 人，失败 ${failedCount} 人`,
       data: { total: results.length, successCount, failedCount, results },
     });
   }),

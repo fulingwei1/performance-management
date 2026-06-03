@@ -5,6 +5,7 @@ import { formatPublicationReadinessMessage, validatePublicationReadiness } from 
 import { ArchiveService } from '../services/archive.service';
 import { NotificationModel } from '../models/notification.model';
 import { PerformanceModel } from '../models/performance.model';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 
 export const assessmentPublicationController = {
   /**
@@ -67,7 +68,7 @@ export const assessmentPublicationController = {
     }
 
     const completedRecords = (await PerformanceModel.findByMonth(month))
-      .filter((record: any) => record.status === 'completed' || record.status === 'scored');
+      .filter((record: any) => (record.status === 'completed' || record.status === 'scored') && !isScopeExcludedRecord(record));
     await NotificationModel.createBatch(completedRecords.map((record: any) => ({
       userId: record.employeeId,
       type: 'system',

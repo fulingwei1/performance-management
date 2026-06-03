@@ -3,6 +3,7 @@ import { PerformanceModel } from '../models/performance.model';
 import { asyncHandler } from '../middleware/errorHandler';
 import { scoreLevelThresholds } from '../utils/helpers';
 import { validatePublicationReadiness } from '../services/publicationReadiness.service';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 
 const SCORE_BUCKETS = [
   { level: 'L5', label: '优秀', min: scoreLevelThresholds.L5, max: null as number | null },
@@ -20,7 +21,11 @@ const isSubmittedTaskRecord = (record: any) =>
   || Boolean(String(record?.selfSummary || record?.self_summary || '').trim())
   || Boolean(String(record?.nextMonthPlan || record?.next_month_plan || '').trim());
 
-const isRealRecord = (record: any) => !record?.isDemo && !String(record?.id || '').startsWith('demo-');
+const isRealRecord = (record: any) => (
+  !record?.isDemo
+  && !String(record?.id || '').startsWith('demo-')
+  && !isScopeExcludedRecord(record)
+);
 
 const getScoreBucket = (score: number) =>
   SCORE_BUCKETS.find((bucket) => score >= bucket.min && (bucket.max === null || score < bucket.max));

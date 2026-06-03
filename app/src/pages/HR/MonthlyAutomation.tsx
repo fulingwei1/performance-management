@@ -78,6 +78,7 @@ export default function MonthlyAutomation() {
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [employeeTaskSearch, setEmployeeTaskSearch] = useState('');
   const [excludeFromAssessmentOnDelete, setExcludeFromAssessmentOnDelete] = useState(true);
+  const [scopeChangeReason, setScopeChangeReason] = useState('员工已在考核周期内离职/本期不参与绩效');
   const [allowDuplicateReminder, setAllowDuplicateReminder] = useState(false);
   const [quarterlyPreview, setQuarterlyPreview] = useState<QuarterlyCoefficientPreview | null>(null);
 
@@ -142,7 +143,7 @@ export default function MonthlyAutomation() {
       return;
     }
     if (action === 'delete' && !options?.confirmed) {
-      const ok = window.confirm(`确认删除已勾选 ${selectedEmployeeIds.length} 名员工的 ${selectedMonth} 绩效任务吗？会同步清理这些员工该月待办/通知${excludeFromAssessmentOnDelete ? '，并加入考核排除名单，后续不再生成和催办' : ''}。`);
+      const ok = window.confirm(`确认取消已勾选 ${selectedEmployeeIds.length} 名员工的 ${selectedMonth} 绩效任务吗？系统会保留原绩效记录和操作日志，但从本月统计、排名、发布检查和催办中排除，并清理这些员工该月待办/通知${excludeFromAssessmentOnDelete ? '；同时加入考核排除名单，后续不再生成和催办' : ''}。`);
       if (!ok) return;
     }
 
@@ -158,7 +159,7 @@ export default function MonthlyAutomation() {
         body: JSON.stringify({
           employeeIds: selectedEmployeeIds,
           month: selectedMonth,
-          ...(action === 'delete' ? { excludeFromAssessment: excludeFromAssessmentOnDelete } : {}),
+          ...(action === 'delete' ? { excludeFromAssessment: excludeFromAssessmentOnDelete, reason: scopeChangeReason.trim() } : {}),
         }),
       });
       if (r.success) {
@@ -693,9 +694,9 @@ export default function MonthlyAutomation() {
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">勾选员工任务处理</h2>
+          <h2 className="text-lg font-semibold text-white">考核周期中途范围调整</h2>
           <p className="text-sm text-gray-400 mt-1">
-            勾选 1 人就是单人处理，勾选多人就是批量处理；只影响已勾选员工，不会重跑整月任务。
+            勾选 1 人就是单人处理，勾选多人就是批量处理；可在已启动周期内新增、取消、恢复本期考核，不会重跑整月任务。
           </p>
         </div>
 
@@ -741,7 +742,7 @@ export default function MonthlyAutomation() {
                   清空全部
                 </button>
                 <span className="text-xs text-gray-500">
-                  月份使用右上角当前选择：{selectedMonth}；列表包含已禁用/离职员工，便于处理“任务生成后离职”。
+                  月份使用右上角当前选择：{selectedMonth}；列表包含已禁用/离职员工，便于处理“任务生成后离职/临时加入或移出考核范围”。
                 </span>
               </div>
 
@@ -799,17 +800,27 @@ export default function MonthlyAutomation() {
               className="mt-1"
             />
             <span>
-              <span className="font-medium">删除员工任务时，同时加入考核排除名单</span>
+              <span className="font-medium">取消本期考核时，同时加入考核排除名单</span>
               <span className="mt-1 block text-xs text-orange-100/80">
-                适用于员工在考核周期内离职：删除该月任务、清理待办/通知，并从应考人数、进度统计、后续催办和后续任务生成中排除。正式人事状态仍建议在人事档案系统里维护后重新上传。
+                适用于员工在考核周期内离职：系统不会硬删绩效记录，只会标记“本期不参与”，清理待办/通知，并从应考人数、进度统计、后续催办、排名和发布检查中排除。正式人事状态仍建议在人事档案系统里维护后重新上传。
               </span>
             </span>
           </label>
 
+          <div>
+            <label className="text-xs text-gray-400">取消/豁免原因（会进入日志留痕）</label>
+            <input
+              value={scopeChangeReason}
+              onChange={(event) => setScopeChangeReason(event.target.value)}
+              placeholder="例如：员工已于考核周期内离职，本期不参与绩效"
+              className="mt-1 w-full bg-gray-800 text-white rounded px-3 py-2 text-sm border border-gray-700"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <ActionCard
               title="单独生成任务"
-              description={`为已勾选员工生成 ${selectedMonth} 绩效任务；已有任务会提示存在，不会重复创建。`}
+              description={`为已勾选员工生成 ${selectedMonth} 绩效任务；如果此前被取消/豁免，会恢复为本期考核任务。`}
               buttonLabel={`生成任务（${selectedEmployeeIds.length}）`}
               buttonClassName="bg-blue-600 hover:bg-blue-700"
               disabled={loading || selectedEmployeeIds.length === 0}
@@ -818,9 +829,9 @@ export default function MonthlyAutomation() {
             />
 
             <ActionCard
-              title="删除该员工任务"
-              description="删除该月份绩效记录并清理待办/通知；勾选上方选项后，会把离职员工从考核范围中排除。"
-              buttonLabel={`删除任务（${selectedEmployeeIds.length}）`}
+              title="取消本期考核"
+              description="保留绩效记录和日志，标记为本期取消/豁免；清理待办/通知，并从统计、排名、发布检查和催办中排除。"
+              buttonLabel={`取消本期（${selectedEmployeeIds.length}）`}
               buttonClassName="bg-red-600 hover:bg-red-700"
               disabled={loading || selectedEmployeeIds.length === 0}
               icon={<Trash2 className="w-4 h-4" />}

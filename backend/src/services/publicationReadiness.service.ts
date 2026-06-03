@@ -7,6 +7,7 @@ import {
   isParticipatingRecord,
 } from './performanceRankingConfig.service';
 import { scoreLevelThresholds } from '../utils/helpers';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 
 export interface PublicationReadinessViolation {
   type: 'incomplete' | 'forced_distribution' | 'missing_interview_form';
@@ -54,14 +55,20 @@ export const validatePublicationReadiness = async (month: string): Promise<Publi
       .filter((employee: any) => !employee.status || employee.status === 'active')
       .map((employee: any) => employee.id)
   );
+  const records = await PerformanceModel.findByMonth(month);
+  const excludedEmployeeIds = new Set<string>(
+    records.filter(isScopeExcludedRecord).map((record) => record.employeeId)
+  );
   const participants = employees
     .filter((employee: any) => (employee.role === 'employee' || employee.role === 'manager') && (!employee.status || employee.status === 'active'))
     .filter((employee: any) => isParticipatingRecord(employee, config))
+    .filter((employee: any) => !excludedEmployeeIds.has(employee.id))
     .filter((employee: any) => employee.role !== 'manager' || (employee.managerId && employee.managerId !== employee.id && validIds.has(employee.managerId)));
 
-  const records = await PerformanceModel.findByMonth(month);
   const recordsByEmployee = new Map<string, PerformanceRecord>();
-  records.forEach((record) => recordsByEmployee.set(record.employeeId, record));
+  records
+    .filter((record) => !isScopeExcludedRecord(record))
+    .forEach((record) => recordsByEmployee.set(record.employeeId, record));
 
   const completedRecords = participants
     .map((employee: any) => recordsByEmployee.get(employee.id))

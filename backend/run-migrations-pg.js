@@ -33,6 +33,7 @@ const migrationFiles = [
   'migrations/030_update_engineering_template_metrics.sql',
   'migrations/031_notification_deadline_type.sql',
   'migrations/032_publication_integrity_and_archive_table.sql',
+  'migrations/033_performance_scope_adjustments.sql',
 ];
 
 async function runMigrations() {

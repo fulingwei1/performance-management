@@ -136,7 +136,7 @@ describe('Performance API', () => {
   });
 
   describe('POST /api/performance/nonparticipation-report', () => {
-    it('allows a manager to report a subordinate as departed and remove the monthly task', async () => {
+    it('allows a manager to report a subordinate as departed and cancel the monthly task', async () => {
       const managerToken = await TestHelper.getAuthToken('manager');
       const month = '2024-10';
 
@@ -166,12 +166,18 @@ describe('Performance API', () => {
         data: {
           employeeId: 'e002',
           month,
-          recordDeleted: true,
+          recordDeleted: false,
+          recordCancelled: true,
           assessmentExcluded: true,
         },
       });
 
-      await expect(PerformanceModel.findByEmployeeIdAndMonth('e002', month)).resolves.toBeNull();
+      await expect(PerformanceModel.findByEmployeeIdAndMonth('e002', month)).resolves.toMatchObject({
+        employeeId: 'e002',
+        month,
+        status: 'exempted',
+        isExcludedFromStats: true,
+      });
     });
 
     it('rejects non-managers reporting employees outside their responsibility scope', async () => {

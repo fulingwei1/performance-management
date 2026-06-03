@@ -10,6 +10,7 @@ import {
   matchMergeRankGroup,
   getOrgUnitKey,
 } from '../services/performanceRankingConfig.service';
+import { isScopeExcludedRecord } from '../utils/performanceScope';
 
 export const performanceConfigController = {
   // 获取当前配置（HR/Admin）
@@ -34,7 +35,7 @@ export const performanceConfigController = {
     }
 
     const config = await getPerformanceRankingConfig();
-    const records = await PerformanceModel.findByMonth(month);
+    const records = (await PerformanceModel.findByMonth(month)).filter((record) => !isScopeExcludedRecord(record));
     const completed = records.filter((r) => r.status === 'completed');
 
     const participation = {
