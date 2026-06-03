@@ -83,6 +83,8 @@ export interface ReportSummaryData {
   focus?: {
     pendingSubmission?: ReportFocusPerson[];
     pendingScore?: ReportFocusPerson[];
+    pendingSubmissionTotal?: number;
+    pendingScoreTotal?: number;
     pending: ReportFocusPerson[];
     lowScores: ReportFocusPerson[];
     topScores: ReportFocusPerson[];
@@ -116,12 +118,17 @@ function FocusList({
   people,
   emptyText,
   accent,
+  totalCount,
 }: {
   title: string;
   people: ReportFocusPerson[];
   emptyText: string;
   accent: 'amber' | 'red' | 'green' | 'blue';
+  totalCount?: number;
 }) {
+  const displayCount = typeof totalCount === 'number' ? totalCount : people.length;
+  const visibleCount = people.slice(0, 5).length;
+
   const accentClass = {
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
     red: 'bg-red-50 text-red-700 border-red-100',
@@ -136,10 +143,13 @@ function FocusList({
           <CircleDot className="h-4 w-4" />
           {title}
         </p>
-        <Badge variant="outline" className={accentClass}>{people.length} 人</Badge>
+        <Badge variant="outline" className={accentClass}>{displayCount} 人</Badge>
       </div>
       {people.length > 0 ? (
         <div className="space-y-2">
+          {displayCount > visibleCount && (
+            <p className="text-xs text-gray-400">下方仅展示前 {visibleCount} 人，完整名单请点上方卡片筛选。</p>
+          )}
           {people.slice(0, 5).map((person) => (
             <div key={`${title}-${person.recordId || person.employeeId}`} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
               <div className="min-w-0">
@@ -278,8 +288,8 @@ export function ReportSummaryCard({
 
         {summary.focus && (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-            <FocusList title="员工未提交" people={summary.focus.pendingSubmission || []} emptyText="暂无未提交人员。" accent="amber" />
-            <FocusList title="待上级评分" people={summary.focus.pendingScore || summary.focus.pending || []} emptyText="暂无待评分人员。" accent="blue" />
+            <FocusList title="员工未提交" people={summary.focus.pendingSubmission || []} totalCount={summary.focus.pendingSubmissionTotal ?? overview.unsubmittedCount} emptyText="暂无未提交人员。" accent="amber" />
+            <FocusList title="待上级评分" people={summary.focus.pendingScore || summary.focus.pending || []} totalCount={summary.focus.pendingScoreTotal ?? overview.scorePendingCount ?? overview.pendingCount} emptyText="暂无待评分人员。" accent="blue" />
             <FocusList title="低分关注" people={summary.focus.lowScores || []} emptyText="暂无低分关注人员。" accent="red" />
             <FocusList title="环比下降" people={summary.focus.declined || []} emptyText="暂无明显下降人员。" accent="blue" />
             <FocusList title="高分标杆" people={summary.focus.topScores || []} emptyText="暂无高分标杆人员。" accent="green" />

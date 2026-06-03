@@ -187,6 +187,8 @@ const buildFocusLists = (currentRecords: any[], previousRecords: any[]) => {
     pending: pendingPeople,
     pendingSubmission: pendingSubmissionPeople,
     pendingScore: pendingPeople,
+    pendingSubmissionTotal: pendingSubmission.length,
+    pendingScoreTotal: pendingScore.length,
     lowScores,
     topScores,
     declined,
