@@ -25,9 +25,16 @@ export class ErrorBoundary extends React.Component<Props, State> {
     const message = `${error?.message || ''}\n${error?.stack || ''}`;
     const isDynamicImportCacheError = /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(message);
 
-    if (isDynamicImportCacheError && sessionStorage.getItem('pm:auto-reloaded-after-chunk-error') !== '1') {
-      sessionStorage.setItem('pm:auto-reloaded-after-chunk-error', '1');
-      window.location.reload();
+    if (isDynamicImportCacheError) {
+      const buildMarker = Array.from(document.querySelectorAll<HTMLScriptElement>('script[type="module"][src]'))
+        .map((script) => script.src)
+        .find((src) => src.includes('/assets/index-')) || 'unknown-build';
+      const reloadKey = `error-boundary:${buildMarker}`;
+
+      if (sessionStorage.getItem('pm:auto-reloaded-after-chunk-error') !== reloadKey) {
+        sessionStorage.setItem('pm:auto-reloaded-after-chunk-error', reloadKey);
+        window.location.reload();
+      }
     }
   }
 
