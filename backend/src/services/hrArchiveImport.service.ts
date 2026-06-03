@@ -432,7 +432,7 @@ async function upsertArchiveEmployees(
         position = EXCLUDED.position,
         role = EXCLUDED.role,
         level = EXCLUDED.level,
-        manager_id = COALESCE(EXCLUDED.manager_id, employees.manager_id),
+        manager_id = EXCLUDED.manager_id,
         password = employees.password,
         id_card_last6_hash = COALESCE(EXCLUDED.id_card_last6_hash, employees.id_card_last6_hash),
         status = EXCLUDED.status,
@@ -464,6 +464,30 @@ async function disableEmployeesMissingFromArchive(importedIds: string[]) {
      WHERE role <> 'admin' AND id <> ALL($1::text[])`,
     [importedIds]
   );
+}
+
+async function cancelUnpublishedPerformanceRecordsForInactiveEmployees(inactiveEmployeeIds: string[]) {
+  if (inactiveEmployeeIds.length === 0) return 0;
+
+  const result = await query(
+    `UPDATE performance_records pr
+     SET status = 'cancelled',
+         is_excluded_from_stats = TRUE,
+         exclude_reason = COALESCE(NULLIF(pr.exclude_reason, ''), '人事档案已标记离职/停用，未发布绩效任务自动取消'),
+         updated_at = CURRENT_TIMESTAMP
+     WHERE pr.employee_id = ANY($1::text[])
+       AND COALESCE(pr.is_excluded_from_stats, FALSE) = FALSE
+       AND pr.status::text NOT IN ('completed', 'scored', 'cancelled', 'exempted')
+       AND NOT EXISTS (
+         SELECT 1
+         FROM monthly_assessment_publications pub
+         WHERE pub.month = pr.month
+       )
+     RETURNING pr.id`,
+    [inactiveEmployeeIds]
+  );
+
+  return Array.isArray(result) ? result.length : 0;
 }
 
 async function normalizeEmployeeOrgPaths() {
@@ -510,6 +534,10 @@ export async function importHrArchive(filePath: string) {
   await upsertArchiveEmployees(upsertOrder, managerIds, existingEmployees);
   await normalizeEmployeeOrgPaths();
   await disableEmployeesMissingFromArchive(employees.map((employee) => employee.id));
+  const inactiveEmployeeIds = employees
+    .filter((employee) => employee.status !== 'active')
+    .map((employee) => employee.id);
+  const autoCancelledInactiveRecords = await cancelUnpublishedPerformanceRecordsForInactiveEmployees(inactiveEmployeeIds);
   const assessorSyncResult = await syncPendingPerformanceAssessorsForEmployees(
     employees.map((employee) => employee.id)
   );
@@ -555,6 +583,7 @@ export async function importHrArchive(filePath: string) {
     unresolvedManagers,
     assessorSyncUpdatedRecords: assessorSyncResult.updatedRecords,
     assessorSyncMovedTodos: assessorSyncResult.movedTodos,
+    autoCancelledInactiveRecords,
     wecomMappedCount: 0,
     wecomSyncPending: true,
     departmentCounts,
