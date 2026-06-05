@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response, Router } from 'express';
-import { authenticate, requireManagerCapability } from '../middleware/auth';
+import { authenticateOrAutomationService, requireManagerCapability } from '../middleware/auth';
 import { getReportSummary } from '../controllers/analytics.controller';
 
 const router = Router();
@@ -14,7 +14,7 @@ const requireAnalyticsAccess = (req: Request, res: Response, next: NextFunction)
 };
 
 // All analytics routes require authentication
-router.use(authenticate);
+router.use(authenticateOrAutomationService);
 router.use(requireAnalyticsAccess);
 
 router.get('/report-summary', getReportSummary);

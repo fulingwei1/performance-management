@@ -2,6 +2,23 @@ import { query, USE_MEMORY_DB, memoryStore } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { LoginLog } from '../types';
 
+export type LoginClientType = 'browser' | 'api' | 'unknown';
+
+export const classifyLoginClient = (userAgent?: string): LoginClientType => {
+  const ua = (userAgent || '').trim().toLowerCase();
+  if (!ua) return 'unknown';
+
+  if (/(curl|wget|httpie|postman|insomnia|python-requests|axios|node-fetch|undici|java|go-http-client|okhttp)/i.test(ua)) {
+    return 'api';
+  }
+
+  if (/(mozilla|chrome|safari|firefox|edg|iphone|ipad|android|mobile)/i.test(ua)) {
+    return 'browser';
+  }
+
+  return 'unknown';
+};
+
 export class LoginLogModel {
   // 创建登录日志
   static async create(data: {
@@ -27,6 +44,7 @@ export class LoginLogModel {
       loginMethod: data.loginMethod,
       loginIp: data.loginIp,
       userAgent: data.userAgent,
+      clientType: classifyLoginClient(data.userAgent),
       success: data.success,
       failureReason: data.failureReason,
     };
@@ -183,6 +201,7 @@ export class LoginLogModel {
       loginMethod: row.login_method,
       loginIp: row.login_ip,
       userAgent: row.user_agent,
+      clientType: classifyLoginClient(row.user_agent),
       success: row.success,
       failureReason: row.failure_reason,
     };

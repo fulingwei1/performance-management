@@ -172,6 +172,7 @@ export interface LoginLog {
   loginMethod: 'idCard' | 'password';
   loginIp: string;
   userAgent: string;
+  clientType?: 'browser' | 'api' | 'unknown';
   success: boolean;
   failureReason?: string;
 }

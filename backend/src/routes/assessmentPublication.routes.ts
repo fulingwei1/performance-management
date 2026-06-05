@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { assessmentPublicationController } from '../controllers/assessmentPublication.controller';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticateOrAutomationService, requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';
 
@@ -22,14 +22,14 @@ const publishValidation = [
 
 // 发布某月的考核结果（HR/Admin）
 router.post('/',
-  authenticate,
+  authenticateOrAutomationService,
   requireRole('hr', 'admin'),
   validate(publishValidation),
   assessmentPublicationController.publish
 );
 
 router.post('/publish', 
-  authenticate, 
+  authenticateOrAutomationService, 
   requireRole('hr', 'admin'), 
   validate(publishValidation),
   assessmentPublicationController.publish
@@ -37,20 +37,20 @@ router.post('/publish',
 
 // 取消发布（HR/Admin）
 router.delete('/:month/unpublish', 
-  authenticate, 
+  authenticateOrAutomationService, 
   requireRole('hr', 'admin'), 
   assessmentPublicationController.unpublish
 );
 
 // 检查某月是否已发布（所有认证用户）
 router.get('/:month/status', 
-  authenticate, 
+  authenticateOrAutomationService, 
   assessmentPublicationController.checkPublished
 );
 
 // 获取所有已发布的月份（所有认证用户）
 router.get('/published', 
-  authenticate, 
+  authenticateOrAutomationService, 
   assessmentPublicationController.getAllPublished
 );
 

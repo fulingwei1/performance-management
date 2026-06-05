@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { JWTPayload, EmployeeRole } from '../types';
 import logger from '../config/logger';
@@ -85,6 +86,44 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
   } catch (error) {
     res.status(401).json({ success: false, message: '认证令牌无效或已过期' });
   }
+};
+
+const getAutomationServiceToken = (): string => (process.env.AUTOMATION_SERVICE_TOKEN || '').trim();
+
+const timingSafeEqualText = (left: string, right: string): boolean => {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+};
+
+// 自动化服务认证：给服务器本机脚本/定时任务使用，避免再用 HR 员工账号 curl 登录。
+// 只接受 X-Automation-Token；未提供该头时回退到普通 JWT 登录。
+export const authenticateOrAutomationService = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const providedToken = (req.get('x-automation-token') || '').trim();
+
+  if (providedToken) {
+    const expectedToken = getAutomationServiceToken();
+    if (!expectedToken) {
+      res.status(401).json({ success: false, message: '自动化服务令牌未配置' });
+      return;
+    }
+    if (!timingSafeEqualText(providedToken, expectedToken)) {
+      res.status(401).json({ success: false, message: '自动化服务令牌无效' });
+      return;
+    }
+
+    req.user = {
+      userId: 'system-automation',
+      role: 'admin',
+      id: 'system-automation',
+    };
+    req.userId = 'system-automation';
+    next();
+    return;
+  }
+
+  await authenticate(req, res, next);
 };
 
 // 角色权限检查中间件

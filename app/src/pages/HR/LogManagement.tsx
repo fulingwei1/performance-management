@@ -24,6 +24,7 @@ type LoginLog = {
   loginMethod: 'idCard' | 'password';
   loginIp: string;
   userAgent: string;
+  clientType?: 'browser' | 'api' | 'unknown';
   success: boolean;
   failureReason?: string;
 };
@@ -101,6 +102,30 @@ const browserSummary = (userAgent?: string) => {
   if (userAgent.includes('Firefox')) return 'Firefox';
   if (userAgent.includes('Edg')) return 'Edge';
   return userAgent.slice(0, 24);
+};
+
+const classifyLoginClient = (log: LoginLog): 'browser' | 'api' | 'unknown' => {
+  if (log.clientType) return log.clientType;
+  const userAgent = (log.userAgent || '').toLowerCase();
+  if (!userAgent) return 'unknown';
+  if (/(curl|wget|httpie|postman|insomnia|python-requests|axios|node-fetch|undici|java|go-http-client|okhttp)/i.test(userAgent)) {
+    return 'api';
+  }
+  if (/(mozilla|chrome|safari|firefox|edg|iphone|ipad|android|mobile)/i.test(userAgent)) {
+    return 'browser';
+  }
+  return 'unknown';
+};
+
+const clientTypeBadge = (log: LoginLog) => {
+  const type = classifyLoginClient(log);
+  if (type === 'browser') {
+    return <Badge className="bg-blue-100 text-blue-700">页面/浏览器</Badge>;
+  }
+  if (type === 'api') {
+    return <Badge className="bg-amber-100 text-amber-700">API/脚本</Badge>;
+  }
+  return <Badge variant="secondary">未知</Badge>;
 };
 
 const parseDetails = (details: any) => {
@@ -365,7 +390,8 @@ export default function LogManagement() {
                       <TableHead>部门</TableHead>
                       <TableHead>方式</TableHead>
                       <TableHead>IP</TableHead>
-                      <TableHead>浏览器</TableHead>
+                      <TableHead>客户端</TableHead>
+                      <TableHead>来源</TableHead>
                       <TableHead>结果</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -382,6 +408,7 @@ export default function LogManagement() {
                         <TableCell>姓名/工号 + 身份证后六位</TableCell>
                         <TableCell>{log.loginIp || '-'}</TableCell>
                         <TableCell>{browserSummary(log.userAgent)}</TableCell>
+                        <TableCell>{clientTypeBadge(log)}</TableCell>
                         <TableCell>
                           {log.success ? (
                             <Badge className="bg-emerald-100 text-emerald-700">成功</Badge>
